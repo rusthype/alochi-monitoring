@@ -1,25 +1,21 @@
 // lib/features/result/pdf_report.dart
-// PDF hisobot generatsiyasi — namuna: Natija_muhammadjonov_akramjon.pdf formatida
-
 import 'dart:io';
-import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../core/models/models.dart';
 
 class PdfReport {
-  static const _orange = PdfColor.fromInt(0xFFF97316);
-  static const _blue   = PdfColor.fromInt(0xFF3B82F6);
-  static const _teal   = PdfColor.fromInt(0xFF0D9488);
-  static const _green  = PdfColor.fromInt(0xFF16A34A);
-  static const _red    = PdfColor.fromInt(0xFFDC2626);
-  static const _ink1   = PdfColor.fromInt(0xFF18181B);
-  static const _ink2   = PdfColor.fromInt(0xFF52525B);
-  static const _ink3   = PdfColor.fromInt(0xFFA1A1AA);
-  static const _border = PdfColor.fromInt(0xFFE4E4E7);
-  static const _bg     = PdfColor.fromInt(0xFFFAFAFA);
-  static const _bgCard = PdfColors.white;
+  static const _orange  = PdfColor.fromInt(0xFFF97316);
+  static const _blue    = PdfColor.fromInt(0xFF3B82F6);
+  static const _teal    = PdfColor.fromInt(0xFF0D9488);
+  static const _green   = PdfColor.fromInt(0xFF16A34A);
+  static const _red     = PdfColor.fromInt(0xFFDC2626);
+  static const _ink1    = PdfColor.fromInt(0xFF18181B);
+  static const _ink2    = PdfColor.fromInt(0xFF52525B);
+  static const _ink3    = PdfColor.fromInt(0xFFA1A1AA);
+  static const _border  = PdfColor.fromInt(0xFFE4E4E7);
+  static const _bgLight = PdfColor.fromInt(0xFFFAFAFA);
 
   static Future<File> generate({
     required StudentSession session,
@@ -27,444 +23,360 @@ class PdfReport {
     required TestResult result,
     required List<dynamic> wrongAnswers,
   }) async {
-    final pdf  = pw.Document();
-    final date = _formatDate(DateTime.now());
+    final doc  = pw.Document(title: 'Natija - ${session.studentName}');
+    final date = _date(DateTime.now());
 
-    // Font
-    final fontData   = await rootBundle.load('assets/fonts/NotoSans-Regular.ttf').catchError((_) async {
-      // Fallback: system font yo'q bo'lsa default ishlatamiz
-      return ByteData(0);
-    });
-    pw.Font? customFont;
-    try {
-      if (fontData.lengthInBytes > 0) {
-        customFont = pw.Font.ttf(fontData);
-      }
-    } catch (_) {}
+    final mathPct = package.mathCount > 0 ? result.mathScore / package.mathCount : 0.0;
+    final engPct  = package.engCount  > 0 ? result.engScore  / package.engCount  : 0.0;
+    final passed  = result.passed;
+    final mainClr = passed ? _green : _red;
 
-    final baseStyle = customFont != null
-        ? pw.TextStyle(font: customFont)
-        : const pw.TextStyle();
+    final theme = pw.ThemeData.withFont(
+      base: pw.Font.helvetica(),
+      bold: pw.Font.helveticaBold(),
+    );
 
-    // ── Page 1: Umumiy natija ─────────────────────────────────────
-    pdf.addPage(pw.Page(
+    doc.addPage(pw.Page(
       pageFormat: PdfPageFormat.a4,
-      margin: const pw.EdgeInsets.all(40),
-      build: (ctx) => _buildPage1(ctx, session, package, result, date, baseStyle),
+      margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 36),
+      theme: theme,
+      build: (_) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          _header(date),
+          pw.SizedBox(height: 16),
+          _studentRow(session, result, mainClr, passed),
+          pw.SizedBox(height: 16),
+          pw.Text("Fanlar bo'yicha natija",
+            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: _ink1)),
+          pw.SizedBox(height: 10),
+          pw.Row(children: [
+            pw.Expanded(child: _subjectCard('Matematika', result.mathScore, package.mathCount, mathPct, _blue)),
+            pw.SizedBox(width: 12),
+            pw.Expanded(child: _subjectCard('Ingliz tili', result.engScore, package.engCount, engPct, _teal)),
+          ]),
+          pw.SizedBox(height: 12),
+          _totalRow(result, package),
+          pw.SizedBox(height: 12),
+          _recommendations(mathPct, engPct, result.totalPct),
+          if (wrongAnswers.isNotEmpty) ...[
+            pw.SizedBox(height: 12),
+            _wrongSummary(wrongAnswers),
+          ],
+          pw.Spacer(),
+          _footer(),
+        ],
+      ),
     ));
 
-    // ── Page 2: Xato javoblar ─────────────────────────────────────
     if (wrongAnswers.isNotEmpty) {
-      pdf.addPage(pw.MultiPage(
+      doc.addPage(pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(40),
-        build: (ctx) => _buildPage2(ctx, session, wrongAnswers, baseStyle),
+        margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 36),
+        theme: theme,
+        build: (_) => [
+          _wrongHeader(session.studentName),
+          pw.SizedBox(height: 12),
+          ...wrongAnswers.map((w) => _wrongItem(w as Map<String, dynamic>)),
+        ],
       ));
     }
 
-    // Faylga saqlash
-    final dir      = await getApplicationDocumentsDirectory();
-    final namePart = session.studentName.toLowerCase()
-        .replaceAll(' ', '_')
-        .replaceAll("'", '')
-        .replaceAll(RegExp(r"[^a-z0-9_]"), '');
-    final dateTag  = DateTime.now().toIso8601String().substring(0, 10).replaceAll('-', '_');
-    final file     = File('${dir.path}/Natija_${namePart}_$dateTag.pdf');
-    await file.writeAsBytes(await pdf.save());
+    final dir  = await getApplicationDocumentsDirectory();
+    final name = session.studentName
+        .toLowerCase().replaceAll(' ', '_')
+        .replaceAll("'", '').replaceAll(RegExp(r"[^\w]"), '');
+    final tag  = DateTime.now().toIso8601String().substring(0, 10);
+    final file = File('${dir.path}/Natija_${name}_$tag.pdf');
+    await file.writeAsBytes(await doc.save());
     return file;
   }
 
-  static pw.Widget _buildPage1(
-    pw.Context ctx,
-    StudentSession session,
-    TestPackage package,
-    TestResult result,
-    String date,
-    pw.TextStyle base,
-  ) {
-    final passed   = result.passed;
-    final mainClr  = passed ? _green : _red;
-    final totalQ   = package.totalCount;
-
-    return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
-
-      // ── Header ─────────────────────────────────────────────────
+  static pw.Widget _header(String date) => pw.Container(
+    padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+    decoration: pw.BoxDecoration(
+      color: _orange,
+      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12))),
+    child: pw.Row(children: [
       pw.Container(
-        padding: const pw.EdgeInsets.all(20),
-        decoration: pw.BoxDecoration(
-          color: _orange,
-          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(14)),
-        ),
-        child: pw.Row(children: [
-          // Logo circle
-          pw.Container(
-            width: 52, height: 52,
-            decoration: const pw.BoxDecoration(
-              color: PdfColors.white, shape: pw.BoxShape.circle),
-            child: pw.Center(child: pw.Text('A',
-              style: base.copyWith(fontSize: 26, fontWeight: pw.FontWeight.bold,
-                color: _orange))),
-          ),
-          pw.SizedBox(width: 16),
-          pw.Expanded(child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-            pw.Text('Alochi Monitoring', style: base.copyWith(
-              fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
-            pw.Text('Monitoring test natijasi', style: base.copyWith(
-              fontSize: 12, color: const PdfColor(1, 1, 1, 0.7))),
-          ])),
-          pw.Text(date, style: base.copyWith(fontSize: 11, color: const PdfColor(1, 1, 1, 0.7))),
-        ]),
-      ),
-      pw.SizedBox(height: 20),
+        width: 44, height: 44,
+        decoration: const pw.BoxDecoration(color: PdfColors.white, shape: pw.BoxShape.circle),
+        child: pw.Center(child: pw.Text('A',
+          style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold, color: _orange)))),
+      pw.SizedBox(width: 14),
+      pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+        pw.Text('Alochi Monitoring',
+          style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+        pw.Text('Monitoring test natijasi',
+          style: pw.TextStyle(fontSize: 11, color: PdfColors.white)),
+      ])),
+      pw.Text(date, style: pw.TextStyle(fontSize: 10, color: PdfColors.white)),
+    ]));
 
-      // ── Student info + verdict ──────────────────────────────────
-      pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-
-        // Student card
-        pw.Expanded(flex: 3, child: pw.Container(
-          padding: const pw.EdgeInsets.all(16),
-          decoration: pw.BoxDecoration(
-            color: _bgCard, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
-            border: pw.Border.all(color: _border),
-          ),
-          child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-            pw.Text("O'quvchi", style: base.copyWith(fontSize: 10, color: _ink3)),
-            pw.SizedBox(height: 4),
-            pw.Text(session.studentName, style: base.copyWith(
-              fontSize: 16, fontWeight: pw.FontWeight.bold, color: _ink1)),
-            pw.SizedBox(height: 12),
-            _infoRow(base, "🏫", '${session.grade}-sinf'),
-            pw.SizedBox(height: 6),
-            _infoRow(base, "#", 'Variant ${session.variant}'),
-            if (session.groupName != null) ...[
-              pw.SizedBox(height: 6),
-              _infoRow(base, "👥", session.groupName!),
-            ],
-            pw.SizedBox(height: 6),
-            _infoRow(base, "📅", date),
-          ]),
-        )),
-        pw.SizedBox(width: 12),
-
-        // Score ring + verdict
-        pw.Expanded(flex: 2, child: pw.Container(
-          padding: const pw.EdgeInsets.all(16),
-          decoration: pw.BoxDecoration(
-            color: passed ? const PdfColor.fromInt(0xFFF0FDF4) : const PdfColor.fromInt(0xFFFFF1F2),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
-            border: pw.Border.all(color: PdfColor(mainClr.red/255, mainClr.green/255, mainClr.blue/255, 0.3)),
-          ),
-          child: pw.Column(children: [
-            // Big score
-            pw.Container(
-              width: 80, height: 80,
-              decoration: pw.BoxDecoration(
-                shape: pw.BoxShape.circle,
-                color: PdfColor(mainClr.red/255, mainClr.green/255, mainClr.blue/255, 0.1),
-                border: pw.Border.all(color: mainClr, width: 3),
-              ),
-              child: pw.Center(child: pw.Column(
-                mainAxisAlignment: pw.MainAxisAlignment.center, children: [
-                pw.Text('${result.totalPct}%', style: base.copyWith(
-                  fontSize: 22, fontWeight: pw.FontWeight.bold, color: mainClr)),
-                pw.Text('ball', style: base.copyWith(fontSize: 9, color: mainClr)),
-              ])),
-            ),
-            pw.SizedBox(height: 12),
-            pw.Container(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              decoration: pw.BoxDecoration(
-                color: mainClr, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(20)),
-              ),
-              child: pw.Text(
-                passed ? "✓  O'tdi" : "✗  O'tmadi",
-                style: base.copyWith(fontSize: 12, fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.white),
-              ),
-            ),
-            pw.SizedBox(height: 8),
-            pw.Text(
-              passed ? "Tabriklaymiz!" : "Harakat qiling!",
-              style: base.copyWith(fontSize: 11, color: mainClr),
-            ),
-          ]),
-        )),
-      ]),
-      pw.SizedBox(height: 16),
-
-      // ── Subject bars ───────────────────────────────────────────
-      pw.Text('Fanlar bo\'yicha natija', style: base.copyWith(
-        fontSize: 13, fontWeight: pw.FontWeight.bold, color: _ink1)),
-      pw.SizedBox(height: 10),
-      pw.Row(children: [
-        pw.Expanded(child: _subjectCard(base, 'Matematika',
-          result.mathScore, package.mathCount, _blue)),
-        pw.SizedBox(width: 12),
-        pw.Expanded(child: _subjectCard(base, 'Ingliz tili',
-          result.engScore, package.engCount, _teal)),
-      ]),
-      pw.SizedBox(height: 16),
-
-      // ── Jami ───────────────────────────────────────────────────
-      pw.Container(
-        padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: pw.BoxDecoration(
-          color: _bg,
-          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
+  static pw.Widget _studentRow(
+    StudentSession s, TestResult r, PdfColor clr, bool passed) {
+    return pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+      pw.Expanded(flex: 3, child: pw.Container(
+        padding: const pw.EdgeInsets.all(14),
+        decoration: pw.BoxDecoration(color: PdfColors.white,
           border: pw.Border.all(color: _border),
-        ),
-        child: pw.Row(children: [
-          pw.Text('Jami to\'g\'ri javoblar:', style: base.copyWith(fontSize: 12, color: _ink2)),
-          pw.Spacer(),
-          pw.Text('${result.mathScore + result.engScore} / $totalQ',
-            style: base.copyWith(fontSize: 14, fontWeight: pw.FontWeight.bold, color: _ink1)),
-        ]),
-      ),
-      pw.SizedBox(height: 16),
-
-      // ── Tavsiyalar ─────────────────────────────────────────────
-      _recommendationBox(base, result, package),
-
-      pw.Spacer(),
-      // Footer
-      pw.Divider(color: _border),
-      pw.SizedBox(height: 6),
-      pw.Row(children: [
-        pw.Text('Alochi Monitoring tizimi', style: base.copyWith(fontSize: 9, color: _ink3)),
-        pw.Spacer(),
-        pw.Text('alochi.org', style: base.copyWith(fontSize: 9, color: _orange)),
-      ]),
+          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))),
+        child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          pw.Text("O'quvchi", style: pw.TextStyle(fontSize: 9, color: _ink3)),
+          pw.SizedBox(height: 3),
+          pw.Text(s.studentName,
+            style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold, color: _ink1)),
+          pw.SizedBox(height: 10),
+          pw.Text('${s.grade}-sinf', style: pw.TextStyle(fontSize: 11, color: _ink2)),
+          pw.SizedBox(height: 4),
+          pw.Text('Variant ${s.variant}', style: pw.TextStyle(fontSize: 11, color: _ink2)),
+          if (s.groupName != null) ...[
+            pw.SizedBox(height: 4),
+            pw.Text(s.groupName!, style: pw.TextStyle(fontSize: 11, color: _ink2)),
+          ],
+        ]))),
+      pw.SizedBox(width: 12),
+      pw.Expanded(flex: 2, child: pw.Container(
+        padding: const pw.EdgeInsets.all(14),
+        decoration: pw.BoxDecoration(
+          color: passed ? const PdfColor.fromInt(0xFFF0FDF4) : const PdfColor.fromInt(0xFFFFF1F2),
+          border: pw.Border.all(color: clr),
+          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))),
+        child: pw.Column(mainAxisAlignment: pw.MainAxisAlignment.center, children: [
+          pw.Container(
+            width: 72, height: 72,
+            decoration: pw.BoxDecoration(
+              shape: pw.BoxShape.circle,
+              border: pw.Border.all(color: clr, width: 3)),
+            child: pw.Center(child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center, children: [
+              pw.Text('${r.totalPct}%',
+                style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: clr)),
+              pw.Text('ball', style: pw.TextStyle(fontSize: 8, color: clr)),
+            ]))),
+          pw.SizedBox(height: 10),
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: pw.BoxDecoration(color: clr,
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(20))),
+            child: pw.Text(passed ? "O'tdi" : "O'tmadi",
+              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.white))),
+          pw.SizedBox(height: 6),
+          pw.Text(passed ? 'Tabriklaymiz!' : 'Harakat qiling!',
+            style: pw.TextStyle(fontSize: 10, color: clr)),
+        ]))),
     ]);
   }
 
-  static List<pw.Widget> _buildPage2(
-    pw.Context ctx,
-    StudentSession session,
-    List<dynamic> wrongAnswers,
-    pw.TextStyle base,
-  ) {
-    final mathWrong = wrongAnswers.where((w) => w['subject'] == 'math').toList();
-    final engWrong  = wrongAnswers.where((w) => w['subject'] == 'english').toList();
-
-    return [
-      // Header
-      pw.Container(
-        padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: pw.BoxDecoration(
-          color: const PdfColor.fromInt(0x14F97316),
-          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
-          border: pw.Border.all(color: const PdfColor.fromInt(0x4DF97316)),
-        ),
-        child: pw.Row(children: [
-          pw.Text('Xato javoblar tahlili', style: base.copyWith(
-            fontSize: 14, fontWeight: pw.FontWeight.bold, color: _orange)),
-          pw.Spacer(),
-          pw.Text(session.studentName, style: base.copyWith(fontSize: 11, color: _ink2)),
-        ]),
-      ),
-      pw.SizedBox(height: 16),
-
-      // Wrong answers stats row
-      pw.Row(children: [
-        pw.Expanded(child: _wrongStatCard(base, 'Matematika xatolari', mathWrong.length, _blue)),
-        pw.SizedBox(width: 12),
-        pw.Expanded(child: _wrongStatCard(base, 'Ingliz tili xatolari', engWrong.length, _teal)),
-        pw.SizedBox(width: 12),
-        pw.Expanded(child: _wrongStatCard(base, 'Jami xatolari', wrongAnswers.length, _red)),
-      ]),
-      pw.SizedBox(height: 16),
-
-      // Wrong answer list
-      if (mathWrong.isNotEmpty) ...[
-        _sectionHeader(base, 'Matematika', _blue),
-        pw.SizedBox(height: 8),
-        ...mathWrong.map((w) => _wrongItem(base, w)),
-        pw.SizedBox(height: 14),
-      ],
-      if (engWrong.isNotEmpty) ...[
-        _sectionHeader(base, 'Ingliz tili', _teal),
-        pw.SizedBox(height: 8),
-        ...engWrong.map((w) => _wrongItem(base, w)),
-      ],
-    ];
-  }
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  static pw.Widget _infoRow(pw.TextStyle base, String icon, String text) =>
-    pw.Text("$icon $text", style: base.copyWith(fontSize: 12, color: _ink2));
-
-  static pw.Widget _subjectCard(pw.TextStyle base, String label, int score, int total, PdfColor color) {
-    final pct = total > 0 ? score / total : 0.0;
+  static pw.Widget _subjectCard(
+    String label, int score, int total, double pct, PdfColor color) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(14),
-      decoration: pw.BoxDecoration(
-        color: _bgCard,
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
+      decoration: pw.BoxDecoration(color: PdfColors.white,
         border: pw.Border.all(color: _border),
-      ),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))),
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Text(label, style: base.copyWith(fontSize: 11, color: _ink3)),
-        pw.SizedBox(height: 8),
+        pw.Text(label, style: pw.TextStyle(fontSize: 10, color: _ink3)),
+        pw.SizedBox(height: 6),
         pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-          pw.Text('$score', style: base.copyWith(
-            fontSize: 28, fontWeight: pw.FontWeight.bold, color: _ink1)),
-          pw.SizedBox(width: 4),
+          pw.Text('$score',
+            style: pw.TextStyle(fontSize: 26, fontWeight: pw.FontWeight.bold, color: _ink1)),
+          pw.SizedBox(width: 3),
           pw.Padding(
-            padding: const pw.EdgeInsets.only(bottom: 4),
-            child: pw.Text('/ $total', style: base.copyWith(fontSize: 12, color: _ink3)),
-          ),
+            padding: const pw.EdgeInsets.only(bottom: 3),
+            child: pw.Text('/ $total', style: pw.TextStyle(fontSize: 11, color: _ink3))),
         ]),
         pw.SizedBox(height: 8),
-        // Progress bar
-        pw.ClipRRect(
-          horizontalRadius: 4, verticalRadius: 4,
-          child: pw.Stack(children: [
-            pw.Container(height: 8, color: PdfColor(color.red/255, color.green/255, color.blue/255, 0.1)),
-            pw.Container(width: pct * 400, height: 8, color: color),
+        pw.SizedBox(
+          height: 8,
+          child: pw.Row(children: [
+            pw.Expanded(
+              flex: (pct * 100).round().clamp(0, 100),
+              child: pw.Container(
+                decoration: pw.BoxDecoration(
+                  color: color,
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4))))),
+            if (pct < 1.0) pw.Expanded(
+              flex: ((1 - pct) * 100).round().clamp(0, 100),
+              child: pw.Container(
+                decoration: pw.BoxDecoration(
+                  color: PdfColor(color.red/255, color.green/255, color.blue/255, 0.12),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4))))),
           ]),
         ),
-        pw.SizedBox(height: 4),
-        pw.Text('${(pct * 100).round()}%', style: base.copyWith(
-          fontSize: 11, color: color, fontWeight: pw.FontWeight.bold)),
-      ]),
-    );
+        pw.SizedBox(height: 5),
+        pw.Text('${(pct * 100).round()}%',
+          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: color)),
+      ]));
   }
 
-  static pw.Widget _recommendationBox(pw.TextStyle base, TestResult result, TestPackage package) {
-    final mathPct = package.mathCount > 0 ? result.mathScore / package.mathCount : 0.0;
-    final engPct  = package.engCount  > 0 ? result.engScore  / package.engCount  : 0.0;
+  static pw.Widget _totalRow(TestResult r, TestPackage p) => pw.Container(
+    padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+    decoration: pw.BoxDecoration(color: _bgLight,
+      border: pw.Border.all(color: _border),
+      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8))),
+    child: pw.Row(children: [
+      pw.Text("Jami to'g'ri javoblar:",
+        style: pw.TextStyle(fontSize: 12, color: _ink2)),
+      pw.Spacer(),
+      pw.Text('${r.mathScore + r.engScore} / ${p.totalCount}',
+        style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: _ink1)),
+    ]));
 
+  static pw.Widget _recommendations(double mathPct, double engPct, int totalPct) {
     final recs = <String>[];
-    if (mathPct < 0.6) recs.add("Matematika: ko'proq mashq kerak (${(mathPct * 100).round()}%)");
-    if (engPct  < 0.6) recs.add("Ingliz tili: grammatika va lug'at ustida ishlang (${(engPct * 100).round()}%)");
-    if (mathPct >= 0.8 && engPct >= 0.8) recs.add("Ajoyib natija! Shu saviyani saqlang.");
-    else if (result.totalPct >= 60) recs.add("Yaxshi natija! Zaif tomonlarni mustahkamlang.");
+    if (mathPct < 0.5)       recs.add("Matematika: asosiy mavzularni qayta o'rganing (${(mathPct*100).round()}%)");
+    else if (mathPct < 0.75) recs.add("Matematika: qoshimcha mashqlar tavsiya etiladi (${(mathPct*100).round()}%)");
+    else                     recs.add("Matematika: ajoyib natija (${(mathPct*100).round()}%)");
 
-    if (recs.isEmpty) return pw.SizedBox.shrink();
+    if (engPct < 0.5)        recs.add("Ingliz tili: grammatika va lugat ustida ishlang (${(engPct*100).round()}%)");
+    else if (engPct < 0.75)  recs.add("Ingliz tili: o'qish va yozishni rivojlantiring (${(engPct*100).round()}%)");
+    else                     recs.add("Ingliz tili: ajoyib natija (${(engPct*100).round()}%)");
+
+    if (totalPct >= 90)      recs.add("Umumiy: Alo - barcha fanlardan mustahkam bilim!");
+    else if (totalPct >= 75) recs.add("Umumiy: Yaxshi - zaif joylarni mustahkamlang.");
+    else if (totalPct >= 60) recs.add("Umumiy: Qoniqarli - koProq mashq kerak.");
+    else                     recs.add("Umumiy: Qoniqarsiz - oqituvchi bilan ishlash tavsiya etiladi.");
 
     return pw.Container(
       padding: const pw.EdgeInsets.all(14),
       decoration: pw.BoxDecoration(
         color: const PdfColor.fromInt(0xFFFFFBEB),
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
         border: pw.Border.all(color: const PdfColor.fromInt(0xFFFDE68A)),
-      ),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))),
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Text('Tavsiyalar', style: base.copyWith(
-          fontSize: 12, fontWeight: pw.FontWeight.bold,
-          color: const PdfColor.fromInt(0xFF92400E))),
-        pw.SizedBox(height: 8),
+        pw.Text('Tavsiyalar',
+          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold,
+            color: const PdfColor.fromInt(0xFF92400E))),
+        pw.SizedBox(height: 7),
         ...recs.map((r) => pw.Padding(
           padding: const pw.EdgeInsets.only(bottom: 4),
-          child: pw.Row(children: [
-            pw.Container(width: 5, height: 5, decoration: const pw.BoxDecoration(
-              shape: pw.BoxShape.circle, color: PdfColor.fromInt(0xFFF59E0B))),
-            pw.SizedBox(width: 8),
-            pw.Expanded(child: pw.Text(r, style: base.copyWith(
-              fontSize: 11, color: const PdfColor.fromInt(0xFF78350F)))),
-          ]),
-        )),
-      ]),
-    );
+          child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+            pw.Container(width: 5, height: 5,
+              margin: const pw.EdgeInsets.only(top: 4, right: 7),
+              decoration: const pw.BoxDecoration(
+                shape: pw.BoxShape.circle,
+                color: PdfColor.fromInt(0xFFF59E0B))),
+            pw.Expanded(child: pw.Text(r,
+              style: pw.TextStyle(fontSize: 10,
+                color: const PdfColor.fromInt(0xFF78350F)))),
+          ]))),
+      ]));
   }
 
-  static pw.Widget _wrongStatCard(pw.TextStyle base, String label, int count, PdfColor color) =>
-    pw.Container(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+  static pw.Widget _wrongSummary(List<dynamic> wrong) {
+    final math = wrong.where((w) => w['subject'] == 'math').length;
+    final eng  = wrong.where((w) => w['subject'] == 'english').length;
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(14),
       decoration: pw.BoxDecoration(
-        color: PdfColor(color.red/255, color.green/255, color.blue/255, 0.06),
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
-        border: pw.Border.all(color: PdfColor(color.red/255, color.green/255, color.blue/255, 0.2)),
-      ),
-      child: pw.Column(children: [
-        pw.Text('$count', style: base.copyWith(
-          fontSize: 24, fontWeight: pw.FontWeight.bold, color: color)),
-        pw.Text(label, style: base.copyWith(fontSize: 10, color: _ink3),
-          textAlign: pw.TextAlign.center),
-      ]),
-    );
+        color: const PdfColor.fromInt(0xFFFFF1F2),
+        border: pw.Border.all(color: const PdfColor.fromInt(0xFFFCA5A5)),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))),
+      child: pw.Row(children: [
+        pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          pw.Text('Xato javoblar', style: pw.TextStyle(fontSize: 11,
+            fontWeight: pw.FontWeight.bold, color: _red)),
+          pw.SizedBox(height: 4),
+          pw.Text('Matematika: $math ta  Ingliz tili: $eng ta',
+            style: pw.TextStyle(fontSize: 10, color: _ink2)),
+        ])),
+        pw.Text('${wrong.length}',
+          style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, color: _red)),
+      ]));
+  }
 
-  static pw.Widget _sectionHeader(pw.TextStyle base, String label, PdfColor color) =>
-    pw.Row(children: [
-      pw.Container(width: 4, height: 18,
-        decoration: pw.BoxDecoration(
-          color: color, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(2)))),
-      pw.SizedBox(width: 8),
-      pw.Text(label, style: base.copyWith(
-        fontSize: 13, fontWeight: pw.FontWeight.bold, color: color)),
-    ]);
+  static pw.Widget _wrongHeader(String name) => pw.Container(
+    padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    decoration: pw.BoxDecoration(
+      color: const PdfColor.fromInt(0xFFFFF7ED),
+      border: pw.Border.all(color: _orange),
+      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))),
+    child: pw.Row(children: [
+      pw.Text('Xato javoblar tahlili',
+        style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold, color: _orange)),
+      pw.Spacer(),
+      pw.Text(name, style: pw.TextStyle(fontSize: 10, color: _ink2)),
+    ]));
 
-  static pw.Widget _wrongItem(pw.TextStyle base, Map<String, dynamic> w) {
-    final pos   = w['position'] as int? ?? 0;
-    final sAns  = (w['student_answer'] as String? ?? '').toUpperCase();
-    final cAns  = (w['correct_answer'] as String? ?? '').toUpperCase();
-    final sText = w['student_text'] as String? ?? '';
-    final cText = w['correct_text'] as String? ?? '';
-    final prompt = w['prompt'] as String? ?? '';
+  static pw.Widget _wrongItem(Map<String, dynamic> w) {
+    final pos    = w['position'] as int? ?? 0;
+    final subj   = w['subject'] == 'math' ? 'Matematika' : 'Ingliz tili';
+    final subjClr = w['subject'] == 'math' ? _blue : _teal;
+    final prompt  = w['prompt'] as String? ?? '';
+    final sAns   = (w['student_answer'] as String? ?? '').toUpperCase();
+    final cAns   = (w['correct_answer'] as String? ?? '').toUpperCase();
+    final sText  = w['student_text'] as String? ?? '';
+    final cText  = w['correct_text'] as String? ?? '';
 
     return pw.Container(
       margin: const pw.EdgeInsets.only(bottom: 8),
       padding: const pw.EdgeInsets.all(12),
-      decoration: pw.BoxDecoration(
-        color: _bgCard,
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
+      decoration: pw.BoxDecoration(color: PdfColors.white,
         border: pw.Border.all(color: _border),
-      ),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8))),
       child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
         pw.Row(children: [
           pw.Container(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: pw.BoxDecoration(
-              color: _bg, borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
+            padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: pw.BoxDecoration(color: _bgLight,
               border: pw.Border.all(color: _border),
-            ),
-            child: pw.Text('$pos', style: base.copyWith(
-              fontSize: 10, fontWeight: pw.FontWeight.bold, color: _ink2)),
-          ),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4))),
+            child: pw.Text('$pos',
+              style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _ink2))),
           pw.SizedBox(width: 8),
-          pw.Expanded(child: pw.Text(prompt, style: base.copyWith(
-            fontSize: 11, fontWeight: pw.FontWeight.bold, color: _ink1))),
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: pw.BoxDecoration(
+              color: PdfColor(subjClr.red/255, subjClr.green/255, subjClr.blue/255, 0.1),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))),
+            child: pw.Text(subj, style: pw.TextStyle(fontSize: 9, color: subjClr))),
         ]),
-        pw.SizedBox(height: 8),
+        pw.SizedBox(height: 6),
+        pw.Text(prompt, style: pw.TextStyle(fontSize: 10,
+          fontWeight: pw.FontWeight.bold, color: _ink1), maxLines: 2),
+        pw.SizedBox(height: 7),
         pw.Row(children: [
-          pw.Expanded(child: _answerBadge(base, sAns, sText, isCorrect: false)),
+          pw.Expanded(child: _answerBadge(sAns, sText, false)),
           pw.SizedBox(width: 8),
-          pw.Expanded(child: _answerBadge(base, cAns, cText, isCorrect: true)),
+          pw.Expanded(child: _answerBadge(cAns, cText, true)),
         ]),
-      ]),
-    );
+      ]));
   }
 
-  static pw.Widget _answerBadge(pw.TextStyle base, String label, String text, {required bool isCorrect}) {
-    final color = isCorrect ? _green : _red;
+  static pw.Widget _answerBadge(String label, String text, bool ok) {
+    final c = ok ? _green : _red;
     return pw.Container(
       padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: pw.BoxDecoration(
-        color: PdfColor(color.red/255, color.green/255, color.blue/255, 0.07),
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-        border: pw.Border.all(color: PdfColor(color.red/255, color.green/255, color.blue/255, 0.25)),
-      ),
+        color: PdfColor(c.red/255, c.green/255, c.blue/255, 0.07),
+        border: pw.Border.all(color: PdfColor(c.red/255, c.green/255, c.blue/255, 0.3)),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6))),
       child: pw.Row(children: [
-        pw.Container(
-          width: 18, height: 18,
+        pw.Container(width: 16, height: 16,
           decoration: pw.BoxDecoration(
-            color: PdfColor(color.red/255, color.green/255, color.blue/255, 0.15),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-            border: pw.Border.all(color: PdfColor(color.red/255, color.green/255, color.blue/255, 0.4)),
-          ),
-          child: pw.Center(child: pw.Text(label, style: base.copyWith(
-            fontSize: 9, fontWeight: pw.FontWeight.bold, color: color))),
-        ),
-        pw.SizedBox(width: 6),
-        pw.Expanded(child: pw.Text(text, style: base.copyWith(
-          fontSize: 10, color: color),
+            color: PdfColor(c.red/255, c.green/255, c.blue/255, 0.15),
+            border: pw.Border.all(color: PdfColor(c.red/255, c.green/255, c.blue/255, 0.4)),
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4))),
+          child: pw.Center(child: pw.Text(label,
+            style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: c)))),
+        pw.SizedBox(width: 5),
+        pw.Expanded(child: pw.Text(text,
+          style: pw.TextStyle(fontSize: 9, color: c),
           maxLines: 2, overflow: pw.TextOverflow.clip)),
-      ]),
-    );
+      ]));
   }
 
-  static String _formatDate(DateTime dt) =>
-    '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
+  static pw.Widget _footer() => pw.Column(children: [
+    pw.Divider(color: _border),
+    pw.SizedBox(height: 4),
+    pw.Row(children: [
+      pw.Text('Alochi Monitoring tizimi', style: pw.TextStyle(fontSize: 8, color: _ink3)),
+      pw.Spacer(),
+      pw.Text('alochi.org', style: pw.TextStyle(fontSize: 8, color: _orange)),
+    ]),
+  ]);
+
+  static String _date(DateTime d) =>
+    '${d.day.toString().padLeft(2,"0")}.${d.month.toString().padLeft(2,"0")}.${d.year}';
 }
