@@ -12,7 +12,16 @@ class ApiException implements Exception {
 }
 
 class MonitoringApi {
-  static const String _base = 'https://api.alochi.org/api/v1/monitoring';
+  static const String _base  = 'https://api.alochi.org/api/v1/monitoring';
+  static const String _media = 'https://api.alochi.org';
+
+  /// Relative URL'ni absolute'ga o'giradi (rasm URL'lari uchun)
+  static String fixImageUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http')) return url;           // allaqachon absolute
+    if (url.startsWith('//')) return 'https:$url';    // protocol-relative
+    return '$_media$url';                             // /media/... → https://api.alochi.org/media/...
+  }
   static const Duration _timeout = Duration(seconds: 10);
   String? _token;
 

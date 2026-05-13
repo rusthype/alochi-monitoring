@@ -85,7 +85,7 @@ class Question {
         position: j['position'],
         prompt:       j['prompt'],
         options:      List<String>.from(j['options'] ?? []),
-        image:        j['image'] as String?,
+        image:        _fixUrl(j['image'] as String?),
         optionImages: j['option_images'] != null
             ? List<String?>.from(j['option_images'])
             : const [],
@@ -156,6 +156,14 @@ class WrongAnswer {
     correctAnswer: j['correct_answer'] as String,
     studentText:   j['student_text'] as String,
     correctText:   j['correct_text'] as String,
-    image:         j['image'] as String?,
+    image:         _fixUrl(j['image'] as String?),
   );
+}
+
+/// Image URL'ni absolute'ga o'giradi
+String? _fixUrl(String? url) {
+  if (url == null || url.isEmpty) return null;
+  if (url.startsWith('http')) return url;
+  if (url.startsWith('//')) return 'https:$url';
+  return 'https://api.alochi.org\$url';
 }

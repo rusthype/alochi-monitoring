@@ -2,9 +2,11 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
 import '../auth/login_screen.dart';
+import 'pdf_report.dart';
 
 class ResultScreen extends StatefulWidget {
   final StudentSession session;
@@ -25,6 +27,8 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
   late final AnimationController _overlayFadeCtrl;
   bool _showOverlay = true;
   int _displayedPct = 0;
+  bool _pdfGenerating = false;
+  String? _pdfPath;
 
   // Result card
   late final AnimationController _cardCtrl;
@@ -89,6 +93,29 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
     }
     // ignore: unused_local_variable
     final timer = Timer.periodic(const Duration(milliseconds: stepMs), tick);
+  }
+
+  Future<void> _generatePdf() async {
+    setState(() => _pdfGenerating = true);
+    try {
+      final file = await PdfReport.generate(
+        session: widget.session,
+        package: widget.package,
+        result: widget.result,
+        wrongAnswers: widget.wrongAnswers,
+      );
+      if (!mounted) return;
+      setState(() => _pdfPath = file.path);
+      await OpenFilex.open(file.path);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('PDF xatosi: $e'),
+        backgroundColor: AppColors.err,
+      ));
+    } finally {
+      if (mounted) setState(() => _pdfGenerating = false);
+    }
   }
 
   @override
@@ -370,21 +397,49 @@ class _ResultScreenState extends State<ResultScreen> with TickerProviderStateMix
                   _WrongAnswersSection(wrongAnswers: widget.wrongAnswers),
                   const SizedBox(height: 24),
                 ],
-                // Next student button
-                SizedBox(width: double.infinity, height: 52,
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pushAndRemoveUntil(context,
-                        MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false),
-                    icon: const Icon(Icons.person_outline_rounded, size: 18),
-                    label: const Text("Keyingi talaba"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.brand, foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-                      textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                    ),
-                  ),
+                // Subject analysis
+                _SubjectAnalysis(
+                  result: widget.result,
+                  package: widget.package,
                 ),
+                const SizedBox(height: 12),
+
+                // Buttons row
+                Row(children: [
+                  // PDF button
+                  Expanded(child: SizedBox(height: 52,
+                    child: OutlinedButton.icon(
+                      onPressed: _pdfGenerating ? null : _generatePdf,
+                      icon: _pdfGenerating
+                        ? const SizedBox(width: 16, height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                      label: Text(_pdfPath != null ? 'PDF tayyor' : 'PDF yuklab olish',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.brand,
+                        side: BorderSide(color: AppColors.brand.withOpacity(.5)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+                      ),
+                    ),
+                  )),
+                  const SizedBox(width: 10),
+                  // Next student button
+                  Expanded(child: SizedBox(height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Navigator.pushAndRemoveUntil(context,
+                          MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false),
+                      icon: const Icon(Icons.person_outline_rounded, size: 18),
+                      label: const Text("Keyingi talaba"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.brand, foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+                        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  )),
+                ]),
               ]),
             ),
           ),
@@ -680,4 +735,109 @@ class _AnswerChip extends StatelessWidget {
           size: 14, color: color),
     ]);
   }
+}
+
+// ── Subject Analysis Widget ───────────────────────────────────────────────────
+class _SubjectAnalysis extends StatelessWidget {
+  final TestResult result;
+  final TestPackage package;
+  const _SubjectAnalysis({required this.result, required this.package});
+
+  @override
+  Widget build(BuildContext context) {
+    final mathPct = package.mathCount > 0 ? result.mathScore / package.mathCount : 0.0;
+    final engPct  = package.engCount  > 0 ? result.engScore  / package.engCount  : 0.0;
+
+    String mathStatus, engStatus;
+    Color  mathColor, engColor;
+
+    if (mathPct >= 0.8) { mathStatus = "Yaxshi ✓";  mathColor = AppColors.ok; }
+    else if (mathPct >= 0.6) { mathStatus = "O'rtacha"; mathColor = const Color(0xFFF59E0B); }
+    else { mathStatus = "Zaif — mashq kerak"; mathColor = AppColors.err; }
+
+    if (engPct >= 0.8) { engStatus = "Yaxshi ✓";  engColor = AppColors.ok; }
+    else if (engPct >= 0.6) { engStatus = "O'rtacha"; engColor = const Color(0xFFF59E0B); }
+    else { engStatus = "Zaif — mashq kerak"; engColor = AppColors.err; }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [
+          Icon(Icons.insights_rounded, size: 16, color: AppColors.brand),
+          SizedBox(width: 8),
+          Text('Mavzu tahlili', style: TextStyle(
+            fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink1)),
+        ]),
+        const SizedBox(height: 14),
+        _AnalysisRow(
+          subject: 'Matematika',
+          score: result.mathScore,
+          total: package.mathCount,
+          pct: mathPct,
+          status: mathStatus,
+          statusColor: mathColor,
+          barColor: const Color(0xFF3B82F6),
+        ),
+        const SizedBox(height: 10),
+        _AnalysisRow(
+          subject: 'Ingliz tili',
+          score: result.engScore,
+          total: package.engCount,
+          pct: engPct,
+          status: engStatus,
+          statusColor: engColor,
+          barColor: const Color(0xFF0D9488),
+        ),
+      ]),
+    );
+  }
+}
+
+class _AnalysisRow extends StatelessWidget {
+  final String subject, status;
+  final int score, total;
+  final double pct;
+  final Color statusColor, barColor;
+
+  const _AnalysisRow({
+    required this.subject, required this.score, required this.total,
+    required this.pct, required this.status,
+    required this.statusColor, required this.barColor,
+  });
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Row(children: [
+      Text(subject, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.ink2)),
+      const Spacer(),
+      Text('$score/$total', style: const TextStyle(
+        fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.ink1, fontFamily: 'JetBrainsMono')),
+      const SizedBox(width: 8),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: statusColor.withOpacity(.1),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(status, style: TextStyle(
+          fontSize: 10, fontWeight: FontWeight.w700, color: statusColor)),
+      ),
+    ]),
+    const SizedBox(height: 6),
+    ClipRRect(
+      borderRadius: BorderRadius.circular(4),
+      child: LinearProgressIndicator(
+        value: pct,
+        minHeight: 6,
+        backgroundColor: barColor.withOpacity(.1),
+        valueColor: AlwaysStoppedAnimation(barColor),
+      ),
+    ),
+  ]);
 }

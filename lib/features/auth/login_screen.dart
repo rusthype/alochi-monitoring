@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/api/api_client.dart';
+import '../../core/db/credential_cache.dart';
 import '../../shared/theme/app_theme.dart';
 import '../test/package_screen.dart';
 
@@ -16,12 +17,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _formKey  = GlobalKey<FormState>();
   bool _loading   = false;
   bool _showPass  = false;
-  bool _isOnline  = true;
+  bool _isOnline  = false;
+  bool _hasSaved  = false;   // saqlangan login bor
   String? _error;
 
   late final AnimationController _anim;
-  late final Animation<double> _fade;
-  late final Animation<Offset> _slide;
+  late final Animation<double>   _fade;
+  late final Animation<Offset>   _slide;
 
   @override
   void initState() {
@@ -31,95 +33,139 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _slide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
         .animate(CurvedAnimation(parent: _anim, curve: Curves.easeOut));
     _anim.forward();
-    api.ping().then((ok) { if (mounted) setState(() => _isOnline = ok); });
+
+    _init();
+  }
+
+  Future<void> _init() async {
+    // Internet tekshiruv va saqlangan login
+    final results = await Future.wait([
+      api.ping(),
+      CredentialCache.loadCredentials(),
+    ]);
+    final online = results[0] as bool;
+    final creds  = results[1] as Map<String, String>?;
+    if (!mounted) return;
+    setState(() {
+      _isOnline = online;
+      if (creds != null) {
+        _userCtrl.text = creds['username'] ?? '';
+        _passCtrl.text = creds['password'] ?? '';
+        _hasSaved = true;
+      }
+    });
   }
 
   @override
-  void dispose() { _anim.dispose(); _userCtrl.dispose(); _passCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _anim.dispose();
+    _userCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() { _loading = true; _error = null; });
+
+    final username = _userCtrl.text.trim();
+    final password = _passCtrl.text;
+
     try {
-      final session = await api.login(_userCtrl.text.trim(), _passCtrl.text);
-      api.setToken(session.token);
-      if (!mounted) return;
-      Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (_) => PackageScreen(session: session)));
+      if (_isOnline) {
+        // ── Online login ──────────────────────────────────────────
+        final session = await api.login(username, password);
+        api.setToken(session.token);
+        // Saqlash
+        await CredentialCache.saveCredentials(username, password);
+        await CredentialCache.saveSession(session, username, password);
+        if (!mounted) return;
+        _goToPackages(session);
+      } else {
+        // ── Offline login ─────────────────────────────────────────
+        final session = await CredentialCache.loadOfflineSession(username, password);
+        if (session == null) {
+          setState(() => _error = "Internet yo'q va bu login/parol ilgari saqlanmagan");
+          return;
+        }
+        api.setToken(session.token);
+        if (!mounted) return;
+        _goToPackages(session, offline: true);
+      }
     } on ApiException catch (e) {
       setState(() {
         _error = e.statusCode == 400 ? "Login yoki parol noto'g'ri"
                : e.statusCode == 429 ? "Ko'p urinish. Biroz kuting."
                : "Server xatosi (${e.statusCode})";
       });
-    } catch (_) { setState(() => _error = "Internet aloqasi yo'q"); }
-    finally { if (mounted) setState(() => _loading = false); }
+    } catch (_) {
+      setState(() => _error = "Internet aloqasi yo'q");
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _goToPackages(dynamic session, {bool offline = false}) {
+    Navigator.pushReplacement(context,
+      MaterialPageRoute(builder: (_) => PackageScreen(session: session, offline: offline)));
   }
 
   @override
   Widget build(BuildContext context) {
     final w = MediaQuery.of(context).size.width;
-    final isWide = w > 700;
-
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: CallbackShortcuts(
         bindings: {const SingleActivator(LogicalKeyboardKey.enter): _login},
         child: Focus(
           autofocus: true,
-          child: isWide ? _wideLayout() : _narrowLayout(),
+          child: w > 700 ? _wideLayout() : _narrowLayout(),
         ),
       ),
     );
   }
 
   Widget _wideLayout() => Row(children: [
-    // ── Left branding panel ───────────────────────────────────────────
-    Expanded(
-      flex: 4,
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: [Color(0xFFF97316), Color(0xFFFB923C), Color(0xFFEA580C)],
-          ),
-        ),
-        child: Stack(children: [
-          // Subtle pattern circles
-          Positioned(top: -60, right: -60, child: _circle(220, .08)),
-          Positioned(bottom: -80, left: -40, child: _circle(280, .07)),
-          Positioned(top: 80, left: 30, child: _circle(60, .1)),
-          // Content
-          Center(child: Padding(
-            padding: const EdgeInsets.all(40),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(
-                width: 88, height: 88,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(.15), blurRadius: 24, offset: const Offset(0,8))],
-                ),
-                child: Center(child: Text('A',
-                    style: TextStyle(color: AppColors.brand, fontSize: 44, fontWeight: FontWeight.w900,
-                        fontFamily: 'Inter', shadows: [Shadow(color: AppColors.brand.withOpacity(.3), blurRadius: 12)]))),
+    // ── Left branding ────────────────────────────────────────────
+    Expanded(flex: 4, child: Container(
+      decoration: const BoxDecoration(gradient: LinearGradient(
+        begin: Alignment.topLeft, end: Alignment.bottomRight,
+        colors: [Color(0xFFF97316), Color(0xFFFB923C), Color(0xFFEA580C)],
+      )),
+      child: Stack(children: [
+        Positioned(top: -60, right: -60, child: _circle(220, .08)),
+        Positioned(bottom: -80, left: -40, child: _circle(280, .07)),
+        Positioned(top: 80, left: 30, child: _circle(60, .1)),
+        Center(child: Padding(padding: const EdgeInsets.all(40),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 88, height: 88,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(.15), blurRadius: 24, offset: const Offset(0, 8))],
               ),
-              const SizedBox(height: 24),
-              const Text('Alochi', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
-              const SizedBox(height: 6),
-              const Text('Monitoring tizimi', style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 32),
-              _infoRow(Icons.keyboard, 'A, B, C, D — javob tanlash'),
-              const SizedBox(height: 10),
-              _infoRow(Icons.arrow_back_ios_new, 'Arrow tugmalar — navigatsiya'),
-              const SizedBox(height: 10),
-              _infoRow(Icons.wifi_off_outlined, 'Offline rejim qo\'llab-quvvatlanadi'),
-            ]),
-          )),
-        ]),
-      ),
-    ),
-    // ── Right form panel ─────────────────────────────────────────────
+              child: Center(child: Text('A', style: TextStyle(
+                color: AppColors.brand, fontSize: 44, fontWeight: FontWeight.w900,
+              ))),
+            ),
+            const SizedBox(height: 24),
+            const Text('Alochi', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 6),
+            const Text('Monitoring tizimi', style: TextStyle(color: Colors.white70, fontSize: 16)),
+            const SizedBox(height: 32),
+            _infoRow(Icons.keyboard,       'A, B, C, D — javob tanlash'),
+            const SizedBox(height: 10),
+            _infoRow(Icons.arrow_forward,  'Arrow tugmalar — navigatsiya'),
+            const SizedBox(height: 10),
+            _infoRow(Icons.wifi_off,       'Offline rejim qo\'llab-quvvatlanadi'),
+            const SizedBox(height: 10),
+            _infoRow(Icons.save_outlined,  'Login/parol avtomatik saqlanadi'),
+          ]),
+        )),
+      ]),
+    )),
+    // ── Right form ───────────────────────────────────────────────
     Expanded(flex: 5, child: _formPanel()),
   ]);
 
@@ -137,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       child: Icon(icon, color: Colors.white, size: 14),
     ),
     const SizedBox(width: 10),
-    Text(text, style: TextStyle(color: Colors.white.withOpacity(.8), fontSize: 13, fontWeight: FontWeight.w500)),
+    Text(text, style: TextStyle(color: Colors.white.withOpacity(.8), fontSize: 13)),
   ]);
 
   Widget _formPanel() => FadeTransition(
@@ -149,106 +195,135 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
+
             // Status badge
             AnimatedContainer(
               duration: const Duration(milliseconds: 400),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: (_isOnline ? const Color(0xFF10B981) : AppColors.ink3).withOpacity(.1),
+                color: (_isOnline ? AppColors.ok : AppColors.ink3).withOpacity(.1),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: (_isOnline ? const Color(0xFF10B981) : AppColors.ink3).withOpacity(.2)),
+                border: Border.all(color: (_isOnline ? AppColors.ok : AppColors.ink3).withOpacity(.2)),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                  width: 7, height: 7,
-                  decoration: BoxDecoration(shape: BoxShape.circle,
-                      color: _isOnline ? const Color(0xFF10B981) : AppColors.ink3),
-                ),
+                Container(width: 7, height: 7, decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _isOnline ? AppColors.ok : AppColors.ink3,
+                )),
                 const SizedBox(width: 7),
-                Text(_isOnline ? 'Server bilan ulandi' : 'Offline rejim',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                        color: _isOnline ? const Color(0xFF10B981) : AppColors.ink2)),
+                Text(
+                  _isOnline ? 'Server bilan ulandi' : 'Offline rejim',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                    color: _isOnline ? AppColors.ok : AppColors.ink2),
+                ),
               ]),
             ),
             const SizedBox(height: 28),
-            Align(alignment: Alignment.centerLeft, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Kirish', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.ink1, letterSpacing: -0.5)),
-              const SizedBox(height: 4),
-              Text("Login va parolni o'qituvchingizdan oling",
-                  style: TextStyle(fontSize: 13, color: AppColors.ink2)),
-            ])),
+
+            // Saved credentials hint
+            if (_hasSaved) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.ok.withOpacity(.3)),
+                ),
+                child: Row(children: [
+                  Icon(Icons.check_circle_outline, color: AppColors.ok, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(
+                    'Oldingi login topildi. Kirish tugmasini bosing.',
+                    style: TextStyle(fontSize: 12, color: AppColors.ok, fontWeight: FontWeight.w500),
+                  )),
+                  TextButton(
+                    onPressed: () async {
+                      await CredentialCache.clear();
+                      setState(() {
+                        _hasSaved = false;
+                        _userCtrl.clear();
+                        _passCtrl.clear();
+                      });
+                    },
+                    style: TextButton.styleFrom(minimumSize: Size.zero, padding: const EdgeInsets.all(4)),
+                    child: Text("O'chirish", style: TextStyle(fontSize: 11, color: AppColors.ink3)),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            Align(alignment: Alignment.centerLeft, child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Kirish', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.ink1)),
+                const SizedBox(height: 4),
+                Text("Login va parolni o'qituvchingizdan oling",
+                    style: TextStyle(fontSize: 13, color: AppColors.ink2)),
+              ],
+            )),
             const SizedBox(height: 24),
-            Form(
-              key: _formKey,
-              child: Column(children: [
-                _field(
-                  controller: _userCtrl,
-                  label: 'Login',
-                  hint: 'bolte_01',
-                  icon: Icons.person_outline_rounded,
-                  action: TextInputAction.next,
-                  validator: (v) => v!.isEmpty ? 'Login kiriting' : null,
+
+            Form(key: _formKey, child: Column(children: [
+              _field(
+                controller: _userCtrl, label: 'Login', hint: 'bolte_01',
+                icon: Icons.person_outline_rounded, action: TextInputAction.next,
+                validator: (v) => v!.isEmpty ? 'Login kiriting' : null,
+              ),
+              const SizedBox(height: 14),
+              _field(
+                controller: _passCtrl, label: 'Parol', hint: '••••••••',
+                icon: Icons.lock_outline_rounded, obscure: !_showPass,
+                action: TextInputAction.done, onSubmit: (_) => _login(),
+                validator: (v) => v!.isEmpty ? 'Parol kiriting' : null,
+                suffix: IconButton(
+                  icon: Icon(_showPass ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
+                  onPressed: () => setState(() => _showPass = !_showPass),
+                  color: AppColors.ink3,
                 ),
-                const SizedBox(height: 14),
-                _field(
-                  controller: _passCtrl,
-                  label: 'Parol',
-                  hint: '••••••••',
-                  icon: Icons.lock_outline_rounded,
-                  obscure: !_showPass,
-                  action: TextInputAction.done,
-                  onSubmit: (_) => _login(),
-                  validator: (v) => v!.isEmpty ? 'Parol kiriting' : null,
-                  suffix: IconButton(
-                    icon: Icon(_showPass ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 18),
-                    onPressed: () => setState(() => _showPass = !_showPass),
-                    color: AppColors.ink3,
-                  ),
-                ),
-                // Error
-                AnimatedSize(duration: const Duration(milliseconds: 250), child: _error == null ? const SizedBox.shrink()
-                  : Padding(
-                    padding: const EdgeInsets.only(top: 14),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                      decoration: BoxDecoration(
-                        color: AppColors.err.withOpacity(.07),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.err.withOpacity(.2)),
-                      ),
-                      child: Row(children: [
-                        const Icon(Icons.error_outline_rounded, color: AppColors.err, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text(_error!, style: const TextStyle(color: AppColors.err, fontSize: 13, fontWeight: FontWeight.w500))),
-                      ]),
+              ),
+
+              // Error
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                child: _error == null ? const SizedBox.shrink() : Padding(
+                  padding: const EdgeInsets.only(top: 14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                    decoration: BoxDecoration(
+                      color: AppColors.err.withOpacity(.07),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.err.withOpacity(.2)),
                     ),
+                    child: Row(children: [
+                      const Icon(Icons.error_outline_rounded, color: AppColors.err, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_error!,
+                        style: const TextStyle(color: AppColors.err, fontSize: 13, fontWeight: FontWeight.w500))),
+                    ]),
                   ),
                 ),
-                const SizedBox(height: 20),
-                // Login button
-                SizedBox(
-                  height: 52, width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _loading ? null : _login,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.brand,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-                      shadowColor: AppColors.brand.withOpacity(.4),
-                    ).copyWith(elevation: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.hovered) ? 4 : 0)),
-                    child: _loading
-                        ? const SizedBox(width: 20, height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                        : const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Text('Kirish', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                            SizedBox(width: 6),
-                            Icon(Icons.arrow_forward_rounded, size: 18),
-                          ]),
+              ),
+              const SizedBox(height: 20),
+
+              SizedBox(height: 52, width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.brand, foregroundColor: Colors.white,
+                    elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
                   ),
+                  child: _loading
+                    ? const SizedBox(width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                    : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Text(_isOnline ? 'Kirish' : 'Offline kirish',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                        const SizedBox(width: 6),
+                        Icon(_isOnline ? Icons.arrow_forward_rounded : Icons.wifi_off_rounded, size: 18),
+                      ]),
                 ),
-              ]),
-            ),
+              ),
+            ])),
           ]),
         ),
       )),
@@ -256,19 +331,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   );
 
   Widget _field({
-    required TextEditingController controller, required String label, required String hint,
-    required IconData icon, bool obscure = false, TextInputAction? action,
-    void Function(String)? onSubmit, String? Function(String?)? validator, Widget? suffix,
+    required TextEditingController controller, required String label,
+    required String hint, required IconData icon, bool obscure = false,
+    TextInputAction? action, void Function(String)? onSubmit,
+    String? Function(String?)? validator, Widget? suffix,
   }) => TextFormField(
-    controller: controller,
-    obscureText: obscure,
-    textInputAction: action,
-    onFieldSubmitted: onSubmit,
-    validator: validator,
+    controller: controller, obscureText: obscure,
+    textInputAction: action, onFieldSubmitted: onSubmit, validator: validator,
     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.ink1),
     decoration: InputDecoration(
       labelText: label, hintText: hint,
-      prefixIcon: Padding(padding: const EdgeInsets.symmetric(horizontal: 14), child: Icon(icon, size: 18, color: AppColors.ink3)),
+      prefixIcon: Padding(padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Icon(icon, size: 18, color: AppColors.ink3)),
       prefixIconConstraints: const BoxConstraints(minWidth: 46),
       suffixIcon: suffix,
       filled: true, fillColor: AppColors.surface,

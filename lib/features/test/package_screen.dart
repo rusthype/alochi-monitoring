@@ -8,7 +8,8 @@ import 'confirm_screen.dart';
 
 class PackageScreen extends StatefulWidget {
   final StudentSession session;
-  const PackageScreen({super.key, required this.session});
+  final bool offline;
+  const PackageScreen({super.key, required this.session, this.offline = false});
   @override State<PackageScreen> createState() => _PackageScreenState();
 }
 
