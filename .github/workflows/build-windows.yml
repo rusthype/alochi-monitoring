@@ -1,14 +1,24 @@
-name: Build Windows .exe
+name: Build Windows (EXE + MSIX)
 
 on:
   push:
     branches: [main]
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      submit_winget:
+        description: 'Winget-pkgs ga submit qilish'
+        type: boolean
+        default: false
 
 jobs:
   build-windows:
     runs-on: windows-latest
+
+    outputs:
+      zip_sha256:  ${{ steps.hashes.outputs.zip_sha256 }}
+      msix_sha256: ${{ steps.hashes.outputs.msix_sha256 }}
+      version:     ${{ steps.version.outputs.version }}
 
     steps:
       - name: Checkout
@@ -24,27 +34,74 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Build Windows
+      # ── 1. ZIP build ─────────────────────────────────────────
+      - name: Build Windows (Release)
         run: flutter build windows --release
 
-      - name: Create installer zip
+      - name: Create ZIP installer
         shell: pwsh
         run: |
           $src = "build\windows\x64\runner\Release"
-          $out = "alochi-monitoring-windows.zip"
-          Compress-Archive -Path "$src\*" -DestinationPath $out
-          Write-Host "ZIP created: $out"
-          # Latest uchun ham nusxa
-          Copy-Item $out "alochi-monitoring-app-latest.zip"
+          Compress-Archive -Path "$src\*" -DestinationPath "alochi-monitoring-windows.zip"
+          Copy-Item "alochi-monitoring-windows.zip" "alochi-monitoring-app-latest.zip"
+          Write-Host "ZIP OK: $('{0:N1}' -f ((Get-Item 'alochi-monitoring-windows.zip').Length/1MB)) MB"
 
-      - name: Upload artifact
+      # ── 2. MSIX build ────────────────────────────────────────
+      - name: Build MSIX
+        shell: pwsh
+        run: |
+          dart run msix:create --build-windows false
+          if (Test-Path "build\windows\alochi-monitoring.msix") {
+            Write-Host "MSIX OK"
+          } else {
+            Write-Host "MSIX topilmadi, ZIP bilan davom etamiz"
+          }
+
+      # ── 3. SHA256 ─────────────────────────────────────────────
+      - name: Calculate SHA256
+        id: hashes
+        shell: pwsh
+        run: |
+          $zipHash  = (Get-FileHash "alochi-monitoring-windows.zip" -Algorithm SHA256).Hash
+          Write-Host "ZIP SHA256: $zipHash"
+          echo "zip_sha256=$zipHash" >> $env:GITHUB_OUTPUT
+
+          $msixPath = "build\windows\alochi-monitoring.msix"
+          if (Test-Path $msixPath) {
+            $msixHash = (Get-FileHash $msixPath -Algorithm SHA256).Hash
+            Write-Host "MSIX SHA256: $msixHash"
+            Copy-Item $msixPath "alochi-monitoring.msix"
+          } else {
+            $msixHash = $zipHash
+          }
+          echo "msix_sha256=$msixHash" >> $env:GITHUB_OUTPUT
+
+      - name: Get version
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Get-Content pubspec.yaml | Select-String "^version:" | ForEach-Object { $_ -replace "version:\s*", "" -replace "\+.*", "" }).Trim()
+          echo "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $v"
+
+      # ── 4. Artifacts ──────────────────────────────────────────
+      - name: Upload ZIP artifact
         uses: actions/upload-artifact@v4
         with:
           name: alochi-monitoring-windows
           path: alochi-monitoring-windows.zip
           retention-days: 90
 
-      - name: Auto-release (main branch — latest)
+      - name: Upload MSIX artifact
+        if: hashFiles('alochi-monitoring.msix') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: alochi-monitoring-msix
+          path: alochi-monitoring.msix
+          retention-days: 90
+
+      # ── 5. Latest release ─────────────────────────────────────
+      - name: Update 'latest' release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
@@ -55,16 +112,105 @@ jobs:
             alochi-monitoring-windows.zip
             alochi-monitoring-app-latest.zip
           body: |
-            Oxirgi Windows build. Quyidagi buyruq bilan o'rnatish:
+            ### O'rnatish
+
+            **PowerShell (Admin) — eng oson:**
             ```powershell
             iex (irm https://raw.githubusercontent.com/rusthype/alochi-monitoring/main/install.ps1)
             ```
 
-      - name: Versioned release (on tag)
+            **Winget (qo'lda):**
+            ```cmd
+            winget install --id uz.alochi.Monitoring --source winget
+            ```
+
+            **ZIP'ni yuklab ochish:**
+            `alochi-monitoring-windows.zip` → `alochi_monitoring.exe`
+
+      # ── 6. Versioned release (tag) ────────────────────────────
+      - name: Create versioned release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
             alochi-monitoring-windows.zip
-            alochi-monitoring-app-latest.zip
+            alochi-monitoring.msix
           generate_release_notes: true
+
+  # ── Winget manifest submit ────────────────────────────────────
+  submit-winget:
+    needs: build-windows
+    runs-on: ubuntu-latest
+    if: >
+      startsWith(github.ref, 'refs/tags/') ||
+      (github.ref == 'refs/heads/main' && github.event.inputs.submit_winget == 'true')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update winget manifest
+        env:
+          VERSION:     ${{ needs.build-windows.outputs.version }}
+          ZIP_SHA256:  ${{ needs.build-windows.outputs.zip_sha256 }}
+          MSIX_SHA256: ${{ needs.build-windows.outputs.msix_sha256 }}
+          TAG:         ${{ github.ref_name }}
+        run: |
+          RELEASE_TAG="${TAG:-v${VERSION}}"
+          ZIP_URL="https://github.com/rusthype/alochi-monitoring/releases/download/${RELEASE_TAG}/alochi-monitoring-windows.zip"
+
+          # Manifest generator
+          cat > /tmp/uz.alochi.Monitoring.yaml << YAML
+          PackageIdentifier: uz.alochi.Monitoring
+          PackageVersion: ${VERSION}
+          PackageName: Alochi Monitoring
+          Publisher: Alochi Education
+          PublisherUrl: https://alochi.org
+          PublisherSupportUrl: https://alochi.org/support
+          PackageUrl: https://github.com/rusthype/alochi-monitoring
+          License: Proprietary
+          LicenseUrl: https://alochi.org/license
+          ShortDescription: Maktab monitoring test tizimi
+          Description: |
+            Alochi Monitoring — o'quvchilar uchun matematik va ingliz tili
+            monitoring testlarini o'tkazish tizimi. Offline rejimda ham ishlaydi.
+          Tags:
+            - education
+            - monitoring
+            - test
+            - school
+            - uzbekistan
+          Moniker: alochi-monitoring
+          PackageLocale: uz-UZ
+          ManifestType: defaultLocale
+          ManifestVersion: 1.6.0
+          ---
+          PackageIdentifier: uz.alochi.Monitoring
+          PackageVersion: ${VERSION}
+          Platform:
+            - Windows.Desktop
+          MinimumOSVersion: 10.0.17763.0
+          InstallerType: zip
+          Installers:
+            - Architecture: x64
+              InstallerUrl: ${ZIP_URL}
+              InstallerSha256: ${ZIP_SHA256}
+              NestedInstallerType: portable
+              NestedInstallerFiles:
+                - RelativeFilePath: alochi_monitoring.exe
+                  PortableCommandAlias: alochi-monitoring
+          ManifestType: installer
+          ManifestVersion: 1.6.0
+          YAML
+
+          echo "Manifest tayyorlandi:"
+          cat /tmp/uz.alochi.Monitoring.yaml
+
+      - name: Submit to winget-pkgs
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: vedantmgoyal9/winget-releaser@latest
+        with:
+          identifier: uz.alochi.Monitoring
+          release-tag: ${{ github.ref_name }}
+          installers-regex: 'alochi-monitoring-windows\.zip$'
+          token: ${{ secrets.WINGET_TOKEN }}
