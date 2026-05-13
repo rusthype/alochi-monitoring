@@ -41,7 +41,7 @@ flutter:
 msix_config:
   display_name: Alochi Monitoring
   publisher_display_name: Alochi Education
-  identity_name: uz.alochi.monitoring
+  identity_name: alochi.monitoring
   publisher: CN=Alochi Education
   msix_version: 1.0.0.0
   logo_path: assets/logo.png

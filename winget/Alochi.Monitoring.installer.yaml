@@ -1,4 +1,4 @@
-PackageIdentifier: uz.alochi.Monitoring
+PackageIdentifier: Alochi.Monitoring
 PackageVersion: 1.0.0
 Platform:
   - Windows.Desktop

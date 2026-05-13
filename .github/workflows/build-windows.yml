@@ -121,7 +121,7 @@ jobs:
 
             **Winget (qo'lda):**
             ```cmd
-            winget install --id uz.alochi.Monitoring --source winget
+            winget install --id Alochi.Monitoring --source winget
             ```
 
             **ZIP'ni yuklab ochish:**
@@ -160,8 +160,8 @@ jobs:
           ZIP_URL="https://github.com/rusthype/alochi-monitoring/releases/download/${RELEASE_TAG}/alochi-monitoring-windows.zip"
 
           # Manifest generator
-          cat > /tmp/uz.alochi.Monitoring.yaml << YAML
-          PackageIdentifier: uz.alochi.Monitoring
+          cat > /tmp/Alochi.Monitoring.yaml << YAML
+          PackageIdentifier: Alochi.Monitoring
           PackageVersion: ${VERSION}
           PackageName: Alochi Monitoring
           Publisher: Alochi Education
@@ -185,7 +185,7 @@ jobs:
           ManifestType: defaultLocale
           ManifestVersion: 1.6.0
           ---
-          PackageIdentifier: uz.alochi.Monitoring
+          PackageIdentifier: Alochi.Monitoring
           PackageVersion: ${VERSION}
           Platform:
             - Windows.Desktop
@@ -204,13 +204,13 @@ jobs:
           YAML
 
           echo "Manifest tayyorlandi:"
-          cat /tmp/uz.alochi.Monitoring.yaml
+          cat /tmp/Alochi.Monitoring.yaml
 
       - name: Submit to winget-pkgs
         if: startsWith(github.ref, 'refs/tags/')
         uses: vedantmgoyal9/winget-releaser@latest
         with:
-          identifier: uz.alochi.Monitoring
+          identifier: Alochi.Monitoring
           release-tag: ${{ github.ref_name }}
           installers-regex: 'alochi-monitoring-windows\.zip$'
           token: ${{ secrets.WINGET_TOKEN }}
