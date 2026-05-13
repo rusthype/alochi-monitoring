@@ -1,0 +1,50 @@
+name: Build Windows .exe
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Create installer zip
+        shell: pwsh
+        run: |
+          $src = "build\windows\x64\runner\Release"
+          $out = "alochi-monitoring-windows.zip"
+          Compress-Archive -Path "$src\*" -DestinationPath $out
+          echo "ZIP created: $out"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: alochi-monitoring-windows
+          path: alochi-monitoring-windows.zip
+          retention-days: 30
+
+      - name: Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: alochi-monitoring-windows.zip
+          generate_release_notes: true
