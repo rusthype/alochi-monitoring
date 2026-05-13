@@ -165,5 +165,5 @@ String? _fixUrl(String? url) {
   if (url == null || url.isEmpty) return null;
   if (url.startsWith('http')) return url;
   if (url.startsWith('//')) return 'https:$url';
-  return 'https://api.alochi.org\$url';
+  return 'https://api.alochi.org' + url;
 }

@@ -43,46 +43,50 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     super.dispose();
   }
 
-  /// App ochilganda jimgina login qilishga urinadi — hech narsa ko'rsatmaydi
+  /// App ochilganda jimgina login urinish — hech narsa ko'rinmaydi
   Future<void> _tryAutoLogin() async {
-    final creds = await CredentialCache.loadCredentials();
-    if (creds == null) {
-      // Saqlangan login yo'q — forma ko'rsatamiz
-      _showForm();
-      return;
-    }
+    try {
+      final creds = await CredentialCache.loadCredentials();
+      if (creds == null) { _showForm(); return; }
 
-    final online = await api.ping();
-    if (!mounted) return;
+      final username = creds['username']!;
+      final password = creds['password']!;
 
-    if (online) {
-      // Online: serverga yuboramiz
-      try {
-        final session = await api.login(creds['username']!, creds['password']!);
-        api.setToken(session.token);
-        await CredentialCache.saveSession(session, creds['username']!, creds['password']!);
-        if (!mounted) return;
-        Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (_) => PackageScreen(session: session)));
-        return;
-      } catch (_) {
-        // Server xatosi — formani ko'rsatamiz (lekin bo'sh)
+      final online = await api.ping().timeout(
+        const Duration(seconds: 4), onTimeout: () => false);
+
+      if (online) {
+        try {
+          final session = await api.login(username, password);
+          api.setToken(session.token);
+          await CredentialCache.saveSession(session, username, password);
+          if (!mounted) return;
+          Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (_) => PackageScreen(session: session)));
+          return;
+        } on ApiException {
+          // Login/parol o'zgargan — bo'sh forma
+          await CredentialCache.clear();
+          if (mounted) _showForm(online: true);
+          return;
+        } catch (_) {
+          // Server xatosi — offline bazadan urinib ko'ramiz
+        }
       }
-    } else {
-      // Offline: cached session bormi?
-      final session = await CredentialCache.loadOfflineSession(
-          creds['username']!, creds['password']!);
-      if (session != null) {
+
+      // Offline yoki server xatosi — lokal sessiyadan
+      final session = await CredentialCache.loadOfflineSession(username, password);
+      if (session != null && mounted) {
         api.setToken(session.token);
-        if (!mounted) return;
         Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (_) => PackageScreen(session: session, offline: true)));
+          MaterialPageRoute(builder: (_) => PackageScreen(session: session, offline: !online)));
         return;
       }
-    }
 
-    // Auto-login muvaffaqiyatsiz — bo'sh forma
-    if (mounted) _showForm(online: online);
+      if (mounted) _showForm(online: online);
+    } catch (_) {
+      if (mounted) _showForm();
+    }
   }
 
   void _showForm({bool online = false}) {
@@ -101,33 +105,52 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     final password = _passCtrl.text;
 
     try {
-      if (_isOnline) {
-        final session = await api.login(username, password);
-        api.setToken(session.token);
-        await CredentialCache.saveCredentials(username, password);
-        await CredentialCache.saveSession(session, username, password);
-        if (!mounted) return;
-        Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (_) => PackageScreen(session: session)));
-      } else {
-        final session = await CredentialCache.loadOfflineSession(username, password);
-        if (session == null) {
-          setState(() => _error = "Internet yoq. Bu login/parol ilgari saqlanmagan.");
+      // Avval online login urinib ko'ramiz
+      final online = await api.ping().timeout(const Duration(seconds: 4), onTimeout: () => false);
+
+      if (online) {
+        // ── Online ────────────────────────────────────────────────
+        try {
+          final session = await api.login(username, password);
+          api.setToken(session.token);
+          await CredentialCache.saveCredentials(username, password);
+          await CredentialCache.saveSession(session, username, password);
+          if (!mounted) return;
+          Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (_) => PackageScreen(session: session)));
           return;
+        } on ApiException catch (e) {
+          // 400 = login/parol xato — offline ham urinma
+          if (e.statusCode == 400) {
+            setState(() => _error = "Login yoki parol noto'g'ri");
+            return;
+          }
+          if (e.statusCode == 429) {
+            setState(() => _error = "Ko'p urinish. Biroz kuting.");
+            return;
+          }
+          // Boshqa server xatosi — offline bazadan urinib ko'ramiz
         }
+      }
+
+      // ── Offline yoki server xatosi — lokal bazadan ────────────
+      final session = await CredentialCache.loadOfflineSession(username, password);
+      if (session != null) {
         api.setToken(session.token);
         if (!mounted) return;
         Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (_) => PackageScreen(session: session, offline: true)));
+          MaterialPageRoute(builder: (_) => PackageScreen(session: session, offline: !online)));
+        return;
       }
-    } on ApiException catch (e) {
-      setState(() {
-        _error = e.statusCode == 400 ? "Login yoki parol notogri"
-               : e.statusCode == 429 ? "Kop urinish. Biroz kuting."
-               : "Server xatosi (${e.statusCode})";
-      });
+
+      // Hech narsa topilmadi
+      if (!mounted) return;
+      setState(() => _error = online
+        ? "Server xatosi. Qayta urinib ko'ring."
+        : "Internet yo'q va bu login ilgari saqlanmagan.");
+
     } catch (_) {
-      setState(() => _error = "Internet aloqasi yoq");
+      if (mounted) setState(() => _error = "Ulanishda xato. Qayta urinib ko'ring.");
     } finally {
       if (mounted) setState(() => _loading = false);
     }

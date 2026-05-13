@@ -784,19 +784,22 @@ class _QuestionImage extends StatelessWidget {
             )),
           );
         },
-        errorBuilder: (_, __, ___) => Container(
-          height: 80,
-          decoration: BoxDecoration(
-            color: AppColors.bg,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: const Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.broken_image_outlined, color: AppColors.ink3, size: 20),
-            SizedBox(width: 8),
-            Text('Rasm yuklanmadi', style: TextStyle(fontSize: 12, color: AppColors.ink3)),
-          ])),
-        ),
+        errorBuilder: (ctx, error, _) {
+          debugPrint('IMAGE ERROR: $error | URL: ${url}');
+          return Container(
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.err.withOpacity(.07),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.err.withOpacity(.2)),
+            ),
+            child: Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.broken_image_outlined, color: AppColors.err.withOpacity(.5), size: 16),
+              const SizedBox(width: 6),
+              const Text('Rasm yuklanmadi', style: TextStyle(fontSize: 11, color: AppColors.ink3)),
+            ])),
+          );
+        },
       ),
     ),
   );
