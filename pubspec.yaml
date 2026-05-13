@@ -14,8 +14,8 @@ dependencies:
   http: ^1.2.0
   connectivity_plus: ^6.0.0
 
-  # Local storage (offline)
-  sqflite_common_ffi: ^2.3.0
+  # Local storage (offline queue)
+  sqflite_common_ffi: ^2.3.3
   path_provider: ^2.1.0
   path: ^1.9.0
   shared_preferences: ^2.3.0
@@ -25,6 +25,9 @@ dependencies:
   flutter_animate: ^4.5.0
   gap: ^3.0.1
 
+  # Windows MSIX installer
+  msix: ^3.16.7
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -32,3 +35,22 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/logo.png
+
+msix_config:
+  display_name: Alochi Monitoring
+  publisher_display_name: Alochi Education
+  identity_name: uz.alochi.monitoring
+  publisher: CN=Alochi Education
+  msix_version: 1.0.0.0
+  logo_path: assets/logo.png
+  start_menu_icon_path: assets/logo.png
+  tile_icon_path: assets/logo.png
+  icons_background_color: "#F97316"
+  architecture: x64
+  capabilities: internetClient
+  languages: uz, ru, en
+  sign_msix: false
+  output_path: build/windows/
+  output_name: alochi-monitoring

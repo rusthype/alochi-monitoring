@@ -71,16 +71,42 @@ class MonitoringApi {
     return (data['questions'] as List).map((j) => Question.fromJson(j)).toList();
   }
 
-  Future<bool> submitResult(TestResult result) async {
+  /// Natijani serverga yuboradi va XP/coins ma'lumotini qaytaradi.
+  /// {synced: bool, xp_earned: int, coins_earned: int, total_xp: int, level: int}
+  Future<Map<String, dynamic>> submitResultFull(TestResult result) async {
     try {
-      await _post('/results/', result.toJson());
-      return true;
+      final resp = await _post('/results/', result.toJson()) as Map<String, dynamic>;
+      // Natija saqlangandan keyin wrong answers yuklaymiz
+      final detail = await _fetchResultDetail(resp['id'] as String? ?? '');
+      return {'synced': true, ...resp, 'wrong_answers': detail};
     } on ApiException catch (e) {
-      if (e.statusCode == 409) return true; // Already submitted
-      return false;
+      if (e.statusCode == 409) return {'synced': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
+      return {'synced': false, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
     } catch (_) {
-      return false;
+      return {'synced': false, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
     }
+  }
+
+  Future<List<dynamic>> _fetchResultDetail(String resultId) async {
+    if (resultId.isEmpty) return [];
+    try {
+      final data = await _get('/my-results/$resultId/') as Map<String, dynamic>;
+      return data['wrong_answers'] as List<dynamic>? ?? [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<bool> submitResult(TestResult result) async {
+    final r = await submitResultFull(result);
+    return r['synced'] as bool? ?? false;
+  }
+
+  /// Offline navbatdagi natijalarni qayta yuborishga urinadi
+  Future<int> flushOfflineQueue() async {
+    // Import: offline_queue.dart da OfflineQueue.flush chaqiriladi
+    // Bu yerda faqat submitResult ishlatiladi
+    return 0; // OfflineQueue bilan ishlatiladi
   }
 }
 
