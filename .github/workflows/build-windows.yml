@@ -33,18 +33,38 @@ jobs:
           $src = "build\windows\x64\runner\Release"
           $out = "alochi-monitoring-windows.zip"
           Compress-Archive -Path "$src\*" -DestinationPath $out
-          echo "ZIP created: $out"
+          Write-Host "ZIP created: $out"
+          # Latest uchun ham nusxa
+          Copy-Item $out "alochi-monitoring-app-latest.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: alochi-monitoring-windows
           path: alochi-monitoring-windows.zip
-          retention-days: 30
+          retention-days: 90
 
-      - name: Release (on tag)
+      - name: Auto-release (main branch — latest)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Latest Build"
+          prerelease: true
+          files: |
+            alochi-monitoring-windows.zip
+            alochi-monitoring-app-latest.zip
+          body: |
+            Oxirgi Windows build. Quyidagi buyruq bilan o'rnatish:
+            ```powershell
+            iex (irm https://raw.githubusercontent.com/rusthype/alochi-monitoring/main/install.ps1)
+            ```
+
+      - name: Versioned release (on tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: alochi-monitoring-windows.zip
+          files: |
+            alochi-monitoring-windows.zip
+            alochi-monitoring-app-latest.zip
           generate_release_notes: true
