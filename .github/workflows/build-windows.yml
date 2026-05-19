@@ -1,5 +1,8 @@
 name: Build & Release Windows
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [main]
@@ -8,14 +11,20 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-permissions:
+  contents: write
+
+on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
+          flutter-versipermissions:
+  contents: write
+
+on: '3.x'
           channel: stable
           cache: true
 
@@ -76,7 +85,10 @@ jobs:
           $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.ZIP }}"
           $sha = "${{ env.SHA256 }}"
           Write-Host "=== Winget manifest ==="
-          Write-Host "Version:  $ver"
+          Write-Host "Versipermissions:
+  contents: write
+
+on:  $ver"
           Write-Host "URL:      $url"
           Write-Host "SHA256:   $sha"
           Write-Host ""
