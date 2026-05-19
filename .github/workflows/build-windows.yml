@@ -28,7 +28,7 @@ jobs:
       - name: Build Windows
         run: flutter build windows --release
 
-      - name: Package ZIP with VC++ DLLs
+      - name: Add VC++ DLLs
         shell: pwsh
         run: |
           $src = "build\windows\x64\runner\Release"
@@ -37,37 +37,60 @@ jobs:
             $p = Join-Path $sys $dll
             if (Test-Path $p) { Copy-Item $p $src; Write-Host "+ $dll" }
           }
-          $tag = "${{ github.ref_name }}"
-          $ver = if ($tag -match '^v') { $tag } else { "dev" }
-          $zip = "alochi-monitoring-$ver-windows.zip"
-          Compress-Archive -Path "$src\*" -DestinationPath $zip -Force
-          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-          "ZIP=$zip" >> $env:GITHUB_ENV
+
+      - name: Convert logo PNG to ICO
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          $png = [System.Drawing.Image]::FromFile("$PWD\assets\logo.png")
+          $ico = New-Object System.Drawing.Icon([System.Drawing.Bitmap]$png, 64, 64)
+          $stream = [System.IO.File]::OpenWrite("$PWD\assets\logo.ico")
+          $ico.Save($stream)
+          $stream.Close()
+          Write-Host "ICO created: $(Get-Item assets\logo.ico).Length bytes"
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer (.exe)
+        shell: pwsh
+        run: |
+          $ver = "${{ github.ref_name }}".TrimStart('v')
+          if (-not $ver -or $ver -eq "${{ github.ref_name }}") { $ver = "dev" }
+          # Update version in iss file
+          (Get-Content setup.iss) -replace '#define AppVersion ".*"', "#define AppVersion `"$ver`"" |
+            Set-Content setup.iss
+          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" setup.iss
+          $exe = Get-Item "Output\AlochiMonitoring-*-Setup.exe"
+          $hash = (Get-FileHash $exe.FullName -Algorithm SHA256).Hash.ToLower()
+          "EXE=$($exe.Name)" >> $env:GITHUB_ENV
+          "EXE_PATH=$($exe.FullName)" >> $env:GITHUB_ENV
           "SHA256=$hash" >> $env:GITHUB_ENV
           "VER=$ver" >> $env:GITHUB_ENV
-          Write-Host "DONE: $zip"
+          Write-Host "✅ $($exe.Name)"
           Write-Host "SHA256: $hash"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: alochi-monitoring-windows
-          path: ${{ env.ZIP }}
+          name: alochi-monitoring-installer
+          path: ${{ env.EXE_PATH }}
           retention-days: 30
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.ZIP }}
+          files: ${{ env.EXE_PATH }}
           generate_release_notes: true
           body: |
-            ## Alochi Monitoring ${{ env.VER }}
+            ## Alochi Monitoring v${{ env.VER }}
 
-            ### O'rnatish (PowerShell Admin):
+            ### O'rnatish:
             ```powershell
             winget install uz.alochi.Monitoring
             ```
+            yoki to'g'ridan yuklang 👆
 
             **SHA256:** `${{ env.SHA256 }}`
 
@@ -75,11 +98,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         run: |
-          $ver = "${{ env.VER }}".TrimStart('v')
-          $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.ZIP }}"
-          Write-Host "==========================="
-          Write-Host "Version: $ver"
+          $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.EXE }}"
+          Write-Host "=========================="
+          Write-Host "Version: ${{ env.VER }}"
           Write-Host "URL:     $url"
           Write-Host "SHA256:  ${{ env.SHA256 }}"
-          Write-Host "==========================="
-          Write-Host "Winget PR: https://github.com/microsoft/winget-pkgs"
+          Write-Host "=========================="
