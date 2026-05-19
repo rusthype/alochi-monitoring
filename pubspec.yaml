@@ -21,7 +21,6 @@ dependencies:
   shared_preferences: ^2.3.0
 
   # UI
-  google_fonts: 6.2.1
   flutter_animate: ^4.5.0
   gap: ^3.0.1
 

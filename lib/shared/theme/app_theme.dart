@@ -1,6 +1,5 @@
 // lib/shared/theme/app_theme.dart
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   static const brand      = Color(0xFFF97316);
@@ -25,14 +24,14 @@ class AppColors {
 class AppTheme {
   static ThemeData get theme => ThemeData(
         useMaterial3:            true,
-        fontFamily:              GoogleFonts.inter().fontFamily,
+        fontFamily:              null, // system default (Segoe UI on Windows)
         colorScheme: const ColorScheme.light(
           primary:    AppColors.brand,
           surface:    AppColors.surface,
           error:      AppColors.err,
         ),
         scaffoldBackgroundColor: AppColors.bg,
-        textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme),
+        textTheme: ThemeData.light().textTheme,
         cardTheme: CardThemeData(
           color:     AppColors.surface,
           elevation: 0,
@@ -48,7 +47,7 @@ class AppTheme {
             foregroundColor: Colors.white,
             minimumSize:     const Size(double.infinity, 50),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-            textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
+            textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             elevation: 0,
           ),
         ),
