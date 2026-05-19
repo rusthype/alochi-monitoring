@@ -53,6 +53,24 @@ List<_LocalQ> buildQuestionsFromPack(MonitoringPack pack, {required int grade}) 
     qs.add(_LocalQ(id: 'en_$i', tp: 'en', sect: eq.sect,
         prompt: eq.q, opts: opts, ans: eq.ans));
   }
+  // Math: random variant, 25 ta
+  if (pack.math.isNotEmpty) {
+    final allVariants = pack.math
+        .where((q) => q.grade == grade)
+        .map((q) => q.variant).toSet().toList()..shuffle(rng);
+    if (allVariants.isNotEmpty) {
+      final chosenV = allVariants.first;
+      final mathQs  = pack.math
+          .where((q) => q.grade == grade && q.variant == chosenV)
+          .toList()..shuffle(rng);
+      for (var i = 0; i < mathQs.take(25).length; i++) {
+        final mq   = mathQs[i];
+        final opts = mq.options.toList()..shuffle(rng);
+        qs.add(_LocalQ(id: 'ma_$i', tp: 'ma', sect: mq.cat,
+            prompt: mq.q, opts: opts, ans: mq.ans));
+      }
+    }
+  }
   return qs;
 }
 
@@ -119,12 +137,16 @@ class _LocalTestScreenState extends State<LocalTestScreen>
 
   String get _sectionLabel {
     if (_voEnd == -1 || _current < _voEnd) return "Lug'at";
-    return 'Ingliz tili';
+    final enEnd = _questions.indexWhere((q) => q.tp == 'ma');
+    if (enEnd == -1 || _current < enEnd) return 'Ingliz tili';
+    return 'Matematika';
   }
 
   Color get _sectionColor {
     if (_voEnd == -1 || _current < _voEnd) return const Color(0xFFf59e0b);
-    return const Color(0xFF0284c7);
+    final enEnd = _questions.indexWhere((q) => q.tp == 'ma');
+    if (enEnd == -1 || _current < enEnd) return const Color(0xFF0284c7);
+    return const Color(0xFF7c3aed);
   }
 
   String get _timerDisplay {
@@ -201,6 +223,13 @@ class _LocalTestScreenState extends State<LocalTestScreen>
       // Bo'lim o'tish: Vocab → Ingliz
       if (_voEnd != -1 && _current == _voEnd - 1 && next == _voEnd) {
         _showTransition("Ingliz tiliga o'tilmoqda", const Color(0xFF0284c7),
+            then: () => _navigate(next));
+        return;
+      }
+      // Bo'lim o'tish: Ingliz → Matematika
+      final enEnd = _questions.indexWhere((q) => q.tp == 'ma');
+      if (enEnd != -1 && _current == enEnd - 1 && next == enEnd) {
+        _showTransition("Matematikaga o'tilmoqda", const Color(0xFF7c3aed),
             then: () => _navigate(next));
         return;
       }

@@ -5,6 +5,7 @@ import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
 import '../../core/models/models.dart';
 import '../../core/services/connectivity_service.dart';
+import '../../core/services/pack_cache.dart';
 import '../../shared/theme/app_theme.dart';
 import '../test/local_test_screen.dart';
 import '../test/package_screen.dart';
@@ -258,9 +259,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   // Oddiy kirish — faqat ism va sinf
   void _guestLogin() {
     if (!_guestKey.currentState!.validate()) return;
-    // PIN tekshirish
-    const guestPin = '1234'; // TODO: settings dan olish
-    if (_pinCtrl.text.trim() != guestPin) {
+    _verifyPin();
+  }
+
+  Future<void> _verifyPin() async {
+    final enteredPin = _pinCtrl.text.trim();
+    if (enteredPin.isEmpty) {
+      setState(() => _guestPinError = 'PIN kiriting');
+      return;
+    }
+    // PIN ni API/cache dan olamiz
+    final correctPin = await PackCacheService.getGuestPin();
+    if (enteredPin != correctPin) {
       setState(() => _guestPinError = 'PIN noto\'g\'ri');
       return;
     }

@@ -48,11 +48,34 @@ class PackEngQ {
   });
 }
 
+class PackMathQ {
+  final String id;
+  final int grade;
+  final int variant;
+  final String q;
+  final String ans;
+  final List<String> wrong;
+  final String cat;
+
+  const PackMathQ({
+    required this.id,
+    required this.grade,
+    required this.variant,
+    required this.q,
+    required this.ans,
+    required this.wrong,
+    required this.cat,
+  });
+
+  List<String> get options => [ans, ...wrong.take(3)];
+}
+
 class MonitoringPack {
   final int version;
   final String checksum;
   final List<PackVocabQ> vocab;
   final List<PackEngQ> english;
+  final List<PackMathQ> math;
   final bool fromCache;
   final bool isFallback;
 
@@ -61,12 +84,14 @@ class MonitoringPack {
     required this.checksum,
     required this.vocab,
     required this.english,
+    this.math = const [],
     this.fromCache = false,
     this.isFallback = false,
   });
 
   int get vocabCount   => vocab.length;
   int get englishCount => english.length;
+  int get mathCount    => math.length;
 }
 
 // ── Cache service ─────────────────────────────────────────────────────────────
@@ -76,9 +101,10 @@ class PackCacheService {
   static const _kChecksum = 'mon_pack_checksum';
   static const _kVocab    = 'mon_pack_vocab';
   static const _kEnglish  = 'mon_pack_english';
+  static const _kMath     = 'mon_pack_math';
+  static const _kGuestPin = 'mon_guest_pin';
 
   /// Ana metod: pack'ni yuklaydi (cache/API/fallback).
-  /// [grade] — o'quvchi sinfi (ingliz savollarni filtrlab beradi).
   static Future<MonitoringPack> load({required int grade}) async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -88,14 +114,19 @@ class PackCacheService {
     if (serverVer != null) {
       final srvVersion  = serverVer['version'] as int;
       final srvChecksum = serverVer['checksum'] as String? ?? '';
+      final srvPin      = serverVer['guest_pin'] as String? ?? '';
       final cachedVersion  = prefs.getInt(_kVersion) ?? 0;
       final cachedChecksum = prefs.getString(_kChecksum) ?? '';
+
+      // PIN ni cache ga saqlash
+      if (srvPin.isNotEmpty) {
+        await prefs.setString(_kGuestPin, srvPin);
+      }
 
       final needsUpdate = srvVersion != cachedVersion ||
                           srvChecksum != cachedChecksum;
 
       if (needsUpdate) {
-        // 2. Yangi pack yuklab ol
         final pack = await api.getPack(grade: grade);
         if (pack != null) {
           await _savePack(prefs, srvVersion, srvChecksum, pack);
@@ -103,13 +134,9 @@ class PackCacheService {
         }
       }
 
-      // 3. Versiya o'zgarmagan → cache dan o'qi
       final cached = _loadFromPrefs(prefs);
-      if (cached != null) {
-        return cached.copyWith(fromCache: true);
-      }
+      if (cached != null) return cached.copyWith(fromCache: true);
 
-      // 4. Server ma'lumoti bor lekin cache yo'q → yuklab ol
       final pack = await api.getPack(grade: grade);
       if (pack != null) {
         await _savePack(prefs, srvVersion, srvChecksum, pack);
@@ -117,14 +144,18 @@ class PackCacheService {
       }
     }
 
-    // 5. Offline → cache dan o'qi
+    // 5. Offline → cache
     final cached = _loadFromPrefs(prefs);
-    if (cached != null) {
-      return cached.copyWith(fromCache: true);
-    }
+    if (cached != null) return cached.copyWith(fromCache: true);
 
-    // 6. Hech nima yo'q → bundled fallback
+    // 6. Bundled fallback
     return _buildFallback(grade: grade);
+  }
+
+  /// Cached PIN (offline da ham ishlaydi)
+  static Future<String> getGuestPin() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kGuestPin) ?? '99890055'; // default
   }
 
   // ── Save / Load ─────────────────────────────────────────────────────────────
@@ -139,6 +170,7 @@ class PackCacheService {
     await prefs.setString(_kChecksum, checksum);
     await prefs.setString(_kVocab,    jsonEncode(pack['vocab']   ?? []));
     await prefs.setString(_kEnglish,  jsonEncode(pack['english'] ?? []));
+    await prefs.setString(_kMath,     jsonEncode(pack['math']    ?? []));
   }
 
   static MonitoringPack? _loadFromPrefs(SharedPreferences prefs) {
@@ -152,11 +184,14 @@ class PackCacheService {
       final vocabList   = jsonDecode(vocabJson)   as List;
       final englishList = jsonDecode(englishJson) as List;
 
+      final mathJson  = prefs.getString(_kMath) ?? '[]';
+      final mathList  = jsonDecode(mathJson) as List;
       return MonitoringPack(
         version:  version,
         checksum: checksum,
         vocab:    vocabList.map(_parseVocabQ).toList(),
         english:  englishList.map(_parseEngQ).toList(),
+        math:     mathList.map(_parseMathQ).toList(),
       );
     } catch (_) {
       return null;
@@ -174,6 +209,7 @@ class PackCacheService {
       checksum:  pack['checksum'] as String? ?? '',
       vocab:     (pack['vocab']   as List).map(_parseVocabQ).toList(),
       english:   (pack['english'] as List).map(_parseEngQ).toList(),
+      math:      ((pack['math'] as List?)  ?? []).map(_parseMathQ).toList(),
       fromCache: fromCache,
     );
   }
@@ -198,6 +234,19 @@ class PackCacheService {
       q:     m['q']     as String? ?? '',
       opts:  List<String>.from(m['opts'] as List? ?? []),
       ans:   m['ans']   as String? ?? '',
+    );
+  }
+
+  static PackMathQ _parseMathQ(dynamic j) {
+    final m = j as Map<String, dynamic>;
+    return PackMathQ(
+      id:      m['id']      as String? ?? '',
+      grade:   m['grade']   as int?    ?? 1,
+      variant: m['variant'] as int?    ?? 1,
+      q:       m['q']       as String? ?? '',
+      ans:     m['ans']     as String? ?? '',
+      wrong:   List<String>.from(m['wrong'] as List? ?? []),
+      cat:     m['cat']     as String? ?? 'matematika',
     );
   }
 
