@@ -1,22 +1,18 @@
-// lib/features/test/local_test_screen.dart
-//
-// Vocab + English World 1 test ekrani.
-// Savollar: API (PackCacheService) → cache → bundled fallback.
-// _OptionRow: to'g'ri/noto'g'ri ko'rsatmaydi — fill bar animatsiya.
-//
+// lib/features/test/local_test_screen.dart — FIXED
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import '../../core/data/local_test_data.dart';
 import '../../core/models/models.dart';
 import '../../core/services/pack_cache.dart';
 import '../../shared/theme/app_theme.dart';
 import '../result/celebration_screen.dart';
 
-// ── Local question ─────────────────────────────────────────────────────────
+// ── Question model ────────────────────────────────────────────────────────────
 class _LocalQ {
   final String id;
   final String tp; // 'vo' | 'en'
@@ -24,131 +20,73 @@ class _LocalQ {
   final String prompt;
   final List<String> opts;
   final String ans;
-  final Uint8List? imgBytes; // fallback: bundled base64
-  final String? imgUrl;     // API: network image URL
-
-  const _LocalQ({
-    required this.id,
-    required this.tp,
-    required this.sect,
-    required this.prompt,
-    required this.opts,
-    required this.ans,
-    this.imgBytes,
-    this.imgUrl,
-  });
-
+  final Uint8List? imgBytes;
+  final String? imgUrl;
+  const _LocalQ({required this.id, required this.tp, required this.sect,
+    required this.prompt, required this.opts, required this.ans,
+    this.imgBytes, this.imgUrl});
   bool get hasImage => imgUrl != null || imgBytes != null;
 }
 
-// ── Build from MonitoringPack (API / cache) ────────────────────────────────
-List<_LocalQ> buildQuestionsFromPack(
-  MonitoringPack pack, {
-  required int grade,
-}) {
+// ── Build from MonitoringPack ─────────────────────────────────────────────────
+List<_LocalQ> buildQuestionsFromPack(MonitoringPack pack, {required int grade}) {
   final rng = math.Random();
-  final questions = <_LocalQ>[];
-
-  // Vocab: shuffle all
+  final qs = <_LocalQ>[];
   final shuffledVocab = List<PackVocabQ>.from(pack.vocab)..shuffle(rng);
   for (var i = 0; i < shuffledVocab.length; i++) {
     final vq = shuffledVocab[i];
-    final allOpts = <String>[vq.ans, ...vq.wrong.take(3)]..shuffle(rng);
+    final opts = <String>[vq.ans, ...vq.wrong.take(3)]..shuffle(rng);
     Uint8List? imgBytes;
-    String? imgUrl = vq.imgUrl;
-    if (imgUrl == null && pack.isFallback) {
-      final match = kVocabQuestions.where((q) => q.ans == vq.ans).firstOrNull;
-      if (match != null && match.imgB64.isNotEmpty) {
-        try { imgBytes = base64Decode(match.imgB64); } catch (_) {}
+    if (vq.imgUrl == null && pack.isFallback) {
+      final m = kVocabQuestions.where((q) => q.ans == vq.ans).firstOrNull;
+      if (m != null && m.imgB64.isNotEmpty) {
+        try { imgBytes = base64Decode(m.imgB64); } catch (_) {}
       }
     }
-    questions.add(_LocalQ(
-      id: 'vo_$i', tp: 'vo', sect: vq.cat, prompt: '',
-      opts: allOpts, ans: vq.ans, imgBytes: imgBytes, imgUrl: imgUrl,
-    ));
+    qs.add(_LocalQ(id: 'vo_$i', tp: 'vo', sect: vq.cat, prompt: '',
+        opts: opts, ans: vq.ans, imgBytes: imgBytes, imgUrl: vq.imgUrl));
   }
-
-  // English: grade bo'yicha, 25 ta
   final engQs = pack.english.where((q) => q.grade == grade).toList()..shuffle(rng);
   for (var i = 0; i < engQs.take(25).length; i++) {
     final eq = engQs[i];
-    final shuffledOpts = List<String>.from(eq.opts)..shuffle(rng);
-    questions.add(_LocalQ(
-      id: 'en_$i', tp: 'en', sect: eq.sect,
-      prompt: eq.q, opts: shuffledOpts, ans: eq.ans,
-    ));
+    final opts = List<String>.from(eq.opts)..shuffle(rng);
+    qs.add(_LocalQ(id: 'en_$i', tp: 'en', sect: eq.sect,
+        prompt: eq.q, opts: opts, ans: eq.ans));
   }
-  return questions;
+  return qs;
 }
 
-// ── Build question list based on grade ──────────────────────────────────────
-List<_LocalQ> buildLocalQuestions({
-  required int grade,
-  required String engVariant, // A/B/C/D
-  required int mathVariant,   // 1-20 (not used here — math from local data if needed)
-}) {
+// ── Build from bundled data ───────────────────────────────────────────────────
+List<_LocalQ> buildLocalQuestions({required int grade,
+    required String engVariant, required int mathVariant}) {
   final rng = math.Random();
-  final questions = <_LocalQ>[];
-
-  // ── 1. Vocab (58 questions, shuffled each time) ──
-  final shuffledVocab = List<VocabQ>.from(kVocabQuestions)..shuffle(rng);
-  for (var i = 0; i < shuffledVocab.length; i++) {
-    final vq = shuffledVocab[i];
-    // Decode base64 image
+  final qs = <_LocalQ>[];
+  final vocab = List<VocabQ>.from(kVocabQuestions)..shuffle(rng);
+  for (var i = 0; i < vocab.length; i++) {
+    final vq = vocab[i];
     Uint8List? img;
     if (vq.imgB64.isNotEmpty) {
-      try {
-        img = base64Decode(vq.imgB64);
-      } catch (_) {}
+      try { img = base64Decode(vq.imgB64); } catch (_) {}
     }
-    // Build 4 options: ans + up to 3 wrong, shuffle
-    final allOpts = <String>[vq.ans, ...vq.wrong.take(3)];
-    allOpts.shuffle(rng);
-    questions.add(_LocalQ(
-      id: 'vo_$i',
-      tp: 'vo',
-      sect: vq.cat,
-      prompt: '',
-      opts: allOpts,
-      ans: vq.ans,
-      imgBytes: img,
-    ));
+    final opts = <String>[vq.ans, ...vq.wrong.take(3)]..shuffle(rng);
+    qs.add(_LocalQ(id: 'vo_$i', tp: 'vo', sect: vq.cat,
+        prompt: '', opts: opts, ans: vq.ans, imgBytes: img));
   }
-
-  // ── 2. English World 1 (25 questions, correct variant) ──
-  final engQs = kEngQuestions
-      .where((q) => q.variant == engVariant)
-      .toList()
-    ..shuffle(rng);
-  final engSample = engQs.take(25).toList();
-  for (var i = 0; i < engSample.length; i++) {
-    final eq = engSample[i];
-    // Shuffle options too
-    final shuffledOpts = List<String>.from(eq.opts)..shuffle(rng);
-    questions.add(_LocalQ(
-      id: 'en_$i',
-      tp: 'en',
-      sect: eq.sect,
-      prompt: eq.q,
-      opts: shuffledOpts,
-      ans: eq.ans,
-    ));
+  final eng = kEngQuestions.where((q) => q.variant == engVariant).toList()..shuffle(rng);
+  for (var i = 0; i < eng.take(25).length; i++) {
+    final eq = eng[i];
+    final opts = List<String>.from(eq.opts)..shuffle(rng);
+    qs.add(_LocalQ(id: 'en_$i', tp: 'en', sect: eq.sect,
+        prompt: eq.q, opts: opts, ans: eq.ans));
   }
-
-  return questions;
+  return qs;
 }
 
-// ── LocalTestScreen ──────────────────────────────────────────────────────────
+// ── Screen ────────────────────────────────────────────────────────────────────
 class LocalTestScreen extends StatefulWidget {
   final StudentSession session;
-  final MonitoringPack? preloadedPack; // package_screen dan oldindan yuklangan
-
-  const LocalTestScreen({
-    super.key,
-    required this.session,
-    this.preloadedPack,
-  });
-
+  final MonitoringPack? preloadedPack;
+  const LocalTestScreen({super.key, required this.session, this.preloadedPack});
   @override
   State<LocalTestScreen> createState() => _LocalTestScreenState();
 }
@@ -161,72 +99,60 @@ class _LocalTestScreenState extends State<LocalTestScreen>
   Timer? _autoAdv;
   late int _timerSecs;
   Timer? _timerTimer;
+  bool _showSectionTransition = false;
+  String _transitionLabel = '';
+  Color _transitionColor = const Color(0xFFf59e0b);
 
-  late final AnimationController _fadeCtrl;
-  // ignore: unused_field
-  late final Animation<double> _fadeAnim;
+  // ── Dots scroll controller ──
+  final ScrollController _dotsCtrl = ScrollController();
 
   String get _engVariant {
-    const map = {1: 'A', 2: 'B', 3: 'C', 4: 'D'};
-    return map[widget.session.grade] ?? 'A';
+    const m = {1: 'A', 2: 'B', 3: 'C', 4: 'D'};
+    return m[widget.session.grade] ?? 'A';
   }
 
   _LocalQ get _q => _questions[_current];
   int get _total => _questions.length;
   bool get _isLast => _current == _total - 1;
 
+  int get _voEnd => _questions.indexWhere((q) => q.tp == 'en');
+
+  String get _sectionLabel {
+    if (_voEnd == -1 || _current < _voEnd) return "Lug'at";
+    return 'Ingliz tili';
+  }
+
+  Color get _sectionColor {
+    if (_voEnd == -1 || _current < _voEnd) return const Color(0xFFf59e0b);
+    return const Color(0xFF0284c7);
+  }
+
   String get _timerDisplay {
     final m = (_timerSecs ~/ 60).toString().padLeft(2, '0');
     final s = (_timerSecs % 60).toString().padLeft(2, '0');
     return '$m:$s';
   }
-
   bool get _timerHot => _timerSecs < 120;
-
-  String get _sectionLabel {
-    final voEnd = _questions.indexWhere((q) => q.tp == 'en');
-    if (voEnd == -1 || _current < voEnd) return "Lug'at";
-    return 'Ingliz tili';
-  }
-
-  Color get _sectionColor {
-    final voEnd = _questions.indexWhere((q) => q.tp == 'en');
-    if (voEnd == -1 || _current < voEnd) return const Color(0xFFf59e0b);
-    return const Color(0xFF0284c7);
-  }
 
   @override
   void initState() {
     super.initState();
-    // Preloaded pack bor bo'lsa undan, yo'q bo'lsa bundled fallbackdan
     if (widget.preloadedPack != null) {
-      _questions = buildQuestionsFromPack(
-        widget.preloadedPack!,
-        grade: widget.session.grade,
-      );
+      _questions = buildQuestionsFromPack(widget.preloadedPack!,
+          grade: widget.session.grade);
     } else {
-      _questions = buildLocalQuestions(
-        grade: widget.session.grade,
-        engVariant: _engVariant,
-        mathVariant: widget.session.variant,
-      );
+      _questions = buildLocalQuestions(grade: widget.session.grade,
+          engVariant: _engVariant, mathVariant: widget.session.variant);
     }
-
-    // 108 questions → ~1.5 min each = ~2.7 hours, but cap at 90 min
     _timerSecs = 90 * 60;
     _startTimer();
-
-    _fadeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 200));
-    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
-    _fadeCtrl.forward();
   }
 
   @override
   void dispose() {
     _timerTimer?.cancel();
     _autoAdv?.cancel();
-    _fadeCtrl.dispose();
+    _dotsCtrl.dispose();
     super.dispose();
   }
 
@@ -235,21 +161,30 @@ class _LocalTestScreenState extends State<LocalTestScreen>
     _timerTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() {
-        if (_timerSecs > 0) {
-          _timerSecs--;
-        } else {
-          _timerTimer?.cancel();
-          _finish();
-        }
+        if (_timerSecs > 0) _timerSecs--;
+        else { _timerTimer?.cancel(); _finish(); }
       });
+    });
+  }
+
+  // ── Auto-scroll dots to current position ──
+  void _scrollDots() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_dotsCtrl.hasClients) return;
+      final targetOffset = (_current * 34.0) - 100;
+      _dotsCtrl.animateTo(
+        targetOffset.clamp(0.0, _dotsCtrl.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
     });
   }
 
   void _navigate(int idx) {
     if (idx < 0 || idx >= _total) return;
     _autoAdv?.cancel();
-    _fadeCtrl.forward(from: 0);
     setState(() => _current = idx);
+    _scrollDots();
   }
 
   void _answer(String choice) {
@@ -258,16 +193,40 @@ class _LocalTestScreenState extends State<LocalTestScreen>
     _autoAdv?.cancel();
     _autoAdv = Timer(const Duration(milliseconds: 720), () {
       if (!mounted) return;
-      if (_isLast) _finish();
-      else _navigate(_current + 1);
+      if (_isLast) {
+        _finish();
+        return;
+      }
+      final next = _current + 1;
+      // Bo'lim o'tish: Vocab → Ingliz
+      if (_voEnd != -1 && _current == _voEnd - 1 && next == _voEnd) {
+        _showTransition("Ingliz tiliga o'tilmoqda", const Color(0xFF0284c7),
+            then: () => _navigate(next));
+        return;
+      }
+      _navigate(next);
     });
   }
 
+  // ── Section transition overlay ──
+  void _showTransition(String label, Color color, {required VoidCallback then}) {
+    setState(() {
+      _showSectionTransition = true;
+      _transitionLabel = label;
+      _transitionColor = color;
+    });
+    Future.delayed(const Duration(milliseconds: 1800), () {
+      if (!mounted) return;
+      setState(() => _showSectionTransition = false);
+      then();
+    });
+  }
+
+  // ── Finish & submit ──
   void _finish() {
     _timerTimer?.cancel();
     _autoAdv?.cancel();
 
-    // Count results
     int vCor = 0, vTot = 0, eCor = 0, eTot = 0, mCor = 0, mTot = 0;
     for (var i = 0; i < _questions.length; i++) {
       final q = _questions[i];
@@ -276,54 +235,71 @@ class _LocalTestScreenState extends State<LocalTestScreen>
       else if (q.tp == 'en') { eTot++; if (ok) eCor++; }
       else { mTot++; if (ok) mCor++; }
     }
-
-    // Navigate to celebration screen (new page)
     final tot = vTot + eTot + mTot;
     final cor = vCor + eCor + mCor;
     final pct = tot > 0 ? (cor * 100 ~/ tot) : 0;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CelebrationScreen(
-          pct: pct,
-          vocabCor: vCor, vocabTot: vTot,
-          engCor: eCor, engTot: eTot,
-          mathCor: mCor, mathTot: mTot,
-          studentName: widget.session.studentName,
-          onContinue: () {
-            // Could navigate to a result/PDF screen here
-            Navigator.popUntil(context, (r) => r.isFirst);
-          },
-          onRetry: () {
-            Navigator.pushReplacement(context,
-                MaterialPageRoute(builder: (_) => LocalTestScreen(
-                  session: widget.session,
-                  preloadedPack: widget.preloadedPack,
-                )));
-          },
+
+    // Backend ga yuborish (fire & forget)
+    _submitResult(pct: pct, vCor: vCor, vTot: vTot, eCor: eCor,
+        eTot: eTot, mCor: mCor, mTot: mTot);
+
+    if (!mounted) return;
+    Navigator.pushReplacement(context,
+      MaterialPageRoute(builder: (ctx) => CelebrationScreen(
+        pct: pct,
+        vocabCor: vCor, vocabTot: vTot,
+        engCor: eCor, engTot: eTot,
+        mathCor: mCor, mathTot: mTot,
+        studentName: widget.session.studentName,
+        // CelebrationScreen o'z kontekstini ishlatadi
+        onContinue: null,
+        onRetry: () => Navigator.pushReplacement(
+          ctx,
+          MaterialPageRoute(builder: (_) => LocalTestScreen(
+            session: widget.session,
+            preloadedPack: widget.preloadedPack,
+          )),
         ),
-      ),
+      )),
     );
   }
 
+  Future<void> _submitResult({required int pct, required int vCor,
+      required int vTot, required int eCor, required int eTot,
+      required int mCor, required int mTot}) async {
+    try {
+      await http.post(
+        Uri.parse('https://api.alochi.org/api/v1/monitoring/html/submit/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name':    widget.session.studentName,
+          'grade':   widget.session.grade,
+          'variant': _engVariant,
+          'pct':     pct,
+          'vocab':   {'cor': vCor, 'tot': vTot},
+          'english': {'cor': eCor, 'tot': eTot},
+          'math':    {'cor': mCor, 'tot': mTot},
+        }),
+      ).timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // Yuborilmasa ham test davom etadi
+    }
+  }
+
   Future<bool> _onWillPop() async {
-    final ok = await showDialog<bool>(
-      context: context,
+    final ok = await showDialog<bool>(context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("Testni to'xtatish?",
             style: TextStyle(fontWeight: FontWeight.w800)),
-        content: const Text("Jarayondan chiqsangiz javoblar saqlanmaydi."),
+        content: const Text("Chiqsangiz natijalar saqlanmaydi."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false),
               child: const Text('Davom etish')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.err,
-                minimumSize: const Size(90, 40)),
-            child: const Text("Chiqish"),
-          ),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.err, minimumSize: const Size(90, 40)),
+              child: const Text("Chiqish")),
         ],
       ),
     );
@@ -345,22 +321,27 @@ class _LocalTestScreenState extends State<LocalTestScreen>
       },
       child: Scaffold(
         backgroundColor: AppColors.bg,
-        body: CallbackShortcuts(
-          bindings: {
-            const SingleActivator(LogicalKeyboardKey.keyA): () => _answer(_q.opts.isNotEmpty ? _q.opts[0] : ''),
-            const SingleActivator(LogicalKeyboardKey.keyB): () => _answer(_q.opts.length > 1 ? _q.opts[1] : ''),
-            const SingleActivator(LogicalKeyboardKey.keyC): () => _answer(_q.opts.length > 2 ? _q.opts[2] : ''),
-            const SingleActivator(LogicalKeyboardKey.keyD): () => _answer(_q.opts.length > 3 ? _q.opts[3] : ''),
-            const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _navigate(_current - 1),
-            const SingleActivator(LogicalKeyboardKey.arrowRight): () => _navigate(_current + 1),
-          },
-          child: Focus(
-            autofocus: true,
-            child: Column(children: [
-              // ── Progress bar (4px) ──
-              SizedBox(
-                height: 4,
-                child: Stack(children: [
+        body: Stack(children: [
+          CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.keyA):
+                  () => _answer(_q.opts.isNotEmpty ? _q.opts[0] : ''),
+              const SingleActivator(LogicalKeyboardKey.keyB):
+                  () => _answer(_q.opts.length > 1 ? _q.opts[1] : ''),
+              const SingleActivator(LogicalKeyboardKey.keyC):
+                  () => _answer(_q.opts.length > 2 ? _q.opts[2] : ''),
+              const SingleActivator(LogicalKeyboardKey.keyD):
+                  () => _answer(_q.opts.length > 3 ? _q.opts[3] : ''),
+              const SingleActivator(LogicalKeyboardKey.arrowLeft):
+                  () => _navigate(_current - 1),
+              const SingleActivator(LogicalKeyboardKey.arrowRight):
+                  () => _navigate(_current + 1),
+            },
+            child: Focus(
+              autofocus: true,
+              child: Column(children: [
+                // Progress bar
+                SizedBox(height: 4, child: Stack(children: [
                   Container(width: double.infinity, height: 4, color: AppColors.border),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 400),
@@ -369,458 +350,503 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                     height: 4,
                     decoration: BoxDecoration(
                       color: progress == 1 ? AppColors.ok : sc,
-                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(3)),
-                    ),
+                      borderRadius: const BorderRadius.horizontal(
+                          right: Radius.circular(3))),
                   ),
-                ]),
-              ),
+                ])),
 
-              // ── Header ──
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .04),
-                      blurRadius: 6, offset: const Offset(0, 2))],
-                ),
-                child: Row(children: [
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(widget.session.studentName,
-                        style: const TextStyle(fontSize: 14,
-                            fontWeight: FontWeight.w700, color: AppColors.ink1)),
-                    const SizedBox(height: 2),
-                    Text(_sectionLabel,
-                        style: TextStyle(fontSize: 11, color: sc, fontWeight: FontWeight.w600)),
-                  ])),
-                  // Section pill
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: sc.withValues(alpha: .1),
-                      borderRadius: BorderRadius.circular(20),
+                // Header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(color: AppColors.surface,
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .04),
+                        blurRadius: 6, offset: const Offset(0, 2))]),
+                  child: Row(children: [
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(widget.session.studentName,
+                          style: const TextStyle(fontSize: 13,
+                              fontWeight: FontWeight.w700, color: AppColors.ink1)),
+                      Text(_sectionLabel,
+                          style: TextStyle(fontSize: 11, color: sc,
+                              fontWeight: FontWeight.w600)),
+                    ])),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: sc.withValues(alpha: .1),
+                          borderRadius: BorderRadius.circular(20)),
+                      child: Text(_sectionLabel,
+                          style: TextStyle(fontSize: 11,
+                              fontWeight: FontWeight.w700, color: sc)),
                     ),
-                    child: Text(_sectionLabel,
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: sc)),
-                  ),
-                  const SizedBox(width: 14),
-                  // Timer
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: _timerHot ? const Color(0xFFFEF2F2) : const Color(0xFFFFF7ED),
-                      border: Border.all(
-                          color: _timerHot ? const Color(0xFFFCA5A5) : const Color(0xFFFED7AA),
-                          width: 1.5),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Text(_timerDisplay,
-                          style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 20, fontWeight: FontWeight.w700,
-                            color: _timerHot ? const Color(0xFFDC2626) : const Color(0xFF7C2D12),
-                          )),
-                      Text('qoldi', style: TextStyle(
-                          fontSize: 9, fontWeight: FontWeight.w700,
-                          color: _timerHot ? const Color(0xFFDC2626) : AppColors.brand)),
-                    ]),
-                  ),
-                ]),
-              ),
-
-              // ── Body ──
-              Expanded(child: Center(child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Expanded(child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      // Question dots
-                      SizedBox(height: 42, child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _total,
-                        separatorBuilder: (_, __) => const SizedBox(width: 4),
-                        itemBuilder: (_, i) {
-                          final isAns = _answers.containsKey(i);
-                          final isCur = i == _current;
-                          final dotColor = isCur ? sc
-                              : isAns ? const Color(0xFF86EFAC)
-                              : const Color(0xFFD4D4D8);
-                          return GestureDetector(
-                            onTap: () => _navigate(i),
-                            child: SizedBox(width: 30, child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  width: isCur ? 30 : 26,
-                                  height: isCur ? 30 : 26,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isCur ? sc
-                                        : isAns ? const Color(0xFFF0FDF4)
-                                        : AppColors.surface,
-                                    border: Border.all(color: dotColor, width: 1.5),
-                                  ),
-                                  child: Center(child: Text(
-                                    (i + 1).toString().padLeft(2, '0'),
-                                    style: TextStyle(
-                                      fontSize: isCur ? 10 : 9,
-                                      fontWeight: FontWeight.w700,
-                                      fontFamily: 'monospace',
-                                      color: isCur ? Colors.white
-                                          : isAns ? const Color(0xFF16A34A)
-                                          : const Color(0xFFA1A1AA),
-                                    ),
-                                  )),
-                                ),
-                                const SizedBox(height: 3),
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 250),
-                                  height: 3,
-                                  width: isCur ? 18 : 0,
-                                  decoration: BoxDecoration(
-                                    color: sc,
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                              ],
-                            )),
-                          );
-                        },
-                      )),
-                      const SizedBox(height: 14),
-
-                      // Question card
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 140),
-                        child: _QuestionCard(
-                          key: ValueKey(_current),
-                          q: _q,
-                          sectionColor: sc,
-                          number: _current + 1,
-                          total: _total,
-                          selectedAns: _answers[_current],
-                          onAnswer: _answer,
-                        ),
+                    const SizedBox(width: 12),
+                    // Timer
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _timerHot
+                            ? const Color(0xFFFEF2F2)
+                            : const Color(0xFFFFF7ED),
+                        border: Border.all(
+                            color: _timerHot
+                                ? const Color(0xFFFCA5A5)
+                                : const Color(0xFFFED7AA),
+                            width: 1.5),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ]),
-                  )),
-
-                  // ── Nav bar ──
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      border: Border(top: BorderSide(color: AppColors.border)),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Text(_timerDisplay,
+                            style: TextStyle(
+                                fontFamily: 'monospace', fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: _timerHot
+                                    ? const Color(0xFFDC2626)
+                                    : const Color(0xFF7C2D12))),
+                        Text('qoldi',
+                            style: TextStyle(
+                                fontSize: 9, fontWeight: FontWeight.w700,
+                                color: _timerHot
+                                    ? const Color(0xFFDC2626)
+                                    : AppColors.brand)),
+                      ]),
                     ),
-                    child: Row(children: [
-                      AnimatedOpacity(
-                        opacity: _current == 0 ? 0.0 : 1.0,
-                        duration: const Duration(milliseconds: 200),
-                        child: SizedBox(width: 110, height: 44,
-                          child: OutlinedButton.icon(
-                            onPressed: _current == 0 ? null : () => _navigate(_current - 1),
-                            icon: const Icon(Icons.arrow_back_rounded, size: 15),
-                            label: const Text('Oldingi',
-                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.ink2,
-                              side: const BorderSide(color: AppColors.border),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ]),
+                ),
+
+                // Body
+                Expanded(child: Center(child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Column(children: [
+                    Expanded(child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+                      child: Column(children: [
+                        // ── Dots (scrollable, auto-centers) ──
+                        SizedBox(
+                          height: 44,
+                          child: ListView.separated(
+                            controller: _dotsCtrl,
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: _total,
+                            separatorBuilder: (_, __) => const SizedBox(width: 4),
+                            itemBuilder: (_, i) {
+                              final isAns = _answers.containsKey(i);
+                              final isCur = i == _current;
+                              // Section separator
+                              final isFirstEng = _voEnd != -1 && i == _voEnd;
+                              return Row(mainAxisSize: MainAxisSize.min, children: [
+                                if (isFirstEng) Container(
+                                  width: 2, height: 28, margin: const EdgeInsets.only(right: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0284c7).withValues(alpha: .4),
+                                    borderRadius: BorderRadius.circular(1),
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _navigate(i),
+                                  child: _DotItem(
+                                    number: i + 1,
+                                    isCurrent: isCur,
+                                    isAnswered: isAns,
+                                    color: isCur
+                                        ? (i < (_voEnd == -1 ? _total : _voEnd)
+                                            ? const Color(0xFFf59e0b)
+                                            : const Color(0xFF0284c7))
+                                        : isAns
+                                            ? const Color(0xFF16A34A)
+                                            : AppColors.ink3,
+                                  ),
+                                ),
+                              ]);
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Question card
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 120),
+                          child: _QuestionCard(
+                            key: ValueKey(_current),
+                            q: _q,
+                            sectionColor: sc,
+                            number: _current + 1,
+                            total: _total,
+                            selectedAns: _answers[_current],
+                            onAnswer: _answer,
+                          ),
+                        ),
+                      ]),
+                    )),
+
+                    // Nav bar
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        border: Border(top: BorderSide(color: AppColors.border))),
+                      child: Row(children: [
+                        AnimatedOpacity(
+                          opacity: _current == 0 ? 0 : 1,
+                          duration: const Duration(milliseconds: 200),
+                          child: SizedBox(width: 100, height: 42,
+                            child: OutlinedButton.icon(
+                              onPressed: _current == 0
+                                  ? null : () => _navigate(_current - 1),
+                              icon: const Icon(Icons.arrow_back_rounded, size: 14),
+                              label: const Text('Oldingi',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.ink2,
+                                side: const BorderSide(color: AppColors.border),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10)),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        Text('${_answers.length} / $_total',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800,
-                                color: AppColors.ink1)),
-                        const Text('javoblandi',
-                            style: TextStyle(fontSize: 11, color: AppColors.ink3)),
-                      ])),
-                      SizedBox(width: 110, height: 44,
-                        child: _isLast
-                            ? ElevatedButton.icon(
-                                onPressed: _finish,
-                                icon: const Icon(Icons.check_rounded, size: 15),
-                                label: const Text('Tugatish',
-                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.ok,
-                                  foregroundColor: Colors.white, elevation: 0,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          Text('${_answers.length} / $_total',
+                              style: const TextStyle(fontSize: 15,
+                                  fontWeight: FontWeight.w800, color: AppColors.ink1)),
+                          const Text('javoblandi',
+                              style: TextStyle(fontSize: 10, color: AppColors.ink3)),
+                        ])),
+                        SizedBox(width: 100, height: 42,
+                          child: _isLast
+                              ? ElevatedButton.icon(
+                                  onPressed: _finish,
+                                  icon: const Icon(Icons.check_rounded, size: 14),
+                                  label: const Text('Tugatish',
+                                      style: TextStyle(fontSize: 12,
+                                          fontWeight: FontWeight.w700)),
+                                  style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.ok,
+                                      foregroundColor: Colors.white, elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10))),
+                                )
+                              : ElevatedButton.icon(
+                                  onPressed: () => _navigate(_current + 1),
+                                  icon: const Text('Keyingi',
+                                      style: TextStyle(fontSize: 12,
+                                          fontWeight: FontWeight.w700)),
+                                  label: const Icon(Icons.arrow_forward_rounded, size: 14),
+                                  style: ElevatedButton.styleFrom(
+                                      backgroundColor: sc,
+                                      foregroundColor: Colors.white, elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10))),
                                 ),
-                              )
-                            : ElevatedButton.icon(
-                                onPressed: () => _navigate(_current + 1),
-                                icon: const Text('Keyingi',
-                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                                label: const Icon(Icons.arrow_forward_rounded, size: 15),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: sc,
-                                  foregroundColor: Colors.white, elevation: 0,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                ),
-                              ),
+                        ),
+                      ]),
+                    ),
+                  ]),
+                ))),
+              ]),
+            ),
+          ),
+
+          // ── Section transition overlay ──
+          if (_showSectionTransition)
+            AnimatedOpacity(
+              opacity: _showSectionTransition ? 1 : 0,
+              duration: const Duration(milliseconds: 300),
+              child: Container(
+                color: Colors.black.withValues(alpha: .7),
+                child: Center(child: Column(
+                  mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 24),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: _transitionColor.withValues(alpha: .3)),
+                    ),
+                    child: Column(children: [
+                      Container(
+                        width: 56, height: 56,
+                        decoration: BoxDecoration(
+                          color: _transitionColor.withValues(alpha: .1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.check_circle_rounded,
+                            color: _transitionColor, size: 30),
                       ),
+                      const SizedBox(height: 16),
+                      Text(_transitionLabel,
+                          style: TextStyle(fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: _transitionColor)),
                     ]),
                   ),
-                ]),
-              ))),
-            ]),
-          ),
-        ),
+                ])),
+              ),
+            ),
+        ]),
       ),
     );
   }
 }
 
-// ── Question card ────────────────────────────────────────────────────────────
+// ── Dot item widget ───────────────────────────────────────────────────────────
+class _DotItem extends StatelessWidget {
+  final int number;
+  final bool isCurrent, isAnswered;
+  final Color color;
+  const _DotItem({required this.number, required this.isCurrent,
+    required this.isAnswered, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final size = isCurrent ? 32.0 : 28.0;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: size, height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isCurrent
+              ? color
+              : isAnswered
+                  ? color.withValues(alpha: .12)
+                  : AppColors.surface,
+          border: Border.all(color: color, width: isCurrent ? 0 : 1.5),
+        ),
+        child: Center(child: Text(
+          number.toString().padLeft(2, '0'),
+          style: TextStyle(
+            fontSize: isCurrent ? 10 : 9,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'monospace',
+            color: isCurrent
+                ? Colors.white
+                : isAnswered
+                    ? color
+                    : AppColors.ink3,
+          ),
+        )),
+      ),
+      const SizedBox(height: 2),
+      AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 2.5, width: isCurrent ? 16 : 0,
+        decoration: BoxDecoration(
+            color: color, borderRadius: BorderRadius.circular(2)),
+      ),
+    ]);
+  }
+}
+
+// ── Question card ─────────────────────────────────────────────────────────────
 class _QuestionCard extends StatelessWidget {
   final _LocalQ q;
   final Color sectionColor;
   final int number, total;
   final String? selectedAns;
   final void Function(String) onAnswer;
-
-  const _QuestionCard({
-    super.key,
-    required this.q,
-    required this.sectionColor,
-    required this.number,
-    required this.total,
-    required this.selectedAns,
-    required this.onAnswer,
-  });
+  const _QuestionCard({super.key, required this.q, required this.sectionColor,
+    required this.number, required this.total,
+    required this.selectedAns, required this.onAnswer});
 
   @override
   Widget build(BuildContext context) {
     final sc = sectionColor;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // Card
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Container(
-        width: double.infinity,
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .05),
-              blurRadius: 10, offset: const Offset(0, 3))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .04),
+              blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Stack(children: [
-          Positioned(left: 0, top: 0, bottom: 0,
-            child: Container(width: 4,
-              decoration: BoxDecoration(
-                color: sc,
-                borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
-              ),
-            ),
-          ),
+          Positioned(left: 0, top: 0, bottom: 0, child: Container(width: 4,
+            decoration: BoxDecoration(color: sc,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                bottomLeft: Radius.circular(16))))),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 18, 16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: sc, borderRadius: BorderRadius.circular(20),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(color: sc,
+                      borderRadius: BorderRadius.circular(20)),
                   child: Text('$number / $total',
                       style: const TextStyle(color: Colors.white,
-                          fontWeight: FontWeight.w700, fontSize: 11)),
+                          fontWeight: FontWeight.w700, fontSize: 10)),
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.bg, borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Text(q.tp == 'vo' ? "Lug'at" : q.tp == 'en' ? 'Ingliz' : 'Matematika',
-                      style: const TextStyle(fontSize: 11, color: AppColors.ink2,
-                          fontWeight: FontWeight.w600)),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: AppColors.bg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.border)),
+                  child: Text(q.tp == 'vo' ? "Lug'at" : 'Ingliz',
+                      style: const TextStyle(fontSize: 10,
+                          color: AppColors.ink2, fontWeight: FontWeight.w600)),
                 ),
               ]),
               const SizedBox(height: 14),
 
-              // Vocab: show image
-              if (q.hasImage) ...[  
-              ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 240),
-              child: q.imgUrl != null
-                    ? Image.network(
-                          q.imgUrl!,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const Icon(
-                        Icons.image_not_supported_outlined,
-                    size: 64, color: Color(0xFFD4D4D8),
-                            ),
-                          )
-                        : Image.memory(q.imgBytes!, fit: BoxFit.contain),
+              // ── FIX 1: Rasm MARKAZDA ──
+              if (q.hasImage) ...[
+                Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 260, maxWidth: 440),
+                      child: q.imgUrl != null
+                          ? Image.network(q.imgUrl!,
+                              fit: BoxFit.contain,
+                              loadingBuilder: (_, child, progress) =>
+                                progress == null ? child :
+                                SizedBox(height: 120,
+                                  child: Center(child: CircularProgressIndicator(
+                                    value: progress.expectedTotalBytes != null
+                                        ? progress.cumulativeBytesLoaded /
+                                          progress.expectedTotalBytes!
+                                        : null,
+                                    color: sc))),
+                              errorBuilder: (_, __, ___) =>
+                                const SizedBox(height: 80, child: Center(
+                                  child: Icon(Icons.broken_image_outlined,
+                                      size: 48, color: Color(0xFFD4D4D8)))))
+                          : Image.memory(q.imgBytes!, fit: BoxFit.contain),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text("Bu nima?",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
-                        color: AppColors.ink1)),
+                const Center(child: Text('Bu nima?',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700,
+                        color: AppColors.ink1))),
               ] else if (q.prompt.isNotEmpty) ...[
                 Text(q.prompt, style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w700,
-                    color: AppColors.ink1, height: 1.4)),
+                    fontSize: 16, fontWeight: FontWeight.w700,
+                    color: AppColors.ink1, height: 1.45)),
               ],
             ]),
           ),
         ]),
       ),
-      const SizedBox(height: 10),
-
-      // Options
+      const SizedBox(height: 8),
       ...List.generate(q.opts.length, (i) {
         final opt = q.opts[i];
-        final label = ['A', 'B', 'C', 'D'][i < 4 ? i : 0];
+        final label = 'ABCD'[i < 4 ? i : 0];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: _LocalOptionRow(
-            label: label,
-            text: opt,
-            selected: selectedAns == opt,
-            accentColor: sc,
-            onTap: () => onAnswer(opt),
-          ),
+          padding: const EdgeInsets.only(bottom: 7),
+          child: _OptionRow(label: label, text: opt,
+              selected: selectedAns == opt, accentColor: sc,
+              onTap: () => onAnswer(opt)),
         );
       }),
     ]);
   }
 }
 
-// ── Option row with fill bar, NO correct/wrong ───────────────────────────────
-class _LocalOptionRow extends StatefulWidget {
+// ── Option row ────────────────────────────────────────────────────────────────
+class _OptionRow extends StatefulWidget {
   final String label, text;
   final bool selected;
   final Color accentColor;
   final VoidCallback onTap;
-
-  const _LocalOptionRow({
-    required this.label,
-    required this.text,
-    required this.selected,
-    required this.accentColor,
-    required this.onTap,
-  });
-
+  const _OptionRow({required this.label, required this.text,
+    required this.selected, required this.accentColor, required this.onTap});
   @override
-  State<_LocalOptionRow> createState() => _LocalOptionRowState();
+  State<_OptionRow> createState() => _OptionRowState();
 }
 
-class _LocalOptionRowState extends State<_LocalOptionRow>
+class _OptionRowState extends State<_OptionRow>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _barCtrl;
+  late final AnimationController _bar;
   late final Animation<double> _barAnim;
 
   @override
   void initState() {
     super.initState();
-    _barCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 680));
-    _barAnim = CurvedAnimation(parent: _barCtrl, curve: Curves.linear);
+    _bar = AnimationController(vsync: this,
+        duration: const Duration(milliseconds: 680));
+    _barAnim = CurvedAnimation(parent: _bar, curve: Curves.linear);
   }
 
   @override
-  void didUpdateWidget(_LocalOptionRow old) {
+  void didUpdateWidget(_OptionRow old) {
     super.didUpdateWidget(old);
-    if (widget.selected && !old.selected) {
-      _barCtrl.forward(from: 0);
-    } else if (!widget.selected && old.selected) {
-      _barCtrl.reset();
-    }
+    if (widget.selected && !old.selected) _bar.forward(from: 0);
+    else if (!widget.selected && old.selected) _bar.reset();
   }
 
   @override
-  void dispose() {
-    _barCtrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _bar.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     final ac = widget.accentColor;
     final sel = widget.selected;
-
     return GestureDetector(
       onTap: widget.onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        constraints: const BoxConstraints(minHeight: 54),
+        constraints: const BoxConstraints(minHeight: 52),
         decoration: BoxDecoration(
           color: sel ? ac.withValues(alpha: .07) : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: sel ? ac : const Color(0xFFE4E4E7),
-            width: sel ? 2 : 1.5,
-          ),
+              color: sel ? ac : const Color(0xFFE4E4E7),
+              width: sel ? 2 : 1.5),
           boxShadow: sel
-              ? [BoxShadow(color: ac.withValues(alpha: .12), blurRadius: 10,
-                  offset: const Offset(0, 3))]
-              : [BoxShadow(color: Colors.black.withValues(alpha: .03), blurRadius: 3,
-                  offset: const Offset(0, 1))],
+              ? [BoxShadow(color: ac.withValues(alpha: .1),
+                  blurRadius: 8, offset: const Offset(0, 2))]
+              : [BoxShadow(color: Colors.black.withValues(alpha: .02),
+                  blurRadius: 2, offset: const Offset(0, 1))],
         ),
         child: Stack(children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             child: Row(children: [
-              // Letter badge
               AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
-                width: 34, height: 34,
+                width: 32, height: 32,
                 decoration: BoxDecoration(
                   color: sel ? ac : const Color(0xFFF4F4F5),
                   border: Border.all(
                       color: sel ? ac : const Color(0xFFD4D4D8), width: 1.5),
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                  borderRadius: BorderRadius.circular(9)),
                 child: Center(child: Text(widget.label,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 13,
-                      color: sel ? Colors.white : const Color(0xFFA1A1AA),
-                    ))),
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12,
+                        color: sel ? Colors.white : const Color(0xFFA1A1AA)))),
               ),
-              const SizedBox(width: 14),
-              Expanded(child: Text(widget.text, style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w500,
-                  color: sel ? AppColors.ink1 : AppColors.ink1))),
-              if (sel) Container(
-                width: 22, height: 22, margin: const EdgeInsets.only(left: 10),
-                decoration: BoxDecoration(color: ac, shape: BoxShape.circle),
-                child: const Icon(Icons.check_rounded, size: 13, color: Colors.white),
-              ),
+              const SizedBox(width: 12),
+              Expanded(child: Text(widget.text,
+                  style: const TextStyle(fontSize: 14,
+                      fontWeight: FontWeight.w500, color: AppColors.ink1))),
+              if (sel) ...[
+                const SizedBox(width: 8),
+                Container(width: 20, height: 20,
+                  decoration: BoxDecoration(color: ac, shape: BoxShape.circle),
+                  child: const Icon(Icons.check_rounded,
+                      size: 12, color: Colors.white)),
+              ],
             ]),
           ),
-          // ── FILL BAR (chapdan o'ngga) ──
-          if (sel) Positioned(
-            left: 0, right: 0, bottom: 0,
-            child: AnimatedBuilder(
-              animation: _barAnim,
+          if (sel) Positioned(left: 0, right: 0, bottom: 0,
+            child: AnimatedBuilder(animation: _barAnim,
               builder: (_, __) => FractionallySizedBox(
                 widthFactor: _barAnim.value,
                 alignment: Alignment.centerLeft,
-                child: Container(
-                  height: 3.5,
-                  decoration: BoxDecoration(
-                    color: ac,
+                child: Container(height: 3,
+                  decoration: BoxDecoration(color: ac,
                     borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(12),
-                      bottomRight: Radius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+                      bottomRight: Radius.circular(12)))),
+              ))),
         ]),
       ),
     );

@@ -13,8 +13,8 @@ class CelebrationScreen extends StatefulWidget {
   final int mathCor;
   final int mathTot;
   final String studentName;
-  final VoidCallback onContinue;
-  final VoidCallback onRetry;
+  final VoidCallback? onContinue;
+  final VoidCallback? onRetry;
 
   const CelebrationScreen({
     super.key,
@@ -230,7 +230,13 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: widget.onContinue,
+                        onPressed: () {
+                          if (widget.onContinue != null) {
+                            widget.onContinue!();
+                          } else {
+                            Navigator.of(context).popUntil((r) => r.isFirst);
+                          }
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: ac,
                           foregroundColor: Colors.white,
@@ -257,7 +263,7 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                       width: double.infinity,
                       height: 44,
                       child: OutlinedButton(
-                        onPressed: widget.onRetry,
+                        onPressed: widget.onRetry ?? () => Navigator.of(context).popUntil((r) => r.isFirst),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFF334155)),
                           foregroundColor: const Color(0xFF94a3b8),

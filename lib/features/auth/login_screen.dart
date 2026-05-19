@@ -25,6 +25,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   bool _autoLogging = true;
   bool _showGuest  = false; // oddiy kirish paneli
   int  _guestGrade = 1;
+  String? _guestPinError;
+  final _pinCtrl = TextEditingController();
   String? _error;
 
   late final AnimationController _anim;
@@ -47,6 +49,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _userCtrl.dispose();
     _passCtrl.dispose();
     _nameCtrl.dispose();
+    _pinCtrl.dispose();
     super.dispose();
   }
 
@@ -254,6 +257,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   // Oddiy kirish — faqat ism va sinf
   void _guestLogin() {
     if (!_guestKey.currentState!.validate()) return;
+    // PIN tekshirish
+    const guestPin = '1234'; // TODO: settings dan olish
+    if (_pinCtrl.text.trim() != guestPin) {
+      setState(() => _guestPinError = 'PIN noto\'g\'ri');
+      return;
+    }
+    setState(() => _guestPinError = null);
     final name  = _nameCtrl.text.trim();
     final grade = _guestGrade;
     // Local guest session — server kerak emas
@@ -460,6 +470,38 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: Color(0xFF16A34A), width: 2)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            labelStyle: const TextStyle(fontSize: 12, color: AppColors.ink2),
+          ),
+        ),
+        const SizedBox(height: 10),
+        // PIN kod
+        TextFormField(
+          controller: _pinCtrl,
+          keyboardType: TextInputType.number,
+          obscureText: true,
+          maxLength: 4,
+          textInputAction: TextInputAction.next,
+          validator: (v) => v == null || v.trim().isEmpty ? 'PIN kiriting' : null,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
+              letterSpacing: 8, color: AppColors.ink1),
+          decoration: InputDecoration(
+            labelText: 'Kirish kodi (PIN)',
+            counterText: '',
+            errorText: _guestPinError,
+            prefixIcon: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Icon(Icons.lock_outline_rounded, size: 16, color: AppColors.ink3)),
+            prefixIconConstraints: const BoxConstraints(minWidth: 40),
+            filled: true, fillColor: AppColors.surface,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.border)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.border)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFF16A34A), width: 2)),
+            errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFDC2626))),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             labelStyle: const TextStyle(fontSize: 12, color: AppColors.ink2),
           ),

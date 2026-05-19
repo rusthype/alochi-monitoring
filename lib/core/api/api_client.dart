@@ -63,8 +63,11 @@ class MonitoringApi {
 
   Future<bool> ping() async {
     try {
-      final data = await _get('/ping/') as Map<String, dynamic>;
-      return data['status'] == 'ok';
+      // /ping/ yo'q — pack/version/ bilan tekshiramiz
+      final resp = await http.get(
+        Uri.parse('${_base.replaceAll('/api/v1', '')}/api/v1/monitoring/pack/version/'),
+      ).timeout(const Duration(seconds: 5));
+      return resp.statusCode < 500;
     } catch (_) {
       return false;
     }
