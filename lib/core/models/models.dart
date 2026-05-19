@@ -66,6 +66,8 @@ class Question {
   final String prompt;
   final List<String> options;
   final String? image;
+  // Optional per-option images (same length as options, null = text only)
+  final List<String?> optionImages;
 
   const Question({
     required this.id,
@@ -74,15 +76,19 @@ class Question {
     required this.prompt,
     required this.options,
     this.image,
+    this.optionImages = const [],
   });
 
   factory Question.fromJson(Map<String, dynamic> j) => Question(
         id:       j['id'],
         subject:  j['subject'],
         position: j['position'],
-        prompt:   j['prompt'],
-        options:  List<String>.from(j['options']),
-        image:    j['image'],
+        prompt:       j['prompt'],
+        options:      List<String>.from(j['options'] ?? []),
+        image:        _fixUrl(j['image'] as String?),
+        optionImages: j['option_images'] != null
+            ? List<String?>.from(j['option_images'])
+            : const [],
       );
 
   bool get isMath => subject == 'math';
@@ -118,4 +124,46 @@ class TestResult {
         'answers':    answers,
         'device_id':  deviceId,
       };
+}
+
+
+class WrongAnswer {
+  final int position;
+  final String subject;
+  final String prompt;
+  final String studentAnswer;
+  final String correctAnswer;
+  final String studentText;
+  final String correctText;
+  final String? image;
+
+  const WrongAnswer({
+    required this.position,
+    required this.subject,
+    required this.prompt,
+    required this.studentAnswer,
+    required this.correctAnswer,
+    required this.studentText,
+    required this.correctText,
+    this.image,
+  });
+
+  factory WrongAnswer.fromJson(Map<String, dynamic> j) => WrongAnswer(
+    position:      j['position'] as int,
+    subject:       j['subject'] as String,
+    prompt:        j['prompt'] as String,
+    studentAnswer: j['student_answer'] as String,
+    correctAnswer: j['correct_answer'] as String,
+    studentText:   j['student_text'] as String,
+    correctText:   j['correct_text'] as String,
+    image:         _fixUrl(j['image'] as String?),
+  );
+}
+
+/// Image URL'ni absolute'ga o'giradi
+String? _fixUrl(String? url) {
+  if (url == null || url.isEmpty) return null;
+  if (url.startsWith('http')) return url;
+  if (url.startsWith('//')) return 'https:$url';
+  return 'https://api.alochi.org' + url;
 }

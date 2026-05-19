@@ -1,0 +1,42 @@
+# Winget manifest template
+# GitHub Release chiqganda Actions konsolida to'liq manifest chiqadi
+# uni microsoft/winget-pkgs ga PR qiling
+
+PackageIdentifier: uz.alochi.Monitoring
+PackageVersion: VERSION_PLACEHOLDER
+PackageName: Alochi Monitoring
+Publisher: Alochi Education
+PublisherUrl: https://alochi.org
+PublisherSupportUrl: https://alochi.org
+ShortDescription: Maktab monitoring test tizimi
+Description: >
+  Alochi Monitoring — maktab o'quvchilari uchun
+  lug'at, ingliz tili va matematika monitoring testlari.
+  Offline rejimda ham ishlaydi.
+Tags:
+  - education
+  - monitoring
+  - school
+  - uzbekistan
+Moniker: alochi-monitoring
+PackageLocale: uz-UZ
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
+---
+PackageIdentifier: uz.alochi.Monitoring
+PackageVersion: VERSION_PLACEHOLDER
+Platform:
+  - Windows.Desktop
+MinimumOSVersion: 10.0.17763.0
+InstallerType: zip
+NestedInstallerType: portable
+NestedInstallerFiles:
+  - RelativeFilePath: alochi_monitoring.exe
+    PortableCommandAlias: alochi-monitoring
+Installers:
+  - Architecture: x64
+    InstallerUrl: URL_PLACEHOLDER
+    InstallerSha256: SHA256_PLACEHOLDER
+    InstallerLocale: uz-UZ
+ManifestType: installer
+ManifestVersion: 1.6.0

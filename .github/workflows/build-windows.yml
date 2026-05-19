@@ -1,4 +1,4 @@
-name: Build Windows .exe
+name: Build & Release Windows
 
 on:
   push:
@@ -7,15 +7,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
           channel: stable
@@ -27,24 +25,59 @@ jobs:
       - name: Build Windows
         run: flutter build windows --release
 
-      - name: Create installer zip
+      - name: Package ZIP with VC++ DLLs
         shell: pwsh
         run: |
           $src = "build\windows\x64\runner\Release"
-          $out = "alochi-monitoring-windows.zip"
-          Compress-Archive -Path "$src\*" -DestinationPath $out
-          echo "ZIP created: $out"
+          $sys = "$env:SystemRoot\System32"
+          foreach ($dll in @("msvcp140.dll","vcruntime140.dll","vcruntime140_1.dll")) {
+            $p = Join-Path $sys $dll
+            if (Test-Path $p) { Copy-Item $p $src; Write-Host "+ $dll" }
+          }
+          $tag = "${{ github.ref_name }}"
+          $ver = if ($tag -match '^v') { $tag } else { "dev" }
+          $zip = "alochi-monitoring-$ver-windows.zip"
+          Compress-Archive -Path "$src\*" -DestinationPath $zip -Force
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          "ZIP=$zip" >> $env:GITHUB_ENV
+          "SHA256=$hash" >> $env:GITHUB_ENV
+          "VER=$ver"  >> $env:GITHUB_ENV
+          Write-Host "✅ $zip"
+          Write-Host "SHA256: $hash"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: alochi-monitoring-windows
-          path: alochi-monitoring-windows.zip
+          path: ${{ env.ZIP }}
           retention-days: 30
 
-      - name: Release (on tag)
+      - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: alochi-monitoring-windows.zip
+          files: ${{ env.ZIP }}
           generate_release_notes: true
+          body: |
+            ## Alochi Monitoring ${{ env.VER }}
+
+            ### O'rnatish:
+            ```powershell
+            winget install uz.alochi.Monitoring
+            ```
+
+            **SHA256:** `${{ env.SHA256 }}`
+
+      - name: Generate winget manifest
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $ver = "${{ env.VER }}".TrimStart('v')
+          $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.ZIP }}"
+          $sha = "${{ env.SHA256 }}"
+          Write-Host "=== Winget manifest ==="
+          Write-Host "Version:  $ver"
+          Write-Host "URL:      $url"
+          Write-Host "SHA256:   $sha"
+          Write-Host ""
+          Write-Host "PR URL: https://github.com/microsoft/winget-pkgs"
