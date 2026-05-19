@@ -30,7 +30,6 @@ dependencies:
   open_filex: ^4.3.4
 
   # Windows MSIX installer
-  msix: ^3.16.7
 
 dev_dependencies:
   flutter_test:
@@ -41,20 +40,3 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
-
-msix_config:
-  display_name: Alochi Monitoring
-  publisher_display_name: Alochi Education
-  identity_name: uz.alochi.monitoring
-  publisher: CN=Alochi Education
-  msix_version: 1.0.0.0
-  logo_path: assets/logo.png
-  start_menu_icon_path: assets/logo.png
-  tile_icon_path: assets/logo.png
-  icons_background_color: "#F97316"
-  architecture: x64
-  capabilities: internetClient
-  languages: uz, ru, en
-  sign_msix: false
-  output_path: build/windows/
-  output_name: alochi-monitoring
