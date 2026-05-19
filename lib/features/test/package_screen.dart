@@ -7,6 +7,8 @@ import '../../shared/theme/app_theme.dart';
 import 'confirm_screen.dart';
 import 'local_test_screen.dart';
 import '../../core/services/pack_cache.dart';
+import '../../core/services/connectivity_service.dart';
+import '../home/update_banner.dart';
 
 class PackageScreen extends StatefulWidget {
   final StudentSession session;
@@ -28,6 +30,7 @@ class _PackageScreenState extends State<PackageScreen> with SingleTickerProvider
     super.initState();
     _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
+    ConnectivityService.instance.startMonitoring();
     _load();
   }
   @override void dispose() { _anim.dispose(); super.dispose(); }
@@ -103,7 +106,9 @@ class _PackageScreenState extends State<PackageScreen> with SingleTickerProvider
   Widget build(BuildContext context) {
     final s = widget.session;
     return Scaffold(
-      body: SingleChildScrollView(
+      body: Column(children: [
+        const UpdateBanner(),
+        Expanded(child: SingleChildScrollView(
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 540),
@@ -197,8 +202,8 @@ class _PackageScreenState extends State<PackageScreen> with SingleTickerProvider
               ),
             ),
           ),
-        ),
-      ),
+        )),
+      ]),
     );
   }
 

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
 import '../../core/models/models.dart';
+import '../../core/services/connectivity_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../test/local_test_screen.dart';
 import '../test/package_screen.dart';
@@ -62,8 +63,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       final username = creds['username']!;
       final password = creds['password']!;
 
-      final online = await api.ping().timeout(
-        const Duration(seconds: 4), onTimeout: () => false);
+      final online = await ConnectivityService.check(
+          timeout: const Duration(seconds: 5));
 
       if (online) {
         try {
