@@ -11,20 +11,14 @@ on:
 
 jobs:
   build:
-    runs-permissions:
-  contents: write
-
-on: windows-latest
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-versipermissions:
-  contents: write
-
-on: '3.x'
+          flutter-version: '3.x'
           channel: stable
           cache: true
 
@@ -50,8 +44,8 @@ on: '3.x'
           $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
           "ZIP=$zip" >> $env:GITHUB_ENV
           "SHA256=$hash" >> $env:GITHUB_ENV
-          "VER=$ver"  >> $env:GITHUB_ENV
-          Write-Host "✅ $zip"
+          "VER=$ver" >> $env:GITHUB_ENV
+          Write-Host "DONE: $zip"
           Write-Host "SHA256: $hash"
 
       - name: Upload artifact
@@ -70,26 +64,22 @@ on: '3.x'
           body: |
             ## Alochi Monitoring ${{ env.VER }}
 
-            ### O'rnatish:
+            ### O'rnatish (PowerShell Admin):
             ```powershell
             winget install uz.alochi.Monitoring
             ```
 
             **SHA256:** `${{ env.SHA256 }}`
 
-      - name: Generate winget manifest
+      - name: Print winget info
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         run: |
           $ver = "${{ env.VER }}".TrimStart('v')
           $url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ env.ZIP }}"
-          $sha = "${{ env.SHA256 }}"
-          Write-Host "=== Winget manifest ==="
-          Write-Host "Versipermissions:
-  contents: write
-
-on:  $ver"
-          Write-Host "URL:      $url"
-          Write-Host "SHA256:   $sha"
-          Write-Host ""
-          Write-Host "PR URL: https://github.com/microsoft/winget-pkgs"
+          Write-Host "==========================="
+          Write-Host "Version: $ver"
+          Write-Host "URL:     $url"
+          Write-Host "SHA256:  ${{ env.SHA256 }}"
+          Write-Host "==========================="
+          Write-Host "Winget PR: https://github.com/microsoft/winget-pkgs"
