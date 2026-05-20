@@ -1,6 +1,6 @@
 name: alochi_monitoring
 description: Alochi Monitoring — Maktab test tizimi
-version: 1.0.0+1
+version: 1.0.11+11
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -21,7 +21,6 @@ dependencies:
   shared_preferences: ^2.3.0
   package_info_plus: ^8.0.0
   cached_network_image: ^3.4.0
-  audioplayers: ^6.1.0
   url_launcher: ^6.3.0
 
   # UI
@@ -46,7 +45,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
-    - assets/sounds/
 
 msix_config:
   display_name: Alochi Monitoring
