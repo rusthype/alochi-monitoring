@@ -63,7 +63,7 @@ class MonitoringPdf {
                           fontWeight: pw.FontWeight.bold)),
                   pw.SizedBox(height: 2),
                   pw.Text('$grade-sinf · Variant $variant · $date',
-                      style: const pw.TextStyle(color: PdfColors.white70, fontSize: 11)),
+                      style: const pw.TextStyle(color: PdfColors.white, fontSize: 11)),
                 ]),
                 // Big score
                 pw.Container(
@@ -182,7 +182,7 @@ class MonitoringPdf {
         pw.SizedBox(height: 6),
         pw.Text('$pct%', style: pw.TextStyle(
             color: PdfColors.white, fontSize: 22, fontWeight: pw.FontWeight.bold)),
-        pw.Text('$cor / $tot', style: const pw.TextStyle(color: PdfColors.white70, fontSize: 9)),
+        pw.Text('$cor / $tot', style: const pw.TextStyle(color: PdfColors.white, fontSize: 9)),
       ]),
     ));
   }
