@@ -111,7 +111,7 @@ class _PackageScreenState extends State<PackageScreen> with SingleTickerProvider
         const UpdateBanner(),
         Expanded(child: SingleChildScrollView(
           child: Center(
-          child: ConstrainedBox(
+            child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 540),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
@@ -218,9 +218,10 @@ class _PackageScreenState extends State<PackageScreen> with SingleTickerProvider
               ),
             ),
           ),
-        )),
-      ]),
-    );
+        ),
+      )),
+    ]),
+  );
   }
 
   List<Widget> _buildSkeletons() => List.generate(2, (i) => Padding(
