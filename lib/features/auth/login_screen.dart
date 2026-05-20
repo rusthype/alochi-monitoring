@@ -1,5 +1,6 @@
 // lib/features/auth/login_screen.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
@@ -7,6 +8,7 @@ import '../../core/models/models.dart';
 import '../../core/services/connectivity_service.dart';
 import '../../core/services/pack_cache.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/widgets/particle_canvas.dart';
 import '../test/local_test_screen.dart';
 import '../test/package_screen.dart';
 
@@ -171,36 +173,46 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeNotifier>().isDark;
+    final bgColor = isDark ? AppColors.darkBg : AppColors.lightBg;
+
     // Auto-login urinayotganda spinner
     if (_autoLogging) {
-      return const Scaffold(
-        backgroundColor: AppColors.bg,
-        body: Center(child: Column(
-          mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(width: 36, height: 36,
-            child: CircularProgressIndicator(
-              strokeWidth: 3, color: AppColors.brand)),
-          SizedBox(height: 16),
-          Text('Kirish...', style: TextStyle(
-            fontSize: 14, color: AppColors.ink3, fontWeight: FontWeight.w500)),
-        ])),
+      return Scaffold(
+        backgroundColor: bgColor,
+        body: ParticleCanvas(
+          darkMode: isDark,
+          child: Center(child: Column(
+            mainAxisSize: MainAxisSize.min, children: [
+            const SizedBox(width: 36, height: 36,
+              child: CircularProgressIndicator(
+                strokeWidth: 3, color: AppColors.brand)),
+            const SizedBox(height: 16),
+            Text('Kirish...', style: TextStyle(
+              fontSize: 14, color: isDark ? AppColors.darkInk3 : AppColors.lightInk3,
+              fontWeight: FontWeight.w500)),
+          ])),
+        ),
       );
     }
 
     final w = MediaQuery.of(context).size.width;
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: CallbackShortcuts(
-        bindings: {const SingleActivator(LogicalKeyboardKey.enter): _login},
-        child: Focus(
-          autofocus: true,
-          child: w > 700 ? _wideLayout() : _narrowLayout(),
+      backgroundColor: bgColor,
+      body: ParticleCanvas(
+        darkMode: isDark,
+        child: CallbackShortcuts(
+          bindings: {const SingleActivator(LogicalKeyboardKey.enter): _login},
+          child: Focus(
+            autofocus: true,
+            child: w > 700 ? _wideLayout(isDark) : _narrowLayout(isDark),
+          ),
         ),
       ),
     );
   }
 
-  Widget _wideLayout() => Row(children: [
+  Widget _wideLayout([bool isDark = false]) => Row(children: [
     Expanded(flex: 4, child: Container(
       decoration: const BoxDecoration(gradient: LinearGradient(
         begin: Alignment.topLeft, end: Alignment.bottomRight,
@@ -239,7 +251,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     Expanded(flex: 5, child: _formPanel()),
   ]);
 
-  Widget _narrowLayout() => _formPanel();
+  Widget _narrowLayout([bool isDark = false]) => _formPanel();
 
   Widget _circle(double size, double opacity) => Container(
     width: size, height: size,
