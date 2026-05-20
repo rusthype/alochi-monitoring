@@ -1,0 +1,63 @@
+workflows:
+  windows-release:
+    name: Windows Release Build
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+    instance_type: windows_x2
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: 'v*'
+          include: true
+    scripts:
+      - name: Flutter pub get
+        script: flutter pub get
+
+      - name: Build Windows release
+        script: flutter build windows --release
+
+      - name: Copy VC++ runtime DLLs
+        script: |
+          $src = "build\windows\x64\runner\Release"
+          $sys = "$env:SystemRoot\System32"
+          foreach ($dll in @("msvcp140.dll","vcruntime140.dll","vcruntime140_1.dll")) {
+            $p = Join-Path $sys $dll
+            if (Test-Path $p) { Copy-Item $p $src; Write-Host "+ $dll" }
+          }
+        shell: powershell
+
+      - name: Build Inno Setup installer
+        script: |
+          choco install innosetup -y --no-progress
+          $tag = "$env:CM_TAG"
+          $ver = if ($tag -match '^v\d') { $tag.TrimStart('v') } else { "1.0.0" }
+          (Get-Content setup.iss) -replace '#define AppVersion ".*"', "#define AppVersion `"$ver`"" | Set-Content setup.iss
+          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" setup.iss
+          $exe = (Get-Item "Output\*.exe").FullName
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          Write-Host "EXE: $exe"
+          Write-Host "SHA256: $hash"
+        shell: powershell
+
+    artifacts:
+      - Output\*.exe
+
+    publishing:
+      github_releases:
+        tag_name: $CM_TAG
+        release_name: "Alochi Monitoring $CM_TAG"
+        description: |
+          ## Alochi Monitoring $CM_TAG
+
+          ### O'rnatish (ikki marta klik):
+          **AlochiMonitoring-$CM_TAG-Setup.exe** ni yuklab oching
+
+          yoki winget orqali:
+          ```powershell
+          winget install uz.alochi.Monitoring
+          ```
+        artifacts:
+          - Output\*.exe

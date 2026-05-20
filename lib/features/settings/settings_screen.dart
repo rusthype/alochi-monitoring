@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/pack_cache.dart';
 import '../../core/services/connectivity_service.dart';
@@ -105,6 +106,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       body: ListView(padding: const EdgeInsets.all(20), children: [
+
+        // ── Ko'rinish (Dark Mode) ──────────────────────────────────────────
+        _SectionHeader(title: "Ko'rinish", icon: Icons.dark_mode_rounded),
+        _Card(child: Consumer<ThemeNotifier>(
+          builder: (ctx, theme, _) => Row(children: [
+            const Icon(Icons.dark_mode_outlined, size: 18, color: AppColors.ink3),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Tungi rejim (Dark mode)',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+            Switch(
+              value: theme.isDark,
+              activeColor: AppColors.brand,
+              onChanged: (v) async {
+                theme.setMode(v ? ThemeMode.dark : ThemeMode.light);
+                final p = await SharedPreferences.getInstance();
+                await p.setBool('dark_mode', v);
+              },
+            ),
+          ]),
+        )),
+        const SizedBox(height: 8),
 
         // ── Server ──────────────────────────────────────────────────────
         _SectionHeader(title: 'Server', icon: Icons.dns_rounded),

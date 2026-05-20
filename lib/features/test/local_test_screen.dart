@@ -135,6 +135,14 @@ class _LocalTestScreenState extends State<LocalTestScreen>
   bool get _isLast => _current == _total - 1;
 
   int get _voEnd => _questions.indexWhere((q) => q.tp == 'en');
+  int get _enEnd => _questions.indexWhere((q) => q.tp == 'ma');
+  int get _voCount => _voEnd == -1 ? _total : _voEnd;
+  int get _enCount => _voEnd == -1 ? 0 : (_enEnd == -1 ? _total - _voEnd : _enEnd - _voEnd);
+  int get _maCount => _enEnd == -1 ? 0 : _total - _enEnd;
+
+  int get _voAnswered => _answers.keys.where((i) => i < _voCount).length;
+  int get _enAnswered => _voEnd == -1 ? 0 : _answers.keys.where((i) => i >= _voCount && (_enEnd == -1 || i < _enEnd)).length;
+  int get _maAnswered => _enEnd == -1 ? 0 : _answers.keys.where((i) => i >= _enEnd).length;
 
   String get _sectionLabel {
     if (_voEnd == -1 || _current < _voEnd) return "Lug'at";
@@ -226,7 +234,27 @@ class _LocalTestScreenState extends State<LocalTestScreen>
 
   void _answer(String choice) {
     if (_answers.containsKey(_current)) return;
-    setState(() => _answers[_current] = choice);
+    final correct = choice == _q.ans;
+    setState(() {
+      _answers[_current] = choice;
+      if (correct) {
+        _streak++;
+        if (_streak > _maxStreak) _maxStreak = _streak;
+        // Streak xabarlari
+        String? msg;
+        if (_streak == 3)  msg = '🔥 3 ketma-ket!';
+        if (_streak == 5)  msg = '⚡ 5 ta! Zo\'r!';
+        if (_streak == 10) msg = '🏆 10 ta streak!';
+        if (msg != null) {
+          _streakMsg = msg;
+                _streakTimer = Timer(const Duration(seconds: 2), () {
+            if (mounted) setState(() => _streakMsg = null);
+          });
+        }
+      } else {
+        _streak = 0;
+      }
+    });
     // Ovoz: neytral tap (to'g'ri/noto'g'ri bildirmaydi)
     // SoundService.instance.tap(); // TODO: tap sound
 
@@ -388,20 +416,36 @@ class _LocalTestScreenState extends State<LocalTestScreen>
             child: Focus(
               autofocus: true,
               child: Column(children: [
-                // Progress bar
-                SizedBox(height: 4, child: Stack(children: [
-                  Container(width: double.infinity, height: 4, color: AppColors.border),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeInOut,
-                    width: MediaQuery.sizeOf(context).width * progress,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: sc, // neytral: section rangi, to'g'ri/noto'g'ri yo'q
-                      borderRadius: const BorderRadius.horizontal(
-                          right: Radius.circular(3))),
-                  ),
-                ])),
+                // ── 3 Section progress bars ──
+                Container(
+                  color: AppColors.surface,
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  child: Row(children: [
+                    // Lug'at
+                    _SectionBar(
+                      label: "Lug'at",
+                      color: AppColors.vocab,
+                      progress: _voCount > 0 ? _voAnswered / _voCount : 0,
+                      active: _voEnd == -1 || _current < _voEnd,
+                    ),
+                    const SizedBox(width: 8),
+                    // Ingliz
+                    _SectionBar(
+                      label: 'Ingliz',
+                      color: AppColors.eng,
+                      progress: _enCount > 0 ? _enAnswered / _enCount : 0,
+                      active: _voEnd != -1 && (_enEnd == -1 || _current >= _voEnd && _current < _enEnd),
+                    ),
+                    const SizedBox(width: 8),
+                    // Matematika
+                    _SectionBar(
+                      label: 'Matematika',
+                      color: AppColors.math,
+                      progress: _maCount > 0 ? _maAnswered / _maCount : 0,
+                      active: _enEnd != -1 && _current >= _enEnd,
+                    ),
+                  ]),
+                ),
 
                 // Header
                 Container(
@@ -427,7 +471,26 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                           style: TextStyle(fontSize: 11,
                               fontWeight: FontWeight.w700, color: sc)),
                     ),
-
+                    // Streak indicator
+                    if (_streak >= 3) ...[  
+                      const SizedBox(width: 8),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF7ED),
+                          border: Border.all(color: const Color(0xFFFED7AA), width: 1.5),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Text('🔥', style: TextStyle(fontSize: 12)),
+                          const SizedBox(width: 4),
+                          Text('$_streak', style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w800,
+                              color: Color(0xFFEA580C))),
+                        ]),
+                      ),
+                    ],
                     const SizedBox(width: 12),
                     // Timer
                     AnimatedContainer(
@@ -598,7 +661,27 @@ class _LocalTestScreenState extends State<LocalTestScreen>
             ),
           ),
 
-
+          // ── Streak popup ──
+          if (_streakMsg != null)
+            Positioned(
+              top: 80, left: 0, right: 0,
+              child: Center(child: AnimatedOpacity(
+                opacity: _streakMsg != null ? 1 : 0,
+                duration: const Duration(milliseconds: 300),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEA580C),
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [BoxShadow(color: const Color(0xFFEA580C).withValues(alpha: .4),
+                        blurRadius: 16, offset: const Offset(0, 4))],
+                  ),
+                  child: Text(_streakMsg!,
+                      style: const TextStyle(color: Colors.white,
+                          fontWeight: FontWeight.w900, fontSize: 15)),
+                ),
+              )),
+            ),
 
           // ── Section transition overlay ──
           if (_showSectionTransition)
@@ -899,6 +982,72 @@ class _OptionRowState extends State<_OptionRow>
               ))),
         ]),
       ),
+    );
+  }
+}
+
+// ── Section Progress Bar widget ─────────────────────────────────────────────────────────────────────────
+class _SectionBar extends StatelessWidget {
+  final String label;
+  final Color  color;
+  final double progress; // 0.0 – 1.0
+  final bool   active;   // hozirgi section
+
+  const _SectionBar({
+    required this.label,
+    required this.color,
+    required this.progress,
+    required this.active,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final done = progress >= 1.0;
+    return Expanded(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Label
+        AnimatedOpacity(
+          opacity: active || done ? 1.0 : 0.35,
+          duration: const Duration(milliseconds: 300),
+          child: Row(children: [
+            Text(label,
+              style: TextStyle(
+                fontSize: 9, fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+                color: done ? AppColors.ok : color,
+              )),
+            if (done) ...[const SizedBox(width: 3),
+              Icon(Icons.check_circle_rounded, size: 9, color: AppColors.ok)],
+          ]),
+        ),
+        const SizedBox(height: 3),
+        // Bar track
+        AnimatedOpacity(
+          opacity: active || done ? 1.0 : 0.4,
+          duration: const Duration(milliseconds: 300),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: Stack(children: [
+              Container(height: 5,
+                color: color.withValues(alpha: .12)),
+              AnimatedFractionallySizedBox(
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeInOut,
+                widthFactor: progress.clamp(0.0, 1.0),
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: done ? AppColors.ok : color,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 8),
+      ]),
     );
   }
 }
