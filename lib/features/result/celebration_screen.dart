@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
-import 'monitoring_pdf.dart';
 
 class CelebrationScreen extends StatefulWidget {
   final int pct;
@@ -14,9 +13,6 @@ class CelebrationScreen extends StatefulWidget {
   final int mathCor;
   final int mathTot;
   final String studentName;
-  final String variant;
-  final int grade;
-  final String timeTaken;
   final VoidCallback? onContinue;
   final VoidCallback? onRetry;
 
@@ -30,9 +26,6 @@ class CelebrationScreen extends StatefulWidget {
     required this.mathCor,
     required this.mathTot,
     required this.studentName,
-    this.variant = '',
-    this.grade   = 1,
-    this.timeTaken = '',
     required this.onContinue,
     required this.onRetry,
   });
@@ -48,33 +41,6 @@ class _CelebrationScreenState extends State<CelebrationScreen>
   late final AnimationController _emojiCtrl;
   late final List<_Particle> _particles;
   final _rng = math.Random();
-  bool _pdfLoading = false;
-  int  _streakCount = 0; // ketma-ket to'g'ri javoblar (local_test_screen dan o'tkaziladi)
-
-  Future<void> _downloadPdf() async {
-    setState(() => _pdfLoading = true);
-    try {
-      await MonitoringPdf.shareOrSave(
-        context:     context,
-        studentName: widget.studentName,
-        grade:       widget.grade,
-        variant:     widget.variant,
-        pct:         widget.pct,
-        vocabCor:    widget.vocabCor, vocabTot: widget.vocabTot,
-        engCor:      widget.engCor,   engTot:   widget.engTot,
-        mathCor:     widget.mathCor,  mathTot:  widget.mathTot,
-        timeTaken:   widget.timeTaken,
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PDF xatoligi: $e'),
-              backgroundColor: const Color(0xFFDC2626)));
-      }
-    } finally {
-      if (mounted) setState(() => _pdfLoading = false);
-    }
-  }
 
   String get _msg => widget.pct >= 90
       ? 'BARAKALLA!'
@@ -316,42 +282,13 @@ class _CelebrationScreenState extends State<CelebrationScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    // PDF yuklab olish
-                    SizedBox(
-                      width: double.infinity,
-                      height: 44,
-                      child: OutlinedButton(
-                        onPressed: _pdfLoading ? null : _downloadPdf,
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFF7c3aed)),
-                          foregroundColor: const Color(0xFF7c3aed),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: _pdfLoading
-                          ? const SizedBox(width: 18, height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2,
-                                  color: Color(0xFF7c3aed)))
-                          : const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.picture_as_pdf_rounded, size: 16),
-                                SizedBox(width: 6),
-                                Text('PDF yuklab olish',
-                                    style: TextStyle(
-                                        fontSize: 13, fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                      ),
-                    ),
+                  ],
                 ),
               ),
             ),
           ),
         ),
-        ],
-      ]),              // Stack
+      ]),
     );
   }
 }

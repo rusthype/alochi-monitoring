@@ -7,9 +7,6 @@ import '../../shared/theme/app_theme.dart';
 import 'confirm_screen.dart';
 import 'local_test_screen.dart';
 import '../../core/services/pack_cache.dart';
-import '../../core/services/connectivity_service.dart';
-import '../home/update_banner.dart';
-import '../settings/settings_screen.dart';
 
 class PackageScreen extends StatefulWidget {
   final StudentSession session;
@@ -31,7 +28,6 @@ class _PackageScreenState extends State<PackageScreen> with SingleTickerProvider
     super.initState();
     _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
     _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
-    ConnectivityService.instance.startMonitoring();
     _load();
   }
   @override void dispose() { _anim.dispose(); super.dispose(); }
@@ -107,11 +103,9 @@ class _PackageScreenState extends State<PackageScreen> with SingleTickerProvider
   Widget build(BuildContext context) {
     final s = widget.session;
     return Scaffold(
-      body: Column(children: [
-        const UpdateBanner(),
-        Expanded(child: SingleChildScrollView(
-          child: Center(
-            child: ConstrainedBox(
+      body: SingleChildScrollView(
+        child: Center(
+          child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 540),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
@@ -157,21 +151,6 @@ class _PackageScreenState extends State<PackageScreen> with SingleTickerProvider
                         ],
                       ]),
                     ])),
-                    // Settings button
-                    const SizedBox(width: 4),
-                    Tooltip(
-                      message: 'Sozlamalar',
-                      child: IconButton(
-                        onPressed: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const SettingsScreen())),
-                        icon: const Icon(Icons.settings_outlined, size: 20),
-                        style: IconButton.styleFrom(
-                          foregroundColor: AppColors.ink2,
-                          backgroundColor: AppColors.bg,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                    ),
                     // Logout button
                     const SizedBox(width: 8),
                     Tooltip(
@@ -219,9 +198,8 @@ class _PackageScreenState extends State<PackageScreen> with SingleTickerProvider
             ),
           ),
         ),
-      )),
-    ]),
-  );
+      ),
+    );
   }
 
   List<Widget> _buildSkeletons() => List.generate(2, (i) => Padding(
