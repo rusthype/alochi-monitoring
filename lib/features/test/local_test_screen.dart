@@ -6,8 +6,10 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/data/local_test_data.dart';
+import '../../core/services/sound_service.dart';
 import '../../core/models/models.dart';
 import '../../core/services/pack_cache.dart';
 import '../../shared/theme/app_theme.dart';
@@ -121,6 +123,10 @@ class _LocalTestScreenState extends State<LocalTestScreen>
   bool _showSectionTransition = false;
   String _transitionLabel = '';
   Color _transitionColor = const Color(0xFFf59e0b);
+  int _streak = 0;     // ketma-ket to'g'ri javoblar
+  int _maxStreak = 0;  // maksimal streak
+  String? _streakMsg;  // streak xabari ko'rinishi
+  Timer? _streakTimer;
 
   // ── Dots scroll controller ──
   final ScrollController _dotsCtrl = ScrollController();
@@ -175,6 +181,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
   void dispose() {
     _timerTimer?.cancel();
     _autoAdv?.cancel();
+    _streakTimer?.cancel();
+    _player.dispose();
     _dotsCtrl.dispose();
     super.dispose();
   }
@@ -184,8 +192,21 @@ class _LocalTestScreenState extends State<LocalTestScreen>
     _timerTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() {
-        if (_timerSecs > 0) _timerSecs--;
-        else { _timerTimer?.cancel(); _finish(); }
+        if (_timerSecs > 0) {
+          _timerSecs--;
+          // 5 daqiqa qolganda ogohlantirish
+          if (_timerSecs == 300 && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('⏰ 5 daqiqa qoldi!'),
+                backgroundColor: Color(0xFFf59e0b),
+                duration: Duration(seconds: 4),
+              ));
+          }
+        } else {
+          _timerTimer?.cancel();
+          _finish();
+        }
       });
     });
   }
@@ -212,7 +233,35 @@ class _LocalTestScreenState extends State<LocalTestScreen>
 
   void _answer(String choice) {
     if (_answers.containsKey(_current)) return;
-    setState(() => _answers[_current] = choice);
+    final correct = choice == _q.ans;
+    setState(() {
+      _answers[_current] = choice;
+      if (correct) {
+        _streak++;
+        if (_streak > _maxStreak) _maxStreak = _streak;
+        // Streak xabarlari
+        String? msg;
+        if (_streak == 3)  msg = '🔥 3 ketma-ket!';
+        if (_streak == 5)  msg = '⚡ 5 ta! Zo\'r!';
+        if (_streak == 10) msg = '🏆 10 ta streak!';
+        if (msg != null) {
+          _streakMsg = msg;
+          _streakTimer?.cancel();
+          _streakTimer = Timer(const Duration(seconds: 2), () {
+            if (mounted) setState(() => _streakMsg = null);
+          });
+        }
+      } else {
+        _streak = 0;
+      }
+    });
+    // Ovoz effekti
+    if (correct) {
+      SoundService.instance.correct();
+    } else {
+      SoundService.instance.wrong();
+    }
+
     _autoAdv?.cancel();
     _autoAdv = Timer(const Duration(milliseconds: 720), () {
       if (!mounted) return;
@@ -410,6 +459,26 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                           style: TextStyle(fontSize: 11,
                               fontWeight: FontWeight.w700, color: sc)),
                     ),
+                    // Streak indicator
+                    if (_streak >= 3) ...[  
+                      const SizedBox(width: 8),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF7ED),
+                          border: Border.all(color: const Color(0xFFFED7AA), width: 1.5),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Text('🔥', style: TextStyle(fontSize: 12)),
+                          const SizedBox(width: 4),
+                          Text('$_streak', style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w800,
+                              color: Color(0xFFEA580C))),
+                        ]),
+                      ),
+                    ],
                     const SizedBox(width: 12),
                     // Timer
                     AnimatedContainer(
@@ -578,6 +647,28 @@ class _LocalTestScreenState extends State<LocalTestScreen>
               ]),
             ),
           ),
+
+          // ── Streak popup ──
+          if (_streakMsg != null)
+            Positioned(
+              top: 80, left: 0, right: 0,
+              child: Center(child: AnimatedOpacity(
+                opacity: _streakMsg != null ? 1 : 0,
+                duration: const Duration(milliseconds: 300),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEA580C),
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [BoxShadow(color: const Color(0xFFEA580C).withValues(alpha: .4),
+                        blurRadius: 16, offset: const Offset(0, 4))],
+                  ),
+                  child: Text(_streakMsg!,
+                      style: const TextStyle(color: Colors.white,
+                          fontWeight: FontWeight.w900, fontSize: 15)),
+                ),
+              )),
+            ),
 
           // ── Section transition overlay ──
           if (_showSectionTransition)

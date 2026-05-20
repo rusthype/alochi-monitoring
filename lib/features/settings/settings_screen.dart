@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/pack_cache.dart';
 import '../../core/services/connectivity_service.dart';
+import '../../core/services/sound_service.dart';
 import '../../shared/theme/app_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool   _isOnline   = false;
   bool   _clearing   = false;
   bool   _pinLoading = true;
+  bool   _soundOn     = true;
 
   @override
   void initState() {
@@ -193,6 +195,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ])),
 
+        const SizedBox(height: 8),
+        _Card(child: Row(children: [
+          const Icon(Icons.volume_up_rounded, size: 18, color: AppColors.ink3),
+          const SizedBox(width: 10),
+          const Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Ovoz effektlari', style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.ink1)),
+            Text('To'g'ri/noto'g'ri javob ovozlari',
+                style: TextStyle(fontSize: 11, color: AppColors.ink3)),
+          ])),
+          Switch(
+            value: _soundOn,
+            activeColor: AppColors.brand,
+            onChanged: (v) {
+              setState(() => _soundOn = v);
+              SoundService.instance.enabled = v;
+              if (v) SoundService.instance.correct();
+            },
+          ),
+        ])),
         const SizedBox(height: 20),
         // ── Cache ───────────────────────────────────────────────────────
         _SectionHeader(title: 'Saqlangan ma\'lumotlar', icon: Icons.storage_rounded),

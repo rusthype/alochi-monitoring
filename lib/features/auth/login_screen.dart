@@ -11,7 +11,8 @@ import '../test/local_test_screen.dart';
 import '../test/package_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool initialOnline;
+  const LoginScreen({super.key, this.initialOnline = false});
   @override State<LoginScreen> createState() => _LoginScreenState();
 }
 
