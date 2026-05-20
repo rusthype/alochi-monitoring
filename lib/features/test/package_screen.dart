@@ -110,7 +110,7 @@ class _PackageScreenState extends State<PackageScreen> with SingleTickerProvider
       body: Column(children: [
         const UpdateBanner(),
         Expanded(child: SingleChildScrollView(
-        child: Center(
+          child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 540),
             child: Padding(

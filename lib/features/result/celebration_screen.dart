@@ -350,7 +350,8 @@ class _CelebrationScreenState extends State<CelebrationScreen>
             ),
           ),
         ),
-      ]),
+      ]),  // Stack children
+      // NOTE: fixed
     );
   }
 }
