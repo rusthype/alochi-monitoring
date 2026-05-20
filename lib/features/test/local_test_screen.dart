@@ -255,12 +255,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
         _streak = 0;
       }
     });
-    // Ovoz effekti
-    if (correct) {
-      SoundService.instance.correct();
-    } else {
-      SoundService.instance.wrong();
-    }
+    // Ovoz: neytral tap (to'g'ri/noto'g'ri bildirmaydi)
+    // SoundService.instance.tap(); // TODO: tap sound
 
     _autoAdv?.cancel();
     _autoAdv = Timer(const Duration(milliseconds: 720), () {
@@ -429,7 +425,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                     width: MediaQuery.sizeOf(context).width * progress,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: progress == 1 ? AppColors.ok : sc,
+                      color: sc, // neytral: section rangi, to'g'ri/noto'g'ri yo'q
                       borderRadius: const BorderRadius.horizontal(
                           right: Radius.circular(3))),
                   ),
@@ -549,12 +545,13 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                     number: i + 1,
                                     isCurrent: isCur,
                                     isAnswered: isAns,
+                                    // Neytral: javob berilganini bildiradi, to'g'ri/noto'g'rini emas
                                     color: isCur
                                         ? (i < (_voEnd == -1 ? _total : _voEnd)
                                             ? const Color(0xFFf59e0b)
                                             : const Color(0xFF0284c7))
                                         : isAns
-                                            ? const Color(0xFF16A34A)
+                                            ? const Color(0xFF71717A)  // kulrang = javob berildi
                                             : AppColors.ink3,
                                   ),
                                 ),
@@ -861,7 +858,9 @@ class _QuestionCard extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.only(bottom: 7),
           child: _OptionRow(label: label, text: opt,
-              selected: selectedAns == opt, accentColor: sc,
+              selected: selectedAns == opt,
+              // Neytral rang — to'g'ri/noto'g'ri ko'rsatmaydi
+              accentColor: const Color(0xFF71717A),
               onTap: () => onAnswer(opt)),
         );
       }),
