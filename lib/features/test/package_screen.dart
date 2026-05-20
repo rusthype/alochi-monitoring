@@ -9,6 +9,7 @@ import 'local_test_screen.dart';
 import '../../core/services/pack_cache.dart';
 import '../../core/services/connectivity_service.dart';
 import '../home/update_banner.dart';
+import '../settings/settings_screen.dart';
 
 class PackageScreen extends StatefulWidget {
   final StudentSession session;
@@ -156,6 +157,21 @@ class _PackageScreenState extends State<PackageScreen> with SingleTickerProvider
                         ],
                       ]),
                     ])),
+                    // Settings button
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: 'Sozlamalar',
+                      child: IconButton(
+                        onPressed: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                        icon: const Icon(Icons.settings_outlined, size: 20),
+                        style: IconButton.styleFrom(
+                          foregroundColor: AppColors.ink2,
+                          backgroundColor: AppColors.bg,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
                     // Logout button
                     const SizedBox(width: 8),
                     Tooltip(

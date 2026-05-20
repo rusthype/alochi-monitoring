@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/data/local_test_data.dart';
 import '../../core/models/models.dart';
 import '../../core/services/pack_cache.dart';
@@ -298,12 +299,13 @@ class _LocalTestScreenState extends State<LocalTestScreen>
       required int mCor, required int mTot}) async {
     try {
       await http.post(
-        Uri.parse('https://api.alochi.org/api/v1/monitoring/html/submit/'),
+        Uri.parse('https://api.alochi.org/api/v1/monitoring/result/'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'name':    widget.session.studentName,
           'grade':   widget.session.grade,
           'variant': _engVariant,
+          'source':  'flutter',
           'pct':     pct,
           'vocab':   {'cor': vCor, 'tot': vTot},
           'english': {'cor': eCor, 'tot': eTot},
@@ -733,21 +735,17 @@ class _QuestionCard extends StatelessWidget {
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: 260, maxWidth: 440),
                       child: q.imgUrl != null
-                          ? Image.network(q.imgUrl!,
+                          ? CachedNetworkImage(
+                              imageUrl: q.imgUrl!,
                               fit: BoxFit.contain,
-                              loadingBuilder: (_, child, progress) =>
-                                progress == null ? child :
-                                SizedBox(height: 120,
-                                  child: Center(child: CircularProgressIndicator(
-                                    value: progress.expectedTotalBytes != null
-                                        ? progress.cumulativeBytesLoaded /
-                                          progress.expectedTotalBytes!
-                                        : null,
-                                    color: sc))),
-                              errorBuilder: (_, __, ___) =>
+                              placeholder: (_, __) => SizedBox(height: 120,
+                                child: Center(child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: sc))),
+                              errorWidget: (_, __, ___) =>
                                 const SizedBox(height: 80, child: Center(
                                   child: Icon(Icons.broken_image_outlined,
-                                      size: 48, color: Color(0xFFD4D4D8)))))
+                                      size: 48, color: Color(0xFFD4D4D8)))),
+                            )
                           : Image.memory(q.imgBytes!, fit: BoxFit.contain),
                     ),
                   ),
