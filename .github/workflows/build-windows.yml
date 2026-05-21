@@ -60,7 +60,35 @@ jobs:
             Write-Host "MSIX topilmadi, ZIP bilan davom etamiz"
           }
 
-      # ── 3. SHA256 ─────────────────────────────────────────────
+
+      # ── 3. Inno Setup installer (.exe) ──────────────────────
+      - name: Build Inno Setup installer
+        shell: pwsh
+        id: inno
+        run: |
+          $v = (Get-Content pubspec.yaml | Select-String "^version:" | ForEach-Object { $_ -replace "version:\s*", "" -replace "\+.*", "" }).Trim()
+          Write-Host "Building installer for version $v"
+          choco install innosetup --no-progress -y 2>$null
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (Test-Path $iscc) {
+            New-Item -ItemType Directory -Force -Path "installer_output" | Out-Null
+            & $iscc /DMyAppVersion=$v "windows\installer.iss"
+            $exeName = "AlochiMonitoring-$v-Setup.exe"
+            if (Test-Path "installer_output\$exeName") {
+              Copy-Item "installer_output\$exeName" ".\$exeName"
+              Write-Host "Installer OK: $exeName"
+              echo "installer_name=$exeName" >> $env:GITHUB_OUTPUT
+              echo "installer_version=$v" >> $env:GITHUB_OUTPUT
+            } else {
+              Write-Host "Installer not found, continuing without .exe"
+              echo "installer_name=" >> $env:GITHUB_OUTPUT
+            }
+          } else {
+            Write-Host "Inno Setup not found, skipping"
+            echo "installer_name=" >> $env:GITHUB_OUTPUT
+          }
+
+      # ── 4. SHA256 ─────────────────────────────────────────────
       - name: Calculate SHA256
         id: hashes
         shell: pwsh
@@ -138,6 +166,7 @@ jobs:
           files: |
             alochi-monitoring-windows.zip
             alochi-monitoring.msix
+            AlochiMonitoring-*-Setup.exe
           generate_release_notes: true
 
   # ── Winget manifest submit ────────────────────────────────────
