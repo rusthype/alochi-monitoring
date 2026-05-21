@@ -78,6 +78,15 @@ class MonitoringApi {
     }
   }
 
+  Future<String?> fetchGuestPin() async {
+    try {
+      final data = await _get('/pack/version/') as Map<String, dynamic>;
+      return data['guest_pin'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<List<TestPackage>> getPackages(int grade) async {
     final data = await _get('/packages/?grade=$grade') as List;
     return data.map((j) => TestPackage.fromJson(j)).toList();

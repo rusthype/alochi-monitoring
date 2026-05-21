@@ -1,4 +1,6 @@
 // lib/features/auth/login_screen.dart
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/api/api_client.dart';
@@ -31,6 +33,128 @@ class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
   @override
   State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _Dot {
+  double x, y, vx, vy, radius;
+  Color color;
+
+  _Dot(math.Random r, Size size)
+      : x = r.nextDouble() * size.width,
+        y = r.nextDouble() * size.height,
+        vx = (r.nextDouble() - 0.5) * 0.8,
+        vy = (r.nextDouble() - 0.5) * 0.8,
+        radius = 1.5 + r.nextDouble() * 2.5,
+        color = [
+          const Color(0xFF4A90D9),
+          const Color(0xFFF97316),
+          const Color(0xFF7C3AED),
+          const Color(0xFF0D9488),
+          const Color(0xFFE11D48),
+        ][r.nextInt(5)];
+
+  void update(Size size) {
+    x += vx;
+    y += vy;
+    if (x < 0 || x > size.width) vx = -vx;
+    if (y < 0 || y > size.height) vy = -vy;
+    x = x.clamp(0, size.width);
+    y = y.clamp(0, size.height);
+  }
+}
+
+class _NetworkPainter extends CustomPainter {
+  final List<_Dot> dots;
+  const _NetworkPainter(this.dots);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final linePaint = Paint()..strokeWidth = 0.8;
+    for (var i = 0; i < dots.length; i++) {
+      for (var j = i + 1; j < dots.length; j++) {
+        final dx = dots[i].x - dots[j].x;
+        final dy = dots[i].y - dots[j].y;
+        final dist = math.sqrt(dx * dx + dy * dy);
+        if (dist < 130) {
+          linePaint.color =
+              dots[i].color.withValues(alpha: (1 - dist / 130) * 0.25);
+          canvas.drawLine(
+            Offset(dots[i].x, dots[i].y),
+            Offset(dots[j].x, dots[j].y),
+            linePaint,
+          );
+        }
+      }
+    }
+    for (final dot in dots) {
+      canvas.drawCircle(
+        Offset(dot.x, dot.y),
+        dot.radius,
+        Paint()..color = dot.color.withValues(alpha: 0.7),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_NetworkPainter oldDelegate) => true;
+}
+
+class _NetworkBg extends StatefulWidget {
+  const _NetworkBg();
+
+  @override
+  State<_NetworkBg> createState() => _NetworkBgState();
+}
+
+class _NetworkBgState extends State<_NetworkBg>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late List<_Dot> _dots;
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 16),
+    )
+      ..addListener(_tick)
+      ..repeat();
+  }
+
+  void _tick() {
+    if (!_initialized) return;
+    final size = context.size;
+    if (size == null) return;
+    for (final dot in _dots) {
+      dot.update(size);
+    }
+    setState(() {});
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      final size = MediaQuery.of(context).size;
+      final rng = math.Random();
+      _dots = List.generate(40, (_) => _Dot(rng, size));
+      _initialized = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+        painter: _NetworkPainter(_dots),
+        child: const SizedBox.expand(),
+      );
 }
 
 class _LoginScreenState extends State<LoginScreen>
@@ -229,6 +353,31 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  Future<void> _guestLogin() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final pin = await api.fetchGuestPin();
+      if (pin == null || pin.isEmpty) {
+        setState(() => _error = "Mehmon kirish mavjud emas.");
+        return;
+      }
+      final session = await api.login('guest', pin);
+      api.setToken(session.token);
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => PackageScreen(session: session)),
+      );
+    } catch (_) {
+      setState(() => _error = "Kirish muvaffaqiyatsiz.");
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Auto-login urinayotganda spinner
@@ -265,73 +414,75 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  Widget _wideLayout() => Row(children: [
-        Expanded(
-            flex: 4,
-            child: Container(
-              decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFFF97316),
-                  Color(0xFFFB923C),
-                  Color(0xFFEA580C)
-                ],
-              )),
-              child: Stack(children: [
-                Positioned(top: -60, right: -60, child: _circle(220, .08)),
-                Positioned(bottom: -80, left: -40, child: _circle(280, .07)),
-                Positioned(top: 80, left: 30, child: _circle(60, .1)),
-                Center(
-                    child: Padding(
-                  padding: const EdgeInsets.all(40),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Container(
-                      width: 88,
-                      height: 88,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black.withValues(alpha: .15),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8))
-                        ],
-                      ),
-                      child: const Center(
-                          child: Text('A',
-                              style: TextStyle(
-                                  color: AppColors.brand,
-                                  fontSize: 44,
-                                  fontWeight: FontWeight.w900))),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text('Alochi',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 6),
-                    const Text('Monitoring tizimi',
-                        style: TextStyle(color: Colors.white70, fontSize: 16)),
-                    const SizedBox(height: 32),
-                    _infoRow(Icons.keyboard, "A, B, C, D - javob tanlash"),
-                    const SizedBox(height: 10),
-                    _infoRow(
-                        Icons.arrow_forward, "Arrow tugmalar - navigatsiya"),
-                    const SizedBox(height: 10),
-                    _infoRow(
-                        Icons.wifi_off, "Offline rejim qollab-quvvatlanadi"),
-                  ]),
-                )),
-              ]),
-            )),
-        Expanded(flex: 5, child: _formPanel()),
+  Widget _wideLayout() => Stack(children: [
+        Positioned.fill(child: Container(color: const Color(0xFFF5F0E8))),
+        const Positioned.fill(child: _NetworkBg()),
+        Row(children: [
+          Expanded(flex: 4, child: _leftPanel()),
+          Expanded(flex: 5, child: _formPanel()),
+        ]),
       ]);
 
-  Widget _narrowLayout() => _formPanel();
+  Widget _narrowLayout() => Stack(children: [
+        Positioned.fill(child: Container(color: const Color(0xFFF5F0E8))),
+        const Positioned.fill(child: _NetworkBg()),
+        _formPanel(),
+      ]);
+
+  Widget _leftPanel() => Container(
+        decoration: const BoxDecoration(
+            gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF97316), Color(0xFFFB923C), Color(0xFFEA580C)],
+        )),
+        child: Stack(children: [
+          Positioned(top: -60, right: -60, child: _circle(220, .08)),
+          Positioned(bottom: -80, left: -40, child: _circle(280, .07)),
+          Positioned(top: 80, left: 30, child: _circle(60, .1)),
+          Center(
+              child: Padding(
+            padding: const EdgeInsets.all(40),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withValues(alpha: .15),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8))
+                  ],
+                ),
+                child: const Center(
+                    child: Text('A',
+                        style: TextStyle(
+                            color: AppColors.brand,
+                            fontSize: 44,
+                            fontWeight: FontWeight.w900))),
+              ),
+              const SizedBox(height: 24),
+              const Text('Alochi',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
+              const Text('Monitoring tizimi',
+                  style: TextStyle(color: Colors.white70, fontSize: 16)),
+              const SizedBox(height: 32),
+              _infoRow(Icons.keyboard, "A, B, C, D - javob tanlash"),
+              const SizedBox(height: 10),
+              _infoRow(Icons.arrow_forward, "Arrow tugmalar - navigatsiya"),
+              const SizedBox(height: 10),
+              _infoRow(Icons.wifi_off, "Offline rejim qollab-quvvatlanadi"),
+            ]),
+          )),
+        ]),
+      );
 
   Widget _circle(double size, double opacity) => Container(
         width: size,
@@ -366,6 +517,55 @@ class _LoginScreenState extends State<LoginScreen>
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
+                if (MediaQuery.of(context).size.width < 700) ...[
+                  Row(children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: .08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          )
+                        ],
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'A',
+                          style: TextStyle(
+                            color: AppColors.brand,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Alochi',
+                          style: TextStyle(
+                            color: AppColors.ink1,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Monitoring tizimi',
+                          style: TextStyle(color: AppColors.ink2, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ]),
+                  const SizedBox(height: 26),
+                ],
                 // Online/offline status
                 Container(
                   padding:
@@ -528,6 +728,17 @@ class _LoginScreenState extends State<LoginScreen>
                                               : Icons.wifi_off_rounded,
                                           size: 18),
                                     ]),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton.icon(
+                        onPressed: _loading ? null : _guestLogin,
+                        icon:
+                            const Icon(Icons.person_outline_rounded, size: 16),
+                        label: const Text("Oddiy kirish (faqat ism)"),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.ink2,
+                          textStyle: const TextStyle(fontSize: 13),
                         ),
                       ),
                       const SizedBox(height: 10),
