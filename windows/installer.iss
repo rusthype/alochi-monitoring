@@ -1,5 +1,5 @@
 ; Alochi Monitoring — Inno Setup script
-; Version va paths workflow tomonidan set qilinadi
+; Version is passed via /DMyAppVersion=x.x.x from workflow
 
 #define MyAppName "Alochi Monitoring"
 #define MyAppPublisher "Alochi Education"
@@ -7,7 +7,7 @@
 #define MyAppExeName "alochi_monitoring.exe"
 
 [Setup]
-AppId={{A1OC-H1-M0N-1TOR-1NG-2024}}
+AppId={{A1OCH1-MON1TOR1NG-2024-SETUP}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
@@ -18,10 +18,8 @@ AppUpdatesURL={#MyAppURL}/download
 DefaultDirName={autopf}\AlochiMonitoring
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-LicenseFile=
 OutputDir=installer_output
 OutputBaseFilename=AlochiMonitoring-{#MyAppVersion}-Setup
-SetupIconFile=windows\runner\resources\app_icon.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
