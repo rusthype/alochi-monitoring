@@ -8,7 +8,7 @@ void main() {
       expect(MonitoringApi.fixImageUrl('   '), isEmpty);
     });
 
-    test('normalizes relative image URLs for Image.network', () {
+    test('normalizes relative image URLs for app image widgets', () {
       expect(
         MonitoringApi.fixImageUrl('media/questions/image 1.png?size=large'),
         'https://api.alochi.org/media/questions/image%201.png?size=large',

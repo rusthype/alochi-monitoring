@@ -1,9 +1,14 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/cache/image_cache_manager.dart';
 
-/// Always use this instead of Image.network() for server images.
-/// Handles: relative URLs, SSL on Windows, loading/error states.
+/// Barcha server rasmlar uchun shu widget ishlatiladi.
+/// Bir marta yuklab, diskda saqlaydi (30 kun)
+/// Offline bo'lsa ham ko'rsatadi (cached versiya)
+/// Windows SSL muammosi yo'q
+/// Loading va error holatlari bor
 class AppNetworkImage extends StatelessWidget {
   final String? url;
   final double? height;
@@ -28,38 +33,37 @@ class AppNetworkImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final fixedUrl = MonitoringApi.fixImageUrl(url);
     if (fixedUrl.isEmpty) {
-      return errorWidget ?? const SizedBox.shrink();
+      return errorWidget ??
+          SizedBox(
+            height: height ?? 80,
+            width: width,
+          );
     }
 
-    Widget img = Image.network(
-      fixedUrl,
+    Widget img = CachedNetworkImage(
+      imageUrl: fixedUrl,
+      cacheManager: AlochiImageCacheManager(),
       height: height,
       width: width,
       fit: fit,
-      headers: const {'User-Agent': 'AlochiMonitoring/1.0'},
-      loadingBuilder: (ctx, child, progress) {
-        if (progress == null) return child;
-        return placeholder ??
-            SizedBox(
-              height: height ?? 80,
-              width: width,
-              child: Center(
-                child: CircularProgressIndicator(
-                  value: progress.expectedTotalBytes != null
-                      ? progress.cumulativeBytesLoaded /
-                          progress.expectedTotalBytes!
-                      : null,
-                  strokeWidth: 2,
-                ),
+      httpHeaders: const {'User-Agent': 'AlochiMonitoring/1.0'},
+      placeholder: (ctx, url) => SizedBox(
+        height: height ?? 80,
+        width: width,
+        child: placeholder ??
+            const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(Color(0xFFF97316)),
               ),
-            );
-      },
-      errorBuilder: (ctx, error, stack) =>
+            ),
+      ),
+      errorWidget: (ctx, url, err) =>
           errorWidget ??
           Icon(
             Icons.broken_image_outlined,
             size: 24,
-            color: Theme.of(ctx).colorScheme.error,
+            color: Colors.grey[400],
           ),
     );
 

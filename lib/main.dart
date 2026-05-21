@@ -14,7 +14,7 @@ void main() {
     WidgetsFlutterBinding.ensureInitialized();
 
     if (!kIsWeb && Platform.isWindows) {
-      HttpOverrides.global = _DevHttpOverrides();
+      HttpOverrides.global = _WindowsHttpOverrides();
     }
 
     FlutterError.onError = (details) {
@@ -60,7 +60,7 @@ class AlochiMonitoringApp extends StatelessWidget {
   }
 }
 
-class _DevHttpOverrides extends HttpOverrides {
+class _WindowsHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
     return super.createHttpClient(context)
