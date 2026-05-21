@@ -17,10 +17,45 @@ class MonitoringApi {
 
   /// Relative URL'ni absolute'ga o'giradi (rasm URL'lari uchun)
   static String fixImageUrl(String? url) {
-    if (url == null || url.isEmpty) return '';
-    if (url.startsWith('http')) return url; // allaqachon absolute
-    if (url.startsWith('//')) return 'https:$url'; // protocol-relative
-    return '$_media$url'; // /media/... → https://api.alochi.org/media/...
+    if (url == null || url.trim().isEmpty) return '';
+    final trimmed = url.trim();
+    final absolute = trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('//');
+    final fullUrl = trimmed.startsWith('//')
+        ? 'https:$trimmed'
+        : absolute
+            ? trimmed
+            : '$_media${trimmed.startsWith('/') ? trimmed : '/$trimmed'}';
+    return _normalizeImageUrl(fullUrl);
+  }
+
+  static String _normalizeImageUrl(String url) {
+    final queryIndex = url.indexOf('?');
+    final fragmentIndex = url.indexOf('#');
+    final splitIndexes = [queryIndex, fragmentIndex].where((i) => i >= 0);
+    final splitIndex = splitIndexes.isEmpty
+        ? -1
+        : splitIndexes
+            .reduce((value, element) => value < element ? value : element);
+    final prefixAndPath = splitIndex == -1 ? url : url.substring(0, splitIndex);
+    final suffix = splitIndex == -1 ? '' : url.substring(splitIndex);
+
+    final schemeIndex = prefixAndPath.indexOf('://');
+    if (schemeIndex == -1) return Uri.encodeFull(url);
+
+    final hostStart = schemeIndex + 3;
+    final pathStart = prefixAndPath.indexOf('/', hostStart);
+    if (pathStart == -1) return Uri.encodeFull(url);
+
+    final prefix = prefixAndPath.substring(0, pathStart);
+    final path = prefixAndPath.substring(pathStart);
+    final normalizedPath =
+        path.split('/').where((segment) => segment.isNotEmpty).join('/');
+
+    return Uri.encodeFull(
+      '$prefix/${normalizedPath.isEmpty ? '' : normalizedPath}$suffix',
+    );
   }
 
   static const Duration _timeout = Duration(seconds: 10);

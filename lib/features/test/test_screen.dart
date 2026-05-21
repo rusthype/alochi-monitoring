@@ -6,6 +6,7 @@ import '../../core/api/api_client.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/widgets/app_network_image.dart';
 import '../result/result_screen.dart';
 
 class TestScreen extends StatefulWidget {
@@ -978,17 +979,17 @@ class _OptionRowState extends State<_OptionRow>
                                             : AppColors.ink1)),
                                 const SizedBox(height: 6),
                               ],
-                              ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    widget.optionImage!,
-                                    height: 80,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (_, __, ___) => const Icon(
-                                        Icons.broken_image_outlined,
-                                        color: AppColors.ink3,
-                                        size: 20),
-                                  )),
+                              AppNetworkImage(
+                                url: widget.optionImage,
+                                height: 80,
+                                fit: BoxFit.contain,
+                                borderRadius: BorderRadius.circular(8),
+                                errorWidget: const Icon(
+                                  Icons.broken_image_outlined,
+                                  color: AppColors.ink3,
+                                  size: 20,
+                                ),
+                              ),
                             ])
                       : Text(widget.text,
                           style: TextStyle(
@@ -1046,34 +1047,28 @@ class _QuestionImage extends StatelessWidget {
   const _QuestionImage({required this.url});
 
   @override
-  Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 260),
-          child: Image.network(
-            url,
-            fit: BoxFit.contain,
-            loadingBuilder: (ctx, child, progress) {
-              if (progress == null) return child;
-              return Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  color: AppColors.bg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                    child: CircularProgressIndicator(
-                  value: progress.expectedTotalBytes != null
-                      ? progress.cumulativeBytesLoaded /
-                          progress.expectedTotalBytes!
-                      : null,
-                  color: AppColors.brand,
-                  strokeWidth: 2,
-                )),
-              );
-            },
-            errorBuilder: (ctx, error, _) {
-              debugPrint('IMAGE ERROR: $error | URL: $url');
+  Widget build(BuildContext context) => ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 260),
+        child: AppNetworkImage(
+          url: url,
+          fit: BoxFit.contain,
+          borderRadius: BorderRadius.circular(10),
+          placeholder: Container(
+            height: 120,
+            decoration: BoxDecoration(
+              color: AppColors.bg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(
+                color: AppColors.brand,
+                strokeWidth: 2,
+              ),
+            ),
+          ),
+          errorWidget: Builder(
+            builder: (context) {
+              debugPrint('IMAGE ERROR | URL: $url');
               return Container(
                 height: 56,
                 decoration: BoxDecoration(

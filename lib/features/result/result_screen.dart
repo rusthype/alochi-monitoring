@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/widgets/app_network_image.dart';
 import '../auth/login_screen.dart';
 import 'pdf_report.dart';
 
@@ -852,13 +853,12 @@ class _WrongAnswersSectionState extends State<_WrongAnswersSection> {
                             height: 1.3)),
                     if (imgUrl != null) ...[
                       const SizedBox(height: 8),
-                      ClipRRect(
+                      AppNetworkImage(
+                        url: imgUrl,
+                        height: 80,
+                        fit: BoxFit.contain,
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(imgUrl,
-                            height: 80,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) =>
-                                const SizedBox.shrink()),
+                        errorWidget: const SizedBox.shrink(),
                       ),
                     ],
                     const SizedBox(height: 8),
