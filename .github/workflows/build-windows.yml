@@ -75,8 +75,9 @@ jobs:
             New-Item -ItemType Directory -Force -Path "installer_output" | Out-Null
             & $iscc /DMyAppVersion=$v "windows\installer.iss"
             $exeName = "AlochiMonitoring-$v-Setup.exe"
-            if (Test-Path "installer_output\$exeName") {
-              Copy-Item "installer_output\$exeName" ".\$exeName"
+            $exePath = "windows\installer_output\$exeName"
+            if (Test-Path $exePath) {
+              Copy-Item $exePath ".\$exeName"
               Write-Host "Installer OK: $exeName"
               echo "installer_name=$exeName" >> $env:GITHUB_OUTPUT
               echo "installer_version=$v" >> $env:GITHUB_OUTPUT
