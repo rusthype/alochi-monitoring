@@ -12,16 +12,17 @@ class ApiException implements Exception {
 }
 
 class MonitoringApi {
-  static const String _base  = 'https://api.alochi.org/api/v1/monitoring';
+  static const String _base = 'https://api.alochi.org/api/v1/monitoring';
   static const String _media = 'https://api.alochi.org';
 
   /// Relative URL'ni absolute'ga o'giradi (rasm URL'lari uchun)
   static String fixImageUrl(String? url) {
     if (url == null || url.isEmpty) return '';
-    if (url.startsWith('http')) return url;           // allaqachon absolute
-    if (url.startsWith('//')) return 'https:$url';    // protocol-relative
-    return '$_media$url';                             // /media/... → https://api.alochi.org/media/...
+    if (url.startsWith('http')) return url; // allaqachon absolute
+    if (url.startsWith('//')) return 'https:$url'; // protocol-relative
+    return '$_media$url'; // /media/... → https://api.alochi.org/media/...
   }
+
   static const Duration _timeout = Duration(seconds: 10);
   String? _token;
 
@@ -33,13 +34,17 @@ class MonitoringApi {
         if (_token != null) 'Authorization': 'Bearer $_token',
       };
 
-  Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
-    final resp = await http.post(
-      Uri.parse('$_base$path'),
-      headers: _headers,
-      body: jsonEncode(body),
-    ).timeout(_timeout);
-    final data = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+  Future<Map<String, dynamic>> _post(
+      String path, Map<String, dynamic> body) async {
+    final resp = await http
+        .post(
+          Uri.parse('$_base$path'),
+          headers: _headers,
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
+    final data =
+        jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
     if (resp.statusCode >= 400) {
       final msg = data['detail'] ?? data['message'] ?? data.toString();
       throw ApiException(resp.statusCode, msg.toString());
@@ -48,16 +53,19 @@ class MonitoringApi {
   }
 
   Future<dynamic> _get(String path) async {
-    final resp = await http.get(
-      Uri.parse('$_base$path'),
-      headers: _headers,
-    ).timeout(_timeout);
+    final resp = await http
+        .get(
+          Uri.parse('$_base$path'),
+          headers: _headers,
+        )
+        .timeout(_timeout);
     if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
     return jsonDecode(utf8.decode(resp.bodyBytes));
   }
 
   Future<StudentSession> login(String username, String password) async {
-    final data = await _post('/auth/login/', {'username': username, 'password': password});
+    final data = await _post(
+        '/auth/login/', {'username': username, 'password': password});
     return StudentSession.fromJson(data);
   }
 
@@ -76,20 +84,25 @@ class MonitoringApi {
   }
 
   Future<List<Question>> getQuestions(String packageId, int variant) async {
-    final data = await _get('/packages/$packageId/questions/?variant=$variant') as Map<String, dynamic>;
-    return (data['questions'] as List).map((j) => Question.fromJson(j)).toList();
+    final data = await _get('/packages/$packageId/questions/?variant=$variant')
+        as Map<String, dynamic>;
+    return (data['questions'] as List)
+        .map((j) => Question.fromJson(j))
+        .toList();
   }
 
   /// Natijani serverga yuboradi va XP/coins ma'lumotini qaytaradi.
   /// {synced: bool, xp_earned: int, coins_earned: int, total_xp: int, level: int}
   Future<Map<String, dynamic>> submitResultFull(TestResult result) async {
     try {
-      final resp = await _post('/results/', result.toJson()) as Map<String, dynamic>;
+      final resp = await _post('/results/', result.toJson());
       // Natija saqlangandan keyin wrong answers yuklaymiz
       final detail = await _fetchResultDetail(resp['id'] as String? ?? '');
       return {'synced': true, ...resp, 'wrong_answers': detail};
     } on ApiException catch (e) {
-      if (e.statusCode == 409) return {'synced': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
+      if (e.statusCode == 409) {
+        return {'synced': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
+      }
       return {'synced': false, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
     } catch (_) {
       return {'synced': false, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};

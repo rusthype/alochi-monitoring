@@ -18,12 +18,12 @@ class StudentSession {
   });
 
   factory StudentSession.fromJson(Map<String, dynamic> j) => StudentSession(
-        token:       j['token'],
-        studentId:   j['student_id'],
+        token: j['token'],
+        studentId: j['student_id'],
         studentName: j['student_name'],
-        variant:     j['variant'],
-        grade:       j['grade'],
-        groupName:   j['group_name'],
+        variant: j['variant'],
+        grade: j['grade'],
+        groupName: j['group_name'],
       );
 }
 
@@ -47,12 +47,12 @@ class TestPackage {
   });
 
   factory TestPackage.fromJson(Map<String, dynamic> j) => TestPackage(
-        id:            j['id'],
-        title:         j['title'],
-        grade:         j['grade'],
-        mathCount:     j['math_count'],
-        engCount:      j['eng_count'],
-        variantCount:  j['variant_count'],
+        id: j['id'],
+        title: j['title'],
+        grade: j['grade'],
+        mathCount: j['math_count'],
+        engCount: j['eng_count'],
+        variantCount: j['variant_count'],
         questionCount: j['question_count'],
       );
 
@@ -80,12 +80,12 @@ class Question {
   });
 
   factory Question.fromJson(Map<String, dynamic> j) => Question(
-        id:       j['id'],
-        subject:  j['subject'],
+        id: j['id'],
+        subject: j['subject'],
         position: j['position'],
-        prompt:       j['prompt'],
-        options:      List<String>.from(j['options'] ?? []),
-        image:        _fixUrl(j['image'] as String?),
+        prompt: j['prompt'],
+        options: List<String>.from(j['options'] ?? []),
+        image: _fixUrl(j['image'] as String?),
         optionImages: j['option_images'] != null
             ? List<String?>.from(j['option_images'])
             : const [],
@@ -117,15 +117,14 @@ class TestResult {
 
   Map<String, dynamic> toJson() => {
         'package_id': packageId,
-        'variant':    variant,
+        'variant': variant,
         'math_score': mathScore,
-        'eng_score':  engScore,
-        'total_pct':  totalPct,
-        'answers':    answers,
-        'device_id':  deviceId,
+        'eng_score': engScore,
+        'total_pct': totalPct,
+        'answers': answers,
+        'device_id': deviceId,
       };
 }
-
 
 class WrongAnswer {
   final int position;
@@ -149,15 +148,15 @@ class WrongAnswer {
   });
 
   factory WrongAnswer.fromJson(Map<String, dynamic> j) => WrongAnswer(
-    position:      j['position'] as int,
-    subject:       j['subject'] as String,
-    prompt:        j['prompt'] as String,
-    studentAnswer: j['student_answer'] as String,
-    correctAnswer: j['correct_answer'] as String,
-    studentText:   j['student_text'] as String,
-    correctText:   j['correct_text'] as String,
-    image:         _fixUrl(j['image'] as String?),
-  );
+        position: j['position'] as int,
+        subject: j['subject'] as String,
+        prompt: j['prompt'] as String,
+        studentAnswer: j['student_answer'] as String,
+        correctAnswer: j['correct_answer'] as String,
+        studentText: j['student_text'] as String,
+        correctText: j['correct_text'] as String,
+        image: _fixUrl(j['image'] as String?),
+      );
 }
 
 /// Image URL'ni absolute'ga o'giradi
@@ -165,5 +164,5 @@ String? _fixUrl(String? url) {
   if (url == null || url.isEmpty) return null;
   if (url.startsWith('http')) return url;
   if (url.startsWith('//')) return 'https:$url';
-  return 'https://api.alochi.org' + url;
+  return 'https://api.alochi.org$url';
 }

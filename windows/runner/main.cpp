@@ -30,6 +30,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   if (!window.Create(L"alochi_monitoring", origin, size)) {
     return EXIT_FAILURE;
   }
+  window.Show();
   window.SetQuitOnClose(true);
 
   ::MSG msg;
