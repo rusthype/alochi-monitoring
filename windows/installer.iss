@@ -37,7 +37,7 @@ Name: "uzbek"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Desktop shortcut yaratish"; GroupDescription: "Qo'shimcha shortcutlar:"; Flags: unchecked
 
 [Files]
-Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
