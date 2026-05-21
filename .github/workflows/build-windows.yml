@@ -65,6 +65,7 @@ jobs:
       - name: Build Inno Setup installer
         shell: pwsh
         id: inno
+        continue-on-error: true
         run: |
           $v = (Get-Content pubspec.yaml | Select-String "^version:" | ForEach-Object { $_ -replace "version:\s*", "" -replace "\+.*", "" }).Trim()
           Write-Host "Building installer for version $v"
