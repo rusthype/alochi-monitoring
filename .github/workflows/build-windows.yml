@@ -211,7 +211,7 @@ jobs:
 
       - name: Submit to winget-pkgs
         if: startsWith(github.ref, 'refs/tags/')
-        uses: vedantmgoyal9/winget-releaser@latest
+        uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: Alochi.Monitoring
           release-tag: ${{ github.ref_name }}
