@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:path_provider_windows/path_provider_windows.dart';
+import 'package:shared_preferences_windows/shared_preferences_windows.dart';
 import 'core/api/api_client.dart';
 import 'core/db/offline_queue.dart';
 import 'shared/theme/app_theme.dart';
@@ -27,6 +29,10 @@ void main() async {
   FlutterError.onError = (details) {
     debugPrint('FlutterError: ${details.exception}');
   };
+
+  // Windows plugin registration — debug modeda kerak
+  PathProviderWindows.registerWith();
+  SharedPreferencesWindows.registerWith();
 
   // sqflite Windows uchun FFI init
   sqfliteFfiInit();
