@@ -75,6 +75,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _init() async {
+    try {
     // Animated progress bar
     _animBar();
 
@@ -96,16 +97,20 @@ class _SplashScreenState extends State<SplashScreen>
     setState(() { _done = true; _showBadge = true; });
     await Future.delayed(const Duration(milliseconds: 600));
 
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (_, a, __) => const LoginScreen(),
-          transitionsBuilder: (_, anim, __, child) =>
-              FadeTransition(opacity: anim, child: child),
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
       );
+    });
+    } catch (e) {
+      debugPrint('SplashScreen._init error: $e');
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginScreen()));
     }
   }
 
@@ -156,13 +161,13 @@ class _SplashScreenState extends State<SplashScreen>
                       width: 96, height: 96,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(24),
-                        color: AppColors.brand,
+                        color: Colors.white,
                         boxShadow: [BoxShadow(
-                          color: AppColors.brand.withValues(alpha: .3),
+                          color: AppColors.brand.withValues(alpha: .35),
                           blurRadius: 40, offset: const Offset(0, 12))],
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10),
                         child: Image.asset('assets/logo.png', fit: BoxFit.contain),
                       ),
                     ),
