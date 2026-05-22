@@ -231,8 +231,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [BoxShadow(color: Colors.black.withOpacity(.15), blurRadius: 24, offset: const Offset(0, 8))],
               ),
-              child: Center(child: Text('A', style: TextStyle(
-                color: AppColors.brand, fontSize: 44, fontWeight: FontWeight.w900))),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Image.asset('assets/logo.png', fit: BoxFit.contain),
+              ),
             ),
             const SizedBox(height: 24),
             const Text('Alochi', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w900)),

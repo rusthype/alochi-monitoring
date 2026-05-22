@@ -161,10 +161,9 @@ class _SplashScreenState extends State<SplashScreen>
                           color: AppColors.brand.withValues(alpha: .3),
                           blurRadius: 40, offset: const Offset(0, 12))],
                       ),
-                      child: const Center(
-                        child: Text('A', style: TextStyle(
-                            fontSize: 46, fontWeight: FontWeight.w900,
-                            color: Colors.white)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Image.asset('assets/logo.png', fit: BoxFit.contain),
                       ),
                     ),
                   ),
