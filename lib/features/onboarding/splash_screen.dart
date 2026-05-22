@@ -27,6 +27,7 @@ class _SplashScreenState extends State<SplashScreen>
   bool   _isOnline = false;
   bool   _done     = false;
   bool   _showBadge = false;
+  int    _statusIdx = 0; // unique key counter
 
   static const _statuses = [
     (0.0,  'Ishga tushirilmoqda...'),
@@ -69,6 +70,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    _barTimer?.cancel();
     _logoCtrl.dispose();
     _fadeCtrl.dispose();
     super.dispose();
@@ -132,7 +134,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _setStatus(String msg, double progress) {
     if (!mounted) return;
-    setState(() { _status = msg; _progress = progress; });
+    setState(() { _status = msg; _progress = progress; _statusIdx++; });
   }
 
   @override
@@ -214,7 +216,7 @@ class _SplashScreenState extends State<SplashScreen>
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     child: Row(
-                      key: ValueKey(_status),
+                      key: ValueKey(_statusIdx),
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         if (!_done) ...[
