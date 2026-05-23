@@ -36,7 +36,7 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
                   questions: questions)));
     } catch (e) {
       setState(() {
-        _error = "Yuklanmadi: $e";
+        _error = e is ApiException ? e.message : 'Yuklanmadi. Qayta urinib ko\'ring.';
         _loading = false;
       });
     }

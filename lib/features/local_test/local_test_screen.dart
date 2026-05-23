@@ -33,6 +33,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
   late int _secs;
 
   late final AnimationController _fadeCtrl;
+  final ScrollController _dotsScrollCtrl = ScrollController();
+  static const double _dotItemWidth = 34.0;
 
   int get _total => widget.questions.length;
   LocalQuestion get _q => widget.questions[_cur];
@@ -73,7 +75,20 @@ class _LocalTestScreenState extends State<LocalTestScreen>
     _timer?.cancel();
     _autoAdv?.cancel();
     _fadeCtrl.dispose();
+    _dotsScrollCtrl.dispose();
     super.dispose();
+  }
+
+  void _scrollDotsTo(int idx) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_dotsScrollCtrl.hasClients) return;
+      final viewport = _dotsScrollCtrl.position.viewportDimension;
+      final target = (idx * _dotItemWidth - viewport / 2 + _dotItemWidth / 2)
+          .clamp(0.0, _dotsScrollCtrl.position.maxScrollExtent);
+      _dotsScrollCtrl.animateTo(target,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut);
+    });
   }
 
   void _navigate(int idx) {
@@ -81,6 +96,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
     _autoAdv?.cancel();
     _fadeCtrl.forward(from: 0);
     setState(() => _cur = idx);
+    _scrollDotsTo(idx);
   }
 
   void _answer(String ch) {
@@ -224,6 +240,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                     offset: const Offset(0, 2))
               ]),
               child: Row(children: [
+                Image.asset('assets/logo.png', width: 32, height: 32),
+                const SizedBox(width: 10),
                 Expanded(
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -299,6 +317,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                             SizedBox(
                                 height: 42,
                                 child: ListView.separated(
+                                  controller: _dotsScrollCtrl,
                                   scrollDirection: Axis.horizontal,
                                   itemCount: _total,
                                   separatorBuilder: (_, __) =>

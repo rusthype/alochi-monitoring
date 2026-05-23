@@ -1,5 +1,7 @@
 // lib/core/api/api_client.dart
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/models.dart';
 
@@ -7,8 +9,9 @@ class ApiException implements Exception {
   final int statusCode;
   final String message;
   const ApiException(this.statusCode, this.message);
+  // UI da to'g'ridan-to'g'ri ko'rsatish uchun toString faqat tushunarli matnni qaytaradi.
   @override
-  String toString() => 'ApiException($statusCode): $message';
+  String toString() => message;
 }
 
 class MonitoringApi {
@@ -58,7 +61,7 @@ class MonitoringApi {
     );
   }
 
-  static const Duration _timeout = Duration(seconds: 10);
+  static const Duration _timeout = Duration(seconds: 20);
   String? _token;
 
   void setToken(String token) => _token = token;
@@ -69,33 +72,64 @@ class MonitoringApi {
         if (_token != null) 'Authorization': 'Bearer $_token',
       };
 
+  Future<http.Response> _send(Future<http.Response> Function() req) async {
+    try {
+      return await req().timeout(_timeout);
+    } on TimeoutException {
+      throw const ApiException(
+          0, "Server javob bermayapti. Internetingizni tekshiring.");
+    } on SocketException {
+      throw const ApiException(0, "Internet aloqasi yo'q.");
+    } on HttpException {
+      throw const ApiException(0, "Tarmoq xatosi. Qayta urinib ko'ring.");
+    } on http.ClientException {
+      throw const ApiException(0, "Tarmoq xatosi. Qayta urinib ko'ring.");
+    }
+  }
+
   Future<Map<String, dynamic>> _post(
       String path, Map<String, dynamic> body) async {
-    final resp = await http
-        .post(
+    final resp = await _send(() => http.post(
           Uri.parse('$_base$path'),
           headers: _headers,
           body: jsonEncode(body),
-        )
-        .timeout(_timeout);
-    final data =
-        jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+        ));
+    Map<String, dynamic> data;
+    try {
+      data = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+    } catch (_) {
+      throw ApiException(resp.statusCode,
+          resp.statusCode >= 500 ? 'Server xatosi' : 'Noto\'g\'ri javob');
+    }
     if (resp.statusCode >= 400) {
-      final msg = data['detail'] ?? data['message'] ?? data.toString();
-      throw ApiException(resp.statusCode, msg.toString());
+      final raw = data['detail'] ?? data['message'] ?? '';
+      final msg = raw.toString().isNotEmpty
+          ? raw.toString()
+          : _statusMessage(resp.statusCode);
+      throw ApiException(resp.statusCode, msg);
     }
     return data;
   }
 
   Future<dynamic> _get(String path) async {
-    final resp = await http
-        .get(
+    final resp = await _send(() => http.get(
           Uri.parse('$_base$path'),
           headers: _headers,
-        )
-        .timeout(_timeout);
-    if (resp.statusCode >= 400) throw ApiException(resp.statusCode, resp.body);
+        ));
+    if (resp.statusCode >= 400) {
+      throw ApiException(resp.statusCode, _statusMessage(resp.statusCode));
+    }
     return jsonDecode(utf8.decode(resp.bodyBytes));
+  }
+
+  String _statusMessage(int status) {
+    if (status == 400) return "Login yoki parol noto'g'ri";
+    if (status == 401) return 'Sessiya tugadi, qayta kiring';
+    if (status == 403) return "Ruxsat yo'q";
+    if (status == 404) return 'Topilmadi';
+    if (status == 429) return "Ko'p urinish, biroz kuting";
+    if (status >= 500) return 'Server xatosi, keyinroq urinib ko\'ring';
+    return 'Xato: $status';
   }
 
   Future<StudentSession> login(String username, String password) async {

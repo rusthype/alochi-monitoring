@@ -289,14 +289,26 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                         offset: const Offset(0, 8))
                   ]),
               child: Column(children: [
-                // Icon
+                // A'lochi logo
+                Container(
+                  width: 56,
+                  height: 56,
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                      color: Colors.white, shape: BoxShape.circle),
+                  child: ClipOval(
+                      child: Image.asset('assets/logo.png',
+                          fit: BoxFit.contain)),
+                ),
+                const SizedBox(height: 8),
+                // Result emoji
                 Icon(
                     widget.pct >= 80
                         ? Icons.celebration_rounded
                         : widget.pct >= 60
                             ? Icons.emoji_events_rounded
                             : Icons.fitness_center_rounded,
-                    size: 52,
+                    size: 36,
                     color: Colors.white),
                 const SizedBox(height: 8),
                 Text(

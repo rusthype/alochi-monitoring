@@ -85,7 +85,7 @@ class _PackageScreenState extends State<PackageScreen>
       _anim.forward(from: 0);
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = e is ApiException ? e.message : 'Yuklanmadi. Qayta urinib ko\'ring.';
         _loading = false;
       });
     }

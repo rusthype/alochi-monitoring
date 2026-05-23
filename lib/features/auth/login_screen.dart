@@ -298,9 +298,11 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _error = online
           ? "Server xatosi. Qayta urinib ko'ring."
           : "Internet yo'q va bu login ilgari saqlanmagan.");
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
-        setState(() => _error = "Ulanishda xato. Qayta urinib ko'ring.");
+        setState(() => _error = e is ApiException
+            ? e.message
+            : "Ulanishda xato. Qayta urinib ko'ring.");
       }
     } finally {
       if (mounted) setState(() => _loading = false);

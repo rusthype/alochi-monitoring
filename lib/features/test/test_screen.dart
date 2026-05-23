@@ -32,6 +32,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
 
   late final AnimationController _fadeCtrl;
   final ScrollController _scrollCtrl = ScrollController();
+  final ScrollController _dotsScrollCtrl = ScrollController();
+  static const double _dotItemWidth = 34.0; // 30 dot + 4 separator
 
   // Auto-advance timer for option selection
   Timer? _autoAdv;
@@ -74,7 +76,20 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
     _autoAdv?.cancel();
     _fadeCtrl.dispose();
     _scrollCtrl.dispose();
+    _dotsScrollCtrl.dispose();
     super.dispose();
+  }
+
+  void _scrollDotsTo(int idx) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_dotsScrollCtrl.hasClients) return;
+      final viewport = _dotsScrollCtrl.position.viewportDimension;
+      final target = (idx * _dotItemWidth - viewport / 2 + _dotItemWidth / 2)
+          .clamp(0.0, _dotsScrollCtrl.position.maxScrollExtent);
+      _dotsScrollCtrl.animateTo(target,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut);
+    });
   }
 
   void _startTimer([int? secs]) {
@@ -111,6 +126,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
       _current = idx;
       _showSectionBanner = switchToEng;
     });
+    _scrollDotsTo(idx);
 
     if (switchToEng) {
       _startTimer(40 * 60); // English: 40 min
@@ -269,6 +285,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                 ],
               ),
               child: Row(children: [
+                Image.asset('assets/logo.png', width: 32, height: 32),
+                const SizedBox(width: 10),
                 Expanded(
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,6 +335,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                             SizedBox(
                               height: 42,
                               child: ListView.separated(
+                                controller: _dotsScrollCtrl,
                                 scrollDirection: Axis.horizontal,
                                 itemCount: _total,
                                 separatorBuilder: (_, __) =>

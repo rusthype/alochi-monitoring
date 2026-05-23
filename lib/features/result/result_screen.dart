@@ -325,6 +325,26 @@ class _ResultScreenState extends State<ResultScreen>
             child: SlideTransition(
               position: _cardSlide,
               child: Column(children: [
+                // ── Brand logo ─────────────────────────────────
+                Container(
+                  width: 56,
+                  height: 56,
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withValues(alpha: .08),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4))
+                    ],
+                  ),
+                  child: ClipOval(
+                      child: Image.asset('assets/logo.png',
+                          fit: BoxFit.contain)),
+                ),
+                const SizedBox(height: 16),
                 // ── Score ring ──────────────────────────────────
                 AnimatedBuilder(
                   animation: _ring,
