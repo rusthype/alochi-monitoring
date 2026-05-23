@@ -50,8 +50,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: "Latest Windows Version"
+          tag_name: v1.0.20
+          name: "Alochi Monitoring v1.0.20"
           body: "Alochi Monitoring dasturining eng so'nggi (Setup.exe o'rnatuvchi va avto-tozalovchi) Windows versiyasi."
           files: |
             AlochiMonitoring-Windows.zip
