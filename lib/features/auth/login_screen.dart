@@ -387,12 +387,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         offset: const Offset(0, 8))
                   ],
                 ),
-                child: const Center(
-                    child: Text('A',
-                        style: TextStyle(
-                            color: AppColors.brand,
-                            fontSize: 44,
-                            fontWeight: FontWeight.w900))),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Image.asset('assets/logo.png'),
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               const Text('Alochi',
@@ -459,14 +459,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           )
                         ],
                       ),
-                      child: const Center(
-                        child: Text(
-                          'A',
-                          style: TextStyle(
-                            color: AppColors.brand,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                          ),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Image.asset('assets/logo.png'),
                         ),
                       ),
                     ),
