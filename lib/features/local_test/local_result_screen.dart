@@ -8,6 +8,8 @@ import 'local_data.dart';
 import 'local_grade_screen.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/db/history_db.dart';
+import '../../core/services/pdf_service.dart';
+import 'package:printing/printing.dart';
 const _botToken = '8777359165:AAGr313YLnqCBf_nJ5j6_ytsxjJj36x5jEw';
 const _adminIds = [8418578752, 5345196664, 433778264];
 
@@ -69,6 +71,14 @@ class _LocalResultScreenState extends State<LocalResultScreen>
   int get _engTotal => _total - _mathTotal;
   int get _totalOk => widget.mathOk + widget.engOk;
 
+  List<MapEntry<String, ({int ok, int tot})>> get _mathTopics => widget.topicScores.entries
+      .where((e) => widget.questions.any((q) => q.isMath && q.topic == e.key))
+      .toList();
+
+  List<MapEntry<String, ({int ok, int tot})>> get _engTopics => widget.topicScores.entries
+      .where((e) => widget.questions.any((q) => !q.isMath && q.topic == e.key))
+      .toList();
+
   Future<void> _sendTelegram() async {
     try {
       await HistoryDb.insertResult(
@@ -94,37 +104,20 @@ class _LocalResultScreenState extends State<LocalResultScreen>
         ' | ${widget.grade}-sinf V${widget.variant} | ✅ ${widget.pct}%'
         '\n📚 ${widget.group.isNotEmpty ? widget.group : "—"} · $dateStr'
         '\n━━━━━━━━━━━━━━━━━━━━'
-        '\n📐 Matematika: <b>${widget.mathOk}/$_mathTotal ($mPct%)</b>'
-        '\n🔤 Ingliz tili: <b>${widget.engOk}/$_engTotal ($ePct%)</b>';
+        '\n📐 Matematika: <b>${widget.mathOk}/$_mathTotal ($mPct%)</b>';
 
-    final mathTopics = widget.topicScores.entries
-        .where((e) => widget.questions.any((q) => q.isMath && q.topic == e.key))
-        .toList();
-    final engTopics = widget.topicScores.entries
-        .where(
-            (e) => widget.questions.any((q) => !q.isMath && q.topic == e.key))
-        .toList();
-
-    for (final e in mathTopics) {
+    for (final e in _mathTopics) {
       final p = e.value.tot > 0 ? e.value.ok * 100 ~/ e.value.tot : 0;
-      final ico = p >= 80
-          ? '✅'
-          : p >= 50
-              ? '🟡'
-              : '🔴';
-      msg += '\n$ico ${e.key}: ${e.value.ok}/${e.value.tot}';
+      final ico = p >= 80 ? '✅' : p >= 50 ? '🟡' : '🔴';
+      msg += '\n  └ $ico ${e.key}: <b>${e.value.ok}/${e.value.tot} ($p%)</b>';
     }
-    if (engTopics.isNotEmpty) {
-      msg += '\n\n📚 Ingliz tili:';
-      for (final e in engTopics) {
-        final p = e.value.tot > 0 ? e.value.ok * 100 ~/ e.value.tot : 0;
-        final ico = p >= 80
-            ? '✅'
-            : p >= 50
-                ? '🟡'
-                : '🔴';
-        msg += '\n$ico ${e.key}: ${e.value.ok}/${e.value.tot}';
-      }
+
+    msg += '\n🔤 Ingliz tili: <b>${widget.engOk}/$_engTotal ($ePct%)</b>';
+
+    for (final e in _engTopics) {
+      final p = e.value.tot > 0 ? e.value.ok * 100 ~/ e.value.tot : 0;
+      final ico = p >= 80 ? '✅' : p >= 50 ? '🟡' : '🔴';
+      msg += '\n  └ $ico ${e.key}: <b>${e.value.ok}/${e.value.tot} ($p%)</b>';
     }
     final weak = widget.topicScores.entries
         .where((e) => e.value.tot > 0 && e.value.ok * 100 ~/ e.value.tot < 50)
@@ -311,6 +304,37 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                             fontWeight: FontWeight.w600))),
               ]),
             ),
+            const SizedBox(height: 16),
+            // PDF Actions
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final pdfBytes = await PdfService.generateResultPdf(
+                      firstName: widget.firstName, lastName: widget.lastName, group: widget.group, grade: widget.grade, variant: widget.variant, mathOk: widget.mathOk, mathTotal: _mathTotal, engOk: widget.engOk, engTotal: _engTotal, pct: widget.pct, mathTopics: _mathTopics, engTopics: _engTopics,
+                    );
+                    await Printing.layoutPdf(onLayout: (_) => pdfBytes, name: '${widget.lastName}_${widget.firstName}_Natija.pdf');
+                  },
+                  icon: const Icon(Icons.print_rounded, size: 18),
+                  label: const Text('Chop etish'),
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink1, side: const BorderSide(color: AppColors.border), padding: const EdgeInsets.symmetric(vertical: 14)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final pdfBytes = await PdfService.generateResultPdf(
+                      firstName: widget.firstName, lastName: widget.lastName, group: widget.group, grade: widget.grade, variant: widget.variant, mathOk: widget.mathOk, mathTotal: _mathTotal, engOk: widget.engOk, engTotal: _engTotal, pct: widget.pct, mathTopics: _mathTopics, engTopics: _engTopics,
+                    );
+                    await Printing.sharePdf(bytes: pdfBytes, filename: '${widget.lastName}_${widget.firstName}_Natija.pdf');
+                  },
+                  icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                  label: const Text('PDF Saqlash'),
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.brand, side: const BorderSide(color: AppColors.brand), padding: const EdgeInsets.symmetric(vertical: 14)),
+                ),
+              ),
+            ]),
             const SizedBox(height: 16),
             // Next student button
             SizedBox(
