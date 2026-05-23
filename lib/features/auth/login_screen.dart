@@ -183,55 +183,19 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// App ochilganda jimgina login urinish — hech narsa ko'rinmaydi
+  /// Avto-login o'rniga faqat login/parolni formaga to'ldirib qo'yadi
   Future<void> _tryAutoLogin() async {
     try {
       final creds = await CredentialCache.loadCredentials();
-      if (creds == null) {
-        final online = await _checkOnline();
-        if (mounted) _showForm(online: online);
-        return;
+      if (creds != null) {
+        _userCtrl.text = creds['username'] ?? '';
+        _passCtrl.text = creds['password'] ?? '';
       }
-
-      final username = creds['username']!;
-      final password = creds['password']!;
-
-      final online = await _checkOnline();
-
-      if (online) {
-        try {
-          final session = await api.login(username, password);
-          api.setToken(session.token);
-          await CredentialCache.saveSession(session, username, password);
-          if (!mounted) return;
-          Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => PackageScreen(session: session)));
-          return;
-        } on ApiException {
-          // Login/parol o'zgargan — bo'sh forma
-          await CredentialCache.clear();
-          if (mounted) _showForm(online: true);
-          return;
-        } catch (_) {
-          // Server xatosi — offline bazadan urinib ko'ramiz
-        }
-      }
-
-      // Offline yoki server xatosi — lokal sessiyadan
-      final session =
-          await CredentialCache.loadOfflineSession(username, password);
-      if (session != null && mounted) {
-        api.setToken(session.token);
-        Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (_) =>
-                    PackageScreen(session: session, offline: !online)));
-        return;
-      }
-
+      
+      // Server holatini tekshirish
+      final online = await api.ping().timeout(
+          const Duration(seconds: 4), onTimeout: () => false);
+          
       if (mounted) _showForm(online: online);
     } catch (_) {
       if (mounted) _showForm();
