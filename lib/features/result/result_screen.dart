@@ -181,7 +181,7 @@ class _ResultScreenState extends State<ResultScreen>
             curve: Curves.elasticOut,
             builder: (_, v, __) => Transform.scale(
               scale: v,
-              child: const Text('🏆', style: TextStyle(fontSize: 80)),
+              child: const Icon(Icons.emoji_events_rounded, size: 80, color: Colors.amber),
             ),
           ),
           const SizedBox(height: 16),

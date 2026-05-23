@@ -494,7 +494,7 @@ class PdfReport {
   }
 
   static String _overallStatus(int totalPct) {
-    if (totalPct >= 90) return 'Oltin medal darajasi! Davom eting! 🏆';
+    if (totalPct >= 90) return 'Oltin medal darajasi! Davom eting!';
     if (totalPct >= 75) return 'Yaxshi natija! Yana bir oz harakat kerak.';
     if (totalPct >= 60) {
       return "Qoniqarli. Tavsiyalarga amal qiling va qayta sinab ko'ring.";
