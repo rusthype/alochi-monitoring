@@ -24,6 +24,9 @@ jobs:
       - name: Build Windows
         run: flutter build windows --release
 
+      - name: Create MSIX
+        run: dart run msix:create
+
       - name: Compress Build Folder
         run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath AlochiMonitoring-Windows.zip
 
@@ -33,26 +36,20 @@ jobs:
           name: AlochiMonitoring-Windows
           path: AlochiMonitoring-Windows.zip
 
-      - name: Compile Inno Setup Installer
-        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
-        with:
-          path: windows/installer.iss
-          options: /DMyAppVersion=1.0.0
-
-      - name: Upload Installer Artifact
+      - name: Upload MSIX Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AlochiMonitoring-Setup
-          path: windows/installer_output/
+          name: AlochiMonitoring-MSIX
+          path: build\windows\alochi-monitoring.msix
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           name: "Latest Windows Version"
-          body: "Alochi Monitoring dasturining eng so'nggi (animatsiya va oflayn shriftlari qo'shilgan) Windows versiyasi."
+          body: "Alochi Monitoring dasturining eng so'nggi (MSIX paketli) Windows versiyasi."
           files: |
             AlochiMonitoring-Windows.zip
-            windows/installer_output/*
+            build/windows/alochi-monitoring.msix
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

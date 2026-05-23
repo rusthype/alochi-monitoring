@@ -1,6 +1,6 @@
 # winget manifest for Alochi Monitoring
 PackageIdentifier: Rusthype.AlochiMonitoring
-PackageVersion: 1.0.0
+PackageVersion: 1.0.20
 PackageName: Alochi Monitoring
 Publisher: Alochi
 ShortDescription: Alochi o'quv markazi uchun maxsus monitoring va test tizimi.
@@ -8,6 +8,6 @@ License: Proprietary
 Installers:
   - Architecture: x64
     InstallerType: msix
-    InstallerUrl: https://github.com/rusthype/alochi-monitoring/releases/download/latest/AlochiMonitoring-Setup.msix
+    InstallerUrl: https://github.com/rusthype/alochi-monitoring/releases/download/latest/alochi-monitoring.msix
 ManifestType: singleton
 ManifestVersion: 1.2.0
