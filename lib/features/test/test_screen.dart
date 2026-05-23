@@ -167,16 +167,11 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
     }
 
     setState(() => _submitting = true);
-    int mathAns = 0, engAns = 0;
     final answersMap = <String, String>{};
     for (int i = 0; i < widget.questions.length; i++) {
-      if (!_answers.containsKey(i)) continue;
-      if (widget.questions[i].isMath) {
-        mathAns++;
-      } else {
-        engAns++;
+      if (_answers.containsKey(i)) {
+        answersMap[widget.questions[i].id] = _answers[i]!;
       }
-      answersMap[widget.questions[i].id] = _answers[i]!;
     }
     final result = TestResult(
       packageId: widget.package.id,
