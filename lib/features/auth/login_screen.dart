@@ -9,7 +9,7 @@ import '../../core/db/credential_cache.dart';
 import '../../shared/theme/app_theme.dart';
 import '../test/package_screen.dart';
 import '../local_test/local_grade_screen.dart';
-
+import '../local_test/sync_images_button.dart';
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
   int attempts = 3,
@@ -679,6 +679,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+                      const SyncImagesButton(),
                     ])),
               ]),
             ),
