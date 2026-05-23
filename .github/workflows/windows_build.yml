@@ -44,3 +44,15 @@ jobs:
         with:
           name: AlochiMonitoring-Setup
           path: windows/installer_output/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Latest Windows Version"
+          body: "Alochi Monitoring dasturining eng so'nggi (animatsiya va oflayn shriftlari qo'shilgan) Windows versiyasi."
+          files: |
+            AlochiMonitoring-Windows.zip
+            windows/installer_output/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
