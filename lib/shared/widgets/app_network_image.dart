@@ -85,30 +85,36 @@ class AppNetworkImage extends StatelessWidget {
             builder: (ctx) => Dialog(
               backgroundColor: Colors.transparent,
               insetPadding: EdgeInsets.zero,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  InteractiveViewer(
-                    maxScale: 5.0,
-                    child: CachedNetworkImage(
-                      imageUrl: fixedUrl,
-                      cacheManager: AlochiImageCacheManager(),
-                      fit: BoxFit.contain,
-                      httpHeaders: const {'User-Agent': 'AlochiMonitoring/1.0'},
-                      placeholder: (c, u) => const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
+              child: SizedBox(
+                width: MediaQuery.of(ctx).size.width,
+                height: MediaQuery.of(ctx).size.height,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    InteractiveViewer(
+                      maxScale: 5.0,
+                      child: Center(
+                        child: CachedNetworkImage(
+                          imageUrl: fixedUrl,
+                          cacheManager: AlochiImageCacheManager(),
+                          fit: BoxFit.contain,
+                          httpHeaders: const {'User-Agent': 'AlochiMonitoring/1.0'},
+                          placeholder: (c, u) => const Center(
+                            child: CircularProgressIndicator(color: Colors.white),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    top: 20,
-                    right: 20,
-                    child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white, size: 32),
-                      onPressed: () => Navigator.pop(ctx),
+                    Positioned(
+                      top: 20,
+                      right: 20,
+                      child: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
