@@ -461,7 +461,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                       child: _OptionRow(
                                         label: 'ABCD'[i],
                                         text: i < _q.options.length ? _q.options[i] : '',
-                                        optionImage: _q.optionImages.length > i ? _q.optionImages[i] : null,
+                                        optionImage: _q.optionImages.length > i && _q.optionImages[i].isNotEmpty ? _q.optionImages[i] : null,
                                         selected: _answers[_cur] == ch,
                                         onTap: () => _answer(ch),
                                       ),

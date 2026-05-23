@@ -58,7 +58,7 @@ class LocalQuestionsLoader {
       topic: q['t'] as String? ?? '',
       image: q['i'] as String?,
       optionImages: q['oi'] != null
-          ? idx.map((i) => (q['oi'] as List)[i] as String).toList()
+          ? idx.map((i) => i < (q['oi'] as List).length ? (q['oi'] as List)[i] as String : '').toList()
           : [],
     );
   }
