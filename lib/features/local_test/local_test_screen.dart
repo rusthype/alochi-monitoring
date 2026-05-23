@@ -732,58 +732,30 @@ class _OptionRowState extends State<_OptionRow>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(children: [
               // Letter badge
-              Stack(children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: widget.selected
-                        ? AppColors.brand
-                        : const Color(0xFFF4F4F5),
-                    border: Border.all(
-                        color: widget.selected
-                            ? AppColors.brand
-                            : const Color(0xFFD4D4D8),
-                        width: 1.5),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Center(
-                      child: Text(widget.label,
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13,
-                              color: widget.selected
-                                  ? Colors.white
-                                  : const Color(0xFFA1A1AA)))),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: widget.selected
+                      ? AppColors.brand
+                      : const Color(0xFFF4F4F5),
+                  border: Border.all(
+                      color: widget.selected
+                          ? AppColors.brand
+                          : const Color(0xFFD4D4D8),
+                      width: 1.5),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                // Keyboard hint superscript
-                Positioned(
-                    top: -1,
-                    right: -1,
-                    child: Container(
-                      width: 13,
-                      height: 13,
-                      decoration: BoxDecoration(
-                        color: widget.selected
-                            ? const Color(0xFFFED7AA)
-                            : const Color(0xFFD4D4D8),
-                        borderRadius: BorderRadius.circular(3),
-                        border: Border.all(
+                child: Center(
+                    child: Text(widget.label,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
                             color: widget.selected
-                                ? const Color(0xFFFED7AA)
-                                : const Color(0xFFE4E4E7)),
-                      ),
-                      child: Center(
-                          child: Text(widget.label,
-                              style: TextStyle(
-                                  fontSize: 7,
-                                  fontWeight: FontWeight.w700,
-                                  color: widget.selected
-                                      ? const Color(0xFF9A3412)
-                                      : const Color(0xFFA1A1AA)))),
-                    )),
-              ]),
+                                ? Colors.white
+                                : const Color(0xFFA1A1AA)))),
+              ),
               const SizedBox(width: 14),
               // Option text
               Expanded(
