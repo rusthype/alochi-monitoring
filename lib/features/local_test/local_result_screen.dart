@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../../shared/theme/app_theme.dart';
 import 'local_data.dart';
 import 'local_grade_screen.dart';
+import '../../core/db/offline_queue.dart';
 
 const _botToken = '8777359165:AAGr313YLnqCBf_nJ5j6_ytsxjJj36x5jEw';
 const _adminIds = [8418578752, 5345196664, 433778264];
@@ -51,6 +52,9 @@ class _LocalResultScreenState extends State<LocalResultScreen>
     _scoreVal = Tween<double>(begin: 0, end: widget.pct / 100)
         .animate(CurvedAnimation(parent: _scoreAnim, curve: Curves.easeOut));
     _scoreAnim.forward();
+    
+    // Yig'ilib qolgan eski oflayn xabarlarni jo'natish
+    OfflineQueue.flushTg(_botToken, _adminIds);
     _sendTelegram();
   }
 
@@ -134,8 +138,11 @@ class _LocalResultScreenState extends State<LocalResultScreen>
         }
       } catch (_) {}
     }
-    if (!sent && mounted) {
-      setState(() => _tgStatus = '📵 Internet yo\'q — keyinroq yuboriladi');
+    if (!sent) {
+      await OfflineQueue.enqueueTg(msg);
+      if (mounted) {
+        setState(() => _tgStatus = '📵 Internet yo\'q — xabar oflayn saqlandi');
+      }
     }
   }
 

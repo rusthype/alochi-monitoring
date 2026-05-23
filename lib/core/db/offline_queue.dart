@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:http/http.dart' as http;
 import '../models/models.dart';
 
 class OfflineQueue {
@@ -17,7 +18,7 @@ class OfflineQueue {
     }
     final dir = await getApplicationSupportDirectory();
     final path = join(dir.path, 'monitoring_queue.db');
-    _db = await openDatabase(path, version: 1, onCreate: (db, _) async {
+    _db = await openDatabase(path, version: 2, onCreate: (db, _) async {
       await db.execute('''
         CREATE TABLE queue (
           id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,6 +27,23 @@ class OfflineQueue {
           attempts INTEGER NOT NULL DEFAULT 0
         )
       ''');
+      await db.execute('''
+        CREATE TABLE tg_queue (
+          id       INTEGER PRIMARY KEY AUTOINCREMENT,
+          msg      TEXT NOT NULL,
+          created  INTEGER NOT NULL
+        )
+      ''');
+    }, onUpgrade: (db, oldVersion, newVersion) async {
+      if (oldVersion < 2) {
+        await db.execute('''
+          CREATE TABLE tg_queue (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            msg      TEXT NOT NULL,
+            created  INTEGER NOT NULL
+          )
+        ''');
+      }
     });
     return _db!;
   }
@@ -72,5 +90,39 @@ class OfflineQueue {
     final d = await db;
     final res = await d.rawQuery('SELECT COUNT(*) as c FROM queue');
     return (res.first['c'] as int?) ?? 0;
+  }
+
+  // ── Telegram Offline Queue ──────────────────────────────────────────────────
+  static Future<void> enqueueTg(String msg) async {
+    final d = await db;
+    await d.insert('tg_queue', {
+      'msg': msg,
+      'created': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  static Future<int> flushTg(String botToken, List<int> adminIds) async {
+    final d = await db;
+    final rows = await d.query('tg_queue', orderBy: 'created ASC');
+    int synced = 0;
+    for (final row in rows) {
+      try {
+        final msg = row['msg'] as String;
+        bool allSent = true;
+        for (final id in adminIds) {
+          final r = await http.post(
+            Uri.parse('https://api.telegram.org/bot$botToken/sendMessage'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'chat_id': id, 'text': msg, 'parse_mode': 'HTML'}),
+          );
+          if (r.statusCode != 200) allSent = false;
+        }
+        if (allSent) {
+          await d.delete('tg_queue', where: 'id = ?', whereArgs: [row['id']]);
+          synced++;
+        }
+      } catch (_) {}
+    }
+    return synced;
   }
 }
