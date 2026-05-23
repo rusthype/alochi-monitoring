@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'pdf_tips.dart';
 
 class PdfService {
   static Future<Uint8List> generateResultPdf({
@@ -41,12 +42,23 @@ class PdfService {
     final textColor = PdfColor.fromHex('#1A1A1A');
     final subTextColor = PdfColor.fromHex('#6B7280');
 
+    final mathPct = mathTotal > 0 ? mathOk / mathTotal : 0.0;
+    final engPct = engTotal > 0 ? engOk / engTotal : 0.0;
+
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(40),
+        footer: (ctx) => pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 10),
+          child: pw.Center(
+            child: pw.Text('Alochi Education | www.alochi.uz',
+                style: pw.TextStyle(font: ttf, fontSize: 10, color: subTextColor)),
+          ),
+        ),
         build: (pw.Context context) {
-          return pw.Column(
+          return [
+            pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               // HEADER
@@ -136,20 +148,145 @@ class PdfService {
                 pw.SizedBox(height: 5),
                 _buildTopicsTable(engTopics, ttf, ttfBold),
               ],
-              
-              pw.Spacer(),
-              pw.Divider(color: PdfColors.grey300),
-              pw.SizedBox(height: 10),
-              pw.Center(
-                child: pw.Text('Alochi Education | www.alochi.uz', style: pw.TextStyle(font: ttf, fontSize: 10, color: subTextColor)),
-              )
             ],
-          );
+          ),
+
+          // RECOMMENDATIONS — "Qanday yaxshilash mumkin?"
+          pw.SizedBox(height: 24),
+          _buildRecommendations(mathPct, engPct, pct, ttf, ttfBold),
+          ];
         },
       ),
     );
 
     return pdf.save();
+  }
+
+  static pw.Widget _buildRecommendations(double mathPct, double engPct,
+      int totalPct, pw.Font ttf, pw.Font ttfBold) {
+    final textColor = PdfColor.fromHex('#1A1A1A');
+    final subTextColor = PdfColor.fromHex('#6B7280');
+    final mathColor = PdfColor.fromHex('#0EA5E9');
+    final engColor = PdfColor.fromHex('#8B5CF6');
+    final passColor = PdfColor.fromHex('#10B981');
+    final warnColor = PdfColor.fromHex('#F59E0B');
+
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(18),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.white,
+        border: pw.Border.all(color: PdfColors.grey300, width: 1.5),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text('Qanday yaxshilash mumkin?',
+              style: pw.TextStyle(font: ttfBold, fontSize: 15, color: textColor)),
+          pw.SizedBox(height: 12),
+          pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+            pw.Expanded(
+              child: _tipsColumn('Matematika tavsiyalari',
+                  PdfTips.mathTips(mathPct), mathPct, mathColor, ttf, ttfBold),
+            ),
+            pw.SizedBox(width: 14),
+            pw.Expanded(
+              child: _tipsColumn('Ingliz tili tavsiyalari',
+                  PdfTips.englishTips(engPct), engPct, engColor, ttf, ttfBold),
+            ),
+          ]),
+          pw.SizedBox(height: 12),
+          pw.Container(
+            padding:
+                const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: pw.BoxDecoration(
+              color: totalPct >= 75
+                  ? PdfColor.fromHex('#F0FDF4')
+                  : PdfColor.fromHex('#FFFBEB'),
+              border: pw.Border.all(
+                  color: totalPct >= 75 ? passColor : warnColor, width: 1.5),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
+            ),
+            child: pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(totalPct >= 75 ? '✓' : '↑',
+                      style: pw.TextStyle(
+                          font: ttfBold,
+                          fontSize: 15,
+                          color: totalPct >= 75 ? passColor : warnColor)),
+                  pw.SizedBox(width: 10),
+                  pw.Expanded(
+                      child: pw.Text(PdfTips.overallStatus(totalPct),
+                          style: pw.TextStyle(
+                              font: ttfBold, fontSize: 13, color: textColor))),
+                ]),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Padding(
+            padding: const pw.EdgeInsets.only(top: 4),
+            child: pw.Text(
+                'Ushbu tavsiyalar test natijasiga asosan generatsiya qilingan.',
+                style: pw.TextStyle(
+                    font: ttf, fontSize: 9, color: subTextColor)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _tipsColumn(String title, List<String> tips, double pct,
+      PdfColor color, pw.Font ttf, pw.Font ttfBold) {
+    final score = (pct * 100).round();
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(14),
+      decoration: pw.BoxDecoration(
+        color: PdfColor(
+            color.red / 255, color.green / 255, color.blue / 255, 0.06),
+        border: pw.Border.all(
+            color: PdfColor(color.red / 255, color.green / 255,
+                color.blue / 255, 0.35)),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10)),
+      ),
+      child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(title,
+                style:
+                    pw.TextStyle(font: ttfBold, fontSize: 12, color: color)),
+            pw.SizedBox(height: 8),
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 5),
+              decoration: pw.BoxDecoration(
+                color: color,
+                borderRadius:
+                    const pw.BorderRadius.all(pw.Radius.circular(14)),
+              ),
+              child: pw.Text('$score%  ${score >= 75 ? '✓' : '↑'}',
+                  style: pw.TextStyle(
+                      font: ttfBold, fontSize: 11, color: PdfColors.white)),
+            ),
+            pw.SizedBox(height: 10),
+            ...tips.asMap().entries.map((entry) => pw.Padding(
+                padding: const pw.EdgeInsets.only(bottom: 6),
+                child: pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('${entry.key + 1}.',
+                          style: pw.TextStyle(
+                              font: ttfBold, fontSize: 10, color: color)),
+                      pw.SizedBox(width: 6),
+                      pw.Expanded(
+                          child: pw.Text(entry.value,
+                              style: pw.TextStyle(
+                                  font: ttf,
+                                  fontSize: 10,
+                                  color: PdfColor.fromHex('#52525B'),
+                                  lineSpacing: 3))),
+                    ]))),
+          ]),
+    );
   }
 
   static pw.Widget _buildScoreCard(String title, String value, PdfColor color, pw.Font ttf, pw.Font ttfBold) {

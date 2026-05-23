@@ -761,10 +761,11 @@ class _OptionRowState extends State<_OptionRow>
               Expanded(
                   child: widget.optionImage != null
                       ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                               if (widget.text.isNotEmpty) ...[
                                 Text(widget.text,
+                                    textAlign: TextAlign.center,
                                     style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w500,
@@ -773,16 +774,18 @@ class _OptionRowState extends State<_OptionRow>
                                             : AppColors.ink1)),
                                 const SizedBox(height: 6),
                               ],
-                              AppNetworkImage(
-                                url: widget.optionImage,
-                                height: 80,
-                                fit: BoxFit.contain,
-                                showZoom: true,
-                                borderRadius: BorderRadius.circular(8),
-                                errorWidget: const Icon(
-                                  Icons.broken_image_outlined,
-                                  color: AppColors.ink3,
-                                  size: 20,
+                              Center(
+                                child: AppNetworkImage(
+                                  url: widget.optionImage,
+                                  height: 80,
+                                  fit: BoxFit.contain,
+                                  showZoom: true,
+                                  borderRadius: BorderRadius.circular(8),
+                                  errorWidget: const Icon(
+                                    Icons.broken_image_outlined,
+                                    color: AppColors.ink3,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ])
@@ -844,22 +847,19 @@ class _QuestionImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(
         width: double.infinity,
-        child: Align(
-          alignment: Alignment.centerLeft,
+        child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 260),
             child: AppNetworkImage(
               url: url,
-              width: double.infinity,
-              alignment: Alignment.centerLeft,
+              alignment: Alignment.center,
               fit: BoxFit.contain,
               showZoom: true,
               borderRadius: BorderRadius.circular(10),
               placeholder: SizedBox(
-                width: double.infinity,
+                width: 120,
                 height: 120,
-                child: Align(
-                  alignment: Alignment.centerLeft,
+                child: Center(
                   child: Container(
                     height: 120,
                     width: 120,

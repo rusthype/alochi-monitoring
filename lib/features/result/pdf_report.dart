@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:http/http.dart' as http;
 import '../../core/models/models.dart';
+import '../../core/services/pdf_tips.dart';
 
 class PdfReport {
   static const _orange = PdfColor.fromInt(0xFFF97316);
@@ -47,6 +48,12 @@ class PdfReport {
       bold: boldFont,
     );
 
+    pw.MemoryImage? logo;
+    try {
+      final logoBytes = await rootBundle.load('assets/logo.png');
+      logo = pw.MemoryImage(logoBytes.buffer.asUint8List());
+    } catch (_) {}
+
     // Asinxron rasmlarni yuklab olish (Xato javoblar uchun)
     final wrongItemsWithImages = <pw.Widget>[];
     for (var w in wrongAnswers) {
@@ -73,7 +80,7 @@ class PdfReport {
       build: (_) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.stretch,
         children: [
-          _header(date),
+          _header(date, logo),
           pw.SizedBox(height: 24),
           _studentRow(session, result, mainClr, passed),
           pw.SizedBox(height: 24),
@@ -129,7 +136,7 @@ class PdfReport {
     return file;
   }
 
-  static pw.Widget _header(String date) => pw.Container(
+  static pw.Widget _header(String date, pw.MemoryImage? logo) => pw.Container(
       padding: const pw.EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: const pw.BoxDecoration(
           color: _orange,
@@ -138,14 +145,17 @@ class PdfReport {
         pw.Container(
             width: 54,
             height: 54,
+            padding: const pw.EdgeInsets.all(4),
             decoration: const pw.BoxDecoration(
                 color: PdfColors.white, shape: pw.BoxShape.circle),
-            child: pw.Center(
-                child: pw.Text('A',
-                    style: pw.TextStyle(
-                        fontSize: 28,
-                        fontWeight: pw.FontWeight.bold,
-                        color: _orange)))),
+            child: logo != null
+                ? pw.ClipOval(child: pw.Image(logo, fit: pw.BoxFit.cover))
+                : pw.Center(
+                    child: pw.Text('A',
+                        style: pw.TextStyle(
+                            fontSize: 28,
+                            fontWeight: pw.FontWeight.bold,
+                            color: _orange)))),
         pw.SizedBox(width: 18),
         pw.Expanded(
             child: pw.Column(
@@ -328,9 +338,9 @@ class PdfReport {
 
   static pw.Widget _recommendations(
       double mathPct, double engPct, int totalPct) {
-    final mathTips = _mathTips(mathPct);
-    final engTips = _englishTips(engPct);
-    final status = _overallStatus(totalPct);
+    final mathTips = PdfTips.mathTips(mathPct);
+    final engTips = PdfTips.englishTips(engPct);
+    final status = PdfTips.overallStatus(totalPct);
 
     return pw.Container(
         padding: const pw.EdgeInsets.all(18),
@@ -456,73 +466,6 @@ class PdfReport {
                                     lineSpacing: 3))),
                       ]))),
             ]));
-  }
-
-  static List<String> _mathTips(double pct) {
-    if (pct < 0.5) {
-      return [
-        "Asosiy amallar (qo'shish, ayirish, ko'paytirish, bo'lish)ni qayta o'rganing.",
-        'Har kuni 20 daqiqa misollar yeching.',
-        '2-sinf dasturidan boshlang.',
-      ];
-    }
-    if (pct < 0.75) {
-      return [
-        'Jadval va kasr sonlarni mustahkamlang.',
-        "Xato qilgan savollar turini aniqlang va shu mavzuga e'tibor bering.",
-        'Har kuni 2-3 ta test masala yeching.',
-      ];
-    }
-    if (pct < 0.9) {
-      return [
-        'Qiyin masalalar (muammo masalalar) ustida ishlang.',
-        'Vaqtni boshqarishni mashq qiling.',
-        'Har savolga 1-2 daqiqa ajrating.',
-      ];
-    }
-    return [
-      'Ajoyib!',
-      "Murakkab olimpiada masalalarini hal qilishga o'ting.",
-      'Natijani barqaror saqlash uchun muntazam mashq qiling.',
-    ];
-  }
-
-  static List<String> _englishTips(double pct) {
-    if (pct < 0.5) {
-      return [
-        "Kunlik 10 ta yangi so'z yodlang (flashcard usuli).",
-        'Asosiy grammatika: to be, present simple, plural nouns.',
-        'BBC Learning English, Duolingo ilovalaridan foydalaning.',
-      ];
-    }
-    if (pct < 0.75) {
-      return [
-        "Past simple va present continuous grammatikasini o'rganing.",
-        "Har kuni inglizcha 1 ta qisqa matn o'qing.",
-        "So'z boyligini mavzu bo'yicha guruhlab yodlang.",
-      ];
-    }
-    if (pct < 0.9) {
-      return [
-        "Tinglash ko'nikmalarini rivojlantiring.",
-        'YouTube ingliz kontentidan foydalaning.',
-        'Esselar va qisqa hikoyalar yozing.',
-      ];
-    }
-    return [
-      'Ajoyib!',
-      'IELTS/Cambridge sertifikati uchun tayyorlaning.',
-      "Murakkab matnlarni o'qish va tinglashni davom ettiring.",
-    ];
-  }
-
-  static String _overallStatus(int totalPct) {
-    if (totalPct >= 90) return 'Oltin medal darajasi! Davom eting!';
-    if (totalPct >= 75) return 'Yaxshi natija! Yana bir oz harakat kerak.';
-    if (totalPct >= 60) {
-      return "Qoniqarli. Tavsiyalarga amal qiling va qayta sinab ko'ring.";
-    }
-    return "Xafa bo'lmang! Har bir muvaffaqiyatsizlik yangi boshlang'ich.";
   }
 
   static pw.Widget _wrongSummary(List<dynamic> wrong) {
