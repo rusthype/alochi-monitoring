@@ -877,6 +877,8 @@ class _QuestionImage extends StatelessWidget {
             constraints: const BoxConstraints(maxHeight: 260),
             child: AppNetworkImage(
               url: url,
+              width: double.infinity,
+              alignment: Alignment.centerLeft,
               fit: BoxFit.contain,
               borderRadius: BorderRadius.circular(10),
               placeholder: SizedBox(

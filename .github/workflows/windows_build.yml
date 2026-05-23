@@ -39,7 +39,7 @@ jobs:
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
           path: windows/installer.iss
-          options: /DMyAppVersion=1.0.25
+          options: /DMyAppVersion=1.0.26
 
       - name: Upload Installer Artifact
         uses: actions/upload-artifact@v4
@@ -50,8 +50,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.25
-          name: "Alochi Monitoring v1.0.25"
+          tag_name: v1.0.26
+          name: "Alochi Monitoring v1.0.26"
           body: "Alochi Monitoring dasturining eng so'nggi (Setup.exe o'rnatuvchi va avto-tozalovchi) Windows versiyasi."
           files: |
             AlochiMonitoring-Windows.zip

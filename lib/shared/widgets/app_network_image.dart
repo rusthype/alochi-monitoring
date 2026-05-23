@@ -17,6 +17,7 @@ class AppNetworkImage extends StatelessWidget {
   final BorderRadius? borderRadius;
   final Widget? placeholder;
   final Widget? errorWidget;
+  final Alignment alignment;
 
   const AppNetworkImage({
     super.key,
@@ -24,6 +25,7 @@ class AppNetworkImage extends StatelessWidget {
     this.height,
     this.width,
     this.fit = BoxFit.contain,
+    this.alignment = Alignment.center,
     this.borderRadius,
     this.placeholder,
     this.errorWidget,
@@ -46,6 +48,7 @@ class AppNetworkImage extends StatelessWidget {
       height: height,
       width: width,
       fit: fit,
+      alignment: alignment,
       httpHeaders: const {'User-Agent': 'AlochiMonitoring/1.0'},
       placeholder: (ctx, url) => SizedBox(
         height: height ?? 80,
