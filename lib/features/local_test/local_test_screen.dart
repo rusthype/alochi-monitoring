@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../shared/theme/app_theme.dart';
 import 'local_data.dart';
+import '../../shared/widgets/app_network_image.dart';
 import 'local_result_screen.dart';
 
 class LocalTestScreen extends StatefulWidget {
@@ -443,6 +444,10 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                                           FontWeight.w700,
                                                       color: AppColors.ink1,
                                                       height: 1.4)),
+                                              if (_q.image != null) ...[
+                                                const SizedBox(height: 14),
+                                                _QuestionImage(url: _q.image!),
+                                              ],
                                             ]),
                                       ),
                                     ]),
@@ -453,11 +458,10 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                     final ch = 'abcd'[i];
                                     return Padding(
                                       padding: const EdgeInsets.only(bottom: 8),
-                                      child: _OptionTile(
+                                      child: _OptionRow(
                                         label: 'ABCD'[i],
-                                        text: i < _q.options.length
-                                            ? _q.options[i]
-                                            : '',
+                                        text: i < _q.options.length ? _q.options[i] : '',
+                                        optionImage: _q.optionImages.length > i ? _q.optionImages[i] : null,
                                         selected: _answers[_cur] == ch,
                                         onTap: () => _answer(ch),
                                       ),
@@ -650,45 +654,48 @@ class _QDot extends StatelessWidget {
   }
 }
 
-class _OptionTile extends StatefulWidget {
+
+class _OptionRow extends StatefulWidget {
   final String label, text;
+  final String? optionImage;
   final bool selected;
   final VoidCallback onTap;
-  const _OptionTile(
+  const _OptionRow(
       {required this.label,
       required this.text,
+      this.optionImage,
       required this.selected,
       required this.onTap});
   @override
-  State<_OptionTile> createState() => _OptionTileState();
+  State<_OptionRow> createState() => _OptionRowState();
 }
 
-class _OptionTileState extends State<_OptionTile>
+class _OptionRowState extends State<_OptionRow>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _bar;
+  late final AnimationController _barCtrl;
   late final Animation<double> _barAnim;
 
   @override
   void initState() {
     super.initState();
-    _bar = AnimationController(
+    _barCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 720));
-    _barAnim = CurvedAnimation(parent: _bar, curve: Curves.linear);
+    _barAnim = CurvedAnimation(parent: _barCtrl, curve: Curves.linear);
   }
 
   @override
-  void didUpdateWidget(_OptionTile old) {
+  void didUpdateWidget(_OptionRow old) {
     super.didUpdateWidget(old);
     if (widget.selected && !old.selected) {
-      _bar.forward(from: 0);
+      _barCtrl.forward(from: 0);
     } else if (!widget.selected && old.selected) {
-      _bar.reset();
+      _barCtrl.reset();
     }
   }
 
   @override
   void dispose() {
-    _bar.dispose();
+    _barCtrl.dispose();
     super.dispose();
   }
 
@@ -700,35 +707,37 @@ class _OptionTileState extends State<_OptionTile>
         duration: const Duration(milliseconds: 160),
         constraints: const BoxConstraints(minHeight: 54),
         decoration: BoxDecoration(
-            color:
-                widget.selected ? const Color(0xFFFFF7ED) : AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-                color:
-                    widget.selected ? AppColors.brand : const Color(0xFFE4E4E7),
-                width: widget.selected ? 2 : 1.5),
-            boxShadow: widget.selected
-                ? [
-                    BoxShadow(
-                        color: AppColors.brand.withValues(alpha: .12),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3))
-                  ]
-                : [
-                    BoxShadow(
-                        color: Colors.black.withValues(alpha: .03),
-                        blurRadius: 3,
-                        offset: const Offset(0, 1))
-                  ]),
+          color: widget.selected ? const Color(0xFFFFF7ED) : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: widget.selected ? AppColors.brand : const Color(0xFFE4E4E7),
+            width: widget.selected ? 2 : 1.5,
+          ),
+          boxShadow: widget.selected
+              ? [
+                  BoxShadow(
+                      color: AppColors.brand.withValues(alpha: .12),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3))
+                ]
+              : [
+                  BoxShadow(
+                      color: Colors.black.withValues(alpha: .03),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1))
+                ],
+        ),
         child: Stack(children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
+              // Letter badge
+              Stack(children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
                     color: widget.selected
                         ? AppColors.brand
                         : const Color(0xFFF4F4F5),
@@ -737,57 +746,185 @@ class _OptionTileState extends State<_OptionTile>
                             ? AppColors.brand
                             : const Color(0xFFD4D4D8),
                         width: 1.5),
-                    borderRadius: BorderRadius.circular(10)),
-                child: Center(
-                    child: Text(widget.label,
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Center(
+                      child: Text(widget.label,
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              color: widget.selected
+                                  ? Colors.white
+                                  : const Color(0xFFA1A1AA)))),
+                ),
+                // Keyboard hint superscript
+                Positioned(
+                    top: -1,
+                    right: -1,
+                    child: Container(
+                      width: 13,
+                      height: 13,
+                      decoration: BoxDecoration(
+                        color: widget.selected
+                            ? const Color(0xFFFED7AA)
+                            : const Color(0xFFD4D4D8),
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(
                             color: widget.selected
-                                ? Colors.white
-                                : const Color(0xFFA1A1AA)))),
-              ),
+                                ? const Color(0xFFFED7AA)
+                                : const Color(0xFFE4E4E7)),
+                      ),
+                      child: Center(
+                          child: Text(widget.label,
+                              style: TextStyle(
+                                  fontSize: 7,
+                                  fontWeight: FontWeight.w700,
+                                  color: widget.selected
+                                      ? const Color(0xFF9A3412)
+                                      : const Color(0xFFA1A1AA)))),
+                    )),
+              ]),
               const SizedBox(width: 14),
+              // Option text
               Expanded(
-                  child: Text(widget.text,
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: widget.selected
-                              ? const Color(0xFF7C2D12)
-                              : AppColors.ink1))),
+                  child: widget.optionImage != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                              if (widget.text.isNotEmpty) ...[
+                                Text(widget.text,
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: widget.selected
+                                            ? const Color(0xFF7C2D12)
+                                            : AppColors.ink1)),
+                                const SizedBox(height: 6),
+                              ],
+                              AppNetworkImage(
+                                url: widget.optionImage,
+                                height: 80,
+                                fit: BoxFit.contain,
+                                borderRadius: BorderRadius.circular(8),
+                                errorWidget: const Icon(
+                                  Icons.broken_image_outlined,
+                                  color: AppColors.ink3,
+                                  size: 20,
+                                ),
+                              ),
+                            ])
+                      : Text(widget.text,
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: widget.selected
+                                  ? const Color(0xFF7C2D12)
+                                  : AppColors.ink1))),
+              // Check
               if (widget.selected)
                 Container(
-                    width: 22,
-                    height: 22,
-                    margin: const EdgeInsets.only(left: 10),
-                    decoration: const BoxDecoration(
-                        color: AppColors.brand, shape: BoxShape.circle),
-                    child: const Icon(Icons.check_rounded,
-                        size: 13, color: Colors.white)),
+                  width: 22,
+                  height: 22,
+                  margin: const EdgeInsets.only(left: 10),
+                  decoration: const BoxDecoration(
+                      color: AppColors.brand, shape: BoxShape.circle),
+                  child: const Icon(Icons.check_rounded,
+                      size: 13, color: Colors.white),
+                ),
             ]),
           ),
+          // Auto-advance bar at bottom
           if (widget.selected)
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               child: AnimatedBuilder(
-                  animation: _barAnim,
-                  builder: (_, __) => FractionallySizedBox(
-                        widthFactor: _barAnim.value,
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                            height: 3,
-                            decoration: const BoxDecoration(
-                                color: AppColors.brand,
-                                borderRadius: BorderRadius.only(
-                                    bottomLeft: Radius.circular(12),
-                                    bottomRight: Radius.circular(12)))),
-                      )),
+                animation: _barAnim,
+                builder: (_, __) => FractionallySizedBox(
+                  widthFactor: _barAnim.value,
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    height: 3,
+                    decoration: const BoxDecoration(
+                      color: AppColors.brand,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
         ]),
       ),
     );
   }
 }
+
+// ── Question image widget ────────────────────────────────────────────────────
+class _QuestionImage extends StatelessWidget {
+  final String url;
+  const _QuestionImage({required this.url});
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: double.infinity,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 260),
+            child: AppNetworkImage(
+              url: url,
+              fit: BoxFit.contain,
+              borderRadius: BorderRadius.circular(10),
+              placeholder: SizedBox(
+                width: double.infinity,
+                height: 120,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    height: 120,
+                    width: 120,
+                    decoration: BoxDecoration(
+                      color: AppColors.bg,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.brand,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          errorWidget: Builder(
+            builder: (context) {
+              debugPrint('IMAGE ERROR | URL: $url');
+              return Container(
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.err.withValues(alpha: .07),
+                  borderRadius: BorderRadius.circular(8),
+                  border:
+                      Border.all(color: AppColors.err.withValues(alpha: .2)),
+                ),
+                child: Center(
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.broken_image_outlined,
+                      color: AppColors.err.withValues(alpha: .5), size: 16),
+                  const SizedBox(width: 6),
+                  const Text('Rasm yuklanmadi',
+                      style: TextStyle(fontSize: 11, color: AppColors.ink3)),
+                ])),
+              );
+            },
+          ),
+        ),
+      ),
+    ),
+  );
+}
+

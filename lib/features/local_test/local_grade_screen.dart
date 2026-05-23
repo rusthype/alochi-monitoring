@@ -20,6 +20,8 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
   final _firstCtrl = TextEditingController();
   final _lastCtrl = TextEditingController();
   final _groupCtrl = TextEditingController();
+  final _schoolCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
   bool _loading = false;
   String? _err;
 
@@ -41,6 +43,8 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
     _firstCtrl.dispose();
     _lastCtrl.dispose();
     _groupCtrl.dispose();
+    _schoolCtrl.dispose();
+    _passCtrl.dispose();
     super.dispose();
   }
 
@@ -57,6 +61,10 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
     final last = _lastCtrl.text.trim();
     if (first.isEmpty || last.isEmpty) {
       setState(() => _err = 'Ism va familiyani kiriting');
+      return;
+    }
+    if (_passCtrl.text.trim() != '1234') {
+      setState(() => _err = "Maxfiy parol noto'g'ri (Maslahat: 1234)");
       return;
     }
     setState(() {
@@ -339,12 +347,28 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
                     child: _Field(
                         label: 'Familiya', ctrl: _lastCtrl, hint: 'Karimov')),
               ]),
+              Row(children: [
+                Expanded(
+                    child: _Field(
+                        label: 'Guruh / Sinf',
+                        ctrl: _groupCtrl,
+                        hint: '3-A',
+                        required: false)),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: _Field(
+                        label: 'Maktab nomi',
+                        ctrl: _schoolCtrl,
+                        hint: '12-maktab',
+                        required: false)),
+              ]),
               const SizedBox(height: 14),
               _Field(
-                  label: 'Guruh / Sinf',
-                  ctrl: _groupCtrl,
-                  hint: '3-A',
-                  required: false),
+                  label: 'Parol (PIN kod)',
+                  ctrl: _passCtrl,
+                  hint: '****',
+                  obscure: true,
+                  required: true),
               if (_err != null) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -510,10 +534,12 @@ class _Field extends StatelessWidget {
   final String label, hint;
   final TextEditingController ctrl;
   final bool required;
+  final bool obscure;
   const _Field(
       {required this.label,
       required this.ctrl,
       required this.hint,
+      this.obscure = false,
       this.required = true});
   @override
   Widget build(BuildContext context) =>
@@ -536,6 +562,7 @@ class _Field extends StatelessWidget {
         const SizedBox(height: 6),
         TextField(
           controller: ctrl,
+          obscureText: obscure,
           decoration: InputDecoration(
             hintText: hint,
             contentPadding:

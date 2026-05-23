@@ -10,13 +10,17 @@ class LocalQuestion {
   final List<String> options;
   final String correct; // 'a'|'b'|'c'|'d'
   final String topic;
+  final String? image;
+  final List<String> optionImages;
   const LocalQuestion(
       {required this.id,
       required this.subject,
       required this.prompt,
       required this.options,
       required this.correct,
-      required this.topic});
+      required this.topic,
+      this.image,
+      this.optionImages = const []});
   bool get isMath => subject == 'm';
 }
 
@@ -52,6 +56,10 @@ class LocalQuestionsLoader {
       options: idx.map((i) => opts[i]).toList(),
       correct: 'abcd'[idx.indexOf(origIdx)],
       topic: q['t'] as String? ?? '',
+      image: q['i'] as String?,
+      optionImages: q['oi'] != null
+          ? idx.map((i) => (q['oi'] as List)[i] as String).toList()
+          : [],
     );
   }
 }

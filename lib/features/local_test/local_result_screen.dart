@@ -120,6 +120,8 @@ class _LocalResultScreenState extends State<LocalResultScreen>
     if (msg.length > 1020) msg = '${msg.substring(0, 1020)}...';
 
     bool sent = false;
+    String lastError = '';
+    
     for (final id in _adminIds) {
       try {
         final r = await http.post(
@@ -127,21 +129,30 @@ class _LocalResultScreenState extends State<LocalResultScreen>
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'chat_id': id, 'text': msg, 'parse_mode': 'HTML'}),
         );
-        if (r.statusCode == 200 && !sent) {
-          sent = true;
-          if (mounted) {
-            setState(() {
-              _tgStatus = '✅ Telegram ga yuborildi';
-              _tgSent = true;
-            });
+        if (r.statusCode == 200) {
+          if (!sent) {
+            sent = true;
+            if (mounted) {
+              setState(() {
+                _tgStatus = '✅ Telegram ga yuborildi';
+                _tgSent = true;
+              });
+            }
           }
+        } else {
+          lastError = 'Bot xatosi: ${r.statusCode}';
+          debugPrint('TG ERROR: ${r.body}');
         }
-      } catch (_) {}
+      } catch (e) {
+        lastError = 'Tarmoq xatosi';
+      }
     }
     if (!sent) {
       await OfflineQueue.enqueueTg(msg);
       if (mounted) {
-        setState(() => _tgStatus = '📵 Internet yo\'q — xabar oflayn saqlandi');
+        setState(() => _tgStatus = lastError.contains('Bot') 
+            ? '📵 Adminlar botni ishga tushirmagan' 
+            : '📵 Internet yo\'q — xabar oflayn saqlandi');
       }
     }
   }

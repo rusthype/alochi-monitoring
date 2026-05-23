@@ -306,30 +306,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _guestLogin() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final pin = await api.fetchGuestPin();
-      if (pin == null || pin.isEmpty) {
-        setState(() => _error = "Mehmon kirish mavjud emas.");
-        return;
-      }
-      final session = await api.login('guest', pin);
-      api.setToken(session.token);
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => PackageScreen(session: session)),
-      );
-    } catch (_) {
-      setState(() => _error = "Kirish muvaffaqiyatsiz.");
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -679,17 +655,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ]),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      TextButton.icon(
-                        onPressed: _loading ? null : _guestLogin,
-                        icon:
-                            const Icon(Icons.person_outline_rounded, size: 16),
-                        label: const Text("Oddiy kirish (faqat ism)"),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.ink2,
-                          textStyle: const TextStyle(fontSize: 13),
-                        ),
-                      ),
                       const SizedBox(height: 10),
                       // ── Offline Test tugmasi ──────────────────────────────
                       SizedBox(
@@ -700,8 +665,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               context,
                               MaterialPageRoute(
                                   builder: (_) => const LocalGradeScreen())),
-                          icon: const Icon(Icons.wifi_off_rounded, size: 17),
-                          label: const Text('Offline test (server kerak emas)',
+                          icon: const Icon(Icons.person_outline_rounded, size: 17),
+                          label: const Text('Oddiy kirish (Internet kerak emas)',
                               style: TextStyle(
                                   fontSize: 13, fontWeight: FontWeight.w700)),
                           style: OutlinedButton.styleFrom(

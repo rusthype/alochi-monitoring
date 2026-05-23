@@ -31,6 +31,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
   Timer? _timerTimer;
 
   late final AnimationController _fadeCtrl;
+  final ScrollController _scrollCtrl = ScrollController();
 
   // Auto-advance timer for option selection
   Timer? _autoAdv;
@@ -72,6 +73,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
     _timerTimer?.cancel();
     _autoAdv?.cancel();
     _fadeCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
@@ -94,6 +96,10 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
   void _navigate(int idx) {
     if (idx < 0 || idx >= _total) return;
     _autoAdv?.cancel();
+    
+    if (_scrollCtrl.hasClients) {
+      _scrollCtrl.jumpTo(0);
+    }
 
     // Switch to English section
     final wasInMath = _current < _mathCount;
@@ -293,6 +299,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                   children: [
                     Expanded(
                         child: SingleChildScrollView(
+                      controller: _scrollCtrl,
                       padding: const EdgeInsets.fromLTRB(24, 18, 24, 8),
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1047,25 +1054,37 @@ class _QuestionImage extends StatelessWidget {
   const _QuestionImage({required this.url});
 
   @override
-  Widget build(BuildContext context) => ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 260),
-        child: AppNetworkImage(
-          url: url,
-          fit: BoxFit.contain,
-          borderRadius: BorderRadius.circular(10),
-          placeholder: Container(
-            height: 120,
-            decoration: BoxDecoration(
-              color: AppColors.bg,
+  Widget build(BuildContext context) => SizedBox(
+        width: double.infinity,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 260),
+            child: AppNetworkImage(
+              url: url,
+              fit: BoxFit.contain,
               borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.brand,
-                strokeWidth: 2,
+              placeholder: SizedBox(
+                width: double.infinity,
+                height: 120,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    height: 120,
+                    width: 120,
+                    decoration: BoxDecoration(
+                      color: AppColors.bg,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.brand,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
           errorWidget: Builder(
             builder: (context) {
               debugPrint('IMAGE ERROR | URL: $url');
@@ -1089,7 +1108,9 @@ class _QuestionImage extends StatelessWidget {
             },
           ),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _KbdKey extends StatelessWidget {
