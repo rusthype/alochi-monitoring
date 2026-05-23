@@ -439,7 +439,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                               const SizedBox(height: 16),
                                               Text(_q.prompt,
                                                   style: const TextStyle(
-                                                      fontSize: 19,
+                                                      fontSize: 21,
                                                       fontWeight:
                                                           FontWeight.w700,
                                                       color: AppColors.ink1,
@@ -794,7 +794,7 @@ class _OptionRowState extends State<_OptionRow>
                               if (widget.text.isNotEmpty) ...[
                                 Text(widget.text,
                                     style: TextStyle(
-                                        fontSize: 14,
+                                        fontSize: 16,
                                         fontWeight: FontWeight.w500,
                                         color: widget.selected
                                             ? const Color(0xFF7C2D12)
@@ -805,6 +805,7 @@ class _OptionRowState extends State<_OptionRow>
                                 url: widget.optionImage,
                                 height: 80,
                                 fit: BoxFit.contain,
+                                showZoom: true,
                                 borderRadius: BorderRadius.circular(8),
                                 errorWidget: const Icon(
                                   Icons.broken_image_outlined,
@@ -815,7 +816,7 @@ class _OptionRowState extends State<_OptionRow>
                             ])
                       : Text(widget.text,
                           style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 16,
                               fontWeight: FontWeight.w500,
                               color: widget.selected
                                   ? const Color(0xFF7C2D12)
@@ -880,6 +881,7 @@ class _QuestionImage extends StatelessWidget {
               width: double.infinity,
               alignment: Alignment.centerLeft,
               fit: BoxFit.contain,
+              showZoom: true,
               borderRadius: BorderRadius.circular(10),
               placeholder: SizedBox(
                 width: double.infinity,

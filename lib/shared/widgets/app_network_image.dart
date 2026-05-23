@@ -18,6 +18,7 @@ class AppNetworkImage extends StatelessWidget {
   final Widget? placeholder;
   final Widget? errorWidget;
   final Alignment alignment;
+  final bool showZoom;
 
   const AppNetworkImage({
     super.key,
@@ -29,6 +30,7 @@ class AppNetworkImage extends StatelessWidget {
     this.borderRadius,
     this.placeholder,
     this.errorWidget,
+    this.showZoom = false,
   });
 
   @override
@@ -73,6 +75,65 @@ class AppNetworkImage extends StatelessWidget {
     if (borderRadius != null) {
       img = ClipRRect(borderRadius: borderRadius!, child: img);
     }
+    
+    if (showZoom) {
+      img = GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            barrierColor: Colors.black87,
+            builder: (ctx) => Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: EdgeInsets.zero,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  InteractiveViewer(
+                    maxScale: 5.0,
+                    child: CachedNetworkImage(
+                      imageUrl: fixedUrl,
+                      cacheManager: AlochiImageCacheManager(),
+                      fit: BoxFit.contain,
+                      httpHeaders: const {'User-Agent': 'AlochiMonitoring/1.0'},
+                      placeholder: (c, u) => const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 20,
+                    right: 20,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            img,
+            Positioned(
+              bottom: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.zoom_in, color: Colors.white, size: 16),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return img;
   }
 }
