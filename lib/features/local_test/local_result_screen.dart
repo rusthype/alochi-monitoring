@@ -7,7 +7,7 @@ import '../../shared/theme/app_theme.dart';
 import 'local_data.dart';
 import 'local_grade_screen.dart';
 import '../../core/db/offline_queue.dart';
-
+import '../../core/db/history_db.dart';
 const _botToken = '8777359165:AAGr313YLnqCBf_nJ5j6_ytsxjJj36x5jEw';
 const _adminIds = [8418578752, 5345196664, 433778264];
 
@@ -70,6 +70,20 @@ class _LocalResultScreenState extends State<LocalResultScreen>
   int get _totalOk => widget.mathOk + widget.engOk;
 
   Future<void> _sendTelegram() async {
+    try {
+      await HistoryDb.insertResult(
+        firstName: widget.firstName,
+        lastName: widget.lastName,
+        school: "Maktab", // Since school is not explicitly passed separately in this widget except inside group string. Wait, group might contain school.
+        gradeGroup: '${widget.grade}-sinf ${widget.group}',
+        mathScore: widget.mathOk,
+        engScore: widget.engOk,
+        totalPct: widget.pct.toDouble(),
+      );
+    } catch (e) {
+      debugPrint("Tarixga yozishda xato: $e");
+    }
+
     final now = DateTime.now();
     final dateStr =
         '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}';

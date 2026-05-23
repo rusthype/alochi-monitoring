@@ -10,6 +10,7 @@ import '../../shared/theme/app_theme.dart';
 import '../test/package_screen.dart';
 import '../local_test/local_grade_screen.dart';
 import '../local_test/sync_images_button.dart';
+import '../local_test/history_screen.dart';
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
   int attempts = 3,
@@ -679,7 +680,19 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                      const SyncImagesButton(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SyncImagesButton(),
+                          const SizedBox(width: 8),
+                          TextButton.icon(
+                            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen())),
+                            icon: const Icon(Icons.history_rounded, size: 16),
+                            label: const Text('Oflayn Tarix', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            style: TextButton.styleFrom(foregroundColor: AppColors.ink2),
+                          ),
+                        ],
+                      ),
                     ])),
               ]),
             ),
