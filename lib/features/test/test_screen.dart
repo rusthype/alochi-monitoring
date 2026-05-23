@@ -181,9 +181,9 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
     final result = TestResult(
       packageId: widget.package.id,
       variant: widget.session.variant,
-      mathScore: mathAns,
-      engScore: engAns,
-      totalPct: _total > 0 ? (_answers.length * 100 ~/ _total) : 0,
+      mathScore: 0, // Server hisoblaydi
+      engScore: 0,
+      totalPct: 0,
       answers: answersMap,
       deviceId: 'flutter-win',
     );
@@ -191,6 +191,20 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
     final synced = resp['synced'] as bool? ?? false;
     final xpEarned = resp['xp_earned'] as int? ?? 0;
     final rawWrong = resp['wrong_answers'] as List<dynamic>? ?? [];
+    
+    TestResult finalResult = result;
+    if (synced && resp.containsKey('math_score')) {
+      finalResult = TestResult(
+        packageId: result.packageId,
+        variant: result.variant,
+        mathScore: resp['math_score'] as int? ?? 0,
+        engScore: resp['eng_score'] as int? ?? 0,
+        totalPct: resp['total_pct'] as int? ?? 0,
+        answers: answersMap,
+        deviceId: 'flutter-win',
+      );
+    }
+
     if (!synced) await OfflineQueue.enqueue(result);
     if (!mounted) return;
     Navigator.pushReplacement(
@@ -199,7 +213,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
             builder: (_) => ResultScreen(
                 session: widget.session,
                 package: widget.package,
-                result: result,
+                result: finalResult,
                 synced: synced,
                 xpEarned: xpEarned,
                 wrongAnswers: rawWrong)));
