@@ -30,7 +30,7 @@ class AlochiImageCacheManager extends CacheManager with ImageCacheManager {
 }
 
 http.Client _createHttpClient() {
-  if (Platform.isWindows) {
+  if (Platform.isWindows || Platform.isMacOS) {
     final httpClient = HttpClient()
       ..badCertificateCallback = (cert, host, port) => true;
     return IOClient(httpClient);

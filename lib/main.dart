@@ -13,8 +13,8 @@ void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
-    if (!kIsWeb && Platform.isWindows) {
-      HttpOverrides.global = _WindowsHttpOverrides();
+    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
+      HttpOverrides.global = _DesktopHttpOverrides();
     }
 
     FlutterError.onError = (details) {
@@ -60,7 +60,7 @@ class AlochiMonitoringApp extends StatelessWidget {
   }
 }
 
-class _WindowsHttpOverrides extends HttpOverrides {
+class _DesktopHttpOverrides extends HttpOverrides {
   @override
   HttpClient createHttpClient(SecurityContext? context) {
     return super.createHttpClient(context)

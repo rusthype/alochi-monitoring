@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
 import '../../shared/theme/app_theme.dart';
@@ -157,8 +158,7 @@ class _NetworkBgState extends State<_NetworkBg>
       );
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+class _LoginScreenState extends State<LoginScreen> {
   final _userCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -170,24 +170,14 @@ class _LoginScreenState extends State<LoginScreen>
   String _statusMsg = 'Server tekshirilmoqda...';
   String? _error;
 
-  late final AnimationController _anim;
-  late final Animation<double> _fade;
-  late final Animation<Offset> _slide;
-
   @override
   void initState() {
     super.initState();
-    _anim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
-    _slide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _anim, curve: Curves.easeOut));
     _tryAutoLogin();
   }
 
   @override
   void dispose() {
-    _anim.dispose();
     _userCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
@@ -255,7 +245,6 @@ class _LoginScreenState extends State<LoginScreen>
       _checkingOnline = false;
       _statusMsg = online ? 'Server bilan ulandi' : 'Offline rejim';
     });
-    _anim.forward();
   }
 
   Future<bool> _checkOnline() async {
@@ -482,7 +471,7 @@ class _LoginScreenState extends State<LoginScreen>
             ]),
           )),
         ]),
-      );
+      ).animate().fadeIn(duration: 500.ms, curve: Curves.easeOut).slideX(begin: -0.05, end: 0);
 
   Widget _circle(double size, double opacity) => Container(
         width: size,
@@ -507,11 +496,7 @@ class _LoginScreenState extends State<LoginScreen>
                 color: Colors.white.withValues(alpha: .8), fontSize: 13)),
       ]);
 
-  Widget _formPanel() => FadeTransition(
-        opacity: _fade,
-        child: SlideTransition(
-          position: _slide,
-          child: Center(
+  Widget _formPanel() => Center(
               child: SingleChildScrollView(
             padding: const EdgeInsets.all(32),
             child: ConstrainedBox(
@@ -768,9 +753,7 @@ class _LoginScreenState extends State<LoginScreen>
                     ])),
               ]),
             ),
-          )),
-        ),
-      );
+          )).animate().fadeIn(duration: 500.ms, delay: 100.ms, curve: Curves.easeOut).slideY(begin: 0.05, end: 0);
 
   Widget _field({
     required TextEditingController controller,

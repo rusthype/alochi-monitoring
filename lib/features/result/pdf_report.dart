@@ -1,6 +1,7 @@
 // lib/features/result/pdf_report.dart
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../core/models/models.dart';
@@ -33,9 +34,15 @@ class PdfReport {
     final passed = result.passed;
     final mainClr = passed ? _green : _red;
 
+    final baseFontData = await rootBundle.load('assets/fonts/Inter-Regular.ttf');
+    final boldFontData = await rootBundle.load('assets/fonts/Inter-Bold.ttf');
+    
+    final baseFont = pw.Font.ttf(baseFontData);
+    final boldFont = pw.Font.ttf(boldFontData);
+
     final theme = pw.ThemeData.withFont(
-      base: pw.Font.helvetica(),
-      bold: pw.Font.helveticaBold(),
+      base: baseFont,
+      bold: boldFont,
     );
 
     doc.addPage(pw.Page(

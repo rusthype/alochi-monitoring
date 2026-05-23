@@ -148,9 +148,9 @@ class _PackageScreenState extends State<PackageScreen>
                                     color: AppColors.ink1)),
                             const SizedBox(height: 4),
                             Row(children: [
-                              _chip('\${s.grade}-sinf', AppColors.math),
+                              _chip('${s.grade}-sinf', AppColors.math),
                               const SizedBox(width: 6),
-                              _chip('Variant \${s.variant}', AppColors.brand),
+                              _chip('Variant ${s.variant}', AppColors.brand),
                               if (s.groupName != null) ...[
                                 const SizedBox(width: 6),
                                 _chip(s.groupName!, AppColors.ink2),
