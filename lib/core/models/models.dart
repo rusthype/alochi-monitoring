@@ -18,12 +18,12 @@ class StudentSession {
   });
 
   factory StudentSession.fromJson(Map<String, dynamic> j) => StudentSession(
-        token: j['token'],
-        studentId: j['student_id'],
-        studentName: j['student_name'],
-        variant: j['variant'],
-        grade: j['grade'],
-        groupName: j['group_name'],
+        token: j['token'] as String? ?? '',
+        studentId: j['student_id'] as String? ?? '',
+        studentName: j['student_name'] as String? ?? '',
+        variant: (j['variant'] as num?)?.toInt() ?? 1,
+        grade: (j['grade'] as num?)?.toInt() ?? 9,
+        groupName: j['group_name'] as String?,
       );
 }
 
@@ -47,13 +47,13 @@ class TestPackage {
   });
 
   factory TestPackage.fromJson(Map<String, dynamic> j) => TestPackage(
-        id: j['id'],
-        title: j['title'],
-        grade: j['grade'],
-        mathCount: j['math_count'],
-        engCount: j['eng_count'],
-        variantCount: j['variant_count'],
-        questionCount: j['question_count'],
+        id: j['id'] as String? ?? '',
+        title: j['title'] as String? ?? '',
+        grade: (j['grade'] as num?)?.toInt() ?? 9,
+        mathCount: (j['math_count'] as num?)?.toInt() ?? 0,
+        engCount: (j['eng_count'] as num?)?.toInt() ?? 0,
+        variantCount: (j['variant_count'] as num?)?.toInt() ?? 1,
+        questionCount: (j['question_count'] as num?)?.toInt() ?? 0,
       );
 
   int get totalCount => mathCount + engCount;
@@ -80,10 +80,10 @@ class Question {
   });
 
   factory Question.fromJson(Map<String, dynamic> j) => Question(
-        id: j['id'],
-        subject: j['subject'],
-        position: j['position'],
-        prompt: j['prompt'],
+        id: j['id'] as String? ?? '',
+        subject: j['subject'] as String? ?? '',
+        position: (j['position'] as num?)?.toInt() ?? 0,
+        prompt: j['prompt'] as String? ?? '',
         options: List<String>.from(j['options'] ?? []),
         image: _fixUrl(j['image'] as String?),
         optionImages: j['option_images'] != null

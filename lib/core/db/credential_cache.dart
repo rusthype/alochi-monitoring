@@ -1,83 +1,75 @@
 // lib/core/db/credential_cache.dart
-// Login/parolni lokal saqlash — offline login uchun
+// Login/parolni xavfsiz saqlash — offline login uchun
+// Windows DPAPI orqali shifrlangan (flutter_secure_storage)
 
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/models.dart';
 
 class CredentialCache {
-  static const _keyCredentials = 'cached_credentials';
-  static const _keySession = 'cached_session';
+  static const _storage = FlutterSecureStorage(
+    wOptions: WindowsOptions(useBackwardCompatibility: false),
+  );
 
-  /// Login va parolni saqlaydi (parol SHA256 emas, lekin lokal)
+  static const _keyUsername = 'cc_username';
+  static const _keyPassword = 'cc_password';
+  static const _keyToken = 'cc_token';
+  static const _keyStudentId = 'cc_student_id';
+  static const _keyStudentName = 'cc_student_name';
+  static const _keyVariant = 'cc_variant';
+  static const _keyGrade = 'cc_grade';
+  static const _keyGroupName = 'cc_group_name';
+
   static Future<void> saveCredentials(String username, String password) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-        _keyCredentials,
-        jsonEncode({
-          'username': username,
-          'password': password,
-          'saved_at': DateTime.now().toIso8601String(),
-        }));
+    await _storage.write(key: _keyUsername, value: username);
+    await _storage.write(key: _keyPassword, value: password);
   }
 
-  /// Oxirgi muvaffaqiyatli sessiyani saqlaydi
   static Future<void> saveSession(
       StudentSession session, String username, String password) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-        _keySession,
-        jsonEncode({
-          'token': session.token,
-          'student_id': session.studentId,
-          'student_name': session.studentName,
-          'variant': session.variant,
-          'grade': session.grade,
-          'group_name': session.groupName,
-          'username': username,
-          'password': password,
-          'saved_at': DateTime.now().toIso8601String(),
-        }));
+    await _storage.write(key: _keyUsername, value: username);
+    await _storage.write(key: _keyPassword, value: password);
+    await _storage.write(key: _keyToken, value: session.token);
+    await _storage.write(key: _keyStudentId, value: session.studentId);
+    await _storage.write(key: _keyStudentName, value: session.studentName);
+    await _storage.write(key: _keyVariant, value: session.variant.toString());
+    await _storage.write(key: _keyGrade, value: session.grade.toString());
+    await _storage.write(key: _keyGroupName, value: session.groupName ?? '');
   }
 
-  /// Saqlangan login/parolni qaytaradi
   static Future<Map<String, String>?> loadCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_keyCredentials);
-    if (raw == null) return null;
-    final data = jsonDecode(raw) as Map<String, dynamic>;
-    return {
-      'username': data['username'] as String,
-      'password': data['password'] as String,
-    };
+    final username = await _storage.read(key: _keyUsername);
+    final password = await _storage.read(key: _keyPassword);
+    if (username == null || password == null) return null;
+    return {'username': username, 'password': password};
   }
 
-  /// Offline rejimda oxirgi sessiyani qaytaradi
   static Future<StudentSession?> loadOfflineSession(
       String username, String password) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_keySession);
-    if (raw == null) return null;
-    final data = jsonDecode(raw) as Map<String, dynamic>;
-
+    final savedUsername = await _storage.read(key: _keyUsername);
+    final savedPassword = await _storage.read(key: _keyPassword);
     // Login/parol bir xil bo'lsa offline sessiya beradi
-    if (data['username'] != username || data['password'] != password) {
-      return null;
-    }
+    if (savedUsername != username || savedPassword != password) return null;
+
+    final token = await _storage.read(key: _keyToken);
+    final studentId = await _storage.read(key: _keyStudentId);
+    final studentName = await _storage.read(key: _keyStudentName);
+    final variant = await _storage.read(key: _keyVariant);
+    final grade = await _storage.read(key: _keyGrade);
+    final groupName = await _storage.read(key: _keyGroupName);
+
+    if (token == null || studentId == null || studentName == null) return null;
 
     return StudentSession(
-      token: data['token'] as String,
-      studentId: data['student_id'] as String,
-      studentName: data['student_name'] as String,
-      variant: data['variant'] as int,
-      grade: data['grade'] as int,
-      groupName: data['group_name'] as String?,
+      token: token,
+      studentId: studentId,
+      studentName: studentName,
+      variant: int.tryParse(variant ?? '') ?? 1,
+      grade: int.tryParse(grade ?? '') ?? 9,
+      groupName: (groupName?.isEmpty ?? true) ? null : groupName,
     );
   }
 
   static Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyCredentials);
-    await prefs.remove(_keySession);
+    await _storage.deleteAll();
   }
 }
