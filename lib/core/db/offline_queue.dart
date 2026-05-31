@@ -1,6 +1,7 @@
 // lib/core/db/offline_queue.dart
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -81,7 +82,9 @@ class OfflineQueue {
           await d.update('queue', {'attempts': (row['attempts'] as int) + 1},
               where: 'id = ?', whereArgs: [row['id']]);
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('OfflineQueue.flush error (id=${row['id']}): $e');
+      }
     }
     return synced;
   }
@@ -121,7 +124,9 @@ class OfflineQueue {
           await d.delete('tg_queue', where: 'id = ?', whereArgs: [row['id']]);
           synced++;
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('OfflineQueue.flushTg error (id=${row['id']}): $e');
+      }
     }
     return synced;
   }
