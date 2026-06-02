@@ -408,10 +408,7 @@ class _ResultScreenState extends State<ResultScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(widget.session.studentName,
-                    style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink1)),
+                    style: AppTextStyles.titleLarge),
                 const SizedBox(height: 4),
                 Text(
                     '${widget.session.grade}-sinf · Variant ${widget.session.variant}',
@@ -456,11 +453,8 @@ class _ResultScreenState extends State<ResultScreen>
                     const Icon(Icons.equalizer_rounded,
                         size: 18, color: AppColors.ink2),
                     const SizedBox(width: 8),
-                    const Text('Jami ball',
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.ink2)),
+                    Text('Jami ball',
+                        style: AppTextStyles.labelLarge.copyWith(color: AppColors.ink2)),
                     const Spacer(),
                     Text(
                         '${widget.result.mathScore + widget.result.engScore} / ${widget.package.totalCount}',
