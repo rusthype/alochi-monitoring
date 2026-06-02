@@ -314,21 +314,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     // Auto-login urinayotganda spinner
     if (_autoLogging) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppColors.bg,
         body: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-          SizedBox(
+          const SizedBox(
               width: 36,
               height: 36,
               child: CircularProgressIndicator(
                   strokeWidth: 3, color: AppColors.brand)),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Text('Kirish...',
-              style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.ink3,
-                  fontWeight: FontWeight.w500)),
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3)),
         ])),
       );
     }
@@ -469,21 +466,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Alochi',
-                          style: TextStyle(
-                            color: AppColors.ink1,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                          ),
+                          style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w900),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
                           'Monitoring tizimi',
-                          style: TextStyle(color: AppColors.ink2, fontSize: 13),
+                          style: AppTextStyles.labelLarge.copyWith(color: AppColors.ink2, fontWeight: FontWeight.w400),
                         ),
                       ],
                     ),
@@ -516,8 +509,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 shape: BoxShape.circle, color: _statusColor)),
                     const SizedBox(width: 7),
                     Text(_statusMsg,
-                        style: TextStyle(
-                            fontSize: 12,
+                        style: AppTextStyles.labelMedium.copyWith(
                             fontWeight: FontWeight.w600,
                             color: _checkingOnline
                                 ? AppColors.brand
@@ -539,20 +531,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
                 const SizedBox(height: 28),
-                const Align(
+                Align(
                     alignment: Alignment.centerLeft,
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Kirish',
-                              style: TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.ink1)),
-                          SizedBox(height: 4),
+                              style: AppTextStyles.displayLarge.copyWith(
+                                  fontSize: 26, fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 4),
                           Text("Login va parolni o'qituvchingizdan oling",
-                              style: TextStyle(
-                                  fontSize: 13, color: AppColors.ink2)),
+                              style: AppTextStyles.labelLarge.copyWith(
+                                  color: AppColors.ink2, fontWeight: FontWeight.w400)),
                         ])),
                 const SizedBox(height: 24),
                 Form(
@@ -609,9 +599,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                         child: Text(_error!,
-                                            style: const TextStyle(
+                                            style: AppTextStyles.labelLarge.copyWith(
                                                 color: AppColors.err,
-                                                fontSize: 13))),
+                                                fontWeight: FontWeight.w400))),
                                   ]),
                                 ),
                               ),
@@ -642,9 +632,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           _isOnline
                                               ? 'Kirish'
                                               : 'Offline kirish',
-                                          style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700)),
+                                          style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
                                       const SizedBox(width: 6),
                                       Icon(
                                           _isOnline
@@ -666,8 +654,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   builder: (_) => const LocalGradeScreen())),
                           icon: const Icon(Icons.person_outline_rounded, size: 17),
                           label: const Text('Oddiy kirish (Internet kerak emas)',
-                              style: TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w700)),
+                              style: AppTextStyles.labelLarge),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.ink2,
                             side: const BorderSide(
@@ -686,7 +673,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextButton.icon(
                             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen())),
                             icon: const Icon(Icons.history_rounded, size: 16),
-                            label: const Text('Oflayn Tarix', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            label: const Text('Oflayn Tarix', style: AppTextStyles.labelLarge),
                             style: TextButton.styleFrom(foregroundColor: AppColors.ink2),
                           ),
                         ],
@@ -713,8 +700,7 @@ class _LoginScreenState extends State<LoginScreen> {
         textInputAction: action,
         onFieldSubmitted: onSubmit,
         validator: validator,
-        style: const TextStyle(
-            fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.ink1),
+        style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink1),
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
