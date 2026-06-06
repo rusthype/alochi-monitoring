@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 
 class ApiException implements Exception {
@@ -203,13 +204,18 @@ class MonitoringApi {
   }
 
   /// Lokal/oflayn (login'siz) natijani guest endpointga yuboradi.
+  /// Idempotency-Key header orqali token yuboradi — duplikat oldini olish uchun.
   /// Server DB ga saqlaydi VA Telegram ni server tomonda jo'natadi.
   /// HTTP 200 = durabl muvaffaqiyat (telegram_sent=false bo'lsa ham qayta yubormaymiz — dublikat oldini olish).
-  Future<bool> submitLocalResult(Map<String, dynamic> payload) async {
+  Future<bool> submitLocalResult(Map<String, dynamic> payload, String token) async {
     try {
-      final resp = await _post('/result/', payload);
-      final saved = resp['saved'];
-      return saved == true || saved == null;
+      final resp = await _send(() => http.post(
+            Uri.parse('$_base/result/'),
+            headers: {..._headers, 'Idempotency-Key': token},
+            body: jsonEncode(payload),
+          ));
+      if (resp.statusCode >= 400) return false;
+      return true;
     } on ApiException {
       return false;
     } catch (_) {
@@ -224,5 +230,7 @@ class MonitoringApi {
     return 0; // OfflineQueue bilan ishlatiladi
   }
 }
+
+String newIdempotencyToken() => const Uuid().v4();
 
 final api = MonitoringApi();

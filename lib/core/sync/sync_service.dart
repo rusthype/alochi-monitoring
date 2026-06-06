@@ -31,6 +31,8 @@ class SyncService {
     return results.any((r) => r != ConnectivityResult.none);
   }
 
+  Future<void> flushNow() => _flushAll();
+
   Future<void> _flushAll() async {
     if (_flushing) return;
     _flushing = true;
