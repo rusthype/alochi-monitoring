@@ -119,6 +119,7 @@ jobs:
 
       # ── 4. Artifacts ──────────────────────────────────────────
       - name: Upload ZIP artifact
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: alochi-monitoring-windows
@@ -127,6 +128,7 @@ jobs:
 
       - name: Upload MSIX artifact
         if: hashFiles('alochi-monitoring.msix') != ''
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: alochi-monitoring-msix
