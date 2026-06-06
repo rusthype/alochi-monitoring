@@ -229,6 +229,7 @@ class MonitoringApi {
   Future<int> flushOfflineQueue() async {
     final online = await OfflineQueue.flush(submitResult);
     final local = await OfflineQueue.flushLocal(submitLocalResult);
+    await OfflineQueue.purgeStale();
     return online + local;
   }
 }

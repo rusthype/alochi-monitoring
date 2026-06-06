@@ -158,6 +158,30 @@ class OfflineQueue {
     return (res.first['c'] as int?) ?? 0;
   }
 
+  // ── Cleanup ────────────────────────────────────────────────────────────────
+  static const int _maxAttempts = 10;
+  static const int _maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 kun
+
+  /// "O'lik" qatorlarni tozalaydi: attempts >= 10 YOKI 7 kundan eski.
+  /// Muvaffaqiyatli yuborilgan qatorlar flush paytida allaqachon o'chiriladi —
+  /// bu faqat doimiy xato beradigan yoki juda eski yig'ilib qolganlar uchun.
+  /// Qaytaradi: o'chirilgan jami qatorlar soni.
+  static Future<int> purgeStale() async {
+    final d = await db;
+    final cutoff = DateTime.now().millisecondsSinceEpoch - _maxAgeMs;
+    int removed = 0;
+    // queue va local_queue: attempts + created ustunlari bor
+    for (final table in ['queue', 'local_queue']) {
+      removed += await d.delete(table,
+          where: 'attempts >= ? OR created < ?',
+          whereArgs: [_maxAttempts, cutoff]);
+    }
+    // legacy tg_queue: attempts ustuni yo'q — faqat yosh bo'yicha
+    removed += await d.delete('tg_queue', where: 'created < ?', whereArgs: [cutoff]);
+    if (removed > 0) debugPrint('OfflineQueue.purgeStale: $removed eski/o\'lik qator o\'chirildi');
+    return removed;
+  }
+
   // ── Telegram Offline Queue ──────────────────────────────────────────────────
   // LEGACY: faqat eski yig'ilib qolgan TG xabarlarini drenajlash uchun. Yangi kod ishlatmaydi — keyingi relizda olib tashlanadi.
   static Future<void> enqueueTg(String msg) async {
