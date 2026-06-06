@@ -146,6 +146,7 @@ jobs:
           files: |
             alochi-monitoring-windows.zip
             alochi-monitoring-app-latest.zip
+            AlochiMonitoring-*-Setup.exe
           body: |
             ### O'rnatish
 
