@@ -7,6 +7,7 @@ import 'local_grade_screen.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/db/history_db.dart';
 import '../../core/api/api_client.dart';
+import '../../core/sync/sync_service.dart';
 import '../../core/services/pdf_service.dart';
 import 'package:printing/printing.dart';
 
@@ -91,21 +92,16 @@ class _LocalResultScreenState extends State<LocalResultScreen>
     }
 
     final payload = _buildPayload();
-    bool ok = false;
-    try {
-      ok = await api.submitLocalResult(payload);
-    } catch (_) {
-      ok = false;
-    }
+    final token = newIdempotencyToken();
+    await OfflineQueue.enqueueLocal(payload, token);
 
-    if (!ok) {
-      await OfflineQueue.enqueueLocal(payload);
-    }
+    // Immediate send without blocking UI
+    SyncService.instance.flushNow();
 
     if (!mounted) return;
     setState(() {
-      _sent = ok;
-      _sendStatus = ok ? '✅ Yuborildi' : "📵 Internet yo'q — navbatga saqlandi";
+      _sent = true;
+      _sendStatus = '✅ Saqlandi, yuborilmoqda...';
     });
   }
 

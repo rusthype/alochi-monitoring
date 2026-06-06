@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:http/http.dart' as http;
 import '../models/models.dart';
+import '../api/api_client.dart';
 
 class OfflineQueue {
   static Database? _db;
@@ -19,7 +20,7 @@ class OfflineQueue {
     }
     final dir = await getApplicationSupportDirectory();
     final path = join(dir.path, 'monitoring_queue.db');
-    _db = await openDatabase(path, version: 3, onCreate: (db, _) async {
+    _db = await openDatabase(path, version: 4, onCreate: (db, _) async {
       await db.execute('''
         CREATE TABLE queue (
           id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,7 +41,8 @@ class OfflineQueue {
           id       INTEGER PRIMARY KEY AUTOINCREMENT,
           payload  TEXT NOT NULL,
           created  INTEGER NOT NULL,
-          attempts INTEGER NOT NULL DEFAULT 0
+          attempts INTEGER NOT NULL DEFAULT 0,
+          token    TEXT
         )
       ''');
     }, onUpgrade: (db, oldVersion, newVersion) async {
@@ -62,6 +64,9 @@ class OfflineQueue {
             attempts INTEGER NOT NULL DEFAULT 0
           )
         ''');
+      }
+      if (oldVersion < 4) {
+        await db.execute('ALTER TABLE local_queue ADD COLUMN token TEXT');
       }
     });
     return _db!;
@@ -114,23 +119,25 @@ class OfflineQueue {
   }
 
   // ── Local Result Offline Queue ──────────────────────────────────────────────
-  static Future<void> enqueueLocal(Map<String, dynamic> payload) async {
+  static Future<void> enqueueLocal(Map<String, dynamic> payload, String token) async {
     final d = await db;
     await d.insert('local_queue', {
       'payload': jsonEncode(payload),
       'created': DateTime.now().millisecondsSinceEpoch,
       'attempts': 0,
+      'token': token,
     });
   }
 
-  static Future<int> flushLocal(Future<bool> Function(Map<String, dynamic>) submitFn) async {
+  static Future<int> flushLocal(Future<bool> Function(Map<String, dynamic> payload, String token) submitFn) async {
     final d = await db;
     final rows = await d.query('local_queue', orderBy: 'created ASC');
     int synced = 0;
     for (final row in rows) {
       try {
         final json = jsonDecode(row['payload'] as String);
-        final ok = await submitFn(json);
+        final token = (row['token'] as String?) ?? newIdempotencyToken();
+        final ok = await submitFn(json, token);
         if (ok) {
           await d.delete('local_queue', where: 'id = ?', whereArgs: [row['id']]);
           synced++;
