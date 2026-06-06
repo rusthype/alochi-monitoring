@@ -59,6 +59,7 @@ class _LocalResultScreenState extends State<LocalResultScreen>
 
   @override
   void dispose() {
+    SyncService.instance.flushNow();
     _scoreAnim.dispose();
     super.dispose();
   }

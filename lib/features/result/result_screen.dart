@@ -6,6 +6,7 @@ import 'package:open_filex/open_filex.dart';
 import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/app_network_image.dart';
+import '../../core/sync/sync_service.dart';
 import '../auth/login_screen.dart';
 import 'pdf_report.dart';
 
@@ -94,6 +95,8 @@ class _ResultScreenState extends State<ResultScreen>
     Future.delayed(const Duration(milliseconds: 3800), () {
       if (mounted) _cardCtrl.forward();
     });
+
+    SyncService.instance.flushNow();
   }
 
   void _animateScore() {
@@ -135,6 +138,7 @@ class _ResultScreenState extends State<ResultScreen>
 
   @override
   void dispose() {
+    SyncService.instance.flushNow();
     _celebCtrl.dispose();
     _overlayFadeCtrl.dispose();
     _cardCtrl.dispose();
