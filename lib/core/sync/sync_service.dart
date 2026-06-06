@@ -4,7 +4,6 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import '../api/api_client.dart';
-import '../db/offline_queue.dart';
 
 class SyncService {
   SyncService._();
@@ -37,10 +36,7 @@ class SyncService {
     if (_flushing) return;
     _flushing = true;
     try {
-      final pendingOnline = await OfflineQueue.pendingCount();
-      if (pendingOnline > 0) await OfflineQueue.flush(api.submitResult);
-      final pendingLocal = await OfflineQueue.pendingLocalCount();
-      if (pendingLocal > 0) await OfflineQueue.flushLocal(api.submitLocalResult);
+      await api.flushOfflineQueue();
     } catch (e) {
       debugPrint('SyncService._flushAll error: $e');
     } finally {
