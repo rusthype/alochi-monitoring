@@ -4,8 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'core/api/api_client.dart';
-import 'core/db/offline_queue.dart';
+import 'core/sync/sync_service.dart';
 import 'shared/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
 
@@ -23,10 +22,8 @@ void main() {
     };
 
     try {
-      // Offline navbatdagi natijalarni yuborishga urinish
-      _tryFlushQueue();
-
       runApp(const AlochiMonitoringApp());
+      SyncService.instance.start();
     } catch (error, stackTrace) {
       debugPrint('Startup error: $error');
       debugPrint('$stackTrace');
@@ -35,15 +32,6 @@ void main() {
     debugPrint('Uncaught app error: $error');
     debugPrint('$stackTrace');
   });
-}
-
-Future<void> _tryFlushQueue() async {
-  try {
-    final pending = await OfflineQueue.pendingCount();
-    if (pending > 0) {
-      await OfflineQueue.flush(api.submitResult);
-    }
-  } catch (_) {}
 }
 
 class AlochiMonitoringApp extends StatelessWidget {

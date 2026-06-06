@@ -81,6 +81,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
               firstName: first,
               lastName: last,
               group: _groupCtrl.text.trim(),
+              school: _schoolCtrl.text.trim(),
               grade: _grade!,
               variant: _variant!,
               questions: qs,
