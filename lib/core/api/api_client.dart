@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
+import '../db/offline_queue.dart';
 
 class ApiException implements Exception {
   final int statusCode;
@@ -223,11 +224,12 @@ class MonitoringApi {
     }
   }
 
-  /// Offline navbatdagi natijalarni qayta yuborishga urinadi
+  /// Offline navbatdagi (online + lokal) natijalarni qayta yuborishga urinadi.
+  /// Qaytaradi: muvaffaqiyatli yuborilgan jami yozuvlar soni.
   Future<int> flushOfflineQueue() async {
-    // Import: offline_queue.dart da OfflineQueue.flush chaqiriladi
-    // Bu yerda faqat submitResult ishlatiladi
-    return 0; // OfflineQueue bilan ishlatiladi
+    final online = await OfflineQueue.flush(submitResult);
+    final local = await OfflineQueue.flushLocal(submitLocalResult);
+    return online + local;
   }
 }
 
