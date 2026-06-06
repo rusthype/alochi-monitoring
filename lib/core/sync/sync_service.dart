@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import '../api/api_client.dart';
+import '../db/offline_queue.dart';
 
 class SyncService {
   SyncService._();
@@ -36,6 +37,13 @@ class SyncService {
     if (_flushing) return;
     _flushing = true;
     try {
+      // Navbat bo'sh bo'lsa tarmoqqa umuman tegmaymiz (behuda 60s flush yo'q).
+      final pending = await OfflineQueue.pendingCount() +
+          await OfflineQueue.pendingLocalCount();
+      if (pending == 0) return;
+      // Haqiqiy internetni 1 ta arzon GET bilan tekshiramiz. Interfeys "ulangan"
+      // bo'lsa-da internet yo'q bo'lsa, bu N ta 20s timeout urinishidan saqlaydi.
+      if (!await api.ping()) return;
       await api.flushOfflineQueue();
     } catch (e) {
       debugPrint('SyncService._flushAll error: $e');
