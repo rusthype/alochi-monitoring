@@ -9,7 +9,7 @@ import '../../shared/widgets/app_network_image.dart';
 import 'local_result_screen.dart';
 
 class LocalTestScreen extends StatefulWidget {
-  final String firstName, lastName, group;
+  final String firstName, lastName, group, school;
   final int grade, variant;
   final List<LocalQuestion> questions;
   const LocalTestScreen(
@@ -17,6 +17,7 @@ class LocalTestScreen extends StatefulWidget {
       required this.firstName,
       required this.lastName,
       required this.group,
+      required this.school,
       required this.grade,
       required this.variant,
       required this.questions});
@@ -181,6 +182,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
             firstName: widget.firstName,
             lastName: widget.lastName,
             group: widget.group,
+            school: widget.school,
             grade: widget.grade,
             variant: widget.variant,
             questions: widget.questions,

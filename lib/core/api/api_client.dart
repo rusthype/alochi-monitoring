@@ -202,6 +202,21 @@ class MonitoringApi {
     return r['synced'] as bool? ?? false;
   }
 
+  /// Lokal/oflayn (login'siz) natijani guest endpointga yuboradi.
+  /// Server DB ga saqlaydi VA Telegram ni server tomonda jo'natadi.
+  /// HTTP 200 = durabl muvaffaqiyat (telegram_sent=false bo'lsa ham qayta yubormaymiz — dublikat oldini olish).
+  Future<bool> submitLocalResult(Map<String, dynamic> payload) async {
+    try {
+      final resp = await _post('/result/', payload);
+      final saved = resp['saved'];
+      return saved == true || saved == null;
+    } on ApiException {
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Offline navbatdagi natijalarni qayta yuborishga urinadi
   Future<int> flushOfflineQueue() async {
     // Import: offline_queue.dart da OfflineQueue.flush chaqiriladi

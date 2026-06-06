@@ -1,34 +1,17 @@
 // lib/features/local_test/local_result_screen.dart
-// Offline natija — mavzular bo'yicha + Telegram ga yuborish + PDF
-import 'dart:convert';
+// Offline natija — mavzular bo'yicha + Server /result/ endpointga yuborish + PDF
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../../shared/theme/app_theme.dart';
 import 'local_data.dart';
 import 'local_grade_screen.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/db/history_db.dart';
+import '../../core/api/api_client.dart';
 import '../../core/services/pdf_service.dart';
 import 'package:printing/printing.dart';
-const _botToken = '8777359165:AAGr313YLnqCBf_nJ5j6_ytsxjJj36x5jEw';
-// Superadmin Telegram ID lar (CLAUDE.md dan):
-//   Elbek @m4e7tro = 433778264
-//   S7 @Maxsoldier_hype = 8418578752
-//   . @ggg_oo10 = 5345196664
-const _adminIds = <int, String>{
-  433778264: 'Elbek',
-  8418578752: 'S7',
-  5345196664: 'Admin',
-};
-
-/// HTML maxsus belgilarini Telegram parse_mode=HTML uchun escape qiladi.
-String _escapeHtml(String s) => s
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
 
 class LocalResultScreen extends StatefulWidget {
-  final String firstName, lastName, group;
+  final String firstName, lastName, group, school;
   final int grade, variant;
   final List<LocalQuestion> questions;
   final Map<int, String> answers;
@@ -40,6 +23,7 @@ class LocalResultScreen extends StatefulWidget {
       required this.firstName,
       required this.lastName,
       required this.group,
+      required this.school,
       required this.grade,
       required this.variant,
       required this.questions,
@@ -57,11 +41,8 @@ class _LocalResultScreenState extends State<LocalResultScreen>
     with TickerProviderStateMixin {
   late final AnimationController _scoreAnim;
   late final Animation<double> _scoreVal;
-  String _tgStatus = '📤 Yuborilmoqda...';
-  bool _tgSent = false;
-  // Har bir admin uchun: null = yuborildi, String = xato sababi
-  final Map<int, String?> _tgPerAdmin = {};
-  bool _tgExpanded = false;
+  String _sendStatus = '📤 Yuborilmoqda...';
+  bool _sent = false;
 
   @override
   void initState() {
@@ -72,9 +53,7 @@ class _LocalResultScreenState extends State<LocalResultScreen>
         .animate(CurvedAnimation(parent: _scoreAnim, curve: Curves.easeOut));
     _scoreAnim.forward();
 
-    // Yig'ilib qolgan eski oflayn xabarlarni jo'natish (eski queue helper)
-    OfflineQueue.flushTg(_botToken, _adminIds.keys.toList());
-    _sendTelegram();
+    _submitLocal();
   }
 
   @override
@@ -96,164 +75,55 @@ class _LocalResultScreenState extends State<LocalResultScreen>
       .where((e) => widget.questions.any((q) => !q.isMath && q.topic == e.key))
       .toList();
 
-  Future<void> _sendTelegram() async {
+  Future<void> _submitLocal() async {
     try {
       await HistoryDb.insertResult(
         firstName: widget.firstName,
         lastName: widget.lastName,
-        school: "Maktab",
+        school: widget.school.isEmpty ? '—' : widget.school,
         gradeGroup: '${widget.grade}-sinf ${widget.group}',
         mathScore: widget.mathOk,
         engScore: widget.engOk,
         totalPct: widget.pct.toDouble(),
       );
     } catch (e) {
-      debugPrint("Tarixga yozishda xato: $e");
+      debugPrint('Tarixga yozishda xato: $e');
     }
 
-    // 1) Token tirikligini /getMe orqali tekshirish
+    final payload = _buildPayload();
+    bool ok = false;
     try {
-      final ping = await http
-          .get(Uri.parse('https://api.telegram.org/bot$_botToken/getMe'))
-          .timeout(const Duration(seconds: 6));
-      if (ping.statusCode == 401) {
-        if (mounted) {
-          setState(() => _tgStatus = '🔑 Bot token bekor qilingan (401)');
-        }
-        return;
-      }
-      if (ping.statusCode != 200) {
-        if (mounted) {
-          setState(
-              () => _tgStatus = '⚠️ Telegram javob bermayapti (${ping.statusCode})');
-        }
-        return;
-      }
-    } on Exception catch (e) {
-      // Tarmoq yo'q — xabarni oflayn navbatga qo'shamiz
-      final msg = _buildMessage();
-      await OfflineQueue.enqueueTg(msg);
-      if (mounted) {
-        setState(() =>
-            _tgStatus = "📵 Internet yo'q — xabar oflayn saqlandi (${e.runtimeType})");
-      }
-      return;
-    }
-
-    // 2) Xabarni yasash (HTML escape bilan)
-    final msg = _buildMessage();
-
-    // 3) Har bir adminga alohida yuborib, javobni saqlash
-    int okCount = 0;
-    for (final entry in _adminIds.entries) {
-      final id = entry.key;
-      try {
-        final r = await http
-            .post(
-              Uri.parse('https://api.telegram.org/bot$_botToken/sendMessage'),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode(
-                  {'chat_id': id, 'text': msg, 'parse_mode': 'HTML'}),
-            )
-            .timeout(const Duration(seconds: 8));
-        if (r.statusCode == 200) {
-          _tgPerAdmin[id] = null; // muvaffaqiyat
-          okCount++;
-        } else {
-          _tgPerAdmin[id] = _tgErrorReason(r.statusCode, r.body);
-          debugPrint('TG ERROR for $id: ${r.statusCode} ${r.body}');
-        }
-      } on Exception catch (e) {
-        _tgPerAdmin[id] = 'Tarmoq xatosi: ${e.runtimeType}';
-      }
-    }
-
-    // 4) Umumiy status
-    if (!mounted) return;
-    if (okCount == _adminIds.length) {
-      setState(() {
-        _tgStatus = '✅ Telegram: ${_adminIds.length}/${_adminIds.length} admin oldi';
-        _tgSent = true;
-      });
-    } else if (okCount > 0) {
-      setState(() {
-        _tgStatus = '⚠️ Telegram: $okCount/${_adminIds.length} admin oldi';
-        _tgSent = true;
-      });
-    } else {
-      // Hech kim olmadi — oflayn navbatga
-      await OfflineQueue.enqueueTg(msg);
-      setState(() => _tgStatus =
-          '📵 Hech bir admin xabar olmadi — oflayn navbatga qo\'shildi');
-    }
-  }
-
-  String _buildMessage() {
-    final now = DateTime.now();
-    final dateStr =
-        '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year}';
-    final mPct = _mathTotal > 0 ? widget.mathOk * 100 ~/ _mathTotal : 0;
-    final ePct = _engTotal > 0 ? widget.engOk * 100 ~/ _engTotal : 0;
-
-    final name = _escapeHtml('${widget.lastName} ${widget.firstName}');
-    final groupStr = widget.group.isNotEmpty ? _escapeHtml(widget.group) : '—';
-
-    var msg = '📊 <b>$name</b>'
-        ' | ${widget.grade}-sinf V${widget.variant} | ✅ ${widget.pct}%'
-        '\n📚 $groupStr · $dateStr'
-        '\n━━━━━━━━━━━━━━━━━━━━'
-        '\n📐 Matematika: <b>${widget.mathOk}/$_mathTotal ($mPct%)</b>';
-
-    for (final e in _mathTopics) {
-      final p = e.value.tot > 0 ? e.value.ok * 100 ~/ e.value.tot : 0;
-      final ico = p >= 80
-          ? '✅'
-          : p >= 50
-              ? '🟡'
-              : '🔴';
-      msg +=
-          '\n  └ $ico ${_escapeHtml(e.key)}: <b>${e.value.ok}/${e.value.tot} ($p%)</b>';
-    }
-
-    msg += '\n🔤 Ingliz tili: <b>${widget.engOk}/$_engTotal ($ePct%)</b>';
-
-    for (final e in _engTopics) {
-      final p = e.value.tot > 0 ? e.value.ok * 100 ~/ e.value.tot : 0;
-      final ico = p >= 80
-          ? '✅'
-          : p >= 50
-              ? '🟡'
-              : '🔴';
-      msg +=
-          '\n  └ $ico ${_escapeHtml(e.key)}: <b>${e.value.ok}/${e.value.tot} ($p%)</b>';
-    }
-    final weak = widget.topicScores.entries
-        .where((e) => e.value.tot > 0 && e.value.ok * 100 ~/ e.value.tot < 50)
-        .map((e) => _escapeHtml(e.key))
-        .toList();
-    if (weak.isNotEmpty) msg += '\n\n⚠️ Zaif: ${weak.join(', ')}';
-    if (msg.length > 3500) msg = '${msg.substring(0, 3500)}...';
-    return msg;
-  }
-
-  /// Telegram API javobidan inson tushunadigan xato sababi.
-  String _tgErrorReason(int statusCode, String body) {
-    try {
-      final j = jsonDecode(body) as Map<String, dynamic>;
-      final desc = (j['description'] as String?) ?? '';
-      if (statusCode == 403) {
-        if (desc.contains('blocked')) return 'Adminbotni bloklab qo\'ygan';
-        if (desc.contains("haven't") || desc.contains('initiated')) {
-          return "Admin botga /start bosmagan";
-        }
-        return 'Ruxsat yo\'q (403)';
-      }
-      if (statusCode == 400) return 'Xato so\'rov: $desc';
-      if (statusCode == 401) return 'Bot token bekor';
-      return '$statusCode: $desc';
+      ok = await api.submitLocalResult(payload);
     } catch (_) {
-      return 'HTTP $statusCode';
+      ok = false;
     }
+
+    if (!ok) {
+      await OfflineQueue.enqueueLocal(payload);
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _sent = ok;
+      _sendStatus = ok ? '✅ Yuborildi' : "📵 Internet yo'q — navbatga saqlandi";
+    });
+  }
+
+  Map<String, dynamic> _buildPayload() {
+    final now = DateTime.now();
+    final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    return {
+      'name': '${widget.lastName} ${widget.firstName}'.trim(),
+      'grade': widget.grade,
+      'variant': widget.variant.toString(),
+      'source': 'flutter',
+      'vocab': {'cor': 0, 'tot': 0},
+      'english': {'cor': widget.engOk, 'tot': _engTotal},
+      'math': {'cor': widget.mathOk, 'tot': _mathTotal},
+      'pct': widget.pct,
+      'time': time,
+      'school_code': widget.school,
+    };
   }
 
   @override
@@ -386,8 +256,8 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                   questions: widget.questions),
               const SizedBox(height: 16),
             ],
-            // Telegram status
-            _buildTelegramStatus(),
+            // Send status
+            _buildSendStatus(),
             const SizedBox(height: 16),
             // PDF Actions
             Row(children: [
@@ -453,93 +323,21 @@ class _LocalResultScreenState extends State<LocalResultScreen>
     );
   }
 
-  Widget _buildTelegramStatus() {
-    final hasFailures = _tgPerAdmin.values.any((v) => v != null);
-    final hasResults = _tgPerAdmin.isNotEmpty;
-
+  Widget _buildSendStatus() {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-          color: _tgSent ? const Color(0xFFF0FDF4) : AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-              color:
-                  _tgSent ? const Color(0xFF86EFAC) : AppColors.border)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(_tgSent ? Icons.check_circle_rounded : Icons.send_rounded,
-                color: _tgSent ? AppColors.ok : AppColors.brand, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-                child: Text(_tgStatus,
-                    style: TextStyle(
-                        fontSize: 13,
-                        color: _tgSent ? AppColors.ok : AppColors.ink2,
-                        fontWeight: FontWeight.w600))),
-            if (hasResults)
-              IconButton(
-                onPressed: () => setState(() => _tgExpanded = !_tgExpanded),
-                icon: Icon(
-                    _tgExpanded
-                        ? Icons.expand_less_rounded
-                        : Icons.expand_more_rounded,
-                    color: AppColors.ink3,
-                    size: 20),
-                tooltip: 'Tafsilot',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-          ]),
-          if (_tgExpanded && hasResults) ...[
-            const Divider(height: 18, color: AppColors.border),
-            ..._adminIds.entries.map((entry) {
-              final id = entry.key;
-              final name = entry.value;
-              final err = _tgPerAdmin[id];
-              final ok = err == null && _tgPerAdmin.containsKey(id);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(children: [
-                  Icon(
-                      ok
-                          ? Icons.check_circle_outline_rounded
-                          : Icons.error_outline_rounded,
-                      size: 14,
-                      color: ok ? AppColors.ok : AppColors.err),
-                  const SizedBox(width: 8),
-                  Text('$name ',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink1)),
-                  Text('(ID: $id)',
-                      style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.ink3,
-                          fontFamily: 'JetBrainsMono')),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: Text(ok ? 'yetkazildi' : (err ?? '—'),
-                          style: TextStyle(
-                              fontSize: 11,
-                              color: ok ? AppColors.ok : AppColors.err))),
-                ]),
-              );
-            }),
-            if (hasFailures) ...[
-              const SizedBox(height: 6),
-              const Text(
-                  "Tavsiya: yetib bormagan admin @alochipoll_bot ga /start bossin.",
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.ink3,
-                      fontStyle: FontStyle.italic)),
-            ],
-          ],
-        ],
+        color: _sent ? const Color(0xFFF0FDF4) : AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _sent ? const Color(0xFF86EFAC) : AppColors.border),
       ),
+      child: Row(children: [
+        Icon(_sent ? Icons.check_circle_rounded : Icons.cloud_upload_rounded,
+            color: _sent ? AppColors.ok : AppColors.brand, size: 20),
+        const SizedBox(width: 10),
+        Expanded(child: Text(_sendStatus,
+          style: TextStyle(fontSize: 13, color: _sent ? AppColors.ok : AppColors.ink2, fontWeight: FontWeight.w600))),
+      ]),
     );
   }
 }

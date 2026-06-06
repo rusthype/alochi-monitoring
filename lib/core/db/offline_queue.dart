@@ -19,7 +19,7 @@ class OfflineQueue {
     }
     final dir = await getApplicationSupportDirectory();
     final path = join(dir.path, 'monitoring_queue.db');
-    _db = await openDatabase(path, version: 2, onCreate: (db, _) async {
+    _db = await openDatabase(path, version: 3, onCreate: (db, _) async {
       await db.execute('''
         CREATE TABLE queue (
           id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,6 +35,14 @@ class OfflineQueue {
           created  INTEGER NOT NULL
         )
       ''');
+      await db.execute('''
+        CREATE TABLE local_queue (
+          id       INTEGER PRIMARY KEY AUTOINCREMENT,
+          payload  TEXT NOT NULL,
+          created  INTEGER NOT NULL,
+          attempts INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
     }, onUpgrade: (db, oldVersion, newVersion) async {
       if (oldVersion < 2) {
         await db.execute('''
@@ -42,6 +50,16 @@ class OfflineQueue {
             id       INTEGER PRIMARY KEY AUTOINCREMENT,
             msg      TEXT NOT NULL,
             created  INTEGER NOT NULL
+          )
+        ''');
+      }
+      if (oldVersion < 3) {
+        await db.execute('''
+          CREATE TABLE local_queue (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            payload  TEXT NOT NULL,
+            created  INTEGER NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0
           )
         ''');
       }
@@ -95,7 +113,46 @@ class OfflineQueue {
     return (res.first['c'] as int?) ?? 0;
   }
 
+  // ── Local Result Offline Queue ──────────────────────────────────────────────
+  static Future<void> enqueueLocal(Map<String, dynamic> payload) async {
+    final d = await db;
+    await d.insert('local_queue', {
+      'payload': jsonEncode(payload),
+      'created': DateTime.now().millisecondsSinceEpoch,
+      'attempts': 0,
+    });
+  }
+
+  static Future<int> flushLocal(Future<bool> Function(Map<String, dynamic>) submitFn) async {
+    final d = await db;
+    final rows = await d.query('local_queue', orderBy: 'created ASC');
+    int synced = 0;
+    for (final row in rows) {
+      try {
+        final json = jsonDecode(row['payload'] as String);
+        final ok = await submitFn(json);
+        if (ok) {
+          await d.delete('local_queue', where: 'id = ?', whereArgs: [row['id']]);
+          synced++;
+        } else {
+          await d.update('local_queue', {'attempts': (row['attempts'] as int) + 1},
+              where: 'id = ?', whereArgs: [row['id']]);
+        }
+      } catch (e) {
+        debugPrint('OfflineQueue.flushLocal error (id=${row['id']}): $e');
+      }
+    }
+    return synced;
+  }
+
+  static Future<int> pendingLocalCount() async {
+    final d = await db;
+    final res = await d.rawQuery('SELECT COUNT(*) as c FROM local_queue');
+    return (res.first['c'] as int?) ?? 0;
+  }
+
   // ── Telegram Offline Queue ──────────────────────────────────────────────────
+  // LEGACY: faqat eski yig'ilib qolgan TG xabarlarini drenajlash uchun. Yangi kod ishlatmaydi — keyingi relizda olib tashlanadi.
   static Future<void> enqueueTg(String msg) async {
     final d = await db;
     await d.insert('tg_queue', {
