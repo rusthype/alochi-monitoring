@@ -1,6 +1,11 @@
-# Alochi Monitoring — Windows O'rnatish
+# Alochi Monitoring — Windows O'rnatish skripti
+# ESLATMA: Preferred method is now the signed Setup.exe from releases.
+# GitHub releases sahifasidan Setup.exe ni yuklab o'rnatish tavsiya qilinadi.
+#
 # PowerShell (Admin) da ishga tushiring:
 #   iex (irm https://raw.githubusercontent.com/rusthype/alochi-monitoring/main/install.ps1)
+#
+# Batafsil: docs/INSTALL.md ga qarang
 
 $ErrorActionPreference = "Stop"
 $Repo       = "rusthype/alochi-monitoring"
