@@ -269,6 +269,10 @@ jobs:
           cat /tmp/Alochi.Monitoring.yaml
 
       - name: Submit to winget-pkgs
+        # Package "Alochi.Monitoring" is not yet registered in microsoft/winget-pkgs,
+        # so this submission will fail until a first version is added there manually.
+        # Don't let it fail the whole run — the build + release already succeeded above.
+        continue-on-error: true
         if: startsWith(github.ref, 'refs/tags/')
         uses: vedantmgoyal9/winget-releaser@v2
         with:
