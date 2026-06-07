@@ -144,25 +144,11 @@ jobs:
           echo "version=$v" >> $env:GITHUB_OUTPUT
           Write-Host "Version: $v"
 
-      # ── 4. Artifacts ──────────────────────────────────────────
-      - name: Upload ZIP artifact
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: alochi-monitoring-windows
-          path: alochi-monitoring-windows.zip
-          retention-days: 90
-
-      - name: Upload MSIX artifact
-        if: hashFiles('alochi-monitoring.msix') != ''
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: alochi-monitoring-msix
-          path: alochi-monitoring.msix
-          retention-days: 90
-
-      # ── 5. Latest release ─────────────────────────────────────
+      # ── 4. Latest release ─────────────────────────────────────
+      # NOTE: no upload-artifact steps — the build outputs are distributed via
+      # GitHub Releases below (zip + Setup.exe), so CI artifacts were pure
+      # duplication. They also hit the Actions artifact storage quota, which
+      # surfaced as red "Failed to CreateArtifact" errors on every run.
       - name: Update 'latest' release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
