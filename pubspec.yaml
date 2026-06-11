@@ -47,6 +47,8 @@ flutter:
     - assets/logo.png
     - assets/questions.json
     - assets/fonts/
+    - assets/interhouse/
+    - assets/interhouse/img/
 
 msix_config:
   display_name: Alochi Monitoring

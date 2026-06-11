@@ -115,7 +115,7 @@ class TestResult {
 
   bool get passed => totalPct >= 60;
 
-  Map<String, dynamic> toJson() => {
+  Map<String, dynamic> toJson({Map<String, dynamic>? detail}) => {
         'package_id': packageId,
         'variant': variant,
         'math_score': mathScore,
@@ -123,6 +123,7 @@ class TestResult {
         'total_pct': totalPct,
         'answers': answers,
         'device_id': deviceId,
+        if (detail != null) 'detail': detail,
       };
 }
 
