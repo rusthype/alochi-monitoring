@@ -1,9 +1,11 @@
 // lib/features/local_test/local_grade_screen.dart
-// Grade → Variant → Student Info → Test
+// Interhouse Grade 2 → Variant → Student Info → Test
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
 import 'local_test_screen.dart';
 import 'local_data.dart';
+import '../interhouse/interhouse_data.dart';
+import '../interhouse/interhouse_runner.dart';
 
 class LocalGradeScreen extends StatefulWidget {
   const LocalGradeScreen({super.key});
@@ -13,9 +15,11 @@ class LocalGradeScreen extends StatefulWidget {
 
 class _LocalGradeScreenState extends State<LocalGradeScreen>
     with SingleTickerProviderStateMixin {
-  int? _grade;
+  // Interhouse Grade 2 — grade fixed at 2
   int? _variant;
-  int _step = 0; // 0=grade, 1=variant, 2=student
+  int _step = 0; // 0=variant, 1=student info
+  // Legacy: kept so LocalQuestionsLoader path compiles
+  int _grade = 2;
 
   final _firstCtrl = TextEditingController();
   final _lastCtrl = TextEditingController();
@@ -72,19 +76,19 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
       _err = null;
     });
     try {
-      final qs = await LocalQuestionsLoader.get(_grade!, _variant!);
+      // Interhouse Grade 2 path
+      final testData = await IhLoader.load();
       if (!mounted) return;
       Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => LocalTestScreen(
+            builder: (_) => InterhouseRunner(
+              isOnline: false,
               firstName: first,
               lastName: last,
-              group: _groupCtrl.text.trim(),
               school: _schoolCtrl.text.trim(),
-              grade: _grade!,
               variant: _variant!,
-              questions: qs,
+              testData: testData,
             ),
           ));
     } catch (e) {
@@ -93,6 +97,25 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
         _loading = false;
       });
     }
+  }
+
+  // Legacy path — kept in code but unreachable; preserves LocalQuestionsLoader usage
+  Future<void> _startLegacyTest() async {
+    final qs = await LocalQuestionsLoader.get(_grade, _variant!);
+    if (!mounted) return;
+    Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LocalTestScreen(
+            firstName: _firstCtrl.text.trim(),
+            lastName: _lastCtrl.text.trim(),
+            group: _groupCtrl.text.trim(),
+            school: _schoolCtrl.text.trim(),
+            grade: _grade,
+            variant: _variant!,
+            questions: qs,
+          ),
+        ));
   }
 
   @override
@@ -235,7 +258,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _GradeBadge(grade: _grade!),
+          _GradeBadge(grade: _grade),
           const SizedBox(height: 20),
           const Text('Variantni tanlang',
               style: TextStyle(
@@ -313,7 +336,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
         padding: const EdgeInsets.all(24),
         child: Column(children: [
           Row(children: [
-            _GradeBadge(grade: _grade!),
+            _GradeBadge(grade: _grade),
             const SizedBox(width: 8),
             _VariantBadge(variant: _variant!),
           ]),

@@ -5,6 +5,8 @@ import '../auth/login_screen.dart';
 import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
 import 'confirm_screen.dart';
+import '../interhouse/interhouse_data.dart';
+import '../interhouse/interhouse_runner.dart';
 
 class PackageScreen extends StatefulWidget {
   final StudentSession session;
@@ -269,17 +271,40 @@ class _PackageScreenState extends State<PackageScreen>
         ]),
       );
 
+  void _openPackage(TestPackage pkg) {
+    if (pkg.title.toLowerCase().contains('interhouse')) {
+      _launchInterhouse(pkg);
+    } else {
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) =>
+                  ConfirmScreen(session: widget.session, package: pkg)));
+    }
+  }
+
+  Future<void> _launchInterhouse(TestPackage pkg) async {
+    final testData = await IhLoader.load();
+    if (!mounted) return;
+    Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => InterhouseRunner(
+                  isOnline: true,
+                  session: widget.session,
+                  packageId: pkg.id,
+                  variant: widget.session.variant,
+                  testData: testData,
+                )));
+  }
+
   Widget _buildPackageCard(TestPackage pkg) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Material(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           child: InkWell(
-            onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) =>
-                        ConfirmScreen(session: widget.session, package: pkg))),
+            onTap: () => _openPackage(pkg),
             borderRadius: BorderRadius.circular(16),
             child: Container(
               padding: const EdgeInsets.all(18),

@@ -173,12 +173,13 @@ class MonitoringApi {
 
   /// Natijani serverga yuboradi va XP/coins ma'lumotini qaytaradi.
   /// {synced: bool, xp_earned: int, coins_earned: int, total_xp: int, level: int}
-  Future<Map<String, dynamic>> submitResultFull(TestResult result) async {
+  Future<Map<String, dynamic>> submitResultFull(TestResult result,
+      {Map<String, dynamic>? detail}) async {
     try {
-      final resp = await _post('/results/', result.toJson());
+      final resp = await _post('/results/', result.toJson(detail: detail));
       // Natija saqlangandan keyin wrong answers yuklaymiz
-      final detail = await _fetchResultDetail(resp['id'] as String? ?? '');
-      return {'synced': true, ...resp, 'wrong_answers': detail};
+      final wrongAnswers = await _fetchResultDetail(resp['id'] as String? ?? '');
+      return {'synced': true, ...resp, 'wrong_answers': wrongAnswers};
     } on ApiException catch (e) {
       if (e.statusCode == 409) {
         return {'synced': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
