@@ -155,9 +155,10 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
     final resp =
         await api.submitResultFull(testResult, detail: detail);
     final synced = resp['synced'] as bool? ?? false;
+    final permanent = resp['permanent'] as bool? ?? false;
 
-    if (!synced) {
-      // Queue for retry
+    if (!synced && !permanent) {
+      // Queue for retry (transient errors only — permanent 4xx are dropped)
       await OfflineQueue.enqueue(testResult);
     }
 

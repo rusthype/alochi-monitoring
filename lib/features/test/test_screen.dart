@@ -216,7 +216,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
       );
     }
 
-    if (!synced) await OfflineQueue.enqueue(result);
+    final permanent = resp['permanent'] as bool? ?? false;
+    if (!synced && !permanent) await OfflineQueue.enqueue(result);
     if (!mounted) return;
     Navigator.pushReplacement(
         context,

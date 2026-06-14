@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
@@ -173,6 +174,7 @@ class MonitoringApi {
 
   /// Natijani serverga yuboradi va XP/coins ma'lumotini qaytaradi.
   /// {synced: bool, xp_earned: int, coins_earned: int, total_xp: int, level: int}
+  /// Xato holatida `permanent:true` (4xx, retry qilma) yoki `retryable:true` (5xx/network).
   Future<Map<String, dynamic>> submitResultFull(TestResult result,
       {Map<String, dynamic>? detail}) async {
     try {
@@ -184,9 +186,15 @@ class MonitoringApi {
       if (e.statusCode == 409) {
         return {'synced': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
       }
-      return {'synced': false, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
-    } catch (_) {
-      return {'synced': false, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
+      if (e.statusCode >= 400 && e.statusCode < 500) {
+        // Permanent client error — server rejected payload, retrying won't help
+        return {'synced': false, 'permanent': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
+      }
+      // 5xx or network error (statusCode == 0) — transient, retry via queue
+      return {'synced': false, 'retryable': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
+    } catch (e) {
+      debugPrint('submitResultFull unexpected error: $e');
+      return {'synced': false, 'retryable': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
     }
   }
 
@@ -228,7 +236,7 @@ class MonitoringApi {
   /// Offline navbatdagi (online + lokal) natijalarni qayta yuborishga urinadi.
   /// Qaytaradi: muvaffaqiyatli yuborilgan jami yozuvlar soni.
   Future<int> flushOfflineQueue() async {
-    final online = await OfflineQueue.flush(submitResult);
+    final online = await OfflineQueue.flush((r) => submitResultFull(r));
     final local = await OfflineQueue.flushLocal(submitLocalResult);
     await OfflineQueue.purgeStale();
     return online + local;

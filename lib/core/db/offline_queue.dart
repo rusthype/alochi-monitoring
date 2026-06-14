@@ -81,7 +81,8 @@ class OfflineQueue {
     });
   }
 
-  static Future<int> flush(Future<bool> Function(TestResult) submitFn) async {
+  static Future<int> flush(
+      Future<Map<String, dynamic>> Function(TestResult) submitFn) async {
     final d = await db;
     final rows = await d.query('queue', orderBy: 'created ASC');
     int synced = 0;
@@ -97,10 +98,16 @@ class OfflineQueue {
           answers: Map<String, String>.from(json['answers'] ?? {}),
           deviceId: json['device_id'] ?? 'offline',
         );
-        final ok = await submitFn(result);
+        final r = await submitFn(result);
+        final ok = r['synced'] as bool? ?? false;
+        final permanent = r['permanent'] as bool? ?? false;
         if (ok) {
           await d.delete('queue', where: 'id = ?', whereArgs: [row['id']]);
           synced++;
+        } else if (permanent) {
+          // Server permanently rejected payload — drop to avoid endless retry
+          await d.delete('queue', where: 'id = ?', whereArgs: [row['id']]);
+          debugPrint('OfflineQueue.flush: id=${row['id']} permanent error, dropping');
         } else {
           await d.update('queue', {'attempts': (row['attempts'] as int) + 1},
               where: 'id = ?', whereArgs: [row['id']]);
