@@ -1,8 +1,6 @@
 // lib/main.dart
 import 'dart:async';
-import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'core/sync/sync_service.dart';
 import 'shared/theme/app_theme.dart';
@@ -11,10 +9,6 @@ import 'features/auth/login_screen.dart';
 void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
-
-    if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
-      HttpOverrides.global = _DesktopHttpOverrides();
-    }
 
     FlutterError.onError = (details) {
       debugPrint('Flutter error: ${details.exceptionAsString()}');
@@ -45,13 +39,5 @@ class AlochiMonitoringApp extends StatelessWidget {
       theme: AppTheme.theme,
       home: const LoginScreen(),
     );
-  }
-}
-
-class _DesktopHttpOverrides extends HttpOverrides {
-  @override
-  HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context)
-      ..badCertificateCallback = (cert, host, port) => true;
   }
 }
