@@ -91,10 +91,11 @@ class MonitoringApi {
   }
 
   Future<Map<String, dynamic>> _post(
-      String path, Map<String, dynamic> body) async {
+      String path, Map<String, dynamic> body,
+      {Map<String, String> extraHeaders = const {}}) async {
     final resp = await _send(() => http.post(
           Uri.parse('$_base$path'),
-          headers: _headers,
+          headers: {..._headers, ...extraHeaders},
           body: jsonEncode(body),
         ));
     Map<String, dynamic> data;
@@ -175,10 +176,15 @@ class MonitoringApi {
   /// Natijani serverga yuboradi va XP/coins ma'lumotini qaytaradi.
   /// {synced: bool, xp_earned: int, coins_earned: int, total_xp: int, level: int}
   /// Xato holatida `permanent:true` (4xx, retry qilma) yoki `retryable:true` (5xx/network).
+  /// [idempotencyToken] berilsa `Idempotency-Key` header qo'shiladi — flush retry dedup uchun.
   Future<Map<String, dynamic>> submitResultFull(TestResult result,
-      {Map<String, dynamic>? detail}) async {
+      {Map<String, dynamic>? detail, String? idempotencyToken}) async {
     try {
-      final resp = await _post('/results/', result.toJson(detail: detail));
+      final extraHeaders = idempotencyToken != null && idempotencyToken.isNotEmpty
+          ? {'Idempotency-Key': idempotencyToken}
+          : const <String, String>{};
+      final resp =
+          await _post('/results/', result.toJson(detail: detail), extraHeaders: extraHeaders);
       // Natija saqlangandan keyin wrong answers yuklaymiz
       final wrongAnswers = await _fetchResultDetail(resp['id'] as String? ?? '');
       return {'synced': true, ...resp, 'wrong_answers': wrongAnswers};
@@ -236,7 +242,9 @@ class MonitoringApi {
   /// Offline navbatdagi (online + lokal) natijalarni qayta yuborishga urinadi.
   /// Qaytaradi: muvaffaqiyatli yuborilgan jami yozuvlar soni.
   Future<int> flushOfflineQueue() async {
-    final online = await OfflineQueue.flush((r) => submitResultFull(r));
+    final online = await OfflineQueue.flush(
+      (r, token) => submitResultFull(r, idempotencyToken: token),
+    );
     final local = await OfflineQueue.flushLocal(submitLocalResult);
     await OfflineQueue.purgeStale();
     return online + local;

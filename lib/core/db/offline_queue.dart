@@ -20,15 +20,19 @@ class OfflineQueue {
     }
     final dir = await getApplicationSupportDirectory();
     final path = join(dir.path, 'monitoring_queue.db');
-    _db = await openDatabase(path, version: 4, onCreate: (db, _) async {
+    _db = await openDatabase(path, version: 5, onCreate: (db, _) async {
       await db.execute('''
         CREATE TABLE queue (
           id       INTEGER PRIMARY KEY AUTOINCREMENT,
           payload  TEXT NOT NULL,
           created  INTEGER NOT NULL,
-          attempts INTEGER NOT NULL DEFAULT 0
+          attempts INTEGER NOT NULL DEFAULT 0,
+          token    TEXT
         )
       ''');
+      await db.execute(
+        'CREATE UNIQUE INDEX idx_queue_token ON queue(token) WHERE token IS NOT NULL',
+      );
       await db.execute('''
         CREATE TABLE tg_queue (
           id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,21 +72,33 @@ class OfflineQueue {
       if (oldVersion < 4) {
         await db.execute('ALTER TABLE local_queue ADD COLUMN token TEXT');
       }
+      if (oldVersion < 5) {
+        await db.execute('ALTER TABLE queue ADD COLUMN token TEXT');
+        await db.execute(
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_queue_token ON queue(token) WHERE token IS NOT NULL',
+        );
+      }
     });
     return _db!;
   }
 
-  static Future<void> enqueue(TestResult result) async {
+  static Future<void> enqueue(TestResult result, {String? token}) async {
     final d = await db;
-    await d.insert('queue', {
-      'payload': jsonEncode(result.toJson()),
-      'created': DateTime.now().millisecondsSinceEpoch,
-      'attempts': 0,
-    });
+    final t = token ?? newIdempotencyToken();
+    await d.insert(
+      'queue',
+      {
+        'payload': jsonEncode(result.toJson()),
+        'created': DateTime.now().millisecondsSinceEpoch,
+        'attempts': 0,
+        'token': t,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
   }
 
   static Future<int> flush(
-      Future<Map<String, dynamic>> Function(TestResult) submitFn) async {
+      Future<Map<String, dynamic>> Function(TestResult, String) submitFn) async {
     final d = await db;
     final rows = await d.query('queue', orderBy: 'created ASC');
     int synced = 0;
@@ -98,7 +114,8 @@ class OfflineQueue {
           answers: Map<String, String>.from(json['answers'] ?? {}),
           deviceId: json['device_id'] ?? 'offline',
         );
-        final r = await submitFn(result);
+        final token = (row['token'] as String?) ?? '';
+        final r = await submitFn(result, token);
         final ok = r['synced'] as bool? ?? false;
         final permanent = r['permanent'] as bool? ?? false;
         if (ok) {
