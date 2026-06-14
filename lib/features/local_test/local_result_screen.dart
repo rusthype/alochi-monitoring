@@ -94,16 +94,23 @@ class _LocalResultScreenState extends State<LocalResultScreen>
 
     final payload = _buildPayload();
     final token = newIdempotencyToken();
-    await OfflineQueue.enqueueLocal(payload, token);
-
-    // Immediate send without blocking UI
-    SyncService.instance.flushNow();
-
-    if (!mounted) return;
-    setState(() {
-      _sent = true;
-      _sendStatus = '✅ Saqlandi, yuborilmoqda...';
-    });
+    try {
+      await OfflineQueue.enqueueLocal(payload, token);
+      // Immediate send without blocking UI
+      SyncService.instance.flushNow();
+      if (!mounted) return;
+      setState(() {
+        _sent = true;
+        _sendStatus = '✅ Saqlandi, yuborilmoqda...';
+      });
+    } catch (e) {
+      debugPrint('Navbatga yozishda xato: $e');
+      if (!mounted) return;
+      setState(() {
+        _sent = false;
+        _sendStatus = '❌ Saqlashda xato. Qayta urinib ko\'ring.';
+      });
+    }
   }
 
   Map<String, dynamic> _buildPayload() {
