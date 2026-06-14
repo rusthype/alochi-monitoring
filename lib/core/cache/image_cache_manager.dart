@@ -1,13 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 
 /// Alochi rasmlar uchun custom cache manager.
 /// - 30 kunlik cache (rasmlar o'zgarmaydi)
 /// - Maksimum 500 ta rasm
-/// - Windows SSL muammosini hal qiladi
 class AlochiImageCacheManager extends CacheManager with ImageCacheManager {
   static const key = 'alochiImageCache';
 
@@ -30,10 +26,5 @@ class AlochiImageCacheManager extends CacheManager with ImageCacheManager {
 }
 
 http.Client _createHttpClient() {
-  if (Platform.isWindows || Platform.isMacOS) {
-    final httpClient = HttpClient()
-      ..badCertificateCallback = (cert, host, port) => true;
-    return IOClient(httpClient);
-  }
   return http.Client();
 }
