@@ -1,0 +1,103 @@
+name: Build macOS DMG
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}' | cut -d'+' -f1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Configure code signing for CI
+        run: |
+          # Remove development team — CI has no Apple Developer certificate.
+          # The app will be ad-hoc signed after build (see next step).
+          sed -i '' 's/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = /' macos/Runner/Configs/AppInfo.xcconfig
+          # Disable automatic signing so Xcode doesn't try to fetch a provisioning profile.
+          defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintVerification -bool YES || true
+
+      - name: Build macOS release
+        run: flutter build macos --release
+
+      - name: Ad-hoc codesign
+        run: |
+          APP="build/macos/Build/Products/Release/alochi_monitoring.app"
+          # Sign with ad-hoc identity (-). The app is sandboxed and needs at
+          # least ad-hoc signing to run. Users must right-click → Open on first
+          # launch to bypass Gatekeeper on macOS 15+.
+          codesign --force --deep --sign - \
+            --entitlements macos/Runner/Release.entitlements \
+            "$APP"
+          codesign --verify --deep "$APP" && echo "Codesign OK"
+
+      - name: Create DMG
+        run: |
+          APP="build/macos/Build/Products/Release/alochi_monitoring.app"
+          # create-dmg produces a nicely formatted DMG with an Applications symlink.
+          npm install -g create-dmg --silent
+          # create-dmg exits 2 when notarization is skipped (expected in CI).
+          create-dmg \
+            --overwrite \
+            --dmg-title "Alochi Monitoring" \
+            "$APP" \
+            . || [ $? -eq 2 ]
+          # Normalize filename regardless of version suffix create-dmg adds.
+          DMG=$(find . -maxdepth 1 -name "*.dmg" | head -1)
+          mv "$DMG" alochi-monitoring.dmg
+          echo "DMG: $(ls -lh alochi-monitoring.dmg | awk '{print $5, $9}')"
+
+      - name: Upload to latest prerelease
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Build
+          prerelease: true
+          make_latest: false
+          fail_on_unmatched_files: true
+          files: alochi-monitoring.dmg
+          body: |
+            **macOS DMG** — Latest build from `main` branch (v${{ steps.version.outputs.version }})
+
+            Ad-hoc signed. First launch: **right-click → Open** to bypass Gatekeeper.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload to versioned release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: true
+          files: alochi-monitoring.dmg
+          body: |
+            **macOS DMG** — v${{ steps.version.outputs.version }}
+
+            Ad-hoc signed. First launch: **right-click → Open** to bypass Gatekeeper.
+
+            ---
+            **Optional: add proper Apple Developer signing**
+            1. Export a Developer ID Application certificate as `.p12`
+            2. Add `MACOS_SIGNING_CERT` (base64) and `MACOS_SIGNING_PASSWORD` secrets
+            3. Replace the ad-hoc codesign step with a proper `security import` flow
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

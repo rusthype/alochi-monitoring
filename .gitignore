@@ -11,3 +11,4 @@ build/
 *.user
 .DS_Store
 manifests/
+graphify-out/
