@@ -4,25 +4,27 @@ class StudentSession {
   final String token;
   final String studentId;
   final String studentName;
-  final int variant;
-  final int grade;
+  final int? variant;
+  final int? grade;
   final String? groupName;
 
   const StudentSession({
     required this.token,
     required this.studentId,
     required this.studentName,
-    required this.variant,
-    required this.grade,
+    this.variant,
+    this.grade,
     this.groupName,
   });
+
+  bool get hasActiveExam => variant != null && grade != null;
 
   factory StudentSession.fromJson(Map<String, dynamic> j) => StudentSession(
         token: j['token'] as String? ?? '',
         studentId: j['student_id'] as String? ?? '',
         studentName: j['student_name'] as String? ?? '',
-        variant: (j['variant'] as num?)?.toInt() ?? 1,
-        grade: (j['grade'] as num?)?.toInt() ?? 9,
+        variant: (j['variant'] as num?)?.toInt(),
+        grade: (j['grade'] as num?)?.toInt(),
         groupName: j['group_name'] as String?,
       );
 }
