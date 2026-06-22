@@ -415,7 +415,7 @@ class _ResultScreenState extends State<ResultScreen>
                     style: AppTextStyles.titleLarge),
                 const SizedBox(height: 4),
                 Text(
-                    '${widget.session.grade}-sinf · Variant ${widget.session.variant}',
+                    '${widget.session.grade ?? '-'}-sinf · Variant ${widget.session.variant ?? '-'}',
                     style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.ink3,

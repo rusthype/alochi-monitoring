@@ -19,13 +19,17 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
   String? _error;
 
   Future<void> _start() async {
+    final variant = widget.session.variant;
+    if (variant == null) {
+      setState(() => _error = 'Faol imtihon topilmadi yoki muddati tugagan');
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final questions =
-          await api.getQuestions(widget.package.id, widget.session.variant);
+      final questions = await api.getQuestions(widget.package.id, variant);
       if (!mounted) return;
       Navigator.pushReplacement(
           context,
@@ -34,9 +38,16 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
                   session: widget.session,
                   package: widget.package,
                   questions: questions)));
-    } catch (e) {
+    } on ApiException catch (e) {
       setState(() {
-        _error = e is ApiException ? e.message : 'Yuklanmadi. Qayta urinib ko\'ring.';
+        _error = e.statusCode == 403
+            ? 'Faol imtihon topilmadi yoki muddati tugagan'
+            : e.message;
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() {
+        _error = 'Yuklanmadi. Qayta urinib ko\'ring.';
         _loading = false;
       });
     }
@@ -80,8 +91,10 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
                       runSpacing: 8,
                       alignment: WrapAlignment.center,
                       children: [
-                        _chip('${s.grade}-sinf', Icons.school_outlined),
-                        _chip('Variant ${s.variant}', Icons.numbers_outlined),
+                        if (s.grade != null)
+                          _chip('${s.grade}-sinf', Icons.school_outlined),
+                        if (s.variant != null)
+                          _chip('Variant ${s.variant}', Icons.numbers_outlined),
                         if (s.groupName != null)
                           _chip(s.groupName!, Icons.group_outlined),
                       ]),
