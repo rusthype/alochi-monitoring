@@ -191,7 +191,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
     }
     final result = TestResult(
       packageId: widget.package.id,
-      variant: widget.session.variant,
+      variant: widget.session.variant!,
       mathScore: 0, // Server hisoblaydi
       engScore: 0,
       totalPct: 0,
@@ -299,7 +299,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.ink1)),
                         const SizedBox(width: 8),
-                        _GradePill(grade: widget.session.grade),
+                        _GradePill(grade: widget.session.grade!),
                       ]),
                       const SizedBox(height: 2),
                       Text(

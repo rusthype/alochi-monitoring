@@ -31,8 +31,8 @@ class CredentialCache {
     await _storage.write(key: _keyToken, value: session.token);
     await _storage.write(key: _keyStudentId, value: session.studentId);
     await _storage.write(key: _keyStudentName, value: session.studentName);
-    await _storage.write(key: _keyVariant, value: session.variant.toString());
-    await _storage.write(key: _keyGrade, value: session.grade.toString());
+    await _storage.write(key: _keyVariant, value: session.variant?.toString());
+    await _storage.write(key: _keyGrade, value: session.grade?.toString());
     await _storage.write(key: _keyGroupName, value: session.groupName ?? '');
   }
 
@@ -63,8 +63,8 @@ class CredentialCache {
       token: token,
       studentId: studentId,
       studentName: studentName,
-      variant: int.tryParse(variant ?? '') ?? 1,
-      grade: int.tryParse(grade ?? '') ?? 9,
+      variant: int.tryParse(variant ?? ''),
+      grade: int.tryParse(grade ?? ''),
       groupName: (groupName?.isEmpty ?? true) ? null : groupName,
     );
   }
