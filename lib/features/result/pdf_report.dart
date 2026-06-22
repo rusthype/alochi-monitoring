@@ -199,11 +199,14 @@ class PdfReport {
                             fontWeight: pw.FontWeight.bold,
                             color: _ink1)),
                     pw.SizedBox(height: 12),
-                    pw.Text('${s.grade}-sinf',
-                        style: const pw.TextStyle(fontSize: 13, color: _ink2)),
-                    pw.SizedBox(height: 6),
-                    pw.Text('Variant ${s.variant}',
-                        style: const pw.TextStyle(fontSize: 13, color: _ink2)),
+                    if (s.grade != null)
+                      pw.Text('${s.grade}-sinf',
+                          style: const pw.TextStyle(fontSize: 13, color: _ink2)),
+                    if (s.grade != null) pw.SizedBox(height: 6),
+                    if (s.variant != null)
+                      pw.Text('Variant ${s.variant}',
+                          style: const pw.TextStyle(fontSize: 13, color: _ink2)),
+                    if (s.variant != null) pw.SizedBox(height: 6),
                     if (s.groupName != null) ...[
                       pw.SizedBox(height: 6),
                       pw.Text(s.groupName!,

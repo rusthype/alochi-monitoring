@@ -74,20 +74,31 @@ class _PackageScreenState extends State<PackageScreen>
   }
 
   Future<void> _load() async {
+    if (!widget.session.hasActiveExam) {
+      setState(() => _loading = false);
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final pkgs = await api.getPackages(widget.session.grade);
+      final pkgs = await api.getPackages(widget.session.grade!);
       setState(() {
         _packages = pkgs;
         _loading = false;
       });
       _anim.forward(from: 0);
+    } on ApiException catch (e) {
+      setState(() {
+        _error = e.statusCode == 403
+            ? 'Faol imtihon topilmadi yoki muddati tugagan'
+            : e.message;
+        _loading = false;
+      });
     } catch (e) {
       setState(() {
-        _error = e is ApiException ? e.message : 'Yuklanmadi. Qayta urinib ko\'ring.';
+        _error = 'Yuklanmadi. Qayta urinib ko\'ring.';
         _loading = false;
       });
     }
@@ -150,13 +161,16 @@ class _PackageScreenState extends State<PackageScreen>
                                     color: AppColors.ink1)),
                             const SizedBox(height: 4),
                             Row(children: [
-                              _chip('${s.grade}-sinf', AppColors.math),
-                              const SizedBox(width: 6),
-                              _chip('Variant ${s.variant}', AppColors.brand),
-                              if (s.groupName != null) ...[
+                              if (s.grade != null) ...[
+                                _chip('${s.grade}-sinf', AppColors.math),
                                 const SizedBox(width: 6),
-                                _chip(s.groupName!, AppColors.ink2),
                               ],
+                              if (s.variant != null) ...[
+                                _chip('Variant ${s.variant}', AppColors.brand),
+                                const SizedBox(width: 6),
+                              ],
+                              if (s.groupName != null)
+                                _chip(s.groupName!, AppColors.ink2),
                             ]),
                           ])),
                       // Logout button
@@ -193,6 +207,8 @@ class _PackageScreenState extends State<PackageScreen>
                     ..._buildSkeletons()
                   else if (_error != null)
                     _buildError()
+                  else if (!widget.session.hasActiveExam)
+                    _buildNoExam()
                   else if (_packages.isEmpty)
                     _buildEmpty()
                   else
@@ -271,6 +287,32 @@ class _PackageScreenState extends State<PackageScreen>
         ]),
       );
 
+  Widget _buildNoExam() => Container(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Column(children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+                color: AppColors.warnMuted,
+                borderRadius: BorderRadius.circular(20)),
+            child: const Icon(Icons.event_busy_outlined,
+                color: AppColors.ink2, size: 32),
+          ),
+          const SizedBox(height: 16),
+          const Text('Aktiv imtihon yo\'q',
+              style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  color: AppColors.ink1)),
+          const SizedBox(height: 4),
+          const Text(
+              'Sizga hali imtihon biriktirilmagan yoki muddati tugagan',
+              style: TextStyle(fontSize: 12, color: AppColors.ink2),
+              textAlign: TextAlign.center),
+        ]),
+      );
+
   void _openPackage(TestPackage pkg) {
     if (pkg.title.toLowerCase().contains('interhouse')) {
       _launchInterhouse(pkg);
@@ -284,6 +326,8 @@ class _PackageScreenState extends State<PackageScreen>
   }
 
   Future<void> _launchInterhouse(TestPackage pkg) async {
+    final variant = widget.session.variant;
+    if (variant == null) return;
     final testData = await IhLoader.load();
     if (!mounted) return;
     Navigator.push(
@@ -293,7 +337,7 @@ class _PackageScreenState extends State<PackageScreen>
                   isOnline: true,
                   session: widget.session,
                   packageId: pkg.id,
-                  variant: widget.session.variant,
+                  variant: variant,
                   testData: testData,
                 )));
   }
