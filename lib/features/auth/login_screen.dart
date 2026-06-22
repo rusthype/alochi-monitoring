@@ -465,59 +465,43 @@ class _LoginScreenState extends State<LoginScreen> {
     bool disabled = false,
     String? badge,
   }) {
-    final content = AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 14),
-      decoration: BoxDecoration(
-        color: disabled
-            ? AppColors.muted
-            : (active ? AppColors.brand : AppColors.surface),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: active ? AppColors.brand : AppColors.border,
-          width: active ? 2 : 1,
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon,
-              size: 28,
-              color: disabled
-                  ? AppColors.ink3
-                  : (active ? Colors.white : AppColors.ink2)),
-          const SizedBox(height: 10),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: AppTextStyles.labelLarge.copyWith(
-              fontWeight: FontWeight.w700,
-              color: disabled
-                  ? AppColors.ink3
-                  : (active ? Colors.white : AppColors.ink1),
-            ),
+    final iconColor = disabled
+        ? AppColors.ink3
+        : (active ? Colors.white : AppColors.ink2);
+    final labelColor = disabled
+        ? AppColors.ink3
+        : (active ? Colors.white : AppColors.ink1);
+
+    Widget cardChild = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 28, color: iconColor),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.labelLarge.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: labelColor,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-
-    Widget result = disabled
-        ? Opacity(opacity: .6, child: content)
-        : GestureDetector(onTap: onTap, child: content);
-
-    if (badge != null) {
-      result = Stack(
-        clipBehavior: Clip.none,
-        children: [
-          result,
+        ),
+        if (badge != null)
           Positioned(
             top: 8,
             right: 8,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(
-                color: AppColors.brand,
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.secondary,
+                borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 badge,
@@ -529,10 +513,27 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-        ],
-      );
-    }
-    return result;
+      ],
+    );
+
+    final content = AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        color: disabled
+            ? AppColors.muted
+            : (active ? AppColors.brand : AppColors.surface),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: active ? AppColors.brand : AppColors.border,
+          width: active ? 2 : 1,
+        ),
+      ),
+      child: cardChild,
+    );
+
+    return disabled
+        ? Opacity(opacity: .6, child: content)
+        : GestureDetector(onTap: onTap, child: content);
   }
 
   Widget _accordion() {
