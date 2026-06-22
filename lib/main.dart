@@ -1,6 +1,7 @@
 // lib/main.dart
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'core/sync/sync_service.dart';
 import 'shared/theme/app_theme.dart';
@@ -17,7 +18,7 @@ void main() {
 
     try {
       runApp(const AlochiMonitoringApp());
-      SyncService.instance.start();
+      if (!kIsWeb) SyncService.instance.start();
     } catch (error, stackTrace) {
       debugPrint('Startup error: $error');
       debugPrint('$stackTrace');
