@@ -11,7 +11,6 @@ import '../test/package_screen.dart';
 import '../local_test/local_grade_screen.dart';
 import '../local_test/sync_images_button.dart';
 import '../local_test/history_screen.dart';
-import '../boss_create/admin_login_screen.dart';
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
   int attempts = 3,
@@ -721,19 +720,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 'Oddiy kirish (Internet kerak emas)',
                                 style: TextStyle(
                                     fontWeight: FontWeight.w600, fontSize: 13)),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        TextButton(
-                          onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const AdminLoginScreen())),
-                          child: const Text(
-                            'Kitobdan test yaratish (Admin)',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.ink3),
                           ),
                         ),
                       ],
