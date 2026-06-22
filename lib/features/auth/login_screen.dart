@@ -1,9 +1,9 @@
 // lib/features/auth/login_screen.dart
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
 import '../../shared/theme/app_theme.dart';
@@ -11,6 +11,7 @@ import '../test/package_screen.dart';
 import '../local_test/local_grade_screen.dart';
 import '../local_test/sync_images_button.dart';
 import '../local_test/history_screen.dart';
+import '../boss_create/admin_login_screen.dart';
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
   int attempts = 3,
@@ -155,7 +156,6 @@ class _NetworkBgState extends State<_NetworkBg>
   @override
   Widget build(BuildContext context) => CustomPaint(
         painter: _NetworkPainter(_dots),
-        child: const SizedBox.expand(),
       );
 }
 
@@ -170,6 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _autoLogging = true; // birinchi ochilganda auto-login urinish
   String _statusMsg = 'Server tekshirilmoqda...';
   String? _error;
+  bool _expanded = false; // accordion: login form revealed
 
   @override
   void initState() {
@@ -187,16 +188,18 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Avto-login o'rniga faqat login/parolni formaga to'ldirib qo'yadi
   Future<void> _tryAutoLogin() async {
     try {
-      final creds = await CredentialCache.loadCredentials();
-      if (creds != null) {
-        _userCtrl.text = creds['username'] ?? '';
-        _passCtrl.text = creds['password'] ?? '';
+      if (!kIsWeb) {
+        final creds = await CredentialCache.loadCredentials();
+        if (creds != null) {
+          _userCtrl.text = creds['username'] ?? '';
+          _passCtrl.text = creds['password'] ?? '';
+        }
       }
-      
+
       // Server holatini tekshirish
       final online = await api.ping().timeout(
           const Duration(seconds: 4), onTimeout: () => false);
-          
+
       if (mounted) _showForm(online: online);
     } catch (_) {
       if (mounted) _showForm();
@@ -330,358 +333,416 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
 
-    final w = MediaQuery.of(context).size.width;
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: CallbackShortcuts(
-        bindings: {const SingleActivator(LogicalKeyboardKey.enter): _login},
-        child: Focus(
-          autofocus: true,
-          child: w > 700 ? _wideLayout() : _narrowLayout(),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.enter): () {
+          if (_expanded) _login();
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Scaffold(
+          body: Stack(
+            children: [
+              const Positioned.fill(child: ColoredBox(color: Color(0xFFF5F0E8))),
+              const Positioned.fill(child: _NetworkBg()),
+              Positioned.fill(child: SafeArea(
+                child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 32),
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Logo in white rounded box
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(color: AppColors.border),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: .10),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Image.asset('assets/logo.png',
+                                    width: 56, height: 56, fit: BoxFit.contain),
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            Text('Alochi Monitoring',
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.titleLarge
+                                    .copyWith(fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 4),
+                            Text("Ta'lim monitoring platformasi",
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.bodyMedium
+                                    .copyWith(color: AppColors.ink2)),
+                            const SizedBox(height: 24),
+                            _routeButtons(),
+                            _accordion(),
+                            const SizedBox(height: 16),
+                            // Bottom row: sync + history
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const SyncImagesButton(),
+                                const SizedBox(width: 4),
+                                TextButton.icon(
+                                  onPressed: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              const HistoryScreen())),
+                                  icon: const Icon(Icons.history_rounded,
+                                      size: 16),
+                                  label: const Text('Oflayn Tarix'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.ink2,
+                                    textStyle: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _wideLayout() => Stack(children: [
-        Positioned.fill(child: Container(color: const Color(0xFFF5F0E8))),
-        const Positioned.fill(child: _NetworkBg()),
-        Row(children: [
-          Expanded(flex: 4, child: _leftPanel()),
-          Expanded(flex: 5, child: _formPanel()),
-        ]),
-      ]);
+  Widget _routeButtons() {
+    return IntrinsicHeight(child: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: _routeButton(
+            icon: Icons.monitor_rounded,
+            label: 'Alochi Monitoring',
+            active: _expanded,
+            onTap: () => setState(() => _expanded = !_expanded),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _routeButton(
+            icon: Icons.quiz_rounded,
+            label: 'Testlar',
+            active: false,
+            disabled: true,
+            badge: 'Tez kunda',
+            onTap: null,
+          ),
+        ),
+      ],
+    ));
+  }
 
-  Widget _narrowLayout() => Stack(children: [
-        Positioned.fill(child: Container(color: const Color(0xFFF5F0E8))),
-        const Positioned.fill(child: _NetworkBg()),
-        _formPanel(),
-      ]);
+  Widget _routeButton({
+    required IconData icon,
+    required String label,
+    required bool active,
+    VoidCallback? onTap,
+    bool disabled = false,
+    String? badge,
+  }) {
+    final content = AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 14),
+      decoration: BoxDecoration(
+        color: disabled
+            ? AppColors.muted
+            : (active ? AppColors.brand : AppColors.surface),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: active ? AppColors.brand : AppColors.border,
+          width: active ? 2 : 1,
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon,
+              size: 28,
+              color: disabled
+                  ? AppColors.ink3
+                  : (active ? Colors.white : AppColors.ink2)),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.labelLarge.copyWith(
+              fontWeight: FontWeight.w700,
+              color: disabled
+                  ? AppColors.ink3
+                  : (active ? Colors.white : AppColors.ink1),
+            ),
+          ),
+        ],
+      ),
+    );
 
-  Widget _leftPanel() => Container(
-        decoration: const BoxDecoration(
-            gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFF97316), Color(0xFFFB923C), Color(0xFFEA580C)],
-        )),
-        child: Stack(children: [
-          Positioned(top: -60, right: -60, child: _circle(220, .08)),
-          Positioned(bottom: -80, left: -40, child: _circle(280, .07)),
-          Positioned(top: 80, left: 30, child: _circle(60, .1)),
-          Center(
-              child: Padding(
-            padding: const EdgeInsets.all(40),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(
+    Widget result = disabled
+        ? Opacity(opacity: .6, child: content)
+        : GestureDetector(onTap: onTap, child: content);
+
+    if (badge != null) {
+      result = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          result,
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.brand,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                badge,
+                style: AppTextStyles.caption.copyWith(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withValues(alpha: .15),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8))
-                  ],
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Image.asset('assets/logo.png'),
-                  ),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 9.5,
                 ),
               ),
-              const SizedBox(height: 24),
-              const Text('Alochi',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              const Text('Monitoring tizimi',
-                  style: TextStyle(color: Colors.white70, fontSize: 16)),
-              const SizedBox(height: 32),
-              _infoRow(Icons.keyboard, "A, B, C, D - javob tanlash"),
-              const SizedBox(height: 10),
-              _infoRow(Icons.arrow_forward, "Arrow tugmalar - navigatsiya"),
-              const SizedBox(height: 10),
-              _infoRow(Icons.wifi_off, "Offline rejim qollab-quvvatlanadi"),
-            ]),
-          )),
-        ]),
-      ).animate().fadeIn(duration: 500.ms, curve: Curves.easeOut).slideX(begin: -0.05, end: 0);
-
-  Widget _circle(double size, double opacity) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: opacity)),
+            ),
+          ),
+        ],
       );
+    }
+    return result;
+  }
 
-  Widget _infoRow(IconData icon, String text) =>
-      Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .15),
-              borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, color: Colors.white, size: 14),
-        ),
-        const SizedBox(width: 10),
-        Text(text,
-            style: TextStyle(
-                color: Colors.white.withValues(alpha: .8), fontSize: 13)),
-      ]);
-
-  Widget _formPanel() => Center(
-              child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                if (MediaQuery.of(context).size.width < 700) ...[
-                  Row(children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: .08),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          )
-                        ],
-                      ),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Image.asset('assets/logo.png'),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Alochi',
-                          style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Monitoring tizimi',
-                          style: AppTextStyles.labelLarge.copyWith(color: AppColors.ink2, fontWeight: FontWeight.w400),
-                        ),
-                      ],
-                    ),
-                  ]),
-                  const SizedBox(height: 26),
-                ],
-                // Online/offline status
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+  Widget _accordion() {
+    return ClipRect(
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeInOut,
+        alignment: Alignment.topCenter,
+        child: !_expanded
+            ? const SizedBox(width: double.infinity)
+            : Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: _statusColor.withValues(alpha: .1),
-                    borderRadius: BorderRadius.circular(24),
-                    border:
-                        Border.all(color: _statusColor.withValues(alpha: .2)),
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    _checkingOnline
-                        ? SizedBox(
-                            width: 10,
-                            height: 10,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: _statusColor,
-                            ))
-                        : Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                                shape: BoxShape.circle, color: _statusColor)),
-                    const SizedBox(width: 7),
-                    Text(_statusMsg,
-                        style: AppTextStyles.labelMedium.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: _checkingOnline
-                                ? AppColors.brand
-                                : (_isOnline ? AppColors.ok : AppColors.ink2))),
-                  ]),
-                ),
-                if (!_isOnline && !_checkingOnline) ...[
-                  const SizedBox(height: 6),
-                  TextButton.icon(
-                    onPressed: _loading ? null : _retryOnlineCheck,
-                    icon: const Icon(Icons.refresh_rounded, size: 15),
-                    label: const Text("Qayta urinib ko'rish"),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.brand,
-                      textStyle: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w700),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 28),
-                Align(
-                    alignment: Alignment.centerLeft,
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Kirish',
-                              style: AppTextStyles.displayLarge.copyWith(
-                                  fontSize: 26, fontWeight: FontWeight.w800)),
-                          const SizedBox(height: 4),
-                          Text("Login va parolni o'qituvchingizdan oling",
-                              style: AppTextStyles.labelLarge.copyWith(
-                                  color: AppColors.ink2, fontWeight: FontWeight.w400)),
-                        ])),
-                const SizedBox(height: 24),
-                Form(
+                  child: Form(
                     key: _formKey,
-                    child: Column(children: [
-                      _field(
-                        controller: _userCtrl,
-                        label: 'Login',
-                        hint: '',
-                        icon: Icons.person_outline_rounded,
-                        action: TextInputAction.next,
-                        validator: (v) => v!.isEmpty ? 'Login kiriting' : null,
-                      ),
-                      const SizedBox(height: 14),
-                      _field(
-                        controller: _passCtrl,
-                        label: 'Parol',
-                        hint: '',
-                        icon: Icons.lock_outline_rounded,
-                        obscure: !_showPass,
-                        action: TextInputAction.done,
-                        onSubmit: (_) => _login(),
-                        validator: (v) => v!.isEmpty ? 'Parol kiriting' : null,
-                        suffix: IconButton(
-                          icon: Icon(
-                              _showPass
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              size: 18),
-                          onPressed: () =>
-                              setState(() => _showPass = !_showPass),
-                          color: AppColors.ink3,
-                        ),
-                      ),
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 250),
-                        child: _error == null
-                            ? const SizedBox.shrink()
-                            : Padding(
-                                padding: const EdgeInsets.only(top: 14),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 11),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.err.withValues(alpha: .07),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                        color: AppColors.err
-                                            .withValues(alpha: .2)),
-                                  ),
-                                  child: Row(children: [
-                                    const Icon(Icons.error_outline_rounded,
-                                        color: AppColors.err, size: 16),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                        child: Text(_error!,
-                                            style: AppTextStyles.labelLarge.copyWith(
-                                                color: AppColors.err,
-                                                fontWeight: FontWeight.w400))),
-                                  ]),
-                                ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Server status row
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _checkingOnline
+                                ? SizedBox(
+                                    width: 10,
+                                    height: 10,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: _statusColor))
+                                : Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: _statusColor)),
+                            const SizedBox(width: 7),
+                            Text(_statusMsg,
+                                style: AppTextStyles.labelMedium.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: _checkingOnline
+                                        ? AppColors.brand
+                                        : (_isOnline
+                                            ? AppColors.ok
+                                            : AppColors.ink2))),
+                            if (!_checkingOnline && !_isOnline) ...[
+                              const Spacer(),
+                              TextButton(
+                                onPressed: _retryOnlineCheck,
+                                style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
+                                    minimumSize: const Size(0, 0),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap),
+                                child: Text('Qayta tekshirish',
+                                    style: AppTextStyles.labelMedium
+                                        .copyWith(color: AppColors.brand)),
                               ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        height: 52,
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _loading ? null : _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.brand,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(13)),
-                          ),
-                          child: _loading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2.5, color: Colors.white))
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                      Text(
-                                          _isOnline
-                                              ? 'Kirish'
-                                              : 'Offline kirish',
-                                          style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
-                                      const SizedBox(width: 6),
-                                      Icon(
-                                          _isOnline
-                                              ? Icons.arrow_forward_rounded
-                                              : Icons.wifi_off_rounded,
-                                          size: 18),
-                                    ]),
+                            ],
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      // ── Offline Test tugmasi ──────────────────────────────
-                      SizedBox(
-                        height: 46,
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
+                        const SizedBox(height: 16),
+                        Text('Kirish',
+                            style: AppTextStyles.titleMedium
+                                .copyWith(fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 2),
+                        Text("Login va parolni o'qituvchingizdan oling",
+                            style: AppTextStyles.labelMedium
+                                .copyWith(color: AppColors.ink2)),
+                        const SizedBox(height: 16),
+                        _field(
+                          controller: _userCtrl,
+                          label: 'Login',
+                          hint: '',
+                          icon: Icons.person_outline_rounded,
+                          action: TextInputAction.next,
+                          validator: (v) =>
+                              v!.isEmpty ? 'Login kiriting' : null,
+                        ),
+                        const SizedBox(height: 14),
+                        _field(
+                          controller: _passCtrl,
+                          label: 'Parol',
+                          hint: '',
+                          icon: Icons.lock_outline_rounded,
+                          obscure: !_showPass,
+                          action: TextInputAction.done,
+                          onSubmit: (_) => _login(),
+                          validator: (v) =>
+                              v!.isEmpty ? 'Parol kiriting' : null,
+                          suffix: IconButton(
+                            icon: Icon(
+                                _showPass
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                size: 18),
+                            onPressed: () =>
+                                setState(() => _showPass = !_showPass),
+                            color: AppColors.ink3,
+                          ),
+                        ),
+                        // Error box
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 250),
+                          child: _error == null
+                              ? const SizedBox.shrink()
+                              : Padding(
+                                  padding: const EdgeInsets.only(top: 14),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 11),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          AppColors.err.withValues(alpha: .07),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                          color: AppColors.err
+                                              .withValues(alpha: .2)),
+                                    ),
+                                    child: Row(children: [
+                                      const Icon(Icons.error_outline_rounded,
+                                          color: AppColors.err, size: 16),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                          child: Text(_error!,
+                                              style: AppTextStyles.labelLarge
+                                                  .copyWith(
+                                                      color: AppColors.err,
+                                                      fontWeight:
+                                                          FontWeight.w400))),
+                                    ]),
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(height: 18),
+                        // Primary "Kirish" — KEEP dynamic online/offline text+icon
+                        SizedBox(
+                          height: 52,
+                          child: ElevatedButton.icon(
+                            onPressed: _loading ? null : _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.brand,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13)),
+                            ),
+                            icon: _loading
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white))
+                                : Icon(_isOnline
+                                    ? Icons.arrow_forward_rounded
+                                    : Icons.wifi_off_rounded),
+                            label: Text(
+                                _isOnline ? 'Kirish' : 'Offline kirish',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700, fontSize: 14)),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 48,
+                          child: OutlinedButton.icon(
+                            onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const LocalGradeScreen())),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.ink2,
+                              side:
+                                  const BorderSide(color: AppColors.border),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13)),
+                            ),
+                            icon: const Icon(Icons.groups_rounded, size: 18),
+                            label: const Text(
+                                'Oddiy kirish (Internet kerak emas)',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w600, fontSize: 13)),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        TextButton(
                           onPressed: () => Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (_) => const LocalGradeScreen())),
-                          icon: const Icon(Icons.person_outline_rounded, size: 17),
-                          label: const Text('Oddiy kirish (Internet kerak emas)',
-                              style: AppTextStyles.labelLarge),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.ink2,
-                            side: const BorderSide(
-                                color: AppColors.border, width: 1.5),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(13)),
-                            backgroundColor: AppColors.surface,
+                                  builder: (_) => const AdminLoginScreen())),
+                          child: const Text(
+                            'Kitobdan test yaratish (Admin)',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.ink3),
                           ),
                         ),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SyncImagesButton(),
-                          const SizedBox(width: 8),
-                          TextButton.icon(
-                            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen())),
-                            icon: const Icon(Icons.history_rounded, size: 16),
-                            label: const Text('Oflayn Tarix', style: AppTextStyles.labelLarge),
-                            style: TextButton.styleFrom(foregroundColor: AppColors.ink2),
-                          ),
-                        ],
-                      ),
-                    ])),
-              ]),
-            ),
-          )).animate().fadeIn(duration: 500.ms, delay: 100.ms, curve: Curves.easeOut).slideY(begin: 0.05, end: 0);
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
 
   Widget _field({
     required TextEditingController controller,
