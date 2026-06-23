@@ -2,8 +2,6 @@
 // Interhouse Grade 2 → Variant → Student Info → Test
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
-import 'local_test_screen.dart';
-import 'local_data.dart';
 import '../interhouse/interhouse_data.dart';
 import '../interhouse/interhouse_runner.dart';
 
@@ -19,6 +17,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
   int? _variant;
   int _step = 0; // 0=variant, 1=student info
   // Legacy: kept so LocalQuestionsLoader path compiles
+  // ignore: prefer_final_fields
   int _grade = 2;
 
   final _firstCtrl = TextEditingController();
@@ -99,25 +98,6 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
     }
   }
 
-  // Legacy path — kept in code but unreachable; preserves LocalQuestionsLoader usage
-  Future<void> _startLegacyTest() async {
-    final qs = await LocalQuestionsLoader.get(_grade, _variant!);
-    if (!mounted) return;
-    Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => LocalTestScreen(
-            firstName: _firstCtrl.text.trim(),
-            lastName: _lastCtrl.text.trim(),
-            group: _groupCtrl.text.trim(),
-            school: _schoolCtrl.text.trim(),
-            grade: _grade,
-            variant: _variant!,
-            questions: qs,
-          ),
-        ));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,11 +114,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
                 icon: const Icon(Icons.close_rounded, color: AppColors.ink2),
                 onPressed: () => Navigator.pop(context)),
         title: Text(
-            _step == 0
-                ? 'Sinf tanlang'
-                : _step == 1
-                    ? 'Variant tanlang'
-                    : "O'quvchi ma'lumotlari",
+            _step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
             style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
@@ -146,111 +122,18 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: _StepIndicator(current: _step, total: 3),
+            child: _StepIndicator(current: _step, total: 2),
           ),
         ],
       ),
       body: FadeTransition(
         opacity: _fade,
-        child: _step == 0
-            ? _buildGrade()
-            : _step == 1
-                ? _buildVariant()
-                : _buildStudent(),
+        child: _step == 0 ? _buildVariant() : _buildStudent(),
       ),
     );
   }
 
-  // ── Step 0: Grade ──────────────────────────────────────────────────
-  Widget _buildGrade() {
-    final grades = [
-      (
-        1,
-        'orange',
-        const Color(0xFFF97316),
-        const Color(0xFFFFF7ED),
-        '40 savol'
-      ),
-      (
-        2,
-        'green',
-        const Color(0xFF10B981),
-        const Color(0xFFF0FDFA),
-        '40 savol'
-      ),
-      (
-        3,
-        'indigo',
-        const Color(0xFF6366F1),
-        const Color(0xFFEEF2FF),
-        '50 savol'
-      ),
-      (4, 'pink', const Color(0xFFEC4899), const Color(0xFFFDF2F8), '50 savol'),
-    ];
-    return Center(
-        child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 480),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(children: [
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(children: [
-              Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                      color: AppColors.brandLight,
-                      borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.wifi_off_rounded,
-                      color: AppColors.brand, size: 22)),
-              const SizedBox(width: 14),
-              const Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    Text('Offline rejim',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                            color: AppColors.ink1)),
-                    SizedBox(height: 2),
-                    Text('Internet kerak emas — barcha savollar qurilmada',
-                        style: TextStyle(fontSize: 11, color: AppColors.ink3)),
-                  ])),
-            ]),
-          ),
-          const SizedBox(height: 24),
-          GridView.count(
-            shrinkWrap: true,
-            crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.2,
-            children: grades
-                .map((g) => _GradeCard(
-                      grade: g.$1,
-                      color: g.$3,
-                      bgColor: g.$4,
-                      subtitle: g.$5,
-                      onTap: () {
-                        setState(() => _grade = g.$1);
-                        _goStep(1);
-                      },
-                    ))
-                .toList(),
-          ),
-        ]),
-      ),
-    ));
-  }
-
-  // ── Step 1: Variant ────────────────────────────────────────────────
+  // ── Step 0: Variant ────────────────────────────────────────────────
   Widget _buildVariant() {
     return Center(
         child: ConstrainedBox(
@@ -258,7 +141,32 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _GradeBadge(grade: _grade),
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: const Color(0xFF10B981).withValues(alpha: .3)),
+            ),
+            child: const Row(children: [
+              Icon(Icons.info_outline_rounded,
+                  color: Color(0xFF10B981), size: 18),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '2-sinf Ingliz tili — Interhouse testi\n10 variant · 30 savol · Offline rejim',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF10B981),
+                      height: 1.5),
+                ),
+              ),
+            ]),
+          ),
           const SizedBox(height: 20),
           const Text('Variantni tanlang',
               style: TextStyle(
@@ -272,7 +180,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
             mainAxisSpacing: 8,
             crossAxisSpacing: 8,
             childAspectRatio: 1.1,
-            children: List.generate(20, (i) {
+            children: List.generate(10, (i) {
               final v = i + 1;
               final sel = _variant == v;
               return GestureDetector(
@@ -309,7 +217,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
             width: double.infinity,
             height: 50,
             child: ElevatedButton.icon(
-              onPressed: _variant == null ? null : () => _goStep(2),
+              onPressed: _variant == null ? null : () => _goStep(1),
               icon: const Icon(Icons.arrow_forward_rounded),
               label: const Text('Davom etish',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
@@ -327,7 +235,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
     ));
   }
 
-  // ── Step 2: Student Info ───────────────────────────────────────────
+  // ── Step 1: Student Info ───────────────────────────────────────────
   Widget _buildStudent() {
     return Center(
         child: ConstrainedBox(
@@ -445,63 +353,6 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
 }
 
 // ── Sub-widgets ────────────────────────────────────────────────────────────
-
-class _GradeCard extends StatelessWidget {
-  final int grade;
-  final Color color, bgColor;
-  final String subtitle;
-  final VoidCallback onTap;
-  const _GradeCard(
-      {required this.grade,
-      required this.color,
-      required this.bgColor,
-      required this.subtitle,
-      required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withValues(alpha: .3), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-                color: color.withValues(alpha: .12),
-                blurRadius: 12,
-                offset: const Offset(0, 4))
-          ],
-        ),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text('$grade',
-              style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.w900,
-                  color: color,
-                  height: 1)),
-          const SizedBox(height: 4),
-          Text('- sinf',
-              style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w700, color: color)),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-                color: color.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(10)),
-            child: Text(subtitle,
-                style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w600, color: color)),
-          ),
-        ]),
-      ),
-    );
-  }
-}
 
 class _GradeBadge extends StatelessWidget {
   final int grade;

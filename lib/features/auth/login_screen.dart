@@ -12,6 +12,7 @@ import '../local_test/local_grade_screen.dart';
 import '../local_test/sync_images_button.dart';
 import '../local_test/history_screen.dart';
 import '../bob14/bob14_screen.dart';
+import '../unit1/unit1_screen.dart';
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
   int attempts = 3,
@@ -742,6 +743,29 @@ class _LoginScreenState extends State<LoginScreen> {
                                 size: 18, color: Color(0xFF10B981)),
                             label: const Text(
                                 '2-sinf Bob 1-4 Monitoring Testi',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w600, fontSize: 13)),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        SizedBox(
+                          height: 48,
+                          child: OutlinedButton.icon(
+                            onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const Unit1Screen())),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF1D4ED8),
+                              side: const BorderSide(
+                                  color: Color(0xFF3B82F6), width: 1.5),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13)),
+                            ),
+                            icon: const Icon(Icons.auto_stories_rounded,
+                                size: 18, color: Color(0xFF3B82F6)),
+                            label: const Text(
+                                '1-sinf Ingliz tili (Unit 1)',
                                 style: TextStyle(
                                     fontWeight: FontWeight.w600, fontSize: 13)),
                           ),
