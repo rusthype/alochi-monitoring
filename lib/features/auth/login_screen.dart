@@ -6,12 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
+import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../test/package_screen.dart';
 import '../local_test/local_grade_screen.dart';
 import '../local_test/sync_images_button.dart';
 import '../local_test/history_screen.dart';
 import '../combined/combined_screen.dart';
+
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
   int attempts = 3,
@@ -172,10 +174,62 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
   bool _expanded = false; // accordion: login form revealed
 
+  // ── Test katalog banner holati ─────────────────────────────────────────────
+  List<CatalogEntry> _catalogEntries = [];
+  final Set<String> _downloadingKeys = {};
+  final Set<String> _downloadedKeys = {};
+
   @override
   void initState() {
     super.initState();
     _tryAutoLogin();
+    _loadCatalog();
+  }
+
+  Future<void> _loadCatalog() async {
+    try {
+      final entries = await testCatalogService.refresh();
+      if (mounted) setState(() => _catalogEntries = entries);
+    } catch (e) {
+      debugPrint('LoginScreen._loadCatalog error: $e');
+    }
+  }
+
+  Future<void> _downloadTest(CatalogEntry entry) async {
+    if (_downloadingKeys.contains(entry.testKey)) return;
+    setState(() => _downloadingKeys.add(entry.testKey));
+    try {
+      final ok = await testCatalogService.download(entry.testKey);
+      if (mounted) {
+        setState(() {
+          _downloadingKeys.remove(entry.testKey);
+          if (ok) _downloadedKeys.add(entry.testKey);
+        });
+        if (ok) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${entry.title} yuklandi'),
+              backgroundColor: AppColors.ok,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          // Katalogni yangilash — versiya mos holat bilan
+          _loadCatalog();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Yuklashda xato. Qayta urinib koring.'),
+              backgroundColor: AppColors.err,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('_downloadTest(${entry.testKey}) error: $e');
+      if (mounted) setState(() => _downloadingKeys.remove(entry.testKey));
+    }
   }
 
   @override
@@ -197,8 +251,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       // Server holatini tekshirish
-      final online = await api.ping().timeout(
-          const Duration(seconds: 4), onTimeout: () => false);
+      final online = await api
+          .ping()
+          .timeout(const Duration(seconds: 4), onTimeout: () => false);
 
       if (mounted) _showForm(online: online);
     } catch (_) {
@@ -312,7 +367,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     // Auto-login urinayotganda spinner
@@ -344,10 +398,12 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Scaffold(
           body: Stack(
             children: [
-              const Positioned.fill(child: ColoredBox(color: Color(0xFFF5F0E8))),
+              const Positioned.fill(
+                  child: ColoredBox(color: Color(0xFFF5F0E8))),
               const Positioned.fill(child: _NetworkBg()),
-              Positioned.fill(child: SafeArea(
-                child: SingleChildScrollView(
+              Positioned.fill(
+                child: SafeArea(
+                  child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 32),
                     child: Align(
@@ -368,7 +424,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   border: Border.all(color: AppColors.border),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: .10),
+                                      color:
+                                          Colors.black.withValues(alpha: .10),
                                       blurRadius: 16,
                                       offset: const Offset(0, 6),
                                     ),
@@ -389,6 +446,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: AppTextStyles.bodyMedium
                                     .copyWith(color: AppColors.ink2)),
                             const SizedBox(height: 24),
+                            _catalogBanner(),
                             _routeButtons(),
                             _accordion(),
                             const SizedBox(height: 16),
@@ -430,8 +488,200 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  /// Katalog banner: yangi/yangilanishi kerak testlar chiqadi.
+  /// Offline + kesh bo'sh → neytral xabar.
+  /// Kesh bor + offline → cachedOnly yozuvlar chiqadi (yuklab olingan).
+  Widget _catalogBanner() {
+    // notDownloaded va updatable testlar — yuklash taklif qilinadi
+    final actionable = _catalogEntries
+        .where((e) =>
+            e.status == CatalogStatus.notDownloaded ||
+            e.status == CatalogStatus.updatable)
+        .toList();
+
+    // cachedOnly: offline + keshda bor
+    final cachedOnly = _catalogEntries
+        .where((e) => e.status == CatalogStatus.cachedOnly)
+        .toList();
+
+    // Hech narsa yo'q — banner ko'rsatma
+    if (actionable.isEmpty && cachedOnly.isEmpty) {
+      // Internet yo'q + kesh bo'sh
+      if (_catalogEntries.isEmpty) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.muted,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.cloud_off_rounded,
+                    size: 18, color: AppColors.ink3),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Internet kerak (testlarni yuklash uchun)',
+                    style: AppTextStyles.labelMedium
+                        .copyWith(color: AppColors.ink2),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+      return const SizedBox.shrink();
+    }
+
+    final items = [...actionable, ...cachedOnly];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: items.map((entry) {
+          final isDownloading = _downloadingKeys.contains(entry.testKey);
+          final isDone = _downloadedKeys.contains(entry.testKey) ||
+              entry.status == CatalogStatus.cached ||
+              entry.status == CatalogStatus.cachedOnly;
+          final isUpdatable = entry.status == CatalogStatus.updatable;
+          final isOfflineCached = entry.status == CatalogStatus.cachedOnly;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color:
+                    isOfflineCached ? AppColors.muted : AppColors.primaryMuted,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isOfflineCached
+                      ? AppColors.border
+                      : AppColors.primary.withValues(alpha: .25),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isOfflineCached
+                        ? Icons.offline_pin_rounded
+                        : (isDone
+                            ? Icons.check_circle_rounded
+                            : Icons.cloud_download_rounded),
+                    size: 20,
+                    color: isOfflineCached
+                        ? AppColors.ink3
+                        : (isDone ? AppColors.ok : AppColors.primary),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          entry.title,
+                          style: AppTextStyles.labelLarge.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: isOfflineCached
+                                ? AppColors.ink2
+                                : AppColors.ink1,
+                          ),
+                        ),
+                        if (isUpdatable && !isDone)
+                          Text(
+                            'Yangi versiya mavjud',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        if (isOfflineCached)
+                          Text(
+                            'Keshda bor (offline)',
+                            style: AppTextStyles.caption
+                                .copyWith(color: AppColors.ink3),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if (isOfflineCached)
+                    // Offline kesh: hech narsa bosib bo'lmaydi — faqat holat
+                    const SizedBox.shrink()
+                  else if (isDone && !isUpdatable)
+                    // Yuklab bo'lingan (cached) — tez kunda ishga tushirish
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.muted,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Text(
+                        // TODO(Phase4): engine ulangach bu yerda test ishga tushiriladi
+                        'Tez kunda',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.ink3,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  else if (isDownloading)
+                    const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: AppColors.primary,
+                      ),
+                    )
+                  else
+                    GestureDetector(
+                      onTap: () => _downloadTest(entry),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.download_rounded,
+                                size: 14, color: Colors.white),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Yuklash',
+                              style: AppTextStyles.caption.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _routeButtons() {
-    return IntrinsicHeight(child: Row(
+    return IntrinsicHeight(
+        child: Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
@@ -465,12 +715,10 @@ class _LoginScreenState extends State<LoginScreen> {
     bool disabled = false,
     String? badge,
   }) {
-    final iconColor = disabled
-        ? AppColors.ink3
-        : (active ? Colors.white : AppColors.ink2);
-    final labelColor = disabled
-        ? AppColors.ink3
-        : (active ? Colors.white : AppColors.ink1);
+    final iconColor =
+        disabled ? AppColors.ink3 : (active ? Colors.white : AppColors.ink2);
+    final labelColor =
+        disabled ? AppColors.ink3 : (active ? Colors.white : AppColors.ink1);
 
     Widget cardChild = Stack(
       clipBehavior: Clip.none,
@@ -695,8 +943,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : Icon(_isOnline
                                     ? Icons.arrow_forward_rounded
                                     : Icons.wifi_off_rounded),
-                            label: Text(
-                                _isOnline ? 'Kirish' : 'Offline kirish',
+                            label: Text(_isOnline ? 'Kirish' : 'Offline kirish',
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 14)),
                           ),
@@ -711,8 +958,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     builder: (_) => const LocalGradeScreen())),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.ink2,
-                              side:
-                                  const BorderSide(color: AppColors.border),
+                              side: const BorderSide(color: AppColors.border),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(13)),
                             ),
@@ -740,8 +986,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             icon: const Icon(Icons.menu_book_rounded,
                                 size: 18, color: Color(0xFF7C3AED)),
-                            label: const Text(
-                                'Monitoring Test Unit 1',
+                            label: const Text('Monitoring Test Unit 1',
                                 style: TextStyle(
                                     fontWeight: FontWeight.w600, fontSize: 13)),
                           ),
