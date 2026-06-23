@@ -13,6 +13,8 @@ import '../local_test/local_grade_screen.dart';
 import '../local_test/sync_images_button.dart';
 import '../local_test/history_screen.dart';
 import '../combined/combined_screen.dart';
+import '../test/engine_host_screen.dart';
+import '../../core/db/test_cache.dart' as testcache;
 
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
@@ -230,6 +232,44 @@ class _LoginScreenState extends State<LoginScreen> {
       debugPrint('_downloadTest(${entry.testKey}) error: $e');
       if (mounted) setState(() => _downloadingKeys.remove(entry.testKey));
     }
+  }
+
+  /// Yuklab olingan test uchun talaba ma'lumoti + variant dialog ko'rsatib,
+  /// EngineHostScreen'ga o'tadi.
+  Future<void> _launchTest(CatalogEntry entry) async {
+    final result = await showDialog<_LaunchArgs>(
+      context: context,
+      builder: (_) => _LaunchDialog(entry: entry),
+    );
+    if (result == null || !mounted) return;
+
+    // Load test data from cache.
+    final testData = await _TestCacheLoader.get(entry.testKey);
+    if (!mounted) return;
+    if (testData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Keshdan test topilmadi. Qayta yuklab ko\'ring.'),
+          backgroundColor: AppColors.err,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => EngineHostScreen(
+          testData: testData,
+          variant: result.variant,
+          firstName: result.firstName,
+          lastName: result.lastName,
+          school: result.school,
+          group: result.group,
+        ),
+      ),
+    );
   }
 
   @override
@@ -616,21 +656,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Offline kesh: hech narsa bosib bo'lmaydi — faqat holat
                     const SizedBox.shrink()
                   else if (isDone && !isUpdatable)
-                    // Yuklab bo'lingan (cached) — tez kunda ishga tushirish
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.muted,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Text(
-                        // TODO(Phase4): engine ulangach bu yerda test ishga tushiriladi
-                        'Tez kunda',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.ink3,
-                          fontWeight: FontWeight.w600,
+                    // Cached test — launch via EngineHostScreen
+                    GestureDetector(
+                      onTap: () => _launchTest(entry),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: AppColors.ok,
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.play_arrow_rounded,
+                                size: 14, color: Colors.white),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Ishga tushirish',
+                              style: AppTextStyles.caption.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     )
@@ -1050,4 +1099,237 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_checkingOnline) return AppColors.brand;
     return _isOnline ? AppColors.ok : AppColors.ink3;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _LaunchArgs — result of the launch dialog
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LaunchArgs {
+  final int variant;
+  final String firstName;
+  final String lastName;
+  final String school;
+  final String? group;
+
+  const _LaunchArgs({
+    required this.variant,
+    required this.firstName,
+    required this.lastName,
+    required this.school,
+    this.group,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _LaunchDialog — variant selector + student info form (2-step)
+// Follows the same step pattern as CombinedScreen.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LaunchDialog extends StatefulWidget {
+  final CatalogEntry entry;
+  const _LaunchDialog({required this.entry});
+
+  @override
+  State<_LaunchDialog> createState() => _LaunchDialogState();
+}
+
+class _LaunchDialogState extends State<_LaunchDialog> {
+  int _step = 0; // 0 = variant, 1 = student info
+  int? _variant;
+
+  final _firstCtrl = TextEditingController();
+  final _lastCtrl = TextEditingController();
+  final _schoolCtrl = TextEditingController();
+  final _groupCtrl = TextEditingController();
+  String? _err;
+
+  @override
+  void dispose() {
+    _firstCtrl.dispose();
+    _lastCtrl.dispose();
+    _schoolCtrl.dispose();
+    _groupCtrl.dispose();
+    super.dispose();
+  }
+
+  void _start() {
+    final first = _firstCtrl.text.trim();
+    final last = _lastCtrl.text.trim();
+    final school = _schoolCtrl.text.trim();
+    if (first.isEmpty || last.isEmpty) {
+      setState(() => _err = 'Ism va familiyani kiriting');
+      return;
+    }
+    if (school.isEmpty) {
+      setState(() => _err = 'Maktabni kiriting');
+      return;
+    }
+    Navigator.pop(
+      context,
+      _LaunchArgs(
+        variant: _variant!,
+        firstName: first,
+        lastName: last,
+        school: school,
+        group: _groupCtrl.text.trim().isEmpty ? null : _groupCtrl.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Row(
+              children: [
+                if (_step == 1)
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      _step = 0;
+                      _err = null;
+                    }),
+                    child: const Icon(Icons.arrow_back_rounded,
+                        size: 20, color: AppColors.ink2),
+                  )
+                else
+                  const SizedBox(width: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
+                    style: AppTextStyles.titleMedium,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(Icons.close_rounded,
+                      size: 20, color: AppColors.ink2),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 4),
+            Text(
+              widget.entry.title,
+              style: AppTextStyles.bodyMedium,
+            ),
+
+            const SizedBox(height: 16),
+
+            if (_step == 0) _buildVariantStep() else _buildStudentStep(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVariantStep() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 5,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1.1,
+      ),
+      itemCount: 15,
+      itemBuilder: (_, i) {
+        final v = i + 1;
+        final selected = _variant == v;
+        return GestureDetector(
+          onTap: () => setState(() {
+            _variant = v;
+            _step = 1;
+            _err = null;
+          }),
+          child: Container(
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primary : AppColors.muted,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected ? AppColors.primary : AppColors.border,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '$v',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : AppColors.ink1,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStudentStep() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_err != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.errorMuted,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              _err!,
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.err),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        TextField(
+          controller: _lastCtrl,
+          decoration: const InputDecoration(labelText: 'Familiya'),
+          textCapitalization: TextCapitalization.words,
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _firstCtrl,
+          decoration: const InputDecoration(labelText: 'Ism'),
+          textCapitalization: TextCapitalization.words,
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _schoolCtrl,
+          decoration: const InputDecoration(labelText: 'Maktab kodi / nomi'),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _groupCtrl,
+          decoration: const InputDecoration(labelText: 'Guruh (ixtiyoriy)'),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: _start,
+          child: Text('Variant $_variant · Boshlash'),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _TestCacheLoader — thin wrapper around TestCache (imported at top of file)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TestCacheLoader {
+  static Future<Map<String, dynamic>?> get(String testKey) =>
+      testcache.TestCache.get(testKey);
 }
