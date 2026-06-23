@@ -48,8 +48,15 @@ class TestCatalogService {
   /// Online bo'lsa: backend'dan katalog olinadi, kesh bilan solishtiriladi.
   /// Offline bo'lsa: faqat keshdan cachedOnly holati bilan qaytaradi — crash yo'q.
   Future<List<CatalogEntry>> refresh() async {
-    // Keshdan metadata olish (har todo holda kerak)
-    final cachedRows = await TestCache.all();
+    // Keshdan metadata olish — xato bo'lsa (masalan, web'da DB tayyor bo'lmasa)
+    // bo'sh ro'yxat deb qaraymiz, fetch baribir davom etadi.
+    List<Map<String, dynamic>> cachedRows;
+    try {
+      cachedRows = await TestCache.all();
+    } catch (e) {
+      debugPrint('TestCatalogService.refresh: cache read error: $e');
+      cachedRows = [];
+    }
     final cachedVersions = <String, int>{};
     for (final row in cachedRows) {
       final key = row['test_key']?.toString() ?? '';
@@ -57,17 +64,13 @@ class TestCatalogService {
       if (key.isNotEmpty) cachedVersions[key] = ver;
     }
 
-    // Online urinish
-    List<Map<String, dynamic>> catalog;
-    try {
-      catalog = await _api.fetchTestCatalog();
-    } catch (e) {
-      debugPrint('TestCatalogService.refresh: network error: $e');
-      catalog = [];
-    }
+    // Backend'dan katalog — har doim to'g'ridan chaqiriladi, connectivity gate yo'q.
+    // fetchTestCatalog() ichida try/catch bor — xato/timeout'da [] qaytaradi.
+    final catalog = await _api.fetchTestCatalog();
 
     if (catalog.isEmpty) {
-      // Offline yoki katalog bo'sh — faqat keshdan ko'rsat
+      // Fetch hech narsa bermadi — keshga qaytamiz.
+      // "Internet kerak" faqat kesh ham bo'sh bo'lsa ko'rsatiladi.
       if (cachedRows.isEmpty) return [];
       return cachedRows.map((row) {
         final key = row['test_key']?.toString() ?? '';
