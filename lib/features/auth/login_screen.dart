@@ -13,7 +13,6 @@ import '../local_test/local_grade_screen.dart';
 import '../local_test/sync_images_button.dart';
 import '../local_test/history_screen.dart';
 import '../combined/combined_screen.dart';
-import '../test/engine_host_screen.dart';
 import '../test/school_launch_screen.dart';
 import '../../core/db/test_cache.dart' as testcache;
 
@@ -179,10 +178,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ── Test katalog banner holati ─────────────────────────────────────────────
   List<CatalogEntry> _catalogEntries = [];
-  final Set<String> _downloadingKeys = {};
   final Set<String> _downloadedKeys = {};
-  final Map<String, double> _downloadProgress = {};
-  Map<String, List<_SchoolButton>> _schoolButtonData = {};
+  // Maktab bo'yicha yuklash holati
+  final Set<String> _downloadingSchools = {};
+  final Map<String, double> _schoolProgress = {};
+  String? _expandedSchoolCode;
 
   @override
   void initState() {
@@ -195,131 +195,12 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final entries = await testCatalogService.refresh();
       if (mounted) setState(() => _catalogEntries = entries);
-      _loadSchoolButtons(entries);
     } catch (e) {
       debugPrint('LoginScreen._loadCatalog error: $e');
     }
   }
 
-  Future<void> _loadSchoolButtons(List<CatalogEntry> entries) async {
-    final data = <String, List<_SchoolButton>>{};
-    for (final entry in entries) {
-      final testData = await testcache.TestCache.get(entry.testKey);
-      if (testData == null) continue;
-      final raw = testData['school_buttons'];
-      if (raw is! List || raw.isEmpty) continue;
-      final buttons = <_SchoolButton>[];
-      for (final item in raw) {
-        if (item is! Map) continue;
-        final label = item['label']?.toString() ?? '';
-        final schoolCode = item['school_code']?.toString() ?? '';
-        if (label.isEmpty || schoolCode.isEmpty) continue;
-        buttons.add(_SchoolButton(
-          label: label,
-          schoolCode: schoolCode,
-          randomVariant: item['random_variant'] == true,
-          pin: item['pin']?.toString(),
-        ));
-      }
-      if (buttons.isNotEmpty) data[entry.testKey] = buttons;
-    }
-    if (mounted) setState(() => _schoolButtonData = data);
-  }
-
-  Future<void> _downloadTest(CatalogEntry entry) async {
-    if (_downloadingKeys.contains(entry.testKey)) return;
-    setState(() {
-      _downloadingKeys.add(entry.testKey);
-      _downloadProgress[entry.testKey] = 0.0;
-    });
-    try {
-      final ok = await testCatalogService.download(
-        entry.testKey,
-        onProgress: (done, total) {
-          if (mounted) {
-            setState(() {
-              _downloadProgress[entry.testKey] = total > 0 ? done / total : 0;
-            });
-          }
-        },
-      );
-      if (mounted) {
-        setState(() {
-          _downloadingKeys.remove(entry.testKey);
-          _downloadProgress.remove(entry.testKey);
-          if (ok) _downloadedKeys.add(entry.testKey);
-        });
-        if (ok) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${entry.title} yuklandi'),
-              backgroundColor: AppColors.ok,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-          // Katalogni yangilash — versiya mos holat bilan
-          _loadCatalog();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Yuklashda xato. Qayta urinib koring.'),
-              backgroundColor: AppColors.err,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('_downloadTest(${entry.testKey}) error: $e');
-      if (mounted) {
-        setState(() {
-          _downloadingKeys.remove(entry.testKey);
-          _downloadProgress.remove(entry.testKey);
-        });
-      }
-    }
-  }
-
-  /// Yuklab olingan test uchun talaba ma'lumoti + variant dialog ko'rsatib,
-  /// EngineHostScreen'ga o'tadi.
-  Future<void> _launchTest(CatalogEntry entry) async {
-    final result = await showDialog<_LaunchArgs>(
-      context: context,
-      builder: (_) => _LaunchDialog(entry: entry),
-    );
-    if (result == null || !mounted) return;
-
-    // Load test data from cache.
-    final testData = await _TestCacheLoader.get(entry.testKey);
-    if (!mounted) return;
-    if (testData == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Keshdan test topilmadi. Qayta yuklab ko\'ring.'),
-          backgroundColor: AppColors.err,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => EngineHostScreen(
-          testData: testData,
-          variant: result.variant,
-          firstName: result.firstName,
-          lastName: result.lastName,
-          school: result.school,
-          group: result.group,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _launchSchoolTest(CatalogEntry entry, _SchoolButton btn) async {
+  Future<void> _launchSchoolTest(CatalogEntry entry, SchoolButton btn) async {
     final testData = await testcache.TestCache.get(entry.testKey);
     if (!mounted) return;
     if (testData == null) {
@@ -361,40 +242,83 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  List<Widget> _schoolLaunchButtons() {
-    final widgets = <Widget>[];
+  /// Maktab bo'yicha guruhlangan test kartalar ro'yxatini hisoblaydi.
+  List<_SchoolGroup> _computeSchoolGroups() {
+    final seen = <String>{};
+    final groups = <_SchoolGroup>[];
     for (final entry in _catalogEntries) {
-      final buttons = _schoolButtonData[entry.testKey];
-      if (buttons == null || buttons.isEmpty) continue;
-      final isCached = entry.status == CatalogStatus.cached ||
-          entry.status == CatalogStatus.cachedOnly ||
-          entry.status == CatalogStatus.updatable ||
-          _downloadedKeys.contains(entry.testKey);
-      if (!isCached) continue;
-      for (final btn in buttons) {
-        widgets.add(const SizedBox(height: 4));
-        widgets.add(SizedBox(
-          height: 48,
-          child: OutlinedButton.icon(
-            onPressed: () => _launchSchoolTest(entry, btn),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.brand,
-              side: const BorderSide(color: AppColors.brand, width: 1.5),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(13)),
-            ),
-            icon: const Icon(Icons.school_rounded,
-                size: 18, color: AppColors.brand),
-            label: Text(
-              btn.label,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 13),
-            ),
-          ),
-        ));
+      for (final btn in entry.schoolButtons) {
+        if (btn.label.isEmpty || btn.schoolCode.isEmpty) continue;
+        final code = btn.schoolCode;
+        if (!seen.contains(code)) {
+          seen.add(code);
+          final groupEntries = _catalogEntries
+              .where((e) => e.schoolButtons.any((b) => b.schoolCode == code))
+              .toList();
+          groups.add(_SchoolGroup(
+            schoolCode: code,
+            label: btn.label,
+            pin: btn.pin,
+            randomVariant: btn.randomVariant,
+            entries: groupEntries,
+          ));
+        }
       }
     }
-    return widgets;
+    return groups;
+  }
+
+  /// Maktab guruhidagi barcha testlarni ketma-ket yuklab, ro'yxatni ko'rsatadi.
+  Future<void> _downloadSchool(
+      String schoolCode, List<CatalogEntry> entries) async {
+    if (_downloadingSchools.contains(schoolCode)) return;
+
+    final toDownload = entries
+        .where((e) =>
+            e.status == CatalogStatus.notDownloaded ||
+            e.status == CatalogStatus.updatable)
+        .toList();
+
+    if (toDownload.isEmpty) {
+      setState(() => _expandedSchoolCode = schoolCode);
+      return;
+    }
+
+    setState(() {
+      _downloadingSchools.add(schoolCode);
+      _schoolProgress[schoolCode] = 0.0;
+    });
+
+    final n = toDownload.length;
+    var doneCount = 0;
+
+    for (final entry in toDownload) {
+      final ok = await testCatalogService.download(
+        entry.testKey,
+        onProgress: (done, total) {
+          if (mounted) {
+            final frac = total > 0 ? done / total : 1.0;
+            setState(() {
+              _schoolProgress[schoolCode] = (doneCount + frac) / n;
+            });
+          }
+        },
+      );
+      doneCount++;
+      if (ok) _downloadedKeys.add(entry.testKey);
+      if (mounted) {
+        setState(() => _schoolProgress[schoolCode] = doneCount / n);
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _downloadingSchools.remove(schoolCode);
+        _schoolProgress.remove(schoolCode);
+        _expandedSchoolCode = schoolCode;
+      });
+      _loadCatalog();
+    }
   }
 
   @override
@@ -654,25 +578,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Katalog banner: yangi/yangilanishi kerak testlar chiqadi.
-  /// Offline + kesh bo'sh → neytral xabar.
-  /// Kesh bor + offline → cachedOnly yozuvlar chiqadi (yuklab olingan).
+  /// Katalog banner: maktab bo'yicha guruhlanган kartalar.
+  /// Maktabsiz testlar (school_buttons bo'sh) ko'rsatilmaydi.
   Widget _catalogBanner() {
-    // notDownloaded va updatable testlar — yuklash taklif qilinadi
-    final actionable = _catalogEntries
-        .where((e) =>
-            e.status == CatalogStatus.notDownloaded ||
-            e.status == CatalogStatus.updatable)
-        .toList();
+    final groups = _computeSchoolGroups();
 
-    // cachedOnly: offline + keshda bor
-    final cachedOnly = _catalogEntries
-        .where((e) => e.status == CatalogStatus.cachedOnly)
-        .toList();
-
-    // Hech narsa yo'q — banner ko'rsatma
-    if (actionable.isEmpty && cachedOnly.isEmpty) {
-      // Internet yo'q + kesh bo'sh
+    if (groups.isEmpty) {
       if (_catalogEntries.isEmpty) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -683,188 +594,254 @@ class _LoginScreenState extends State<LoginScreen> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.border),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.cloud_off_rounded,
-                    size: 18, color: AppColors.ink3),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Internet kerak (testlarni yuklash uchun)',
-                    style: AppTextStyles.labelMedium
-                        .copyWith(color: AppColors.ink2),
-                  ),
+            child: Row(children: [
+              const Icon(Icons.cloud_off_rounded,
+                  size: 18, color: AppColors.ink3),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Internet kerak (testlarni yuklash uchun)',
+                  style:
+                      AppTextStyles.labelMedium.copyWith(color: AppColors.ink2),
                 ),
-              ],
-            ),
+              ),
+            ]),
           ),
         );
       }
       return const SizedBox.shrink();
     }
 
-    final items = [...actionable, ...cachedOnly];
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
-        children: items.map((entry) {
-          final isDownloading = _downloadingKeys.contains(entry.testKey);
-          final isDone = _downloadedKeys.contains(entry.testKey) ||
-              entry.status == CatalogStatus.cached ||
-              entry.status == CatalogStatus.cachedOnly;
-          final isUpdatable = entry.status == CatalogStatus.updatable;
-          final isOfflineCached = entry.status == CatalogStatus.cachedOnly;
-          final downloadProgress = _downloadProgress[entry.testKey];
+        children: groups.map(_schoolCard).toList(),
+      ),
+    );
+  }
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              decoration: BoxDecoration(
-                color:
-                    isOfflineCached ? AppColors.muted : AppColors.primaryMuted,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isOfflineCached
-                      ? AppColors.border
-                      : AppColors.primary.withValues(alpha: .25),
+  Widget _schoolCard(_SchoolGroup group) {
+    final isDownloading = _downloadingSchools.contains(group.schoolCode);
+    final progress = _schoolProgress[group.schoolCode];
+    final isExpanded = _expandedSchoolCode == group.schoolCode;
+
+    final allCached = group.entries.every((e) =>
+        e.status == CatalogStatus.cached ||
+        e.status == CatalogStatus.cachedOnly ||
+        e.status == CatalogStatus.updatable ||
+        _downloadedKeys.contains(e.testKey));
+
+    final isOffline = group.entries.isNotEmpty &&
+        group.entries.every((e) => e.status == CatalogStatus.cachedOnly);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: isOffline ? AppColors.muted : AppColors.primaryMuted,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isOffline
+                    ? AppColors.border
+                    : AppColors.primary.withValues(alpha: .25),
+              ),
+            ),
+            child: Row(children: [
+              Icon(
+                allCached
+                    ? Icons.check_circle_rounded
+                    : (isOffline
+                        ? Icons.offline_pin_rounded
+                        : Icons.cloud_download_rounded),
+                size: 20,
+                color: allCached
+                    ? AppColors.ok
+                    : (isOffline ? AppColors.ink3 : AppColors.primary),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      group.label,
+                      style: AppTextStyles.labelLarge.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: isOffline ? AppColors.ink2 : AppColors.ink1,
+                      ),
+                    ),
+                    Text(
+                      '${group.entries.length} ta test',
+                      style:
+                          AppTextStyles.caption.copyWith(color: AppColors.ink2),
+                    ),
+                    if (isDownloading && progress != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            minHeight: 4,
+                            color: AppColors.primary,
+                            backgroundColor:
+                                AppColors.primary.withValues(alpha: .18),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    isOfflineCached
-                        ? Icons.offline_pin_rounded
-                        : (isDone
-                            ? Icons.check_circle_rounded
-                            : Icons.cloud_download_rounded),
-                    size: 20,
-                    color: isOfflineCached
-                        ? AppColors.ink3
-                        : (isDone ? AppColors.ok : AppColors.primary),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          entry.title,
-                          style: AppTextStyles.labelLarge.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: isOfflineCached
-                                ? AppColors.ink2
-                                : AppColors.ink1,
-                          ),
-                        ),
-                        if (isUpdatable && !isDone)
-                          Text(
-                            'Yangi versiya mavjud',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        if (isOfflineCached)
-                          Text(
-                            'Keshda bor (offline)',
-                            style: AppTextStyles.caption
-                                .copyWith(color: AppColors.ink3),
-                          ),
-                      ],
+              const SizedBox(width: 8),
+              if (isDownloading)
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: AppColors.primary,
+                      value: progress,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  if (isOfflineCached)
-                    // Offline kesh: hech narsa bosib bo'lmaydi — faqat holat
-                    const SizedBox.shrink()
-                  else if (_downloadedKeys.contains(entry.testKey) ||
-                      (isDone && !isUpdatable))
-                    // Cached test — launch via EngineHostScreen
-                    GestureDetector(
-                      onTap: () => _launchTest(entry),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: AppColors.ok,
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.play_arrow_rounded,
-                                size: 14, color: Colors.white),
-                            const SizedBox(width: 5),
-                            Text(
-                              'Ishga tushirish',
-                              style: AppTextStyles.caption.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else if (isDownloading)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: AppColors.primary,
-                            value: downloadProgress,
-                          ),
-                        ),
-                        if (downloadProgress != null) ...[
-                          const SizedBox(width: 5),
-                          Text(
-                            '${(downloadProgress * 100).round()}%',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ],
-                    )
-                  else
-                    GestureDetector(
-                      onTap: () => _downloadTest(entry),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(
+                  if (progress != null) ...[
+                    const SizedBox(width: 5),
+                    Text(
+                      '${(progress * 100).round()}%',
+                      style: AppTextStyles.caption.copyWith(
                           color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.download_rounded,
-                                size: 14, color: Colors.white),
-                            const SizedBox(width: 5),
-                            Text(
-                              'Yuklash',
-                              style: AppTextStyles.caption.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                          fontWeight: FontWeight.w700),
                     ),
-                ],
+                  ],
+                ])
+              else if (allCached)
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _expandedSchoolCode =
+                        isExpanded ? null : group.schoolCode;
+                  }),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: isExpanded ? AppColors.ink3 : AppColors.ok,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(
+                        isExpanded
+                            ? Icons.expand_less_rounded
+                            : Icons.list_rounded,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        isExpanded ? 'Yopish' : 'Testlar',
+                        style: AppTextStyles.caption.copyWith(
+                            color: Colors.white, fontWeight: FontWeight.w700),
+                      ),
+                    ]),
+                  ),
+                )
+              else
+                GestureDetector(
+                  onTap: () =>
+                      _downloadSchool(group.schoolCode, group.entries),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.download_rounded,
+                          size: 14, color: Colors.white),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Yuklash',
+                        style: AppTextStyles.caption.copyWith(
+                            color: Colors.white, fontWeight: FontWeight.w700),
+                      ),
+                    ]),
+                  ),
+                ),
+            ]),
+          ),
+          if (isExpanded) _buildSchoolTestList(group),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSchoolTestList(_SchoolGroup group) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: group.entries.map((entry) {
+          final btn = entry.schoolButtons.firstWhere(
+            (b) => b.schoolCode == group.schoolCode,
+            orElse: () => SchoolButton(
+              label: group.label,
+              schoolCode: group.schoolCode,
+              randomVariant: group.randomVariant,
+              pin: group.pin,
+            ),
+          );
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
               ),
+              child: Row(children: [
+                const Icon(Icons.assignment_rounded,
+                    size: 18, color: AppColors.ink3),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    entry.title,
+                    style: AppTextStyles.labelLarge
+                        .copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => _launchSchoolTest(entry, btn),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.brand,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.play_arrow_rounded,
+                          size: 14, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Boshlash',
+                        style: AppTextStyles.caption.copyWith(
+                            color: Colors.white, fontWeight: FontWeight.w700),
+                      ),
+                    ]),
+                  ),
+                ),
+              ]),
             ),
           );
         }).toList(),
@@ -1184,7 +1161,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                     fontWeight: FontWeight.w600, fontSize: 13)),
                           ),
                         ),
-                        ..._schoolLaunchButtons(),
                       ],
                     ),
                   ),
@@ -1247,253 +1223,22 @@ class _LoginScreenState extends State<LoginScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _LaunchArgs — result of the launch dialog
+// _SchoolGroup — maktab bo'yicha guruhlangan test ro'yxati
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _LaunchArgs {
-  final int variant;
-  final String firstName;
-  final String lastName;
-  final String school;
-  final String? group;
-
-  const _LaunchArgs({
-    required this.variant,
-    required this.firstName,
-    required this.lastName,
-    required this.school,
-    this.group,
-  });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _LaunchDialog — variant selector + student info form (2-step)
-// Follows the same step pattern as CombinedScreen.
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _LaunchDialog extends StatefulWidget {
-  final CatalogEntry entry;
-  const _LaunchDialog({required this.entry});
-
-  @override
-  State<_LaunchDialog> createState() => _LaunchDialogState();
-}
-
-class _LaunchDialogState extends State<_LaunchDialog> {
-  int _step = 0; // 0 = variant, 1 = student info
-  int? _variant;
-
-  final _firstCtrl = TextEditingController();
-  final _lastCtrl = TextEditingController();
-  final _schoolCtrl = TextEditingController();
-  final _groupCtrl = TextEditingController();
-  String? _err;
-
-  @override
-  void dispose() {
-    _firstCtrl.dispose();
-    _lastCtrl.dispose();
-    _schoolCtrl.dispose();
-    _groupCtrl.dispose();
-    super.dispose();
-  }
-
-  void _start() {
-    final first = _firstCtrl.text.trim();
-    final last = _lastCtrl.text.trim();
-    final school = _schoolCtrl.text.trim();
-    if (first.isEmpty || last.isEmpty) {
-      setState(() => _err = 'Ism va familiyani kiriting');
-      return;
-    }
-    if (school.isEmpty) {
-      setState(() => _err = 'Maktabni kiriting');
-      return;
-    }
-    Navigator.pop(
-      context,
-      _LaunchArgs(
-        variant: _variant!,
-        firstName: first,
-        lastName: last,
-        school: school,
-        group: _groupCtrl.text.trim().isEmpty ? null : _groupCtrl.text.trim(),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header
-            Row(
-              children: [
-                if (_step == 1)
-                  GestureDetector(
-                    onTap: () => setState(() {
-                      _step = 0;
-                      _err = null;
-                    }),
-                    child: const Icon(Icons.arrow_back_rounded,
-                        size: 20, color: AppColors.ink2),
-                  )
-                else
-                  const SizedBox(width: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
-                    style: AppTextStyles.titleMedium,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close_rounded,
-                      size: 20, color: AppColors.ink2),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 4),
-            Text(
-              widget.entry.title,
-              style: AppTextStyles.bodyMedium,
-            ),
-
-            const SizedBox(height: 16),
-
-            if (_step == 0) _buildVariantStep() else _buildStudentStep(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVariantStep() {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 5,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 1.1,
-      ),
-      itemCount: 15,
-      itemBuilder: (_, i) {
-        final v = i + 1;
-        final selected = _variant == v;
-        return GestureDetector(
-          onTap: () => setState(() {
-            _variant = v;
-            _step = 1;
-            _err = null;
-          }),
-          child: Container(
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primary : AppColors.muted,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: selected ? AppColors.primary : AppColors.border,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '$v',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: selected ? Colors.white : AppColors.ink1,
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildStudentStep() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (_err != null) ...[
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.errorMuted,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              _err!,
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.err),
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
-        TextField(
-          controller: _lastCtrl,
-          decoration: const InputDecoration(labelText: 'Familiya'),
-          textCapitalization: TextCapitalization.words,
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: _firstCtrl,
-          decoration: const InputDecoration(labelText: 'Ism'),
-          textCapitalization: TextCapitalization.words,
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: _schoolCtrl,
-          decoration: const InputDecoration(labelText: 'Maktab kodi / nomi'),
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: _groupCtrl,
-          decoration: const InputDecoration(labelText: 'Guruh (ixtiyoriy)'),
-        ),
-        const SizedBox(height: 16),
-        ElevatedButton(
-          onPressed: _start,
-          child: Text('Variant $_variant · Boshlash'),
-        ),
-      ],
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _TestCacheLoader — thin wrapper around TestCache (imported at top of file)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _TestCacheLoader {
-  static Future<Map<String, dynamic>?> get(String testKey) =>
-      testcache.TestCache.get(testKey);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _SchoolButton — data-driven school launch button config
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SchoolButton {
-  final String label;
+class _SchoolGroup {
   final String schoolCode;
-  final bool randomVariant;
+  final String label;
   final String? pin;
+  final bool randomVariant;
+  final List<CatalogEntry> entries;
 
-  const _SchoolButton({
-    required this.label,
+  const _SchoolGroup({
     required this.schoolCode,
-    required this.randomVariant,
+    required this.label,
     this.pin,
+    required this.randomVariant,
+    required this.entries,
   });
 }
 

@@ -20,6 +20,28 @@ enum CatalogStatus {
   cachedOnly,
 }
 
+/// Maktab tugmasi konfiguratsiyasi — catalog LIST javobidan keladi.
+class SchoolButton {
+  final String label;
+  final String schoolCode;
+  final bool randomVariant;
+  final String? pin;
+
+  const SchoolButton({
+    required this.label,
+    required this.schoolCode,
+    required this.randomVariant,
+    this.pin,
+  });
+
+  factory SchoolButton.fromJson(Map<String, dynamic> j) => SchoolButton(
+        label: j['label']?.toString() ?? '',
+        schoolCode: j['school_code']?.toString() ?? '',
+        randomVariant: j['random_variant'] == true,
+        pin: j['pin']?.toString(),
+      );
+}
+
 /// Katalog ro'yxat elementi — kichik model.
 class CatalogEntry {
   final String testKey;
@@ -27,6 +49,7 @@ class CatalogEntry {
   final int grade;
   final int version;
   final CatalogStatus status;
+  final List<SchoolButton> schoolButtons;
 
   const CatalogEntry({
     required this.testKey,
@@ -34,6 +57,7 @@ class CatalogEntry {
     required this.grade,
     required this.version,
     required this.status,
+    this.schoolButtons = const [],
   });
 }
 
@@ -72,19 +96,19 @@ class TestCatalogService {
       // Fetch hech narsa bermadi — keshga qaytamiz.
       // "Internet kerak" faqat kesh ham bo'sh bo'lsa ko'rsatiladi.
       if (cachedRows.isEmpty) return [];
-      return cachedRows.map((row) {
+      final futures = cachedRows.map((row) async {
         final key = row['test_key']?.toString() ?? '';
-        final title = row['title']?.toString() ?? '';
-        final grade = int.tryParse(row['grade']?.toString() ?? '') ?? 0;
-        final version = int.tryParse(row['version']?.toString() ?? '') ?? 0;
+        final schoolButtons = await _parseSchoolButtonsFromCache(key);
         return CatalogEntry(
           testKey: key,
-          title: title,
-          grade: grade,
-          version: version,
+          title: row['title']?.toString() ?? '',
+          grade: int.tryParse(row['grade']?.toString() ?? '') ?? 0,
+          version: int.tryParse(row['version']?.toString() ?? '') ?? 0,
           status: CatalogStatus.cachedOnly,
+          schoolButtons: schoolButtons,
         );
-      }).toList();
+      });
+      return Future.wait(futures);
     }
 
     // Online: backend katalogi bilan keshni solishtir
@@ -106,15 +130,49 @@ class TestCatalogService {
         status = CatalogStatus.cached;
       }
 
+      final rawButtons = item['school_buttons'];
+      final schoolButtons = <SchoolButton>[];
+      if (rawButtons is List) {
+        for (final btn in rawButtons) {
+          if (btn is! Map) continue;
+          final b = SchoolButton.fromJson(Map<String, dynamic>.from(btn));
+          if (b.label.isEmpty || b.schoolCode.isEmpty) continue;
+          schoolButtons.add(b);
+        }
+      }
+
       entries.add(CatalogEntry(
         testKey: key,
         title: title,
         grade: grade,
         version: version,
         status: status,
+        schoolButtons: schoolButtons,
       ));
     }
     return entries;
+  }
+
+  /// Keshdan school_buttons o'qib parse qiladi (offline rejim uchun fallback).
+  Future<List<SchoolButton>> _parseSchoolButtonsFromCache(
+      String testKey) async {
+    try {
+      final testData = await TestCache.get(testKey);
+      if (testData == null) return const [];
+      final raw = testData['school_buttons'];
+      if (raw is! List || raw.isEmpty) return const [];
+      final buttons = <SchoolButton>[];
+      for (final item in raw) {
+        if (item is! Map) continue;
+        final b =
+            SchoolButton.fromJson(Map<String, dynamic>.from(item));
+        if (b.label.isEmpty || b.schoolCode.isEmpty) continue;
+        buttons.add(b);
+      }
+      return buttons;
+    } catch (e) {
+      return const [];
+    }
   }
 
   /// Testni backend'dan yuklab keshga saqlaydi va rasmlarni prefetch qiladi.
