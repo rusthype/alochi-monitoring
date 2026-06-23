@@ -1,0 +1,5882 @@
+{
+  "1": [
+    {
+      "id": "b14_v1_q1",
+      "s": "m",
+      "q": "7 + 5 − 3 = ?",
+      "o": [
+        "11",
+        "8",
+        "9",
+        "7"
+      ],
+      "c": "c",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v1_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 6+4=9  b) 6-5=2  c) 7+3=10  d) 6+4=10",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "c",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v1_q3",
+      "s": "m",
+      "q": "5, 7, 8, 9, 1, 4, 3 sonlaridan nechtasi 3 dan katta?",
+      "o": [
+        "4",
+        "3",
+        "5",
+        "6"
+      ],
+      "c": "c",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v1_q4",
+      "s": "m",
+      "q": "Shashka o'yinida 8 ta qora va 8 ta oq figuralar bo'ladi. Bu o'yindagi jami figuralar sonini toping.",
+      "o": [
+        "12",
+        "14",
+        "16",
+        "18"
+      ],
+      "c": "c",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v1_q5",
+      "s": "m",
+      "q": "Sxema: 7+?=15 — «?» o'rnida qanday son bor?",
+      "o": [
+        "6",
+        "9",
+        "10",
+        "8"
+      ],
+      "c": "d",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v1_q6",
+      "s": "m",
+      "q": "22 + 15 + 4 = ?",
+      "o": [
+        "41",
+        "40",
+        "42",
+        "43"
+      ],
+      "c": "a",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v1_q7",
+      "s": "m",
+      "q": "39 + 25 = ?",
+      "o": [
+        "54",
+        "65",
+        "64",
+        "75"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v1_q8",
+      "s": "m",
+      "q": "Kamayuvchi 65, ayiruvchi 53. Ayirmani toping.",
+      "o": [
+        "16",
+        "8",
+        "12",
+        "118"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v1_q9",
+      "s": "m",
+      "q": "Sxema: 76−?=36 — «?» o'rnida qanday son bor?",
+      "o": [
+        "50",
+        "30",
+        "112",
+        "40"
+      ],
+      "c": "d",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v1_q10",
+      "s": "m",
+      "q": "Bog'da 48 ta sariq va 37 ta qizil lola bor. Hammasi bo'lib nechta lola, va sariq lola qizildan nechta ko'p?",
+      "o": [
+        "75 ta va 11 ta",
+        "75 ta va 21 ta",
+        "85 ta va 21 ta",
+        "85 ta va 11 ta"
+      ],
+      "c": "d",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v1_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n67; 58; 49; …; 31; 22; 13",
+      "o": [
+        "31",
+        "22",
+        "40",
+        "49"
+      ],
+      "c": "c",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v1_q12",
+      "s": "m",
+      "q": "57 sonini xona qo'shiluvchilari ko'rinishida yozing va 57 dan 37 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "5+7 va 20 ta",
+        "50+7 va 22 ta",
+        "50+7 va 20 ta",
+        "50+7 va 21 ta"
+      ],
+      "c": "d",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v1_q13",
+      "s": "m",
+      "q": "62 − 38 □ 62 − 12 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v1_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 15 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "7+8 va 8+7",
+        "6+9 va 7+8",
+        "faqat 7+8",
+        "faqat 6+9"
+      ],
+      "c": "b",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v1_q15",
+      "s": "m",
+      "q": "Kamayuvchi 47, ayiruvchi 33. Ayirmani toping.",
+      "o": [
+        "24",
+        "27",
+        "14",
+        "80"
+      ],
+      "c": "c",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v1_q16",
+      "s": "m",
+      "q": "88 = 54 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "44",
+        "24",
+        "42",
+        "34"
+      ],
+      "c": "d",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v1_q17",
+      "s": "m",
+      "q": "74 − (29 + 25) = ?",
+      "o": [
+        "128",
+        "20",
+        "4",
+        "54"
+      ],
+      "c": "b",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v1_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 18 ta kitob bor. Birinchisida 5 ta, ikkinchisida birinchisidan 3 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "5",
+        "8",
+        "4",
+        "7"
+      ],
+      "c": "a",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v1_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 61 − x = 39",
+      "o": [
+        "17",
+        "100",
+        "22",
+        "32"
+      ],
+      "c": "c",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v1_q20",
+      "s": "m",
+      "q": "Sxema: 41+?=65 — «?» o'rnida qanday son bor?",
+      "o": [
+        "32",
+        "106",
+        "24",
+        "34"
+      ],
+      "c": "c",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v1_q21",
+      "s": "m",
+      "q": "Uzunligi 48 cm bo'lgan kesmani 6 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "16 cm",
+        "8 cm",
+        "288 cm",
+        "10 cm"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v1_q22",
+      "s": "m",
+      "q": "15 sm + 16 sm − 11 sm = ?",
+      "o": [
+        "42 cm",
+        "20 cm",
+        "25 cm",
+        "15 cm"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v1_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v1_q24",
+      "s": "m",
+      "q": "Rasmda beshburchak tasvirlangan (besh tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v1_q25",
+      "s": "m",
+      "q": "Eni 38 sm, bo'yi 15 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "212 sm",
+        "106 sm",
+        "570 sm",
+        "53 sm"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v1_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v1_q27",
+      "s": "m",
+      "q": "92 − 9 · 8 = ?",
+      "o": [
+        "664",
+        "828",
+        "164",
+        "20"
+      ],
+      "c": "d",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v1_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 7 · x = 56",
+      "o": [
+        "11",
+        "49",
+        "392",
+        "8"
+      ],
+      "c": "d",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v1_q29",
+      "s": "m",
+      "q": "Kamolada 66 so'm pul bor edi. U 46 so'mga kitob sotib oldi. Qolgan puliga har biri 4 so'mlik ruchkadan olmoqchi bo'ldi. Kamola nechta ruchka olishi mumkin?",
+      "o": [
+        "10",
+        "4",
+        "5",
+        "20"
+      ],
+      "c": "c",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v1_q30",
+      "s": "m",
+      "q": "Tomoni 11 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "48 sm",
+        "22 sm",
+        "44 sm",
+        "121 sm²"
+      ],
+      "c": "c",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "2": [
+    {
+      "id": "b14_v2_q1",
+      "s": "m",
+      "q": "6 + 9 − 4 = ?",
+      "o": [
+        "10",
+        "11",
+        "9",
+        "13"
+      ],
+      "c": "b",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v2_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 3+3=8  b) 6-2=3  c) 5-3=2  d) 3+3=6",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "c",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v2_q3",
+      "s": "m",
+      "q": "1, 9, 6, 8, 3, 4, 2 sonlaridan nechtasi 3 dan katta?",
+      "o": [
+        "5",
+        "4",
+        "3",
+        "2"
+      ],
+      "c": "b",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v2_q4",
+      "s": "m",
+      "q": "Shaxmat o'yinida 6 ta qora va 6 ta oq piyodalar bo'ladi. Bu o'yindagi jami piyodalar sonini toping.",
+      "o": [
+        "8",
+        "10",
+        "12",
+        "14"
+      ],
+      "c": "c",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v2_q5",
+      "s": "m",
+      "q": "Sxema: 9+?=13 — «?» o'rnida qanday son bor?",
+      "o": [
+        "5",
+        "2",
+        "3",
+        "4"
+      ],
+      "c": "d",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v2_q6",
+      "s": "m",
+      "q": "12 + 12 + 4 = ?",
+      "o": [
+        "29",
+        "28",
+        "26",
+        "27"
+      ],
+      "c": "b",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v2_q7",
+      "s": "m",
+      "q": "61 + 45 = ?",
+      "o": [
+        "105",
+        "107",
+        "96",
+        "106"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v2_q8",
+      "s": "m",
+      "q": "Kamayuvchi 67, ayiruvchi 37. Ayirmani toping.",
+      "o": [
+        "104",
+        "40",
+        "26",
+        "30"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v2_q9",
+      "s": "m",
+      "q": "Sxema: 64−?=30 — «?» o'rnida qanday son bor?",
+      "o": [
+        "94",
+        "44",
+        "34",
+        "24"
+      ],
+      "c": "c",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v2_q10",
+      "s": "m",
+      "q": "Kutubxonada 40 ta katta va 25 ta kichik kitob bor. Hammasi bo'lib nechta kitob, va katta kitob kichikdan nechta ko'p?",
+      "o": [
+        "65 ta va 15 ta",
+        "65 ta va 25 ta",
+        "55 ta va 25 ta",
+        "55 ta va 15 ta"
+      ],
+      "c": "a",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v2_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n76; 69; 62; …; 48; 41; 34",
+      "o": [
+        "41",
+        "48",
+        "62",
+        "55"
+      ],
+      "c": "d",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v2_q12",
+      "s": "m",
+      "q": "43 sonini xona qo'shiluvchilari ko'rinishida yozing va 43 dan 13 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "4+3 va 30 ta",
+        "40+3 va 32 ta",
+        "40+3 va 31 ta",
+        "40+3 va 30 ta"
+      ],
+      "c": "c",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v2_q13",
+      "s": "m",
+      "q": "84 − 31 □ 84 − 8 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v2_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 14 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "faqat 5+9",
+        "faqat 6+8",
+        "6+8 va 8+6",
+        "5+9 va 6+8"
+      ],
+      "c": "d",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v2_q15",
+      "s": "m",
+      "q": "Kamayuvchi 37, ayiruvchi 21. Ayirmani toping.",
+      "o": [
+        "26",
+        "16",
+        "29",
+        "58"
+      ],
+      "c": "b",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v2_q16",
+      "s": "m",
+      "q": "51 = 36 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "15",
+        "5",
+        "87",
+        "25"
+      ],
+      "c": "a",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v2_q17",
+      "s": "m",
+      "q": "71 − (23 + 25) = ?",
+      "o": [
+        "2",
+        "33",
+        "48",
+        "23"
+      ],
+      "c": "d",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v2_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 17 ta kitob bor. Birinchisida 5 ta, ikkinchisida birinchisidan 2 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "2",
+        "5",
+        "4",
+        "7"
+      ],
+      "c": "b",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v2_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 40 − x = 26",
+      "o": [
+        "9",
+        "66",
+        "14",
+        "24"
+      ],
+      "c": "c",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v2_q20",
+      "s": "m",
+      "q": "Sxema: 25+?=49 — «?» o'rnida qanday son bor?",
+      "o": [
+        "24",
+        "34",
+        "74",
+        "32"
+      ],
+      "c": "a",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v2_q21",
+      "s": "m",
+      "q": "Uzunligi 42 cm bo'lgan kesmani 6 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "7 cm",
+        "9 cm",
+        "252 cm",
+        "14 cm"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v2_q22",
+      "s": "m",
+      "q": "17 sm + 16 sm − 15 sm = ?",
+      "o": [
+        "48 cm",
+        "18 cm",
+        "23 cm",
+        "13 cm"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v2_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v2_q24",
+      "s": "m",
+      "q": "Rasmda uchburchak tasvirlangan (uch tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v2_q25",
+      "s": "m",
+      "q": "Eni 33 sm, bo'yi 14 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "47 sm",
+        "462 sm",
+        "94 sm",
+        "188 sm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v2_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v2_q27",
+      "s": "m",
+      "q": "50 − 6 · 7 = ?",
+      "o": [
+        "8",
+        "308",
+        "300",
+        "50"
+      ],
+      "c": "a",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v2_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 9 · x = 45",
+      "o": [
+        "8",
+        "4",
+        "5",
+        "405"
+      ],
+      "c": "c",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v2_q29",
+      "s": "m",
+      "q": "Feruzada 128 so'm pul bor edi. U 80 so'mga daftar sotib oldi. Qolgan puliga har biri 6 so'mlik qalamdan olmoqchi bo'ldi. Feruza nechta qalam olishi mumkin?",
+      "o": [
+        "10",
+        "8",
+        "16",
+        "48"
+      ],
+      "c": "b",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v2_q30",
+      "s": "m",
+      "q": "Tomoni 6 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "12 sm",
+        "24 sm",
+        "28 sm",
+        "36 sm²"
+      ],
+      "c": "b",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "3": [
+    {
+      "id": "b14_v3_q1",
+      "s": "m",
+      "q": "7 + 5 − 6 = ?",
+      "o": [
+        "5",
+        "6",
+        "4",
+        "7"
+      ],
+      "c": "b",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v3_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 6-4=2  b) 6+3=9  c) 5+4=8  d) 3+3=7",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "a",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v3_q3",
+      "s": "m",
+      "q": "2, 4, 9, 6, 1, 8, 7 sonlaridan nechtasi 6 dan katta?",
+      "o": [
+        "3",
+        "1",
+        "2",
+        "4"
+      ],
+      "c": "a",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v3_q4",
+      "s": "m",
+      "q": "Go o'yinida 9 ta qora va 9 ta oq toshlar bo'ladi. Bu o'yindagi jami toshlar sonini toping.",
+      "o": [
+        "16",
+        "14",
+        "20",
+        "18"
+      ],
+      "c": "d",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v3_q5",
+      "s": "m",
+      "q": "Sxema: 7+?=12 — «?» o'rnida qanday son bor?",
+      "o": [
+        "6",
+        "4",
+        "5",
+        "3"
+      ],
+      "c": "c",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v3_q6",
+      "s": "m",
+      "q": "24 + 10 + 10 = ?",
+      "o": [
+        "43",
+        "44",
+        "45",
+        "42"
+      ],
+      "c": "b",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v3_q7",
+      "s": "m",
+      "q": "42 + 48 = ?",
+      "o": [
+        "91",
+        "80",
+        "90",
+        "89"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v3_q8",
+      "s": "m",
+      "q": "Kamayuvchi 59, ayiruvchi 42. Ayirmani toping.",
+      "o": [
+        "101",
+        "21",
+        "27",
+        "17"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v3_q9",
+      "s": "m",
+      "q": "Sxema: 70−?=33 — «?» o'rnida qanday son bor?",
+      "o": [
+        "103",
+        "47",
+        "27",
+        "37"
+      ],
+      "c": "d",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v3_q10",
+      "s": "m",
+      "q": "Issiqxonada 44 ta qizil va 26 ta oq atirgul bor. Hammasi bo'lib nechta atirgul, va qizil atirgul oqdan nechta ko'p?",
+      "o": [
+        "70 ta va 18 ta",
+        "70 ta va 28 ta",
+        "60 ta va 28 ta",
+        "60 ta va 18 ta"
+      ],
+      "c": "a",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v3_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n80; 72; 64; 56; …; 40; 32",
+      "o": [
+        "56",
+        "32",
+        "40",
+        "48"
+      ],
+      "c": "d",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v3_q12",
+      "s": "m",
+      "q": "52 sonini xona qo'shiluvchilari ko'rinishida yozing va 52 dan 12 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "50+2 va 42 ta",
+        "50+2 va 41 ta",
+        "50+2 va 40 ta",
+        "5+2 va 40 ta"
+      ],
+      "c": "b",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v3_q13",
+      "s": "m",
+      "q": "82 − 39 □ 82 − 8 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v3_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 14 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "faqat 5+9",
+        "5+9 va 6+8",
+        "6+8 va 8+6",
+        "faqat 6+8"
+      ],
+      "c": "b",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v3_q15",
+      "s": "m",
+      "q": "Kamayuvchi 32, ayiruvchi 22. Ayirmani toping.",
+      "o": [
+        "10",
+        "54",
+        "20",
+        "23"
+      ],
+      "c": "a",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v3_q16",
+      "s": "m",
+      "q": "69 = 37 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "40",
+        "32",
+        "106",
+        "42"
+      ],
+      "c": "b",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v3_q17",
+      "s": "m",
+      "q": "60 − (18 + 14) = ?",
+      "o": [
+        "4",
+        "32",
+        "92",
+        "28"
+      ],
+      "c": "d",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v3_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 18 ta kitob bor. Birinchisida 5 ta, ikkinchisida birinchisidan 4 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "3",
+        "4",
+        "5",
+        "9"
+      ],
+      "c": "b",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v3_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 51 − x = 30",
+      "o": [
+        "9",
+        "81",
+        "16",
+        "21"
+      ],
+      "c": "d",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v3_q20",
+      "s": "m",
+      "q": "Sxema: 26+?=61 — «?» o'rnida qanday son bor?",
+      "o": [
+        "25",
+        "35",
+        "43",
+        "45"
+      ],
+      "c": "b",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v3_q21",
+      "s": "m",
+      "q": "Uzunligi 36 cm bo'lgan kesmani 6 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "12 cm",
+        "8 cm",
+        "6 cm",
+        "216 cm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v3_q22",
+      "s": "m",
+      "q": "19 sm + 14 sm − 10 sm = ?",
+      "o": [
+        "23 cm",
+        "18 cm",
+        "43 cm",
+        "28 cm"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v3_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v3_q24",
+      "s": "m",
+      "q": "Rasmda to'rtburchak tasvirlangan (to'rt tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v3_q25",
+      "s": "m",
+      "q": "Eni 28 sm, bo'yi 14 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "168 sm",
+        "392 sm",
+        "84 sm",
+        "42 sm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v3_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v3_q27",
+      "s": "m",
+      "q": "57 − 6 · 8 = ?",
+      "o": [
+        "57",
+        "408",
+        "342",
+        "9"
+      ],
+      "c": "d",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v3_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 8 · x = 48",
+      "o": [
+        "6",
+        "9",
+        "2",
+        "40"
+      ],
+      "c": "a",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v3_q29",
+      "s": "m",
+      "q": "Botirda 124 so'm pul bor edi. U 82 so'mga daftar sotib oldi. Qolgan puliga har biri 7 so'mlik qalamdan olmoqchi bo'ldi. Botir nechta qalam olishi mumkin?",
+      "o": [
+        "8",
+        "42",
+        "12",
+        "6"
+      ],
+      "c": "d",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v3_q30",
+      "s": "m",
+      "q": "Tomoni 6 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "12 sm",
+        "36 sm²",
+        "28 sm",
+        "24 sm"
+      ],
+      "c": "d",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "4": [
+    {
+      "id": "b14_v4_q1",
+      "s": "m",
+      "q": "7 + 7 − 5 = ?",
+      "o": [
+        "7",
+        "9",
+        "10",
+        "8"
+      ],
+      "c": "b",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v4_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 7+4=12  b) 5+3=8  c) 4+5=9  d) 5-3=3",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "b",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v4_q3",
+      "s": "m",
+      "q": "3, 2, 8, 4, 1, 6, 7 sonlaridan nechtasi 3 dan katta?",
+      "o": [
+        "3",
+        "5",
+        "2",
+        "4"
+      ],
+      "c": "d",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v4_q4",
+      "s": "m",
+      "q": "Go o'yinida 9 ta qora va 9 ta oq toshlar bo'ladi. Bu o'yindagi jami toshlar sonini toping.",
+      "o": [
+        "20",
+        "16",
+        "14",
+        "18"
+      ],
+      "c": "d",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v4_q5",
+      "s": "m",
+      "q": "Sxema: 9+?=13 — «?» o'rnida qanday son bor?",
+      "o": [
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "c": "c",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v4_q6",
+      "s": "m",
+      "q": "20 + 12 + 7 = ?",
+      "o": [
+        "37",
+        "40",
+        "39",
+        "41"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v4_q7",
+      "s": "m",
+      "q": "44 + 33 = ?",
+      "o": [
+        "76",
+        "88",
+        "77",
+        "67"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v4_q8",
+      "s": "m",
+      "q": "Kamayuvchi 50, ayiruvchi 26. Ayirmani toping.",
+      "o": [
+        "20",
+        "34",
+        "28",
+        "24"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v4_q9",
+      "s": "m",
+      "q": "Sxema: 65−?=45 — «?» o'rnida qanday son bor?",
+      "o": [
+        "110",
+        "20",
+        "30",
+        "10"
+      ],
+      "c": "b",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v4_q10",
+      "s": "m",
+      "q": "Issiqxonada 57 ta qizil va 34 ta oq atirgul bor. Hammasi bo'lib nechta atirgul, va qizil atirgul oqdan nechta ko'p?",
+      "o": [
+        "81 ta va 33 ta",
+        "81 ta va 23 ta",
+        "91 ta va 33 ta",
+        "91 ta va 23 ta"
+      ],
+      "c": "d",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v4_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n72; 63; …; 45; 36; 27; 18",
+      "o": [
+        "63",
+        "54",
+        "45",
+        "36"
+      ],
+      "c": "b",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v4_q12",
+      "s": "m",
+      "q": "34 sonini xona qo'shiluvchilari ko'rinishida yozing va 34 dan 12 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "30+4 va 22 ta",
+        "30+4 va 23 ta",
+        "3+4 va 22 ta",
+        "30+4 va 24 ta"
+      ],
+      "c": "b",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v4_q13",
+      "s": "m",
+      "q": "79 − 32 □ 79 − 10 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v4_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 14 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "6+8 va 8+6",
+        "faqat 6+8",
+        "5+9 va 6+8",
+        "faqat 5+9"
+      ],
+      "c": "c",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v4_q15",
+      "s": "m",
+      "q": "Kamayuvchi 31, ayiruvchi 20. Ayirmani toping.",
+      "o": [
+        "24",
+        "1",
+        "11",
+        "51"
+      ],
+      "c": "c",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v4_q16",
+      "s": "m",
+      "q": "87 = 59 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "146",
+        "36",
+        "28",
+        "18"
+      ],
+      "c": "c",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v4_q17",
+      "s": "m",
+      "q": "57 − (17 + 17) = ?",
+      "o": [
+        "91",
+        "33",
+        "23",
+        "34"
+      ],
+      "c": "c",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v4_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 14 ta kitob bor. Birinchisida 3 ta, ikkinchisida birinchisidan 4 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "7",
+        "6",
+        "3",
+        "4"
+      ],
+      "c": "d",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v4_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 55 − x = 42",
+      "o": [
+        "29",
+        "8",
+        "97",
+        "13"
+      ],
+      "c": "d",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v4_q20",
+      "s": "m",
+      "q": "Sxema: 28+?=59 — «?» o'rnida qanday son bor?",
+      "o": [
+        "21",
+        "31",
+        "41",
+        "87"
+      ],
+      "c": "b",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v4_q21",
+      "s": "m",
+      "q": "Uzunligi 21 cm bo'lgan kesmani 3 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "9 cm",
+        "14 cm",
+        "7 cm",
+        "63 cm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v4_q22",
+      "s": "m",
+      "q": "16 sm + 22 sm − 13 sm = ?",
+      "o": [
+        "51 cm",
+        "25 cm",
+        "30 cm",
+        "20 cm"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v4_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v4_q24",
+      "s": "m",
+      "q": "Rasmda oltiburchak tasvirlangan (olti tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v4_q25",
+      "s": "m",
+      "q": "Eni 34 sm, bo'yi 11 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "45 sm",
+        "180 sm",
+        "90 sm",
+        "374 sm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v4_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v4_q27",
+      "s": "m",
+      "q": "60 − 7 · 7 = ?",
+      "o": [
+        "109",
+        "420",
+        "11",
+        "371"
+      ],
+      "c": "c",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v4_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 8 · x = 64",
+      "o": [
+        "8",
+        "512",
+        "11",
+        "56"
+      ],
+      "c": "a",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v4_q29",
+      "s": "m",
+      "q": "Sardorda 108 so'm pul bor edi. U 76 so'mga daftar sotib oldi. Qolgan puliga har biri 4 so'mlik qalamdan olmoqchi bo'ldi. Sardor nechta qalam olishi mumkin?",
+      "o": [
+        "32",
+        "16",
+        "8",
+        "10"
+      ],
+      "c": "c",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v4_q30",
+      "s": "m",
+      "q": "Tomoni 11 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "121 sm²",
+        "48 sm",
+        "22 sm",
+        "44 sm"
+      ],
+      "c": "d",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "5": [
+    {
+      "id": "b14_v5_q1",
+      "s": "m",
+      "q": "9 + 5 − 3 = ?",
+      "o": [
+        "11",
+        "12",
+        "13",
+        "9"
+      ],
+      "c": "a",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v5_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 5+3=9  b) 3-2=1  c) 6+3=9  d) 7+2=7",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "b",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v5_q3",
+      "s": "m",
+      "q": "8, 9, 2, 6, 7, 4, 1 sonlaridan nechtasi 3 dan katta?",
+      "o": [
+        "4",
+        "3",
+        "6",
+        "5"
+      ],
+      "c": "d",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v5_q4",
+      "s": "m",
+      "q": "Shaxmat o'yinida 7 ta qora va 7 ta oq piyodalar bo'ladi. Bu o'yindagi jami piyodalar sonini toping.",
+      "o": [
+        "16",
+        "10",
+        "14",
+        "12"
+      ],
+      "c": "c",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v5_q5",
+      "s": "m",
+      "q": "Sxema: 9+?=18 — «?» o'rnida qanday son bor?",
+      "o": [
+        "8",
+        "9",
+        "10",
+        "11"
+      ],
+      "c": "b",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v5_q6",
+      "s": "m",
+      "q": "21 + 11 + 10 = ?",
+      "o": [
+        "40",
+        "43",
+        "41",
+        "42"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v5_q7",
+      "s": "m",
+      "q": "59 + 34 = ?",
+      "o": [
+        "83",
+        "92",
+        "104",
+        "93"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v5_q8",
+      "s": "m",
+      "q": "Kamayuvchi 69, ayiruvchi 45. Ayirmani toping.",
+      "o": [
+        "24",
+        "28",
+        "114",
+        "20"
+      ],
+      "c": "a",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v5_q9",
+      "s": "m",
+      "q": "Sxema: 77−?=37 — «?» o'rnida qanday son bor?",
+      "o": [
+        "114",
+        "40",
+        "50",
+        "30"
+      ],
+      "c": "b",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v5_q10",
+      "s": "m",
+      "q": "Bog'da 43 ta sariq va 27 ta qizil lola bor. Hammasi bo'lib nechta lola, va sariq lola qizildan nechta ko'p?",
+      "o": [
+        "70 ta va 26 ta",
+        "70 ta va 16 ta",
+        "60 ta va 26 ta",
+        "60 ta va 16 ta"
+      ],
+      "c": "b",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v5_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n61; 54; 47; 40; …; 26; 19",
+      "o": [
+        "26",
+        "19",
+        "40",
+        "33"
+      ],
+      "c": "d",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v5_q12",
+      "s": "m",
+      "q": "64 sonini xona qo'shiluvchilari ko'rinishida yozing va 64 dan 42 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "6+4 va 22 ta",
+        "60+4 va 22 ta",
+        "60+4 va 23 ta",
+        "60+4 va 24 ta"
+      ],
+      "c": "c",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v5_q13",
+      "s": "m",
+      "q": "83 − 32 □ 83 − 8 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v5_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 15 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "faqat 6+9",
+        "faqat 7+8",
+        "7+8 va 8+7",
+        "6+9 va 7+8"
+      ],
+      "c": "d",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v5_q15",
+      "s": "m",
+      "q": "Kamayuvchi 42, ayiruvchi 31. Ayirmani toping.",
+      "o": [
+        "11",
+        "21",
+        "24",
+        "73"
+      ],
+      "c": "a",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v5_q16",
+      "s": "m",
+      "q": "63 = 31 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "32",
+        "94",
+        "40",
+        "42"
+      ],
+      "c": "a",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v5_q17",
+      "s": "m",
+      "q": "60 − (17 + 21) = ?",
+      "o": [
+        "22",
+        "98",
+        "32",
+        "4"
+      ],
+      "c": "a",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v5_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 18 ta kitob bor. Birinchisida 6 ta, ikkinchisida birinchisidan 2 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "6",
+        "3",
+        "8",
+        "4"
+      ],
+      "c": "d",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v5_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 50 − x = 34",
+      "o": [
+        "16",
+        "11",
+        "18",
+        "26"
+      ],
+      "c": "a",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v5_q20",
+      "s": "m",
+      "q": "Sxema: 27+?=55 — «?» o'rnida qanday son bor?",
+      "o": [
+        "28",
+        "36",
+        "18",
+        "82"
+      ],
+      "c": "a",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v5_q21",
+      "s": "m",
+      "q": "Uzunligi 28 cm bo'lgan kesmani 4 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "9 cm",
+        "7 cm",
+        "112 cm",
+        "14 cm"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v5_q22",
+      "s": "m",
+      "q": "27 sm + 17 sm − 14 sm = ?",
+      "o": [
+        "35 cm",
+        "58 cm",
+        "30 cm",
+        "25 cm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v5_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v5_q24",
+      "s": "m",
+      "q": "Rasmda beshburchak tasvirlangan (besh tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v5_q25",
+      "s": "m",
+      "q": "Eni 38 sm, bo'yi 10 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "380 sm",
+        "48 sm",
+        "96 sm",
+        "192 sm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v5_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v5_q27",
+      "s": "m",
+      "q": "51 − 6 · 7 = ?",
+      "o": [
+        "9",
+        "315",
+        "306",
+        "51"
+      ],
+      "c": "a",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v5_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 8 · x = 56",
+      "o": [
+        "7",
+        "1",
+        "48",
+        "10"
+      ],
+      "c": "a",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v5_q29",
+      "s": "m",
+      "q": "Sardorda 129 so'm pul bor edi. U 80 so'mga daftar sotib oldi. Qolgan puliga har biri 7 so'mlik ruchkadan olmoqchi bo'ldi. Sardor nechta ruchka olishi mumkin?",
+      "o": [
+        "49",
+        "9",
+        "6",
+        "7"
+      ],
+      "c": "d",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v5_q30",
+      "s": "m",
+      "q": "Tomoni 9 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "40 sm",
+        "36 sm",
+        "18 sm",
+        "81 sm²"
+      ],
+      "c": "b",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "6": [
+    {
+      "id": "b14_v6_q1",
+      "s": "m",
+      "q": "5 + 7 − 4 = ?",
+      "o": [
+        "8",
+        "7",
+        "6",
+        "9"
+      ],
+      "c": "a",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v6_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 5-2=2  b) 6-3=1  c) 3+4=7  d) 4+4=8",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "c",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v6_q3",
+      "s": "m",
+      "q": "2, 9, 4, 3, 8, 5, 1 sonlaridan nechtasi 4 dan katta?",
+      "o": [
+        "1",
+        "4",
+        "3",
+        "2"
+      ],
+      "c": "c",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v6_q4",
+      "s": "m",
+      "q": "Go o'yinida 6 ta qora va 6 ta oq toshlar bo'ladi. Bu o'yindagi jami toshlar sonini toping.",
+      "o": [
+        "14",
+        "8",
+        "10",
+        "12"
+      ],
+      "c": "d",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v6_q5",
+      "s": "m",
+      "q": "Sxema: 5+?=13 — «?» o'rnida qanday son bor?",
+      "o": [
+        "8",
+        "10",
+        "6",
+        "9"
+      ],
+      "c": "a",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v6_q6",
+      "s": "m",
+      "q": "23 + 11 + 5 = ?",
+      "o": [
+        "41",
+        "40",
+        "39",
+        "37"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v6_q7",
+      "s": "m",
+      "q": "37 + 30 = ?",
+      "o": [
+        "68",
+        "57",
+        "67",
+        "66"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v6_q8",
+      "s": "m",
+      "q": "Kamayuvchi 88, ayiruvchi 58. Ayirmani toping.",
+      "o": [
+        "26",
+        "40",
+        "30",
+        "146"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v6_q9",
+      "s": "m",
+      "q": "Sxema: 78−?=39 — «?» o'rnida qanday son bor?",
+      "o": [
+        "29",
+        "117",
+        "49",
+        "39"
+      ],
+      "c": "d",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v6_q10",
+      "s": "m",
+      "q": "Issiqxonada 50 ta qizil va 31 ta oq atirgul bor. Hammasi bo'lib nechta atirgul, va qizil atirgul oqdan nechta ko'p?",
+      "o": [
+        "81 ta va 29 ta",
+        "71 ta va 29 ta",
+        "71 ta va 19 ta",
+        "81 ta va 19 ta"
+      ],
+      "c": "d",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v6_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n75; 68; …; 54; 47; 40; 33",
+      "o": [
+        "61",
+        "47",
+        "68",
+        "54"
+      ],
+      "c": "a",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v6_q12",
+      "s": "m",
+      "q": "47 sonini xona qo'shiluvchilari ko'rinishida yozing va 47 dan 23 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "40+7 va 26 ta",
+        "40+7 va 25 ta",
+        "4+7 va 24 ta",
+        "40+7 va 24 ta"
+      ],
+      "c": "b",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v6_q13",
+      "s": "m",
+      "q": "70 − 39 □ 70 − 8 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v6_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 16 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "faqat 8+8",
+        "faqat 7+9",
+        "7+9 va 8+8",
+        "6+10 va 7+9"
+      ],
+      "c": "b",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v6_q15",
+      "s": "m",
+      "q": "Kamayuvchi 30, ayiruvchi 19. Ayirmani toping.",
+      "o": [
+        "24",
+        "49",
+        "21",
+        "11"
+      ],
+      "c": "d",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v6_q16",
+      "s": "m",
+      "q": "89 = 56 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "23",
+        "145",
+        "43",
+        "33"
+      ],
+      "c": "d",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v6_q17",
+      "s": "m",
+      "q": "70 − (19 + 24) = ?",
+      "o": [
+        "43",
+        "27",
+        "5",
+        "113"
+      ],
+      "c": "b",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v6_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 21 ta kitob bor. Birinchisida 6 ta, ikkinchisida birinchisidan 4 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "4",
+        "5",
+        "6",
+        "10"
+      ],
+      "c": "b",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v6_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 68 − x = 45",
+      "o": [
+        "113",
+        "22",
+        "18",
+        "23"
+      ],
+      "c": "d",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v6_q20",
+      "s": "m",
+      "q": "Sxema: 42+?=62 — «?» o'rnida qanday son bor?",
+      "o": [
+        "104",
+        "28",
+        "10",
+        "20"
+      ],
+      "c": "d",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v6_q21",
+      "s": "m",
+      "q": "Uzunligi 12 cm bo'lgan kesmani 4 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "3 cm",
+        "48 cm",
+        "5 cm",
+        "6 cm"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v6_q22",
+      "s": "m",
+      "q": "22 sm + 15 sm − 16 sm = ?",
+      "o": [
+        "26 cm",
+        "53 cm",
+        "16 cm",
+        "21 cm"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v6_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v6_q24",
+      "s": "m",
+      "q": "Rasmda uchburchak tasvirlangan (uch tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v6_q25",
+      "s": "m",
+      "q": "Eni 29 sm, bo'yi 14 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "86 sm",
+        "43 sm",
+        "172 sm",
+        "406 sm"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v6_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v6_q27",
+      "s": "m",
+      "q": "71 − 7 · 8 = ?",
+      "o": [
+        "497",
+        "15",
+        "71",
+        "512"
+      ],
+      "c": "b",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v6_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 8 · x = 64",
+      "o": [
+        "11",
+        "512",
+        "56",
+        "8"
+      ],
+      "c": "d",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v6_q29",
+      "s": "m",
+      "q": "Jasurda 87 so'm pul bor edi. U 59 so'mga daftar sotib oldi. Qolgan puliga har biri 4 so'mlik kitobdan olmoqchi bo'ldi. Jasur nechta kitob olishi mumkin?",
+      "o": [
+        "28",
+        "7",
+        "9",
+        "14"
+      ],
+      "c": "b",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v6_q30",
+      "s": "m",
+      "q": "Tomoni 10 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "20 sm",
+        "100 sm²",
+        "40 sm",
+        "44 sm"
+      ],
+      "c": "c",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "7": [
+    {
+      "id": "b14_v7_q1",
+      "s": "m",
+      "q": "7 + 7 − 5 = ?",
+      "o": [
+        "8",
+        "11",
+        "10",
+        "9"
+      ],
+      "c": "d",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v7_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 5+2=8  b) 5+3=6  c) 4+5=9  d) 6+2=8",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "c",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v7_q3",
+      "s": "m",
+      "q": "7, 9, 4, 8, 3, 1, 6 sonlaridan nechtasi 6 dan katta?",
+      "o": [
+        "3",
+        "1",
+        "2",
+        "4"
+      ],
+      "c": "a",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v7_q4",
+      "s": "m",
+      "q": "Go o'yinida 6 ta qora va 6 ta oq toshlar bo'ladi. Bu o'yindagi jami toshlar sonini toping.",
+      "o": [
+        "8",
+        "14",
+        "10",
+        "12"
+      ],
+      "c": "d",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v7_q5",
+      "s": "m",
+      "q": "Sxema: 9+?=14 — «?» o'rnida qanday son bor?",
+      "o": [
+        "5",
+        "3",
+        "6",
+        "4"
+      ],
+      "c": "a",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v7_q6",
+      "s": "m",
+      "q": "17 + 13 + 4 = ?",
+      "o": [
+        "32",
+        "34",
+        "33",
+        "35"
+      ],
+      "c": "b",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v7_q7",
+      "s": "m",
+      "q": "61 + 33 = ?",
+      "o": [
+        "94",
+        "93",
+        "105",
+        "84"
+      ],
+      "c": "a",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v7_q8",
+      "s": "m",
+      "q": "Kamayuvchi 70, ayiruvchi 54. Ayirmani toping.",
+      "o": [
+        "26",
+        "124",
+        "12",
+        "16"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v7_q9",
+      "s": "m",
+      "q": "Sxema: 90−?=58 — «?» o'rnida qanday son bor?",
+      "o": [
+        "22",
+        "32",
+        "148",
+        "42"
+      ],
+      "c": "b",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v7_q10",
+      "s": "m",
+      "q": "Issiqxonada 62 ta qizil va 44 ta oq atirgul bor. Hammasi bo'lib nechta atirgul, va qizil atirgul oqdan nechta ko'p?",
+      "o": [
+        "106 ta va 28 ta",
+        "106 ta va 18 ta",
+        "96 ta va 18 ta",
+        "96 ta va 28 ta"
+      ],
+      "c": "b",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v7_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n63; 57; …; 45; 39; 33; 27",
+      "o": [
+        "57",
+        "39",
+        "45",
+        "51"
+      ],
+      "c": "d",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v7_q12",
+      "s": "m",
+      "q": "55 sonini xona qo'shiluvchilari ko'rinishida yozing va 55 dan 35 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "50+5 va 22 ta",
+        "50+5 va 21 ta",
+        "50+5 va 20 ta",
+        "5+5 va 20 ta"
+      ],
+      "c": "b",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v7_q13",
+      "s": "m",
+      "q": "59 − 20 □ 59 − 11 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v7_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 13 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "5+8 va 8+5",
+        "faqat 5+8",
+        "4+9 va 5+8",
+        "faqat 4+9"
+      ],
+      "c": "c",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v7_q15",
+      "s": "m",
+      "q": "Kamayuvchi 41, ayiruvchi 24. Ayirmani toping.",
+      "o": [
+        "17",
+        "27",
+        "65",
+        "30"
+      ],
+      "c": "a",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v7_q16",
+      "s": "m",
+      "q": "84 = 52 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "42",
+        "32",
+        "40",
+        "136"
+      ],
+      "c": "b",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v7_q17",
+      "s": "m",
+      "q": "48 − (19 + 18) = ?",
+      "o": [
+        "37",
+        "85",
+        "1",
+        "11"
+      ],
+      "c": "d",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v7_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 15 ta kitob bor. Birinchisida 5 ta, ikkinchisida birinchisidan 2 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "3",
+        "7",
+        "2",
+        "5"
+      ],
+      "c": "a",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v7_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 53 − x = 33",
+      "o": [
+        "86",
+        "13",
+        "30",
+        "20"
+      ],
+      "c": "d",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v7_q20",
+      "s": "m",
+      "q": "Sxema: 33+?=56 — «?» o'rnida qanday son bor?",
+      "o": [
+        "23",
+        "89",
+        "13",
+        "33"
+      ],
+      "c": "a",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v7_q21",
+      "s": "m",
+      "q": "Uzunligi 12 cm bo'lgan kesmani 4 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "5 cm",
+        "48 cm",
+        "6 cm",
+        "3 cm"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v7_q22",
+      "s": "m",
+      "q": "16 sm + 16 sm − 12 sm = ?",
+      "o": [
+        "20 cm",
+        "44 cm",
+        "15 cm",
+        "25 cm"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v7_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v7_q24",
+      "s": "m",
+      "q": "Rasmda to'rtburchak tasvirlangan (to'rt tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v7_q25",
+      "s": "m",
+      "q": "Eni 27 sm, bo'yi 10 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "148 sm",
+        "270 sm",
+        "74 sm",
+        "37 sm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v7_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v7_q27",
+      "s": "m",
+      "q": "57 − 6 · 7 = ?",
+      "o": [
+        "357",
+        "57",
+        "99",
+        "15"
+      ],
+      "c": "d",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v7_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 4 · x = 28",
+      "o": [
+        "11",
+        "7",
+        "10",
+        "24"
+      ],
+      "c": "b",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v7_q29",
+      "s": "m",
+      "q": "Kamolada 58 so'm pul bor edi. U 34 so'mga daftar sotib oldi. Qolgan puliga har biri 6 so'mlik kitobdan olmoqchi bo'ldi. Kamola nechta kitob olishi mumkin?",
+      "o": [
+        "8",
+        "3",
+        "4",
+        "24"
+      ],
+      "c": "c",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v7_q30",
+      "s": "m",
+      "q": "Tomoni 12 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "24 sm",
+        "48 sm",
+        "144 sm²",
+        "52 sm"
+      ],
+      "c": "b",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "8": [
+    {
+      "id": "b14_v8_q1",
+      "s": "m",
+      "q": "9 + 6 − 4 = ?",
+      "o": [
+        "9",
+        "12",
+        "13",
+        "11"
+      ],
+      "c": "d",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v8_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 6-3=3  b) 6-4=1  c) 6-2=3  d) 7-4=3",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "d",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v8_q3",
+      "s": "m",
+      "q": "4, 1, 3, 2, 8, 7, 9 sonlaridan nechtasi 4 dan katta?",
+      "o": [
+        "3",
+        "1",
+        "4",
+        "2"
+      ],
+      "c": "a",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v8_q4",
+      "s": "m",
+      "q": "Shaxmat o'yinida 8 ta qora va 8 ta oq piyodalar bo'ladi. Bu o'yindagi jami piyodalar sonini toping.",
+      "o": [
+        "14",
+        "18",
+        "16",
+        "12"
+      ],
+      "c": "c",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v8_q5",
+      "s": "m",
+      "q": "Sxema: 8+?=13 — «?» o'rnida qanday son bor?",
+      "o": [
+        "5",
+        "6",
+        "3",
+        "4"
+      ],
+      "c": "a",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v8_q6",
+      "s": "m",
+      "q": "12 + 10 + 11 = ?",
+      "o": [
+        "34",
+        "35",
+        "32",
+        "33"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v8_q7",
+      "s": "m",
+      "q": "59 + 31 = ?",
+      "o": [
+        "89",
+        "91",
+        "90",
+        "80"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v8_q8",
+      "s": "m",
+      "q": "Kamayuvchi 73, ayiruvchi 55. Ayirmani toping.",
+      "o": [
+        "22",
+        "28",
+        "128",
+        "18"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v8_q9",
+      "s": "m",
+      "q": "Sxema: 62−?=41 — «?» o'rnida qanday son bor?",
+      "o": [
+        "103",
+        "31",
+        "21",
+        "11"
+      ],
+      "c": "c",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v8_q10",
+      "s": "m",
+      "q": "Bog'da 42 ta sariq va 34 ta qizil lola bor. Hammasi bo'lib nechta lola, va sariq lola qizildan nechta ko'p?",
+      "o": [
+        "76 ta va 18 ta",
+        "66 ta va 18 ta",
+        "76 ta va 8 ta",
+        "66 ta va 8 ta"
+      ],
+      "c": "c",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v8_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n68; 62; …; 50; 44; 38; 32",
+      "o": [
+        "50",
+        "44",
+        "56",
+        "62"
+      ],
+      "c": "c",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v8_q12",
+      "s": "m",
+      "q": "43 sonini xona qo'shiluvchilari ko'rinishida yozing va 43 dan 11 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "40+3 va 34 ta",
+        "4+3 va 32 ta",
+        "40+3 va 33 ta",
+        "40+3 va 32 ta"
+      ],
+      "c": "c",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v8_q13",
+      "s": "m",
+      "q": "77 − 24 □ 77 − 8 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v8_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 13 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "faqat 4+9",
+        "5+8 va 8+5",
+        "4+9 va 5+8",
+        "faqat 5+8"
+      ],
+      "c": "c",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v8_q15",
+      "s": "m",
+      "q": "Kamayuvchi 39, ayiruvchi 19. Ayirmani toping.",
+      "o": [
+        "20",
+        "33",
+        "58",
+        "10"
+      ],
+      "c": "a",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v8_q16",
+      "s": "m",
+      "q": "74 = 43 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "117",
+        "21",
+        "31",
+        "41"
+      ],
+      "c": "c",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v8_q17",
+      "s": "m",
+      "q": "60 − (20 + 18) = ?",
+      "o": [
+        "98",
+        "22",
+        "32",
+        "2"
+      ],
+      "c": "b",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v8_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 16 ta kitob bor. Birinchisida 5 ta, ikkinchisida birinchisidan 4 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "2",
+        "4",
+        "5",
+        "1"
+      ],
+      "c": "a",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v8_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 38 − x = 27",
+      "o": [
+        "16",
+        "65",
+        "11",
+        "21"
+      ],
+      "c": "c",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v8_q20",
+      "s": "m",
+      "q": "Sxema: 20+?=46 — «?» o'rnida qanday son bor?",
+      "o": [
+        "16",
+        "36",
+        "66",
+        "26"
+      ],
+      "c": "d",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v8_q21",
+      "s": "m",
+      "q": "Uzunligi 21 cm bo'lgan kesmani 3 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "14 cm",
+        "63 cm",
+        "7 cm",
+        "9 cm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v8_q22",
+      "s": "m",
+      "q": "24 sm + 14 sm − 11 sm = ?",
+      "o": [
+        "49 cm",
+        "27 cm",
+        "32 cm",
+        "22 cm"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v8_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v8_q24",
+      "s": "m",
+      "q": "Rasmda oltiburchak tasvirlangan (olti tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v8_q25",
+      "s": "m",
+      "q": "Eni 33 sm, bo'yi 14 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "188 sm",
+        "462 sm",
+        "94 sm",
+        "47 sm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v8_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v8_q27",
+      "s": "m",
+      "q": "44 − 6 · 6 = ?",
+      "o": [
+        "228",
+        "80",
+        "8",
+        "264"
+      ],
+      "c": "c",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v8_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 6 · x = 36",
+      "o": [
+        "9",
+        "216",
+        "6",
+        "12"
+      ],
+      "c": "c",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v8_q29",
+      "s": "m",
+      "q": "Dilnozada 108 so'm pul bor edi. U 72 so'mga qalam sotib oldi. Qolgan puliga har biri 6 so'mlik daftardan olmoqchi bo'ldi. Dilnoza nechta daftar olishi mumkin?",
+      "o": [
+        "8",
+        "12",
+        "36",
+        "6"
+      ],
+      "c": "d",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v8_q30",
+      "s": "m",
+      "q": "Tomoni 11 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "48 sm",
+        "22 sm",
+        "121 sm²",
+        "44 sm"
+      ],
+      "c": "d",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "9": [
+    {
+      "id": "b14_v9_q1",
+      "s": "m",
+      "q": "8 + 7 − 4 = ?",
+      "o": [
+        "13",
+        "11",
+        "10",
+        "12"
+      ],
+      "c": "b",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v9_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 3-2=1  b) 5+5=12  c) 7+5=14  d) 5+4=9",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "d",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v9_q3",
+      "s": "m",
+      "q": "1, 8, 3, 6, 9, 4, 7 sonlaridan nechtasi 6 dan katta?",
+      "o": [
+        "4",
+        "2",
+        "3",
+        "1"
+      ],
+      "c": "c",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v9_q4",
+      "s": "m",
+      "q": "Shashka o'yinida 6 ta qora va 6 ta oq figuralar bo'ladi. Bu o'yindagi jami figuralar sonini toping.",
+      "o": [
+        "8",
+        "12",
+        "10",
+        "14"
+      ],
+      "c": "b",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v9_q5",
+      "s": "m",
+      "q": "Sxema: 6+?=10 — «?» o'rnida qanday son bor?",
+      "o": [
+        "5",
+        "4",
+        "3",
+        "2"
+      ],
+      "c": "b",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v9_q6",
+      "s": "m",
+      "q": "19 + 13 + 10 = ?",
+      "o": [
+        "41",
+        "43",
+        "42",
+        "40"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v9_q7",
+      "s": "m",
+      "q": "52 + 30 = ?",
+      "o": [
+        "83",
+        "72",
+        "81",
+        "82"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v9_q8",
+      "s": "m",
+      "q": "Kamayuvchi 69, ayiruvchi 57. Ayirmani toping.",
+      "o": [
+        "16",
+        "8",
+        "126",
+        "12"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v9_q9",
+      "s": "m",
+      "q": "Sxema: 65−?=42 — «?» o'rnida qanday son bor?",
+      "o": [
+        "107",
+        "23",
+        "13",
+        "33"
+      ],
+      "c": "b",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v9_q10",
+      "s": "m",
+      "q": "Bog'da 53 ta sariq va 47 ta qizil lola bor. Hammasi bo'lib nechta lola, va sariq lola qizildan nechta ko'p?",
+      "o": [
+        "100 ta va 16 ta",
+        "90 ta va 6 ta",
+        "100 ta va 6 ta",
+        "90 ta va 16 ta"
+      ],
+      "c": "c",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v9_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n79; 71; 63; …; 47; 39; 31",
+      "o": [
+        "63",
+        "39",
+        "55",
+        "47"
+      ],
+      "c": "c",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v9_q12",
+      "s": "m",
+      "q": "33 sonini xona qo'shiluvchilari ko'rinishida yozing va 33 dan 11 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "30+3 va 23 ta",
+        "30+3 va 24 ta",
+        "30+3 va 22 ta",
+        "3+3 va 22 ta"
+      ],
+      "c": "a",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v9_q13",
+      "s": "m",
+      "q": "57 − 28 □ 57 − 10 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v9_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 15 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "faqat 7+8",
+        "faqat 6+9",
+        "7+8 va 8+7",
+        "6+9 va 7+8"
+      ],
+      "c": "d",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v9_q15",
+      "s": "m",
+      "q": "Kamayuvchi 51, ayiruvchi 29. Ayirmani toping.",
+      "o": [
+        "80",
+        "32",
+        "22",
+        "35"
+      ],
+      "c": "c",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v9_q16",
+      "s": "m",
+      "q": "75 = 45 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "30",
+        "120",
+        "20",
+        "40"
+      ],
+      "c": "a",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v9_q17",
+      "s": "m",
+      "q": "65 − (25 + 25) = ?",
+      "o": [
+        "15",
+        "50",
+        "115",
+        "25"
+      ],
+      "c": "a",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v9_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 19 ta kitob bor. Birinchisida 6 ta, ikkinchisida birinchisidan 4 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "3",
+        "2",
+        "5",
+        "10"
+      ],
+      "c": "a",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v9_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 64 − x = 45",
+      "o": [
+        "26",
+        "29",
+        "109",
+        "19"
+      ],
+      "c": "d",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v9_q20",
+      "s": "m",
+      "q": "Sxema: 42+?=75 — «?» o'rnida qanday son bor?",
+      "o": [
+        "43",
+        "33",
+        "117",
+        "41"
+      ],
+      "c": "b",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v9_q21",
+      "s": "m",
+      "q": "Uzunligi 12 cm bo'lgan kesmani 4 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "5 cm",
+        "6 cm",
+        "48 cm",
+        "3 cm"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v9_q22",
+      "s": "m",
+      "q": "21 sm + 20 sm − 14 sm = ?",
+      "o": [
+        "22 cm",
+        "27 cm",
+        "55 cm",
+        "32 cm"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v9_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v9_q24",
+      "s": "m",
+      "q": "Rasmda beshburchak tasvirlangan (besh tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v9_q25",
+      "s": "m",
+      "q": "Eni 40 sm, bo'yi 16 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "56 sm",
+        "640 sm",
+        "224 sm",
+        "112 sm"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v9_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v9_q27",
+      "s": "m",
+      "q": "85 − 8 · 8 = ?",
+      "o": [
+        "616",
+        "680",
+        "85",
+        "21"
+      ],
+      "c": "d",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v9_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 6 · x = 54",
+      "o": [
+        "324",
+        "12",
+        "48",
+        "9"
+      ],
+      "c": "d",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v9_q29",
+      "s": "m",
+      "q": "Kamolada 138 so'm pul bor edi. U 90 so'mga daftar sotib oldi. Qolgan puliga har biri 6 so'mlik kitobdan olmoqchi bo'ldi. Kamola nechta kitob olishi mumkin?",
+      "o": [
+        "8",
+        "16",
+        "10",
+        "48"
+      ],
+      "c": "a",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v9_q30",
+      "s": "m",
+      "q": "Tomoni 8 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "64 sm²",
+        "36 sm",
+        "32 sm",
+        "16 sm"
+      ],
+      "c": "c",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "10": [
+    {
+      "id": "b14_v10_q1",
+      "s": "m",
+      "q": "7 + 7 − 3 = ?",
+      "o": [
+        "13",
+        "10",
+        "11",
+        "12"
+      ],
+      "c": "c",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v10_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 6-3=4  b) 6-5=1  c) 4-2=2  d) 7-2=6",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "b",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v10_q3",
+      "s": "m",
+      "q": "2, 5, 4, 8, 6, 1, 3 sonlaridan nechtasi 5 dan katta?",
+      "o": [
+        "1",
+        "0",
+        "2",
+        "3"
+      ],
+      "c": "c",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v10_q4",
+      "s": "m",
+      "q": "Shashka o'yinida 6 ta qora va 6 ta oq figuralar bo'ladi. Bu o'yindagi jami figuralar sonini toping.",
+      "o": [
+        "12",
+        "14",
+        "8",
+        "10"
+      ],
+      "c": "a",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v10_q5",
+      "s": "m",
+      "q": "Sxema: 8+?=15 — «?» o'rnida qanday son bor?",
+      "o": [
+        "5",
+        "7",
+        "8",
+        "9"
+      ],
+      "c": "b",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v10_q6",
+      "s": "m",
+      "q": "24 + 5 + 8 = ?",
+      "o": [
+        "35",
+        "36",
+        "37",
+        "38"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v10_q7",
+      "s": "m",
+      "q": "61 + 43 = ?",
+      "o": [
+        "94",
+        "104",
+        "105",
+        "115"
+      ],
+      "c": "b",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v10_q8",
+      "s": "m",
+      "q": "Kamayuvchi 69, ayiruvchi 34. Ayirmani toping.",
+      "o": [
+        "31",
+        "45",
+        "35",
+        "103"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v10_q9",
+      "s": "m",
+      "q": "Sxema: 59−?=38 — «?» o'rnida qanday son bor?",
+      "o": [
+        "21",
+        "31",
+        "11",
+        "97"
+      ],
+      "c": "a",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v10_q10",
+      "s": "m",
+      "q": "Kutubxonada 52 ta katta va 45 ta kichik kitob bor. Hammasi bo'lib nechta kitob, va katta kitob kichikdan nechta ko'p?",
+      "o": [
+        "87 ta va 7 ta",
+        "97 ta va 7 ta",
+        "87 ta va 17 ta",
+        "97 ta va 17 ta"
+      ],
+      "c": "b",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v10_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n79; 72; 65; …; 51; 44; 37",
+      "o": [
+        "65",
+        "58",
+        "44",
+        "51"
+      ],
+      "c": "b",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v10_q12",
+      "s": "m",
+      "q": "36 sonini xona qo'shiluvchilari ko'rinishida yozing va 36 dan 11 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "30+6 va 25 ta",
+        "30+6 va 27 ta",
+        "30+6 va 26 ta",
+        "3+6 va 25 ta"
+      ],
+      "c": "c",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v10_q13",
+      "s": "m",
+      "q": "70 − 25 □ 70 − 11 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v10_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 13 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "5+8 va 8+5",
+        "faqat 5+8",
+        "4+9 va 5+8",
+        "faqat 4+9"
+      ],
+      "c": "c",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v10_q15",
+      "s": "m",
+      "q": "Kamayuvchi 23, ayiruvchi 15. Ayirmani toping.",
+      "o": [
+        "8",
+        "38",
+        "18",
+        "21"
+      ],
+      "c": "a",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v10_q16",
+      "s": "m",
+      "q": "66 = 39 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "35",
+        "37",
+        "27",
+        "105"
+      ],
+      "c": "c",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v10_q17",
+      "s": "m",
+      "q": "59 − (29 + 20) = ?",
+      "o": [
+        "20",
+        "10",
+        "9",
+        "108"
+      ],
+      "c": "b",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v10_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 16 ta kitob bor. Birinchisida 4 ta, ikkinchisida birinchisidan 3 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "4",
+        "5",
+        "3",
+        "7"
+      ],
+      "c": "b",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v10_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 41 − x = 30",
+      "o": [
+        "11",
+        "21",
+        "6",
+        "19"
+      ],
+      "c": "a",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v10_q20",
+      "s": "m",
+      "q": "Sxema: 22+?=49 — «?» o'rnida qanday son bor?",
+      "o": [
+        "37",
+        "17",
+        "35",
+        "27"
+      ],
+      "c": "d",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v10_q21",
+      "s": "m",
+      "q": "Uzunligi 36 cm bo'lgan kesmani 6 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "8 cm",
+        "216 cm",
+        "12 cm",
+        "6 cm"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v10_q22",
+      "s": "m",
+      "q": "27 sm + 19 sm − 12 sm = ?",
+      "o": [
+        "58 cm",
+        "39 cm",
+        "29 cm",
+        "34 cm"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v10_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v10_q24",
+      "s": "m",
+      "q": "Rasmda uchburchak tasvirlangan (uch tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v10_q25",
+      "s": "m",
+      "q": "Eni 33 sm, bo'yi 19 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "627 sm",
+        "208 sm",
+        "104 sm",
+        "52 sm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v10_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v10_q27",
+      "s": "m",
+      "q": "66 − 6 · 8 = ?",
+      "o": [
+        "480",
+        "396",
+        "18",
+        "66"
+      ],
+      "c": "c",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v10_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 3 · x = 24",
+      "o": [
+        "72",
+        "21",
+        "8",
+        "11"
+      ],
+      "c": "c",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v10_q29",
+      "s": "m",
+      "q": "Jasurda 76 so'm pul bor edi. U 52 so'mga qalam sotib oldi. Qolgan puliga har biri 4 so'mlik kitobdan olmoqchi bo'ldi. Jasur nechta kitob olishi mumkin?",
+      "o": [
+        "24",
+        "12",
+        "8",
+        "6"
+      ],
+      "c": "d",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v10_q30",
+      "s": "m",
+      "q": "Tomoni 11 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "44 sm",
+        "22 sm",
+        "121 sm²",
+        "48 sm"
+      ],
+      "c": "a",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "11": [
+    {
+      "id": "b14_v11_q1",
+      "s": "m",
+      "q": "7 + 6 − 3 = ?",
+      "o": [
+        "10",
+        "12",
+        "11",
+        "8"
+      ],
+      "c": "a",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v11_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 5+4=8  b) 4-2=2  c) 5+4=9  d) 3+4=9",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "b",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v11_q3",
+      "s": "m",
+      "q": "5, 3, 1, 9, 8, 4, 6 sonlaridan nechtasi 3 dan katta?",
+      "o": [
+        "5",
+        "3",
+        "4",
+        "6"
+      ],
+      "c": "a",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v11_q4",
+      "s": "m",
+      "q": "Go o'yinida 7 ta qora va 7 ta oq toshlar bo'ladi. Bu o'yindagi jami toshlar sonini toping.",
+      "o": [
+        "14",
+        "16",
+        "10",
+        "12"
+      ],
+      "c": "a",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v11_q5",
+      "s": "m",
+      "q": "Sxema: 7+?=14 — «?» o'rnida qanday son bor?",
+      "o": [
+        "8",
+        "9",
+        "5",
+        "7"
+      ],
+      "c": "d",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v11_q6",
+      "s": "m",
+      "q": "21 + 7 + 12 = ?",
+      "o": [
+        "38",
+        "42",
+        "40",
+        "41"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v11_q7",
+      "s": "m",
+      "q": "37 + 32 = ?",
+      "o": [
+        "80",
+        "69",
+        "68",
+        "59"
+      ],
+      "c": "b",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v11_q8",
+      "s": "m",
+      "q": "Kamayuvchi 67, ayiruvchi 50. Ayirmani toping.",
+      "o": [
+        "21",
+        "27",
+        "17",
+        "117"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v11_q9",
+      "s": "m",
+      "q": "Sxema: 62−?=30 — «?» o'rnida qanday son bor?",
+      "o": [
+        "92",
+        "42",
+        "32",
+        "22"
+      ],
+      "c": "c",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v11_q10",
+      "s": "m",
+      "q": "Kutubxonada 45 ta katta va 28 ta kichik kitob bor. Hammasi bo'lib nechta kitob, va katta kitob kichikdan nechta ko'p?",
+      "o": [
+        "73 ta va 27 ta",
+        "63 ta va 27 ta",
+        "73 ta va 17 ta",
+        "63 ta va 17 ta"
+      ],
+      "c": "c",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v11_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n66; 57; …; 39; 30; 21; 12",
+      "o": [
+        "39",
+        "30",
+        "57",
+        "48"
+      ],
+      "c": "d",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v11_q12",
+      "s": "m",
+      "q": "53 sonini xona qo'shiluvchilari ko'rinishida yozing va 53 dan 31 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "5+3 va 22 ta",
+        "50+3 va 22 ta",
+        "50+3 va 23 ta",
+        "50+3 va 24 ta"
+      ],
+      "c": "c",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v11_q13",
+      "s": "m",
+      "q": "61 − 29 □ 61 − 14 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v11_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 14 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "5+9 va 6+8",
+        "6+8 va 8+6",
+        "faqat 6+8",
+        "faqat 5+9"
+      ],
+      "c": "a",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v11_q15",
+      "s": "m",
+      "q": "Kamayuvchi 34, ayiruvchi 20. Ayirmani toping.",
+      "o": [
+        "24",
+        "4",
+        "14",
+        "27"
+      ],
+      "c": "c",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v11_q16",
+      "s": "m",
+      "q": "67 = 47 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "20",
+        "10",
+        "114",
+        "28"
+      ],
+      "c": "a",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v11_q17",
+      "s": "m",
+      "q": "57 − (16 + 14) = ?",
+      "o": [
+        "30",
+        "2",
+        "37",
+        "27"
+      ],
+      "c": "d",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v11_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 18 ta kitob bor. Birinchisida 5 ta, ikkinchisida birinchisidan 2 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "6",
+        "5",
+        "7",
+        "8"
+      ],
+      "c": "a",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v11_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 56 − x = 44",
+      "o": [
+        "12",
+        "22",
+        "100",
+        "32"
+      ],
+      "c": "a",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v11_q20",
+      "s": "m",
+      "q": "Sxema: 27+?=52 — «?» o'rnida qanday son bor?",
+      "o": [
+        "25",
+        "33",
+        "79",
+        "35"
+      ],
+      "c": "a",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v11_q21",
+      "s": "m",
+      "q": "Uzunligi 16 cm bo'lgan kesmani 4 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "6 cm",
+        "8 cm",
+        "4 cm",
+        "64 cm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v11_q22",
+      "s": "m",
+      "q": "19 sm + 15 sm − 15 sm = ?",
+      "o": [
+        "19 cm",
+        "14 cm",
+        "49 cm",
+        "24 cm"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v11_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v11_q24",
+      "s": "m",
+      "q": "Rasmda to'rtburchak tasvirlangan (to'rt tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v11_q25",
+      "s": "m",
+      "q": "Eni 24 sm, bo'yi 17 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "41 sm",
+        "408 sm",
+        "82 sm",
+        "164 sm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v11_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v11_q27",
+      "s": "m",
+      "q": "84 − 9 · 8 = ?",
+      "o": [
+        "756",
+        "600",
+        "12",
+        "156"
+      ],
+      "c": "c",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v11_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 8 · x = 24",
+      "o": [
+        "3",
+        "16",
+        "5",
+        "6"
+      ],
+      "c": "a",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v11_q29",
+      "s": "m",
+      "q": "Dilnozada 103 so'm pul bor edi. U 63 so'mga daftar sotib oldi. Qolgan puliga har biri 5 so'mlik qalamdan olmoqchi bo'ldi. Dilnoza nechta qalam olishi mumkin?",
+      "o": [
+        "16",
+        "40",
+        "10",
+        "8"
+      ],
+      "c": "d",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v11_q30",
+      "s": "m",
+      "q": "Tomoni 12 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "24 sm",
+        "144 sm²",
+        "48 sm",
+        "52 sm"
+      ],
+      "c": "c",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "12": [
+    {
+      "id": "b14_v12_q1",
+      "s": "m",
+      "q": "6 + 9 − 7 = ?",
+      "o": [
+        "7",
+        "6",
+        "10",
+        "8"
+      ],
+      "c": "d",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v12_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 6+5=12  b) 5-2=3  c) 7+4=11  d) 7+5=14",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "b",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v12_q3",
+      "s": "m",
+      "q": "5, 6, 4, 8, 1, 9, 2 sonlaridan nechtasi 4 dan katta?",
+      "o": [
+        "3",
+        "5",
+        "2",
+        "4"
+      ],
+      "c": "d",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v12_q4",
+      "s": "m",
+      "q": "Shaxmat o'yinida 8 ta qora va 8 ta oq piyodalar bo'ladi. Bu o'yindagi jami piyodalar sonini toping.",
+      "o": [
+        "18",
+        "12",
+        "16",
+        "14"
+      ],
+      "c": "c",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v12_q5",
+      "s": "m",
+      "q": "Sxema: 9+?=17 — «?» o'rnida qanday son bor?",
+      "o": [
+        "10",
+        "6",
+        "9",
+        "8"
+      ],
+      "c": "d",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v12_q6",
+      "s": "m",
+      "q": "12 + 9 + 6 = ?",
+      "o": [
+        "26",
+        "27",
+        "28",
+        "25"
+      ],
+      "c": "b",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v12_q7",
+      "s": "m",
+      "q": "37 + 30 = ?",
+      "o": [
+        "57",
+        "68",
+        "67",
+        "66"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v12_q8",
+      "s": "m",
+      "q": "Kamayuvchi 77, ayiruvchi 59. Ayirmani toping.",
+      "o": [
+        "28",
+        "136",
+        "22",
+        "18"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v12_q9",
+      "s": "m",
+      "q": "Sxema: 67−?=40 — «?» o'rnida qanday son bor?",
+      "o": [
+        "27",
+        "37",
+        "107",
+        "17"
+      ],
+      "c": "a",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v12_q10",
+      "s": "m",
+      "q": "Bog'da 51 ta sariq va 38 ta qizil lola bor. Hammasi bo'lib nechta lola, va sariq lola qizildan nechta ko'p?",
+      "o": [
+        "89 ta va 23 ta",
+        "79 ta va 23 ta",
+        "79 ta va 13 ta",
+        "89 ta va 13 ta"
+      ],
+      "c": "d",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v12_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n74; 67; 60; …; 46; 39; 32",
+      "o": [
+        "39",
+        "60",
+        "53",
+        "46"
+      ],
+      "c": "c",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v12_q12",
+      "s": "m",
+      "q": "83 sonini xona qo'shiluvchilari ko'rinishida yozing va 83 dan 37 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "8+3 va 46 ta",
+        "80+3 va 47 ta",
+        "80+3 va 46 ta",
+        "80+3 va 48 ta"
+      ],
+      "c": "b",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v12_q13",
+      "s": "m",
+      "q": "79 − 27 □ 79 − 14 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v12_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 13 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "5+8 va 8+5",
+        "faqat 4+9",
+        "faqat 5+8",
+        "4+9 va 5+8"
+      ],
+      "c": "d",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v12_q15",
+      "s": "m",
+      "q": "Kamayuvchi 32, ayiruvchi 20. Ayirmani toping.",
+      "o": [
+        "52",
+        "2",
+        "25",
+        "12"
+      ],
+      "c": "d",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v12_q16",
+      "s": "m",
+      "q": "68 = 34 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "44",
+        "42",
+        "24",
+        "34"
+      ],
+      "c": "d",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v12_q17",
+      "s": "m",
+      "q": "57 − (24 + 22) = ?",
+      "o": [
+        "11",
+        "2",
+        "21",
+        "46"
+      ],
+      "c": "a",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v12_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 20 ta kitob bor. Birinchisida 5 ta, ikkinchisida birinchisidan 4 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "8",
+        "5",
+        "6",
+        "9"
+      ],
+      "c": "c",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v12_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 56 − x = 36",
+      "o": [
+        "20",
+        "30",
+        "92",
+        "16"
+      ],
+      "c": "a",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v12_q20",
+      "s": "m",
+      "q": "Sxema: 38+?=65 — «?» o'rnida qanday son bor?",
+      "o": [
+        "17",
+        "27",
+        "37",
+        "35"
+      ],
+      "c": "b",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v12_q21",
+      "s": "m",
+      "q": "Uzunligi 24 cm bo'lgan kesmani 4 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "12 cm",
+        "96 cm",
+        "8 cm",
+        "6 cm"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v12_q22",
+      "s": "m",
+      "q": "23 sm + 16 sm − 9 sm = ?",
+      "o": [
+        "25 cm",
+        "35 cm",
+        "48 cm",
+        "30 cm"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v12_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v12_q24",
+      "s": "m",
+      "q": "Rasmda oltiburchak tasvirlangan (olti tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v12_q25",
+      "s": "m",
+      "q": "Eni 45 sm, bo'yi 18 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "126 sm",
+        "252 sm",
+        "63 sm",
+        "810 sm"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v12_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v12_q27",
+      "s": "m",
+      "q": "87 − 9 · 8 = ?",
+      "o": [
+        "15",
+        "783",
+        "624",
+        "87"
+      ],
+      "c": "a",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v12_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 6 · x = 48",
+      "o": [
+        "42",
+        "11",
+        "8",
+        "288"
+      ],
+      "c": "c",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v12_q29",
+      "s": "m",
+      "q": "Kamolada 144 so'm pul bor edi. U 95 so'mga qalam sotib oldi. Qolgan puliga har biri 7 so'mlik ruchkadan olmoqchi bo'ldi. Kamola nechta ruchka olishi mumkin?",
+      "o": [
+        "7",
+        "49",
+        "6",
+        "9"
+      ],
+      "c": "a",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v12_q30",
+      "s": "m",
+      "q": "Tomoni 11 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "121 sm²",
+        "22 sm",
+        "48 sm",
+        "44 sm"
+      ],
+      "c": "d",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "13": [
+    {
+      "id": "b14_v13_q1",
+      "s": "m",
+      "q": "7 + 6 − 5 = ?",
+      "o": [
+        "10",
+        "8",
+        "7",
+        "9"
+      ],
+      "c": "b",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v13_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 5+4=9  b) 7+3=8  c) 5+2=9  d) 3+3=6",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "d",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v13_q3",
+      "s": "m",
+      "q": "5, 9, 1, 7, 6, 3, 8 sonlaridan nechtasi 6 dan katta?",
+      "o": [
+        "1",
+        "4",
+        "3",
+        "2"
+      ],
+      "c": "c",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v13_q4",
+      "s": "m",
+      "q": "Shashka o'yinida 8 ta qora va 8 ta oq figuralar bo'ladi. Bu o'yindagi jami figuralar sonini toping.",
+      "o": [
+        "12",
+        "18",
+        "14",
+        "16"
+      ],
+      "c": "d",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v13_q5",
+      "s": "m",
+      "q": "Sxema: 5+?=14 — «?» o'rnida qanday son bor?",
+      "o": [
+        "9",
+        "10",
+        "11",
+        "8"
+      ],
+      "c": "a",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v13_q6",
+      "s": "m",
+      "q": "12 + 13 + 9 = ?",
+      "o": [
+        "34",
+        "35",
+        "33",
+        "32"
+      ],
+      "c": "a",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v13_q7",
+      "s": "m",
+      "q": "46 + 28 = ?",
+      "o": [
+        "75",
+        "73",
+        "74",
+        "64"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v13_q8",
+      "s": "m",
+      "q": "Kamayuvchi 75, ayiruvchi 52. Ayirmani toping.",
+      "o": [
+        "27",
+        "19",
+        "23",
+        "33"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v13_q9",
+      "s": "m",
+      "q": "Sxema: 59−?=31 — «?» o'rnida qanday son bor?",
+      "o": [
+        "90",
+        "28",
+        "18",
+        "38"
+      ],
+      "c": "b",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v13_q10",
+      "s": "m",
+      "q": "Issiqxonada 52 ta qizil va 29 ta oq atirgul bor. Hammasi bo'lib nechta atirgul, va qizil atirgul oqdan nechta ko'p?",
+      "o": [
+        "71 ta va 33 ta",
+        "81 ta va 33 ta",
+        "71 ta va 23 ta",
+        "81 ta va 23 ta"
+      ],
+      "c": "d",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v13_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n69; 61; …; 45; 37; 29; 21",
+      "o": [
+        "45",
+        "37",
+        "53",
+        "61"
+      ],
+      "c": "c",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v13_q12",
+      "s": "m",
+      "q": "36 sonini xona qo'shiluvchilari ko'rinishida yozing va 36 dan 10 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "30+6 va 28 ta",
+        "30+6 va 27 ta",
+        "30+6 va 26 ta",
+        "3+6 va 26 ta"
+      ],
+      "c": "b",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v13_q13",
+      "s": "m",
+      "q": "75 − 31 □ 75 − 7 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v13_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 16 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "faqat 7+9",
+        "7+9 va 8+8",
+        "faqat 8+8",
+        "6+10 va 7+9"
+      ],
+      "c": "a",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v13_q15",
+      "s": "m",
+      "q": "Kamayuvchi 39, ayiruvchi 27. Ayirmani toping.",
+      "o": [
+        "66",
+        "25",
+        "2",
+        "12"
+      ],
+      "c": "d",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v13_q16",
+      "s": "m",
+      "q": "50 = 33 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "27",
+        "17",
+        "83",
+        "25"
+      ],
+      "c": "b",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v13_q17",
+      "s": "m",
+      "q": "42 − (19 + 12) = ?",
+      "o": [
+        "73",
+        "21",
+        "7",
+        "11"
+      ],
+      "c": "d",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v13_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 13 ta kitob bor. Birinchisida 4 ta, ikkinchisida birinchisidan 3 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "4",
+        "2",
+        "1",
+        "7"
+      ],
+      "c": "b",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v13_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 57 − x = 33",
+      "o": [
+        "90",
+        "9",
+        "19",
+        "24"
+      ],
+      "c": "d",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v13_q20",
+      "s": "m",
+      "q": "Sxema: 35+?=70 — «?» o'rnida qanday son bor?",
+      "o": [
+        "45",
+        "105",
+        "43",
+        "35"
+      ],
+      "c": "d",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v13_q21",
+      "s": "m",
+      "q": "Uzunligi 24 cm bo'lgan kesmani 3 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "16 cm",
+        "8 cm",
+        "10 cm",
+        "72 cm"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v13_q22",
+      "s": "m",
+      "q": "21 sm + 20 sm − 8 sm = ?",
+      "o": [
+        "28 cm",
+        "49 cm",
+        "38 cm",
+        "33 cm"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v13_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v13_q24",
+      "s": "m",
+      "q": "Rasmda beshburchak tasvirlangan (besh tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v13_q25",
+      "s": "m",
+      "q": "Eni 34 sm, bo'yi 10 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "176 sm",
+        "44 sm",
+        "340 sm",
+        "88 sm"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v13_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v13_q27",
+      "s": "m",
+      "q": "75 − 7 · 8 = ?",
+      "o": [
+        "75",
+        "544",
+        "19",
+        "131"
+      ],
+      "c": "c",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v13_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 6 · x = 24",
+      "o": [
+        "144",
+        "4",
+        "2",
+        "18"
+      ],
+      "c": "b",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v13_q29",
+      "s": "m",
+      "q": "Sardorda 67 so'm pul bor edi. U 39 so'mga kitob sotib oldi. Qolgan puliga har biri 7 so'mlik ruchkadan olmoqchi bo'ldi. Sardor nechta ruchka olishi mumkin?",
+      "o": [
+        "28",
+        "3",
+        "4",
+        "8"
+      ],
+      "c": "c",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v13_q30",
+      "s": "m",
+      "q": "Tomoni 8 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "64 sm²",
+        "32 sm",
+        "16 sm",
+        "36 sm"
+      ],
+      "c": "b",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "14": [
+    {
+      "id": "b14_v14_q1",
+      "s": "m",
+      "q": "7 + 7 − 6 = ?",
+      "o": [
+        "10",
+        "9",
+        "8",
+        "7"
+      ],
+      "c": "c",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v14_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 3+2=3  b) 6+2=10  c) 4-3=1  d) 7-4=3",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "c",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v14_q3",
+      "s": "m",
+      "q": "9, 5, 6, 8, 1, 7, 4 sonlaridan nechtasi 5 dan katta?",
+      "o": [
+        "4",
+        "2",
+        "5",
+        "3"
+      ],
+      "c": "a",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v14_q4",
+      "s": "m",
+      "q": "Go o'yinida 7 ta qora va 7 ta oq toshlar bo'ladi. Bu o'yindagi jami toshlar sonini toping.",
+      "o": [
+        "10",
+        "16",
+        "12",
+        "14"
+      ],
+      "c": "d",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v14_q5",
+      "s": "m",
+      "q": "Sxema: 7+?=16 — «?» o'rnida qanday son bor?",
+      "o": [
+        "11",
+        "9",
+        "8",
+        "10"
+      ],
+      "c": "b",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v14_q6",
+      "s": "m",
+      "q": "13 + 13 + 12 = ?",
+      "o": [
+        "37",
+        "36",
+        "38",
+        "40"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v14_q7",
+      "s": "m",
+      "q": "66 + 48 = ?",
+      "o": [
+        "114",
+        "115",
+        "104",
+        "113"
+      ],
+      "c": "a",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v14_q8",
+      "s": "m",
+      "q": "Kamayuvchi 62, ayiruvchi 38. Ayirmani toping.",
+      "o": [
+        "100",
+        "34",
+        "24",
+        "20"
+      ],
+      "c": "c",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v14_q9",
+      "s": "m",
+      "q": "Sxema: 64−?=35 — «?» o'rnida qanday son bor?",
+      "o": [
+        "19",
+        "99",
+        "39",
+        "29"
+      ],
+      "c": "d",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v14_q10",
+      "s": "m",
+      "q": "Bog'da 43 ta sariq va 38 ta qizil lola bor. Hammasi bo'lib nechta lola, va sariq lola qizildan nechta ko'p?",
+      "o": [
+        "81 ta va 5 ta",
+        "71 ta va 5 ta",
+        "81 ta va 15 ta",
+        "71 ta va 15 ta"
+      ],
+      "c": "a",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v14_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n61; 55; 49; 43; …; 31; 25",
+      "o": [
+        "25",
+        "37",
+        "31",
+        "43"
+      ],
+      "c": "b",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v14_q12",
+      "s": "m",
+      "q": "66 sonini xona qo'shiluvchilari ko'rinishida yozing va 66 dan 11 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "60+6 va 55 ta",
+        "60+6 va 56 ta",
+        "60+6 va 57 ta",
+        "6+6 va 55 ta"
+      ],
+      "c": "b",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v14_q13",
+      "s": "m",
+      "q": "68 − 22 □ 68 − 15 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v14_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 15 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "7+8 va 8+7",
+        "6+9 va 7+8",
+        "faqat 7+8",
+        "faqat 6+9"
+      ],
+      "c": "b",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v14_q15",
+      "s": "m",
+      "q": "Kamayuvchi 37, ayiruvchi 15. Ayirmani toping.",
+      "o": [
+        "52",
+        "22",
+        "32",
+        "35"
+      ],
+      "c": "b",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v14_q16",
+      "s": "m",
+      "q": "60 = 38 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "98",
+        "22",
+        "32",
+        "12"
+      ],
+      "c": "b",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v14_q17",
+      "s": "m",
+      "q": "64 − (21 + 25) = ?",
+      "o": [
+        "18",
+        "28",
+        "4",
+        "110"
+      ],
+      "c": "a",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v14_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 14 ta kitob bor. Birinchisida 3 ta, ikkinchisida birinchisidan 4 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "3",
+        "4",
+        "7",
+        "6"
+      ],
+      "c": "b",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v14_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 65 − x = 44",
+      "o": [
+        "21",
+        "16",
+        "109",
+        "23"
+      ],
+      "c": "a",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v14_q20",
+      "s": "m",
+      "q": "Sxema: 30+?=61 — «?» o'rnida qanday son bor?",
+      "o": [
+        "91",
+        "41",
+        "21",
+        "31"
+      ],
+      "c": "d",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v14_q21",
+      "s": "m",
+      "q": "Uzunligi 24 cm bo'lgan kesmani 4 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "8 cm",
+        "96 cm",
+        "12 cm",
+        "6 cm"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v14_q22",
+      "s": "m",
+      "q": "21 sm + 22 sm − 9 sm = ?",
+      "o": [
+        "34 cm",
+        "52 cm",
+        "39 cm",
+        "29 cm"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v14_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v14_q24",
+      "s": "m",
+      "q": "Rasmda uchburchak tasvirlangan (uch tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "d",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v14_q25",
+      "s": "m",
+      "q": "Eni 33 sm, bo'yi 18 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "204 sm",
+        "102 sm",
+        "51 sm",
+        "594 sm"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v14_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v14_q27",
+      "s": "m",
+      "q": "66 − 7 · 6 = ?",
+      "o": [
+        "66",
+        "354",
+        "108",
+        "24"
+      ],
+      "c": "d",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v14_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 8 · x = 72",
+      "o": [
+        "64",
+        "9",
+        "576",
+        "17"
+      ],
+      "c": "b",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v14_q29",
+      "s": "m",
+      "q": "Botirda 66 so'm pul bor edi. U 46 so'mga daftar sotib oldi. Qolgan puliga har biri 5 so'mlik kitobdan olmoqchi bo'ldi. Botir nechta kitob olishi mumkin?",
+      "o": [
+        "20",
+        "8",
+        "4",
+        "3"
+      ],
+      "c": "c",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v14_q30",
+      "s": "m",
+      "q": "Tomoni 11 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "48 sm",
+        "121 sm²",
+        "44 sm",
+        "22 sm"
+      ],
+      "c": "c",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ],
+  "15": [
+    {
+      "id": "b14_v15_q1",
+      "s": "m",
+      "q": "6 + 6 − 5 = ?",
+      "o": [
+        "8",
+        "7",
+        "9",
+        "5"
+      ],
+      "c": "b",
+      "t": "1-bob: Hisoblash (1§)"
+    },
+    {
+      "id": "b14_v15_q2",
+      "s": "m",
+      "q": "Quyidagilardan qaysilari to'g'ri?\na) 5+3=8  b) 3+4=7  c) 4+4=7  d) 6-2=2",
+      "o": [
+        "a; b",
+        "b; c",
+        "c; d",
+        "a; d"
+      ],
+      "c": "a",
+      "t": "1-bob: To'g'ri ifoda (1–2§)"
+    },
+    {
+      "id": "b14_v15_q3",
+      "s": "m",
+      "q": "8, 4, 1, 7, 5, 3, 2 sonlaridan nechtasi 5 dan katta?",
+      "o": [
+        "1",
+        "2",
+        "3",
+        "0"
+      ],
+      "c": "b",
+      "t": "1-bob: Solishtirish (3§)"
+    },
+    {
+      "id": "b14_v15_q4",
+      "s": "m",
+      "q": "Shashka o'yinida 7 ta qora va 7 ta oq figuralar bo'ladi. Bu o'yindagi jami figuralar sonini toping.",
+      "o": [
+        "12",
+        "16",
+        "10",
+        "14"
+      ],
+      "c": "d",
+      "t": "1-bob: Matnli masala (4§)"
+    },
+    {
+      "id": "b14_v15_q5",
+      "s": "m",
+      "q": "Sxema: 7+?=11 — «?» o'rnida qanday son bor?",
+      "o": [
+        "3",
+        "4",
+        "2",
+        "5"
+      ],
+      "c": "b",
+      "t": "1-bob: Sxema (5§)"
+    },
+    {
+      "id": "b14_v15_q6",
+      "s": "m",
+      "q": "16 + 6 + 9 = ?",
+      "o": [
+        "29",
+        "32",
+        "33",
+        "31"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (6§)"
+    },
+    {
+      "id": "b14_v15_q7",
+      "s": "m",
+      "q": "61 + 51 = ?",
+      "o": [
+        "123",
+        "113",
+        "102",
+        "112"
+      ],
+      "c": "d",
+      "t": "2-bob: Hisoblash (8§)"
+    },
+    {
+      "id": "b14_v15_q8",
+      "s": "m",
+      "q": "Kamayuvchi 85, ayiruvchi 54. Ayirmani toping.",
+      "o": [
+        "27",
+        "31",
+        "139",
+        "41"
+      ],
+      "c": "b",
+      "t": "2-bob: Hisoblash (9§)"
+    },
+    {
+      "id": "b14_v15_q9",
+      "s": "m",
+      "q": "Sxema: 62−?=39 — «?» o'rnida qanday son bor?",
+      "o": [
+        "101",
+        "13",
+        "23",
+        "33"
+      ],
+      "c": "c",
+      "t": "2-bob: Sxema (9§)"
+    },
+    {
+      "id": "b14_v15_q10",
+      "s": "m",
+      "q": "Bog'da 55 ta sariq va 32 ta qizil lola bor. Hammasi bo'lib nechta lola, va sariq lola qizildan nechta ko'p?",
+      "o": [
+        "77 ta va 33 ta",
+        "77 ta va 23 ta",
+        "87 ta va 33 ta",
+        "87 ta va 23 ta"
+      ],
+      "c": "d",
+      "t": "2-bob: Matnli masala (8§)"
+    },
+    {
+      "id": "b14_v15_q11",
+      "s": "m",
+      "q": "Nuqtalar o'rniga tushib qolgan sonni yozing:\n79; 73; 67; 61; …; 49; 43",
+      "o": [
+        "49",
+        "61",
+        "55",
+        "43"
+      ],
+      "c": "c",
+      "t": "2-bob: Ketma-ketlik (10§)"
+    },
+    {
+      "id": "b14_v15_q12",
+      "s": "m",
+      "q": "48 sonini xona qo'shiluvchilari ko'rinishida yozing va 48 dan 17 gacha bo'lgan ikki xonali sonlar nechta?",
+      "o": [
+        "4+8 va 31 ta",
+        "40+8 va 31 ta",
+        "40+8 va 32 ta",
+        "40+8 va 33 ta"
+      ],
+      "c": "c",
+      "t": "2-bob: Xona (10§)"
+    },
+    {
+      "id": "b14_v15_q13",
+      "s": "m",
+      "q": "79 − 24 □ 79 − 10 — to'g'ri belgini tanlang.",
+      "o": [
+        "=",
+        ">",
+        "<",
+        "≠"
+      ],
+      "c": "c",
+      "t": "2-bob: Solishtirish (11§)"
+    },
+    {
+      "id": "b14_v15_q14",
+      "s": "m",
+      "q": "Qanday bir xonali sonlarning yig'indisi 13 ga teng? (barcha juftliklarni toping)",
+      "o": [
+        "5+8 va 8+5",
+        "faqat 5+8",
+        "4+9 va 5+8",
+        "faqat 4+9"
+      ],
+      "c": "c",
+      "t": "2-bob: Juftliklar (12§)"
+    },
+    {
+      "id": "b14_v15_q15",
+      "s": "m",
+      "q": "Kamayuvchi 42, ayiruvchi 29. Ayirmani toping.",
+      "o": [
+        "13",
+        "26",
+        "3",
+        "71"
+      ],
+      "c": "a",
+      "t": "2-bob: Ayirish (13§)"
+    },
+    {
+      "id": "b14_v15_q16",
+      "s": "m",
+      "q": "74 = 52 + □ — bo'sh joyga qaysi son?",
+      "o": [
+        "12",
+        "32",
+        "126",
+        "22"
+      ],
+      "c": "d",
+      "t": "2-bob: Qo'shish (13§)"
+    },
+    {
+      "id": "b14_v15_q17",
+      "s": "m",
+      "q": "54 − (21 + 10) = ?",
+      "o": [
+        "23",
+        "85",
+        "33",
+        "11"
+      ],
+      "c": "a",
+      "t": "2-bob: Qavs (15§)"
+    },
+    {
+      "id": "b14_v15_q18",
+      "s": "m",
+      "q": "Javonning 3 ta tokchasida 19 ta kitob bor. Birinchisida 6 ta, ikkinchisida birinchisidan 4 ta ortiq. Uchinchi tokchada nechta kitob bor?",
+      "o": [
+        "10",
+        "2",
+        "3",
+        "5"
+      ],
+      "c": "c",
+      "t": "2-bob: Matnli masala (17§)"
+    },
+    {
+      "id": "b14_v15_q19",
+      "s": "m",
+      "q": "Tenglamani yeching: 45 − x = 28",
+      "o": [
+        "17",
+        "73",
+        "11",
+        "27"
+      ],
+      "c": "a",
+      "t": "2-bob: Tenglama (16§)"
+    },
+    {
+      "id": "b14_v15_q20",
+      "s": "m",
+      "q": "Sxema: 28+?=46 — «?» o'rnida qanday son bor?",
+      "o": [
+        "74",
+        "26",
+        "8",
+        "18"
+      ],
+      "c": "d",
+      "t": "2-bob: Sxema (16§)"
+    },
+    {
+      "id": "b14_v15_q21",
+      "s": "m",
+      "q": "Uzunligi 9 cm bo'lgan kesmani 3 ta teng qismga ajratilsa, har bir qismning uzunligi necha sm bo'ladi?",
+      "o": [
+        "5 cm",
+        "3 cm",
+        "6 cm",
+        "27 cm"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v15_q22",
+      "s": "m",
+      "q": "18 sm + 14 sm − 14 sm = ?",
+      "o": [
+        "13 cm",
+        "46 cm",
+        "18 cm",
+        "23 cm"
+      ],
+      "c": "c",
+      "t": "2-bob: Geometriya (20§)"
+    },
+    {
+      "id": "b14_v15_q23",
+      "s": "m",
+      "q": "Rasmda to'g'ri burchak (90°) tasvirlangan. Bu qanday burchak?",
+      "o": [
+        "o'tkir burchak",
+        "to'g'ri burchak (90°)",
+        "o'tmas burchak",
+        "tekis burchak"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, burchak (21§)"
+    },
+    {
+      "id": "b14_v15_q24",
+      "s": "m",
+      "q": "Rasmda to'rtburchak tasvirlangan (to'rt tomoni bo'lgan figura). Bu geometrik figuraning nechta tomoni bor?",
+      "o": [
+        "to'rtburchak, 4 tomon",
+        "oltiburchak, 6 tomon",
+        "beshburchak, 5 tomon",
+        "uchburchak, 3 tomon"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya, figura (22§)"
+    },
+    {
+      "id": "b14_v15_q25",
+      "s": "m",
+      "q": "Eni 25 sm, bo'yi 19 sm bo'lgan to'rtburchakning perimetrini toping.",
+      "o": [
+        "88 sm",
+        "475 sm",
+        "44 sm",
+        "176 sm"
+      ],
+      "c": "a",
+      "t": "2-bob: Geometriya, perimetr (22§)"
+    },
+    {
+      "id": "b14_v15_q26",
+      "s": "m",
+      "q": "Rasmda a ∥ b — bir-biriga parallel ikkita chiziq ko'rsatilgan. Ular qanday chiziqlar?",
+      "o": [
+        "perpendikulyar chiziqlar",
+        "parallel chiziqlar",
+        "kesishuvchi chiziqlar",
+        "nurlar"
+      ],
+      "c": "b",
+      "t": "2-bob: Geometriya, parallel (23§)"
+    },
+    {
+      "id": "b14_v15_q27",
+      "s": "m",
+      "q": "59 − 7 · 7 = ?",
+      "o": [
+        "364",
+        "59",
+        "108",
+        "10"
+      ],
+      "c": "d",
+      "t": "3-bob: Amallar tartibi (38§)"
+    },
+    {
+      "id": "b14_v15_q28",
+      "s": "m",
+      "q": "Tenglamani yeching: 5 · x = 40",
+      "o": [
+        "11",
+        "8",
+        "35",
+        "200"
+      ],
+      "c": "b",
+      "t": "3-bob: Tenglama (41§)"
+    },
+    {
+      "id": "b14_v15_q29",
+      "s": "m",
+      "q": "Feruzada 151 so'm pul bor edi. U 95 so'mga qalam sotib oldi. Qolgan puliga har biri 7 so'mlik kitobdan olmoqchi bo'ldi. Feruza nechta kitob olishi mumkin?",
+      "o": [
+        "56",
+        "10",
+        "16",
+        "8"
+      ],
+      "c": "d",
+      "t": "3-bob: Matnli masala (42§)"
+    },
+    {
+      "id": "b14_v15_q30",
+      "s": "m",
+      "q": "Tomoni 9 sm bo'lgan kvadratning perimetri necha sm?",
+      "o": [
+        "18 sm",
+        "36 sm",
+        "40 sm",
+        "81 sm²"
+      ],
+      "c": "b",
+      "t": "4-bob: Geometriya, kvadrat (44§)"
+    }
+  ]
+}

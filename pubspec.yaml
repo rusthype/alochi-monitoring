@@ -27,6 +27,9 @@ dependencies:
   shared_preferences: ^2.3.0
   flutter_secure_storage: ^9.2.4
 
+  # File picking (PDF upload for boss create flow)
+  file_picker: ^8.1.6
+
   # UI
   google_fonts: ^6.2.0
   flutter_animate: ^4.5.0
@@ -46,6 +49,7 @@ flutter:
   assets:
     - assets/logo.png
     - assets/questions.json
+    - assets/bob1_4.json
     - assets/fonts/
     - assets/interhouse/
     - assets/interhouse/img/
