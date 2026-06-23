@@ -4,6 +4,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../core/db/history_db.dart';
+import '../../core/db/offline_queue.dart';
+import '../../core/api/api_client.dart';
+import '../../core/sync/sync_service.dart';
+import '../../core/services/pdf_service.dart';
+import 'package:printing/printing.dart';
 import 'unit1_data.dart';
 
 // ── Unit1 blue accent (distinct from brand orange) ────────────────────────────
@@ -319,6 +324,10 @@ class _Unit1RunnerState extends State<Unit1Runner>
       MaterialPageRoute(
         builder: (_) => Unit1ResultScreen(
           studentName: _studentName,
+          firstName: widget.firstName,
+          lastName: widget.lastName,
+          school: widget.school,
+          variant: widget.variant,
           correct: correct,
           total: _totalQs,
           pct: pct,
@@ -837,8 +846,12 @@ class _Unit1RunnerState extends State<Unit1Runner>
 // Unit1ResultScreen
 // ─────────────────────────────────────────────────────────────────────────────
 
-class Unit1ResultScreen extends StatelessWidget {
+class Unit1ResultScreen extends StatefulWidget {
   final String studentName;
+  final String firstName;
+  final String lastName;
+  final String school;
+  final int variant;
   final int correct;
   final int total;
   final int pct;
@@ -851,6 +864,10 @@ class Unit1ResultScreen extends StatelessWidget {
   const Unit1ResultScreen({
     super.key,
     required this.studentName,
+    required this.firstName,
+    required this.lastName,
+    required this.school,
+    required this.variant,
     required this.correct,
     required this.total,
     required this.pct,
@@ -862,7 +879,78 @@ class Unit1ResultScreen extends StatelessWidget {
   });
 
   @override
+  State<Unit1ResultScreen> createState() => _Unit1ResultScreenState();
+}
+
+class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
+  String _sendStatus = 'Yuborilmoqda...';
+  bool _sent = false;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _submitLocal();
+  }
+
+  Future<void> _submitLocal() async {
+    final payload = _buildPayload();
+    final token = newIdempotencyToken();
+    try {
+      await OfflineQueue.enqueueLocal(payload, token);
+      SyncService.instance.flushNow();
+      if (!mounted) return;
+      setState(() {
+        _sent = true;
+        _sendStatus = 'Saqlandi, yuborilmoqda...';
+      });
+    } catch (e) {
+      debugPrint('Unit1 enqueue error: $e');
+      if (!mounted) return;
+      setState(() {
+        _error = true;
+        _sendStatus = 'Saqlashda xato. Qayta urinib ko\'ring.';
+      });
+    }
+  }
+
+  Map<String, dynamic> _buildPayload() {
+    final now = DateTime.now();
+    final time =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    return {
+      'name': '${widget.lastName} ${widget.firstName}'.trim(),
+      'grade': 1,
+      'variant': widget.variant.toString(),
+      'source': 'flutter',
+      'vocab': {'cor': 0, 'tot': 0},
+      'english': {'cor': widget.correct, 'tot': 49},
+      'math': {'cor': 0, 'tot': 0},
+      'pct': widget.pct,
+      'time': time,
+      'school_code': widget.school,
+    };
+  }
+
+  List<MapEntry<String, ({int ok, int tot})>> get _engTopics => [
+        MapEntry('Vocabulary', (ok: widget.vocabOk, tot: 25)),
+        MapEntry('Grammar', (ok: widget.grammarOk, tot: 6)),
+        MapEntry('Spelling', (ok: widget.spellingOk, tot: 6)),
+        MapEntry('Sentences', (ok: widget.sentenceOk, tot: 6)),
+        MapEntry('Reading', (ok: widget.readingOk, tot: 6)),
+      ];
+
+  @override
   Widget build(BuildContext context) {
+    final pct = widget.pct;
+    final correct = widget.correct;
+    final total = widget.total;
+    final vocabOk = widget.vocabOk;
+    final grammarOk = widget.grammarOk;
+    final spellingOk = widget.spellingOk;
+    final sentenceOk = widget.sentenceOk;
+    final readingOk = widget.readingOk;
+    final studentName = widget.studentName;
     final scoreColor = _scoreColor(pct.toDouble());
     final isPass = pct >= 60;
 
@@ -996,7 +1084,123 @@ class Unit1ResultScreen extends StatelessWidget {
                           color: AppColors.ok),
                     ]),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 20),
+
+                  // Send status
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: _error
+                          ? AppColors.errMuted
+                          : _sent
+                              ? AppColors.okMuted
+                              : AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: _error
+                              ? AppColors.err.withValues(alpha: .3)
+                              : _sent
+                                  ? const Color(0xFF86EFAC)
+                                  : AppColors.border),
+                    ),
+                    child: Row(children: [
+                      Icon(
+                        _error
+                            ? Icons.warning_rounded
+                            : _sent
+                                ? Icons.check_circle_rounded
+                                : Icons.cloud_upload_rounded,
+                        color: _error
+                            ? AppColors.err
+                            : _sent
+                                ? AppColors.ok
+                                : AppColors.brand,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                          child: Text(_sendStatus,
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: _error
+                                      ? AppColors.err
+                                      : _sent
+                                          ? AppColors.ok
+                                          : AppColors.ink2))),
+                    ]),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // PDF buttons
+                  Row(children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final pdfBytes = await PdfService.generateResultPdf(
+                            firstName: widget.firstName,
+                            lastName: widget.lastName,
+                            group: '',
+                            grade: 1,
+                            variant: widget.variant,
+                            mathOk: 0,
+                            mathTotal: 0,
+                            engOk: widget.correct,
+                            engTotal: 49,
+                            pct: widget.pct,
+                            mathTopics: const [],
+                            engTopics: _engTopics,
+                          );
+                          await Printing.layoutPdf(
+                              onLayout: (_) => pdfBytes,
+                              name:
+                                  '${widget.lastName}_${widget.firstName}_Natija.pdf');
+                        },
+                        icon: const Icon(Icons.print_rounded, size: 18),
+                        label: const Text('Chop etish'),
+                        style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.ink1,
+                            side: const BorderSide(color: AppColors.border),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 14)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final pdfBytes = await PdfService.generateResultPdf(
+                            firstName: widget.firstName,
+                            lastName: widget.lastName,
+                            group: '',
+                            grade: 1,
+                            variant: widget.variant,
+                            mathOk: 0,
+                            mathTotal: 0,
+                            engOk: widget.correct,
+                            engTotal: 49,
+                            pct: widget.pct,
+                            mathTopics: const [],
+                            engTopics: _engTopics,
+                          );
+                          await Printing.sharePdf(
+                              bytes: pdfBytes,
+                              filename:
+                                  '${widget.lastName}_${widget.firstName}_Natija.pdf');
+                        },
+                        icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                        label: const Text('PDF Saqlash'),
+                        style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.brand,
+                            side: const BorderSide(color: AppColors.brand),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 14)),
+                      ),
+                    ),
+                  ]),
+
+                  const SizedBox(height: 16),
 
                   // Qaytish button
                   SizedBox(
