@@ -90,8 +90,7 @@ class MonitoringApi {
     }
   }
 
-  Future<Map<String, dynamic>> _post(
-      String path, Map<String, dynamic> body,
+  Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body,
       {Map<String, String> extraHeaders = const {}}) async {
     final resp = await _send(() => http.post(
           Uri.parse('$_base$path'),
@@ -180,13 +179,15 @@ class MonitoringApi {
   Future<Map<String, dynamic>> submitResultFull(TestResult result,
       {Map<String, dynamic>? detail, String? idempotencyToken}) async {
     try {
-      final extraHeaders = idempotencyToken != null && idempotencyToken.isNotEmpty
-          ? {'Idempotency-Key': idempotencyToken}
-          : const <String, String>{};
-      final resp =
-          await _post('/results/', result.toJson(detail: detail), extraHeaders: extraHeaders);
+      final extraHeaders =
+          idempotencyToken != null && idempotencyToken.isNotEmpty
+              ? {'Idempotency-Key': idempotencyToken}
+              : const <String, String>{};
+      final resp = await _post('/results/', result.toJson(detail: detail),
+          extraHeaders: extraHeaders);
       // Natija saqlangandan keyin wrong answers yuklaymiz
-      final wrongAnswers = await _fetchResultDetail(resp['id'] as String? ?? '');
+      final wrongAnswers =
+          await _fetchResultDetail(resp['id'] as String? ?? '');
       return {'synced': true, ...resp, 'wrong_answers': wrongAnswers};
     } on ApiException catch (e) {
       if (e.statusCode == 409) {
@@ -194,13 +195,28 @@ class MonitoringApi {
       }
       if (e.statusCode >= 400 && e.statusCode < 500) {
         // Permanent client error — server rejected payload, retrying won't help
-        return {'synced': false, 'permanent': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
+        return {
+          'synced': false,
+          'permanent': true,
+          'xp_earned': 0,
+          'wrong_answers': <dynamic>[]
+        };
       }
       // 5xx or network error (statusCode == 0) — transient, retry via queue
-      return {'synced': false, 'retryable': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
+      return {
+        'synced': false,
+        'retryable': true,
+        'xp_earned': 0,
+        'wrong_answers': <dynamic>[]
+      };
     } catch (e) {
       debugPrint('submitResultFull unexpected error: $e');
-      return {'synced': false, 'retryable': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
+      return {
+        'synced': false,
+        'retryable': true,
+        'xp_earned': 0,
+        'wrong_answers': <dynamic>[]
+      };
     }
   }
 
@@ -223,7 +239,35 @@ class MonitoringApi {
   /// Idempotency-Key header orqali token yuboradi — duplikat oldini olish uchun.
   /// Server DB ga saqlaydi VA Telegram ni server tomonda jo'natadi.
   /// HTTP 200 = durabl muvaffaqiyat (telegram_sent=false bo'lsa ham qayta yubormaymiz — dublikat oldini olish).
-  Future<bool> submitLocalResult(Map<String, dynamic> payload, String token) async {
+  /// Katalogni yuklaydi — faqat published testlar ro'yxati.
+  /// Xato holatida [] qaytaradi, crash qilmaydi.
+  Future<List<Map<String, dynamic>>> fetchTestCatalog() async {
+    try {
+      final data = await _get('/tests/catalog/');
+      if (data is! List) return [];
+      if (data.isEmpty) return [];
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (e) {
+      debugPrint('fetchTestCatalog error: $e');
+      return [];
+    }
+  }
+
+  /// Bitta test JSON'ini yuklaydi.
+  /// Xato holatida null qaytaradi, crash qilmaydi.
+  Future<Map<String, dynamic>?> fetchTest(String testKey) async {
+    try {
+      final data = await _get('/tests/$testKey/');
+      if (data is! Map) return null;
+      return Map<String, dynamic>.from(data);
+    } catch (e) {
+      debugPrint('fetchTest($testKey) error: $e');
+      return null;
+    }
+  }
+
+  Future<bool> submitLocalResult(
+      Map<String, dynamic> payload, String token) async {
     try {
       final resp = await _send(() => http.post(
             Uri.parse('$_base/result/'),
