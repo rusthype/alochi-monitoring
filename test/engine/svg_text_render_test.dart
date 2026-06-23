@@ -2,20 +2,21 @@
 // Golden test: confirms that flutter_svg renders <text> elements (clock
 // numerals, schema numbers) as visible pixels in the output PNG.
 //
+// Loads a real TTF (DejaVuSans) to eliminate the headless-font confound:
+// in flutter test, all text becomes Ahem (box glyphs) unless a real font
+// is registered via FontLoader.
+//
 // Run with:  flutter test --update-goldens test/engine/svg_text_render_test.dart
 // Then:      flutter test test/engine/svg_text_render_test.dart
-//
-// After running --update-goldens, READ the PNGs with the Read tool and confirm
-// that the numbers (12, 3, 6, 9 for the clock; 34, ?, ×6 for the schema) are
-// actually visible — that is the definitive <text> render check.
 
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // Real SVG strings extracted from prod fixture math_diag_3_4, variant "1".
 
-// Clock: <circle> face + <text> labels 12 / 3 / 6 / 9 + two clock hands.
 const _svgClock =
     '<svg width="90" height="90" viewBox="0 0 90 90" xmlns="http://www.w3.org/2000/svg">'
     '<circle cx="45" cy="45" r="40" fill="#EEF4FF" stroke="#1A237E" stroke-width="2"/>'
@@ -28,7 +29,6 @@ const _svgClock =
     '<circle cx="45" cy="45" r="3" fill="#333"/>'
     '</svg>';
 
-// Schema (number chain): rect boxes + <text> numbers/operators (34, ÷2, ?, ×6).
 const _svgSchema =
     '<svg width="300" height="48" viewBox="0 0 300 48" xmlns="http://www.w3.org/2000/svg">'
     '<rect x="2" y="6" width="50" height="30" rx="7" fill="#EEF4FF" stroke="#4B7BE5" stroke-width="1.5"/>'
@@ -44,15 +44,58 @@ const _svgSchema =
     '<text x="255" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#880E4F" font-family="sans-serif">×6</text>'
     '</svg>';
 
-Widget _wrap(String svgString, double w, double h) {
+// Loads DejaVuSans (or Liberation Sans fallback) into the Flutter test engine
+// under every family name that SVG font-family="sans-serif" might resolve to.
+// Without this every glyph renders as Ahem (a filled box) in headless mode.
+Future<void> _loadRealFont() async {
+  const candidates = [
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+  ];
+  String? chosen;
+  for (final path in candidates) {
+    if (File(path).existsSync()) {
+      chosen = path;
+      break;
+    }
+  }
+  if (chosen == null) return; // nothing we can do in this env
+
+  final bytes = File(chosen).readAsBytesSync().buffer.asByteData();
+  for (final family in [
+    'sans-serif',
+    'DejaVu Sans',
+    'Liberation Sans',
+    'Roboto'
+  ]) {
+    final loader = FontLoader(family)..addFont(Future.value(bytes));
+    await loader.load();
+  }
+}
+
+Widget _wrapSvg(String svgString, double w, double h) {
   return MaterialApp(
     home: Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        child: SvgPicture.string(
-          svgString,
-          width: w,
-          height: h,
+        child: SvgPicture.string(svgString, width: w, height: h),
+      ),
+    ),
+  );
+}
+
+Widget _wrapText() {
+  return const MaterialApp(
+    home: Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Text(
+          '12345',
+          style: TextStyle(
+            fontSize: 24,
+            color: Colors.black,
+            fontFamily: 'sans-serif',
+          ),
         ),
       ),
     ),
@@ -60,10 +103,21 @@ Widget _wrap(String svgString, double w, double h) {
 }
 
 void main() {
-  group('SVG <text> golden render', () {
+  setUpAll(_loadRealFont);
+
+  group('SVG <text> golden render (real font)', () {
+    testWidgets('reference — plain Text("12345") font-load proof',
+        (tester) async {
+      await tester.pumpWidget(_wrapText());
+      await tester.pump();
+      await expectLater(
+        find.byType(Text),
+        matchesGoldenFile('goldens/text_reference.png'),
+      );
+    });
+
     testWidgets('clock — renders 12/3/6/9 labels', (tester) async {
-      await tester.pumpWidget(_wrap(_svgClock, 200, 200));
-      // Give vector_graphics time to finish async compilation
+      await tester.pumpWidget(_wrapSvg(_svgClock, 200, 200));
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
 
@@ -74,7 +128,7 @@ void main() {
     });
 
     testWidgets('schema — renders 34, ÷2, ?, ×6 labels', (tester) async {
-      await tester.pumpWidget(_wrap(_svgSchema, 400, 100));
+      await tester.pumpWidget(_wrapSvg(_svgSchema, 400, 100));
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
 
