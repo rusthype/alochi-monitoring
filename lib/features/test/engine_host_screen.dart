@@ -11,10 +11,13 @@
 //
 // Duration default: 60 seconds per answerable question, clamped to [60s, 90min].
 
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
+
+import 'package:uuid/uuid.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/db/history_db.dart';
@@ -66,10 +69,44 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   TestSpec? _spec;
   String? _parseError;
 
+  late final String _sessionId;
+  Timer? _heartbeatTimer;
+
   @override
   void initState() {
     super.initState();
+    _sessionId = const Uuid().v4();
     _parseSpec();
+    _startHeartbeat();
+  }
+
+  @override
+  void dispose() {
+    _heartbeatTimer?.cancel();
+    super.dispose();
+  }
+
+  String get _testKey =>
+      _spec?.testKey ??
+      widget.testData['test_key']?.toString() ??
+      '';
+
+  void _ping(String status) {
+    api.pingSession(
+      sessionId: _sessionId,
+      testKey: _testKey,
+      schoolCode: widget.school,
+      name: '${widget.lastName} ${widget.firstName}',
+      variant: widget.variant,
+      status: status,
+    );
+  }
+
+  void _startHeartbeat() {
+    _ping('active');
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _ping('active');
+    });
   }
 
   void _parseSpec() {
@@ -172,6 +209,10 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   // ── onComplete ──────────────────────────────────────────────────────────────
 
   Future<void> _handleComplete(ScoredResult result) async {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+    _ping('finished');
+
     final payload = _buildPayload(result);
     final token = newIdempotencyToken();
 

@@ -266,6 +266,37 @@ class MonitoringApi {
     }
   }
 
+  Future<void> pingSession({
+    required String sessionId,
+    required String testKey,
+    required String schoolCode,
+    required String name,
+    required int variant,
+    required String status,
+  }) async {
+    try {
+      final resp = await http
+          .post(
+            Uri.parse('$_base/session/ping/'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'session_id': sessionId,
+              'test_key': testKey,
+              'school_code': schoolCode,
+              'name': name,
+              'variant': variant,
+              'status': status,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
+      if (resp.statusCode >= 400) {
+        debugPrint('pingSession ${resp.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('pingSession error: $e');
+    }
+  }
+
   Future<bool> submitLocalResult(
       Map<String, dynamic> payload, String token) async {
     try {
