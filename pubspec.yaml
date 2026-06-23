@@ -57,6 +57,8 @@ flutter:
     - assets/interhouse/img/
     - assets/unit1/unit1_eng.json
     - assets/unit1/img/
+    - assets/bundled_tests/
+    - assets/bundled_tests/img/
 
 msix_config:
   display_name: Alochi Monitoring

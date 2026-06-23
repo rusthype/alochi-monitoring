@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
+import '../../core/services/bundled_catalog_service.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../test/package_screen.dart';
@@ -14,7 +15,6 @@ import '../local_test/sync_images_button.dart';
 import '../local_test/history_screen.dart';
 import '../combined/combined_screen.dart';
 import '../test/school_launch_screen.dart';
-import '../../core/db/test_cache.dart' as testcache;
 
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
@@ -203,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _loadCatalog() async {
     try {
-      final entries = await testCatalogService.refresh();
+      final entries = await BundledCatalogService.loadCatalog();
       if (mounted) setState(() => _catalogEntries = entries);
     } catch (e) {
       debugPrint('LoginScreen._loadCatalog error: $e');
@@ -211,12 +211,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _launchSchoolTest(CatalogEntry entry, SchoolButton btn) async {
-    final testData = await testcache.TestCache.get(entry.testKey);
+    final testData = await BundledCatalogService.loadTestData(entry.testKey);
     if (!mounted) return;
     if (testData == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Keshdan test topilmadi. Qayta yuklab ko\'ring.'),
+          content: Text('Test topilmadi.'),
           backgroundColor: AppColors.err,
           behavior: SnackBarBehavior.floating,
         ),
@@ -224,10 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final blob = testData['test_data'] is Map
-        ? Map<String, dynamic>.from(testData['test_data'] as Map)
-        : testData;
-    final rawVariants = blob['variants'];
+    final rawVariants = testData['variants'];
     final variantCount = rawVariants is Map ? rawVariants.length : 0;
 
     int? preselectedVariant;
