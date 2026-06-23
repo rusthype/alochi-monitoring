@@ -272,6 +272,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
       answers.add({
         'section': 'Matematika',
         'q': mathQs[i].prompt,
+        'topic': mathQs[i].topic,
         'chosen': (selectedIdx != null &&
                 selectedIdx >= 0 &&
                 selectedIdx < mathQs[i].options.length)
