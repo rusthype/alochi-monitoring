@@ -24,7 +24,7 @@ class StudentSession {
         studentId: j['student_id'] as String? ?? '',
         studentName: j['student_name'] as String? ?? '',
         variant: (j['variant'] as num?)?.toInt(),
-        grade: (j['grade'] as num?)?.toInt(),
+        grade: int.tryParse(j['grade']?.toString() ?? ''),
         groupName: j['group_name'] as String?,
       );
 }

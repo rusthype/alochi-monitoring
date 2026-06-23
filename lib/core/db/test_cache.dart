@@ -13,13 +13,18 @@ class TestCache {
 
   static Future<Database> get _database async {
     if (_db != null) return _db!;
-    if (!kIsWeb &&
-        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
+    final String path;
+    if (kIsWeb) {
+      // Web: databaseFactoryFfiWeb (set in main.dart) uses IndexedDB — simple name, no filesystem path.
+      path = 'test_cache.db';
+    } else {
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        sqfliteFfiInit();
+        databaseFactory = databaseFactoryFfi;
+      }
+      final dir = await getApplicationSupportDirectory();
+      path = join(dir.path, 'test_cache.db');
     }
-    final dir = await getApplicationSupportDirectory();
-    final path = join(dir.path, 'test_cache.db');
     _db = await openDatabase(
       path,
       version: 1,

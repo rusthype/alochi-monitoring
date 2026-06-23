@@ -397,6 +397,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ? "Server xatosi. Qayta urinib ko'ring."
           : "Internet yo'q va bu login ilgari saqlanmagan.");
     } catch (e) {
+      debugPrint('_login unexpected error: $e');
       if (mounted) {
         setState(() => _error = e is ApiException
             ? e.message
