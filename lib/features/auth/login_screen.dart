@@ -182,7 +182,15 @@ class _LoginScreenState extends State<LoginScreen> {
   // Maktab bo'yicha yuklash holati
   final Set<String> _downloadingSchools = {};
   final Map<String, double> _schoolProgress = {};
+  final Map<String, int> _schoolDownloadedBytes = {};
+  final Map<String, int> _schoolDoneTests = {};
+  final Map<String, int> _schoolTotalTests = {};
   String? _expandedSchoolCode;
+
+  String _formatMb(int bytes) {
+    final mb = bytes / (1024 * 1024);
+    return '${mb.toStringAsFixed(1)} MB';
+  }
 
   @override
   void initState() {
@@ -287,32 +295,44 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _downloadingSchools.add(schoolCode);
       _schoolProgress[schoolCode] = 0.0;
+      _schoolDownloadedBytes[schoolCode] = 0;
+      _schoolDoneTests[schoolCode] = 0;
+      _schoolTotalTests[schoolCode] = toDownload.length;
     });
 
     final n = toDownload.length;
     var doneCount = 0;
     var failCount = 0;
+    var totalSchoolBytes = 0;
 
     for (final entry in toDownload) {
+      var lastEntryBytes = 0;
       final ok = await testCatalogService.download(
         entry.testKey,
-        onProgress: (done, total) {
+        onProgress: (done, total, bytes) {
+          lastEntryBytes = bytes;
           if (mounted) {
             final frac = total > 0 ? done / total : 1.0;
             setState(() {
               _schoolProgress[schoolCode] = (doneCount + frac) / n;
+              _schoolDownloadedBytes[schoolCode] = totalSchoolBytes + bytes;
             });
           }
         },
       );
       doneCount++;
+      totalSchoolBytes += lastEntryBytes;
       if (ok) {
         _downloadedKeys.add(entry.testKey);
       } else {
         failCount++;
       }
       if (mounted) {
-        setState(() => _schoolProgress[schoolCode] = doneCount / n);
+        setState(() {
+          _schoolProgress[schoolCode] = doneCount / n;
+          _schoolDoneTests[schoolCode] = doneCount;
+          _schoolDownloadedBytes[schoolCode] = totalSchoolBytes;
+        });
       }
     }
 
@@ -320,6 +340,9 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _downloadingSchools.remove(schoolCode);
         _schoolProgress.remove(schoolCode);
+        _schoolDownloadedBytes.remove(schoolCode);
+        _schoolDoneTests.remove(schoolCode);
+        _schoolTotalTests.remove(schoolCode);
         _expandedSchoolCode = schoolCode;
       });
       if (failCount > 0) {
@@ -644,6 +667,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final isDownloading = _downloadingSchools.contains(group.schoolCode);
     final progress = _schoolProgress[group.schoolCode];
     final isExpanded = _expandedSchoolCode == group.schoolCode;
+    final downloadedBytes = _schoolDownloadedBytes[group.schoolCode] ?? 0;
+    final doneTests = _schoolDoneTests[group.schoolCode] ?? 0;
+    final totalTests = _schoolTotalTests[group.schoolCode] ?? group.entries.length;
 
     final allCached = group.entries.every((e) =>
         e.status == CatalogStatus.cached ||
@@ -696,11 +722,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: isOffline ? AppColors.ink2 : AppColors.ink1,
                       ),
                     ),
-                    Text(
-                      '${group.entries.length} ta test',
-                      style:
-                          AppTextStyles.caption.copyWith(color: AppColors.ink2),
-                    ),
+                    if (isDownloading && progress != null)
+                      Text(
+                        'test $doneTests/$totalTests · ${_formatMb(downloadedBytes)} · ${(progress * 100).round()}%',
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.primary),
+                      )
+                    else
+                      Text(
+                        '${group.entries.length} ta test',
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.ink2),
+                      ),
                     if (isDownloading && progress != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
@@ -720,26 +753,15 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(width: 8),
               if (isDownloading)
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: AppColors.primary,
-                      value: progress,
-                    ),
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: AppColors.primary,
+                    value: progress,
                   ),
-                  if (progress != null) ...[
-                    const SizedBox(width: 5),
-                    Text(
-                      '${(progress * 100).round()}%',
-                      style: AppTextStyles.caption.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ])
+                )
               else if (allCached)
                 GestureDetector(
                   onTap: () => setState(() {

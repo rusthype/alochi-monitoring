@@ -5,6 +5,8 @@ import '../api/api_client.dart';
 import '../cache/image_cache_manager.dart';
 import '../db/test_cache.dart';
 
+const Duration _kFileTimeout = Duration(seconds: 20);
+
 /// Test katalog yozuvi holati.
 enum CatalogStatus {
   /// Keshda bor, versiya bir xil — yangilash kerak emas.
@@ -177,15 +179,16 @@ class TestCatalogService {
 
   /// Testni backend'dan yuklab keshga saqlaydi va rasmlarni prefetch qiladi.
   ///
-  /// [onProgress] har qadam (json=1, har rasm=1) tugaganda chaqiriladi.
-  /// total = 1 + urls.length; done 1..total.
+  /// [onProgress] har qadam tugaganda chaqiriladi: (done, total, downloadedBytes).
+  /// total = 1 + urls.length; done 1..total; downloadedBytes — jami baytlar.
+  /// Har fayl uchun 20s timeout — timeout/404 bo'lsa shu faylni tashlab davom etadi.
   /// Muvaffaqiyatli kesh'ga yozilsa — true, aks holda false qaytaradi.
   Future<bool> download(
     String testKey, {
-    void Function(int done, int total)? onProgress,
+    void Function(int done, int total, int bytes)? onProgress,
   }) async {
     try {
-      final data = await _api.fetchTest(testKey);
+      final data = await _api.fetchTest(testKey).timeout(_kFileTimeout);
       if (data == null) {
         debugPrint('TestCatalogService.download($testKey): null response');
         return false;
@@ -200,10 +203,11 @@ class TestCatalogService {
 
       final urls = _collectImageUrls(data);
       final total = 1 + urls.length;
-      onProgress?.call(1, total);
+      final jsonBytes = utf8.encode(jsonStr).length;
+      onProgress?.call(1, total, jsonBytes);
 
       await _prefetchImages(urls,
-          done: 1, total: total, onProgress: onProgress);
+          done: 1, total: total, startBytes: jsonBytes, onProgress: onProgress);
 
       return true;
     } catch (e) {
@@ -213,26 +217,33 @@ class TestCatalogService {
   }
 
   /// Rasm URL'larini AlochiImageCacheManager orqali birin-ketin prefetch qiladi.
-  /// Best-effort: har rasm xato bo'lsa ham done++ va onProgress chaqiriladi.
+  /// Best-effort + 20s timeout: har rasm xato/timeout bo'lsa ham davom etadi.
   Future<void> _prefetchImages(
     List<String> urls, {
     required int done,
     required int total,
-    void Function(int done, int total)? onProgress,
+    int startBytes = 0,
+    void Function(int done, int total, int bytes)? onProgress,
   }) async {
     if (urls.isEmpty) return;
     final cacheManager = AlochiImageCacheManager();
     var d = done;
+    var bytes = startBytes;
     for (final url in urls) {
       if (url.isNotEmpty) {
         try {
-          await cacheManager.downloadFile(url);
+          final fileInfo = await cacheManager
+              .downloadFile(url)
+              .timeout(_kFileTimeout);
+          try {
+            bytes += await fileInfo.file.length();
+          } catch (_) {}
         } catch (e) {
           debugPrint('Image prefetch failed for $url: $e');
         }
       }
       d++;
-      onProgress?.call(d, total);
+      onProgress?.call(d, total, bytes);
     }
   }
 
