@@ -52,6 +52,9 @@ class CatalogEntry {
   final int version;
   final CatalogStatus status;
   final List<SchoolButton> schoolButtons;
+  /// Backend catalog LIST'dan keluvchi sinf raqamlari (masalan [1,2] yoki [3,4]).
+  /// Bo'sh [] = eski test, sinf ma'lumoti yo'q.
+  final List<int> grades;
 
   const CatalogEntry({
     required this.testKey,
@@ -60,6 +63,7 @@ class CatalogEntry {
     required this.version,
     required this.status,
     this.schoolButtons = const [],
+    this.grades = const [],
   });
 }
 
@@ -143,6 +147,15 @@ class TestCatalogService {
         }
       }
 
+      final rawGrades = item['grades'];
+      final grades = <int>[];
+      if (rawGrades is List) {
+        for (final g in rawGrades) {
+          final v = int.tryParse(g?.toString() ?? '');
+          if (v != null) grades.add(v);
+        }
+      }
+
       entries.add(CatalogEntry(
         testKey: key,
         title: title,
@@ -150,6 +163,7 @@ class TestCatalogService {
         version: version,
         status: status,
         schoolButtons: schoolButtons,
+        grades: grades,
       ));
     }
     return entries;

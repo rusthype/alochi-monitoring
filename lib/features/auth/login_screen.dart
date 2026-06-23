@@ -186,6 +186,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final Map<String, int> _schoolDoneTests = {};
   final Map<String, int> _schoolTotalTests = {};
   String? _expandedSchoolCode;
+  // Sinf tanlash: schoolCode → tanlangan sinf (null = sinf picker ko'rsatilsin)
+  final Map<String, int?> _selectedGrade = {};
 
   String _formatMb(int bytes) {
     final mb = bytes / (1024 * 1024);
@@ -767,6 +769,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   onTap: () => setState(() {
                     _expandedSchoolCode =
                         isExpanded ? null : group.schoolCode;
+                    if (isExpanded) _selectedGrade.remove(group.schoolCode);
                   }),
                   child: Container(
                     padding:
@@ -817,74 +820,170 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
             ]),
           ),
-          if (isExpanded) _buildSchoolTestList(group),
+          if (isExpanded) _buildSchoolExpandedContent(group),
         ],
       ),
     );
   }
 
-  Widget _buildSchoolTestList(_SchoolGroup group) {
+  /// Maktab kengaytirilganda: sinf picker → test ro'yxati oqimi.
+  Widget _buildSchoolExpandedContent(_SchoolGroup group) {
+    final allGrades = group.entries
+        .expand((e) => e.grades)
+        .toSet()
+        .toList()
+      ..sort();
+
+    final selected = _selectedGrade[group.schoolCode];
+
+    // grades bo'sh (eski testlar) yoki sinf allaqachon tanlangan → test ro'yxati
+    if (allGrades.isEmpty || selected != null) {
+      final filtered = selected == null
+          ? group.entries
+          : group.entries.where((e) => e.grades.contains(selected)).toList();
+      return _buildSchoolTestList(group, entries: filtered,
+          showBack: selected != null);
+    }
+
+    return _buildGradeSelector(group, allGrades);
+  }
+
+  /// Sinf chip tugmalari (1-sinf, 2-sinf, ...).
+  Widget _buildGradeSelector(_SchoolGroup group, List<int> grades) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'Sinfni tanlang',
+              style: AppTextStyles.caption.copyWith(color: AppColors.ink2),
+            ),
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: grades
+                .map((g) => GestureDetector(
+                      onTap: () =>
+                          setState(() => _selectedGrade[group.schoolCode] = g),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryMuted,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: AppColors.primary.withValues(alpha: .3)),
+                        ),
+                        child: Text(
+                          '$g-sinf',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ))
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSchoolTestList(
+    _SchoolGroup group, {
+    List<CatalogEntry>? entries,
+    bool showBack = false,
+  }) {
+    final testEntries = entries ?? group.entries;
     return Padding(
       padding: const EdgeInsets.only(top: 6, bottom: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
-        children: group.entries.map((entry) {
-          final btn = entry.schoolButtons.firstWhere(
-            (b) => b.schoolCode == group.schoolCode,
-            orElse: () => SchoolButton(
-              label: group.label,
-              schoolCode: group.schoolCode,
-              randomVariant: group.randomVariant,
-              pin: group.pin,
-            ),
-          );
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(children: [
-                const Icon(Icons.assignment_rounded,
-                    size: 18, color: AppColors.ink3),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    entry.title,
-                    style: AppTextStyles.labelLarge
-                        .copyWith(fontWeight: FontWeight.w600),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => _launchSchoolTest(entry, btn),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.brand,
-                      borderRadius: BorderRadius.circular(8),
+        children: [
+          if (showBack)
+            GestureDetector(
+              onTap: () =>
+                  setState(() => _selectedGrade.remove(group.schoolCode)),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.arrow_back_rounded,
+                      size: 16, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Sinflar',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.play_arrow_rounded,
-                          size: 14, color: Colors.white),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Boshlash',
-                        style: AppTextStyles.caption.copyWith(
-                            color: Colors.white, fontWeight: FontWeight.w700),
-                      ),
-                    ]),
                   ),
-                ),
-              ]),
+                ]),
+              ),
             ),
-          );
-        }).toList(),
+          ...testEntries.map((entry) {
+            final btn = entry.schoolButtons.firstWhere(
+              (b) => b.schoolCode == group.schoolCode,
+              orElse: () => SchoolButton(
+                label: group.label,
+                schoolCode: group.schoolCode,
+                randomVariant: group.randomVariant,
+                pin: group.pin,
+              ),
+            );
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.assignment_rounded,
+                      size: 18, color: AppColors.ink3),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      entry.title,
+                      style: AppTextStyles.labelLarge
+                          .copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => _launchSchoolTest(entry, btn),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.brand,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.play_arrow_rounded,
+                            size: 14, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Boshlash',
+                          style: AppTextStyles.caption.copyWith(
+                              color: Colors.white, fontWeight: FontWeight.w700),
+                        ),
+                      ]),
+                    ),
+                  ),
+                ]),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
