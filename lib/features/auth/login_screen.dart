@@ -181,6 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final Set<String> _downloadingKeys = {};
   final Set<String> _downloadedKeys = {};
   final Map<String, double> _downloadProgress = {};
+  Map<String, List<_SchoolButton>> _schoolButtonData = {};
 
   @override
   void initState() {
@@ -193,9 +194,34 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final entries = await testCatalogService.refresh();
       if (mounted) setState(() => _catalogEntries = entries);
+      _loadSchoolButtons(entries);
     } catch (e) {
       debugPrint('LoginScreen._loadCatalog error: $e');
     }
+  }
+
+  Future<void> _loadSchoolButtons(List<CatalogEntry> entries) async {
+    final data = <String, List<_SchoolButton>>{};
+    for (final entry in entries) {
+      final testData = await testcache.TestCache.get(entry.testKey);
+      if (testData == null) continue;
+      final raw = testData['school_buttons'];
+      if (raw is! List || raw.isEmpty) continue;
+      final buttons = <_SchoolButton>[];
+      for (final item in raw) {
+        if (item is! Map) continue;
+        final label = item['label']?.toString() ?? '';
+        final schoolCode = item['school_code']?.toString() ?? '';
+        if (label.isEmpty || schoolCode.isEmpty) continue;
+        buttons.add(_SchoolButton(
+          label: label,
+          schoolCode: schoolCode,
+          randomVariant: item['random_variant'] == true,
+        ));
+      }
+      if (buttons.isNotEmpty) data[entry.testKey] = buttons;
+    }
+    if (mounted) setState(() => _schoolButtonData = data);
   }
 
   Future<void> _downloadTest(CatalogEntry entry) async {
@@ -289,6 +315,96 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _launchSchoolTest(CatalogEntry entry, _SchoolButton btn) async {
+    final testData = await testcache.TestCache.get(entry.testKey);
+    if (!mounted) return;
+    if (testData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Keshdan test topilmadi. Qayta yuklab ko\'ring.'),
+          backgroundColor: AppColors.err,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final blob = testData['test_data'] is Map
+        ? Map<String, dynamic>.from(testData['test_data'] as Map)
+        : testData;
+    final rawVariants = blob['variants'];
+    final variantCount = rawVariants is Map ? rawVariants.length : 0;
+
+    int? preselectedVariant;
+    if (btn.randomVariant) {
+      preselectedVariant =
+          variantCount > 0 ? math.Random().nextInt(variantCount) + 1 : 1;
+    }
+
+    if (!mounted) return;
+    final result = await showDialog<_LaunchArgs>(
+      context: context,
+      builder: (_) => _SchoolLaunchDialog(
+        entry: entry,
+        schoolCode: btn.schoolCode,
+        schoolLabel: btn.label,
+        variantCount: variantCount > 0 ? variantCount : 15,
+        preselectedVariant: preselectedVariant,
+      ),
+    );
+    if (result == null || !mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => EngineHostScreen(
+          testData: testData,
+          variant: result.variant,
+          firstName: result.firstName,
+          lastName: result.lastName,
+          school: result.school,
+          group: result.group,
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _schoolLaunchButtons() {
+    final widgets = <Widget>[];
+    for (final entry in _catalogEntries) {
+      final buttons = _schoolButtonData[entry.testKey];
+      if (buttons == null || buttons.isEmpty) continue;
+      final isCached = entry.status == CatalogStatus.cached ||
+          entry.status == CatalogStatus.cachedOnly ||
+          entry.status == CatalogStatus.updatable ||
+          _downloadedKeys.contains(entry.testKey);
+      if (!isCached) continue;
+      for (final btn in buttons) {
+        widgets.add(const SizedBox(height: 4));
+        widgets.add(SizedBox(
+          height: 48,
+          child: OutlinedButton.icon(
+            onPressed: () => _launchSchoolTest(entry, btn),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.brand,
+              side: const BorderSide(color: AppColors.brand, width: 1.5),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(13)),
+            ),
+            icon: const Icon(Icons.school_rounded,
+                size: 18, color: AppColors.brand),
+            label: Text(
+              btn.label,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+          ),
+        ));
+      }
+    }
+    return widgets;
   }
 
   @override
@@ -1078,6 +1194,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     fontWeight: FontWeight.w600, fontSize: 13)),
                           ),
                         ),
+                        ..._schoolLaunchButtons(),
                       ],
                     ),
                   ),
@@ -1370,4 +1487,264 @@ class _LaunchDialogState extends State<_LaunchDialog> {
 class _TestCacheLoader {
   static Future<Map<String, dynamic>?> get(String testKey) =>
       testcache.TestCache.get(testKey);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _SchoolButton — data-driven school launch button config
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SchoolButton {
+  final String label;
+  final String schoolCode;
+  final bool randomVariant;
+
+  const _SchoolButton({
+    required this.label,
+    required this.schoolCode,
+    required this.randomVariant,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _SchoolLaunchDialog — school-specific launch: auto school + optional random variant
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SchoolLaunchDialog extends StatefulWidget {
+  final CatalogEntry entry;
+  final String schoolCode;
+  final String schoolLabel;
+  final int variantCount;
+  final int? preselectedVariant; // null = show variant step (randomVariant==false)
+
+  const _SchoolLaunchDialog({
+    required this.entry,
+    required this.schoolCode,
+    required this.schoolLabel,
+    required this.variantCount,
+    this.preselectedVariant,
+  });
+
+  @override
+  State<_SchoolLaunchDialog> createState() => _SchoolLaunchDialogState();
+}
+
+class _SchoolLaunchDialogState extends State<_SchoolLaunchDialog> {
+  late int _step;
+  int? _variant;
+
+  final _firstCtrl = TextEditingController();
+  final _lastCtrl = TextEditingController();
+  final _pinCtrl = TextEditingController();
+  String? _err;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.preselectedVariant != null) {
+      _variant = widget.preselectedVariant;
+      _step = 1;
+    } else {
+      _step = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _firstCtrl.dispose();
+    _lastCtrl.dispose();
+    _pinCtrl.dispose();
+    super.dispose();
+  }
+
+  void _start() {
+    final first = _firstCtrl.text.trim();
+    final last = _lastCtrl.text.trim();
+    if (first.isEmpty || last.isEmpty) {
+      setState(() => _err = 'Ism va familiyani kiriting');
+      return;
+    }
+    Navigator.pop(
+      context,
+      _LaunchArgs(
+        variant: _variant!,
+        firstName: first,
+        lastName: last,
+        school: widget.schoolCode,
+        group: _pinCtrl.text.trim().isEmpty ? null : _pinCtrl.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                if (_step == 1 && widget.preselectedVariant == null)
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      _step = 0;
+                      _err = null;
+                    }),
+                    child: const Icon(Icons.arrow_back_rounded,
+                        size: 20, color: AppColors.ink2),
+                  )
+                else
+                  const SizedBox(width: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
+                    style: AppTextStyles.titleMedium,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(Icons.close_rounded,
+                      size: 20, color: AppColors.ink2),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(widget.entry.title, style: AppTextStyles.bodyMedium),
+            const SizedBox(height: 16),
+            if (_step == 0) _buildVariantStep() else _buildStudentStep(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVariantStep() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 5,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1.1,
+      ),
+      itemCount: widget.variantCount,
+      itemBuilder: (_, i) {
+        final v = i + 1;
+        final selected = _variant == v;
+        return GestureDetector(
+          onTap: () => setState(() {
+            _variant = v;
+            _step = 1;
+            _err = null;
+          }),
+          child: Container(
+            decoration: BoxDecoration(
+              color: selected ? AppColors.brand : AppColors.muted,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected ? AppColors.brand : AppColors.border,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '$v',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : AppColors.ink1,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStudentStep() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.brand.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.school_rounded, size: 14, color: AppColors.brand),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  widget.schoolLabel,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.brand,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                'Variant $_variant',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.brand,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (_err != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.errorMuted,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              _err!,
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.err),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        TextField(
+          controller: _lastCtrl,
+          decoration: const InputDecoration(labelText: 'Familiya'),
+          textCapitalization: TextCapitalization.words,
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _firstCtrl,
+          decoration: const InputDecoration(labelText: 'Ism'),
+          textCapitalization: TextCapitalization.words,
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _pinCtrl,
+          decoration: const InputDecoration(labelText: 'PIN'),
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.brand,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
+          onPressed: _start,
+          child: const Text('Testni boshlash',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+        ),
+      ],
+    );
+  }
 }

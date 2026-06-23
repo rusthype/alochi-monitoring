@@ -152,6 +152,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       'vocab': {'cor': 0, 'tot': 0},
       'pct': result.totalPct.round(),
       'school_code': widget.school,
+      'test_key': result.testKey,
       'detail': <String, dynamic>{
         'sections': result.sectionScores
             .map((s) => <String, dynamic>{
