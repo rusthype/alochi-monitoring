@@ -19,6 +19,7 @@ dependencies:
 
   # Local storage (offline queue)
   sqflite_common_ffi: ^2.3.3
+  sqflite_common_ffi_web: ^1.1.2  # Web sqflite support (databaseFactoryFfiWeb)
   path_provider: ^2.1.0
   pdf: ^3.11.1
   printing: ^5.13.1
