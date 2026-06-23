@@ -68,6 +68,9 @@ class Question {
   // topic (optional metadata — carried through for reporting)
   final String? topic;
 
+  // inline SVG diagram — raw SVG markup, rendered below question text
+  final String? svg;
+
   const Question({
     required this.type,
     this.q,
@@ -80,6 +83,7 @@ class Question {
     this.strAns,
     this.reading,
     this.topic,
+    this.svg,
   });
 
   factory Question.fromJson(Map<String, dynamic> json) {
@@ -95,6 +99,7 @@ class Question {
         opts: _parseOpts(json['opts']),
         ans: (json['ans'] as num?)?.toInt() ?? 0,
         topic: json['topic']?.toString(),
+        svg: json['svg']?.toString(),
       );
     }
 
@@ -106,6 +111,7 @@ class Question {
           opts: _parseOpts(json['opts']),
           ans: (json['ans'] as num?)?.toInt() ?? 0,
           topic: json['topic']?.toString(),
+          svg: json['svg']?.toString(),
         );
 
       case QuestionType.imageChoice:
@@ -116,6 +122,7 @@ class Question {
           opts: _parseOpts(json['opts']),
           ans: (json['ans'] as num?)?.toInt() ?? 0,
           topic: json['topic']?.toString(),
+          svg: json['svg']?.toString(),
         );
 
       case QuestionType.spelling:
@@ -155,6 +162,7 @@ class Question {
           q: json['q']?.toString(),
           strAns: json['ans']?.toString(),
           topic: json['topic']?.toString(),
+          svg: json['svg']?.toString(),
         );
     }
   }

@@ -4,6 +4,7 @@
 // Engine-agnostic: works with Question model from test_models.dart.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../shared/widgets/app_network_image.dart';
 import '../../shared/theme/app_theme.dart';
 import 'test_models.dart';
@@ -52,6 +53,29 @@ Widget _brokenImagePlaceholder(double height) => Container(
         child: Icon(Icons.broken_image_outlined, color: AppColors.ink3),
       ),
     );
+
+/// Renders an inline SVG diagram below the question text.
+/// Best-effort: if the SVG is malformed the question still shows normally.
+Widget _buildSvgInline(String svgString) {
+  try {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 320),
+          child: SvgPicture.string(
+            svgString,
+            fit: BoxFit.contain,
+            placeholderBuilder: (_) => const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+  } catch (e) {
+    debugPrint('[Engine] SVG render error: $e');
+    return const SizedBox.shrink();
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared sub-widgets
@@ -240,6 +264,8 @@ class TextChoiceWidget extends StatelessWidget {
             ),
           ),
         ]),
+        if (question.svg != null && question.svg!.isNotEmpty)
+          _buildSvgInline(question.svg!),
         const SizedBox(height: 10),
         ...List.generate(question.opts.length, (i) => EngineOptionRow(
               label: String.fromCharCode(65 + i), // A, B, C…
@@ -297,6 +323,8 @@ class ImageChoiceWidget extends StatelessWidget {
         const SizedBox(height: 12),
         if (question.img != null && question.img!.isNotEmpty)
           _buildQuestionImage(question.img!, height: 160),
+        if (question.svg != null && question.svg!.isNotEmpty)
+          _buildSvgInline(question.svg!),
         const SizedBox(height: 10),
         ...List.generate(question.opts.length, (i) => EngineOptionRow(
               label: String.fromCharCode(65 + i),
@@ -685,6 +713,8 @@ class _FillBlankWidgetState extends State<FillBlankWidget> {
             ),
           ),
         ]),
+        if (widget.question.svg != null && widget.question.svg!.isNotEmpty)
+          _buildSvgInline(widget.question.svg!),
         const SizedBox(height: 10),
         TextField(
           controller: _ctrl,
