@@ -218,6 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
           label: label,
           schoolCode: schoolCode,
           randomVariant: item['random_variant'] == true,
+          pin: item['pin']?.toString(),
         ));
       }
       if (buttons.isNotEmpty) data[entry.testKey] = buttons;
@@ -354,6 +355,7 @@ class _LoginScreenState extends State<LoginScreen> {
           schoolLabel: btn.label,
           variantCount: variantCount > 0 ? variantCount : 15,
           preselectedVariant: preselectedVariant,
+          pin: btn.pin,
         ),
       ),
     );
@@ -1485,11 +1487,13 @@ class _SchoolButton {
   final String label;
   final String schoolCode;
   final bool randomVariant;
+  final String? pin;
 
   const _SchoolButton({
     required this.label,
     required this.schoolCode,
     required this.randomVariant,
+    this.pin,
   });
 }
 

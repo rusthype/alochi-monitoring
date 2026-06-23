@@ -12,6 +12,8 @@ class SchoolLaunchScreen extends StatefulWidget {
   final int variantCount;
   // null = show variant picker; non-null = skip to form directly (random mode)
   final int? preselectedVariant;
+  // non-null = PIN required before launching
+  final String? pin;
 
   const SchoolLaunchScreen({
     super.key,
@@ -20,6 +22,7 @@ class SchoolLaunchScreen extends StatefulWidget {
     required this.schoolLabel,
     required this.variantCount,
     this.preselectedVariant,
+    this.pin,
   });
 
   @override
@@ -66,7 +69,18 @@ class _SchoolLaunchScreenState extends State<SchoolLaunchScreen> {
       setState(() => _err = 'Ism va familiyani kiriting');
       return;
     }
-    final pin = _pinCtrl.text.trim();
+    final enteredPin = _pinCtrl.text.trim();
+    final requiredPin = widget.pin?.trim();
+    if (requiredPin != null && requiredPin.isNotEmpty) {
+      if (enteredPin.isEmpty) {
+        setState(() => _err = 'PIN kodni kiriting');
+        return;
+      }
+      if (enteredPin != requiredPin) {
+        setState(() => _err = 'PIN noto\'g\'ri');
+        return;
+      }
+    }
     Navigator.pushReplacement(
       context,
       MaterialPageRoute<void>(
@@ -76,7 +90,7 @@ class _SchoolLaunchScreenState extends State<SchoolLaunchScreen> {
           firstName: first,
           lastName: last,
           school: widget.schoolCode,
-          group: pin.isEmpty ? null : pin,
+          group: enteredPin.isEmpty ? null : enteredPin,
         ),
       ),
     );
@@ -317,7 +331,7 @@ class _SchoolLaunchScreenState extends State<SchoolLaunchScreen> {
                         ctrl: _pinCtrl,
                         hint: '****',
                         obscure: true,
-                        required: false),
+                        required: widget.pin != null && widget.pin!.isNotEmpty),
                     if (_err != null) ...[
                       const SizedBox(height: 4),
                       Container(
