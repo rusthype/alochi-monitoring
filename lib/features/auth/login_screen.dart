@@ -180,6 +180,7 @@ class _LoginScreenState extends State<LoginScreen> {
   List<CatalogEntry> _catalogEntries = [];
   final Set<String> _downloadingKeys = {};
   final Set<String> _downloadedKeys = {};
+  final Map<String, double> _downloadProgress = {};
 
   @override
   void initState() {
@@ -199,12 +200,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _downloadTest(CatalogEntry entry) async {
     if (_downloadingKeys.contains(entry.testKey)) return;
-    setState(() => _downloadingKeys.add(entry.testKey));
+    setState(() {
+      _downloadingKeys.add(entry.testKey);
+      _downloadProgress[entry.testKey] = 0.0;
+    });
     try {
-      final ok = await testCatalogService.download(entry.testKey);
+      final ok = await testCatalogService.download(
+        entry.testKey,
+        onProgress: (done, total) {
+          if (mounted) {
+            setState(() {
+              _downloadProgress[entry.testKey] = total > 0 ? done / total : 0;
+            });
+          }
+        },
+      );
       if (mounted) {
         setState(() {
           _downloadingKeys.remove(entry.testKey);
+          _downloadProgress.remove(entry.testKey);
           if (ok) _downloadedKeys.add(entry.testKey);
         });
         if (ok) {
@@ -230,7 +244,12 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       debugPrint('_downloadTest(${entry.testKey}) error: $e');
-      if (mounted) setState(() => _downloadingKeys.remove(entry.testKey));
+      if (mounted) {
+        setState(() {
+          _downloadingKeys.remove(entry.testKey);
+          _downloadProgress.remove(entry.testKey);
+        });
+      }
     }
   }
 
@@ -592,6 +611,7 @@ class _LoginScreenState extends State<LoginScreen> {
               entry.status == CatalogStatus.cachedOnly;
           final isUpdatable = entry.status == CatalogStatus.updatable;
           final isOfflineCached = entry.status == CatalogStatus.cachedOnly;
+          final downloadProgress = _downloadProgress[entry.testKey];
 
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -656,7 +676,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (isOfflineCached)
                     // Offline kesh: hech narsa bosib bo'lmaydi — faqat holat
                     const SizedBox.shrink()
-                  else if (isDone && !isUpdatable)
+                  else if (_downloadedKeys.contains(entry.testKey) ||
+                      (isDone && !isUpdatable))
                     // Cached test — launch via EngineHostScreen
                     GestureDetector(
                       onTap: () => _launchTest(entry),
@@ -685,13 +706,29 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     )
                   else if (isDownloading)
-                    const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: AppColors.primary,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.primary,
+                            value: downloadProgress,
+                          ),
+                        ),
+                        if (downloadProgress != null) ...[
+                          const SizedBox(width: 5),
+                          Text(
+                            '${(downloadProgress * 100).round()}%',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ],
                     )
                   else
                     GestureDetector(

@@ -119,9 +119,13 @@ class TestCatalogService {
 
   /// Testni backend'dan yuklab keshga saqlaydi va rasmlarni prefetch qiladi.
   ///
-  /// Bittasi xato bo'lsa ham davom etadi (best-effort).
+  /// [onProgress] har qadam (json=1, har rasm=1) tugaganda chaqiriladi.
+  /// total = 1 + urls.length; done 1..total.
   /// Muvaffaqiyatli kesh'ga yozilsa — true, aks holda false qaytaradi.
-  Future<bool> download(String testKey) async {
+  Future<bool> download(
+    String testKey, {
+    void Function(int done, int total)? onProgress,
+  }) async {
     try {
       final data = await _api.fetchTest(testKey);
       if (data == null) {
@@ -136,8 +140,12 @@ class TestCatalogService {
 
       await TestCache.upsert(testKey, title, grade, version, jsonStr);
 
-      // Rasmlarni prefetch — best-effort, xato bo'lsa davom etamiz
-      _prefetchImages(data);
+      final urls = _collectImageUrls(data);
+      final total = 1 + urls.length;
+      onProgress?.call(1, total);
+
+      await _prefetchImages(urls,
+          done: 1, total: total, onProgress: onProgress);
 
       return true;
     } catch (e) {
@@ -146,19 +154,27 @@ class TestCatalogService {
     }
   }
 
-  /// test_data ichidagi barcha http bilan boshlanadigan rasm url'larni
-  /// AlochiImageCacheManager orqali prefetch qiladi.
-  void _prefetchImages(Map<String, dynamic> data) {
-    final urls = _collectImageUrls(data);
+  /// Rasm URL'larini AlochiImageCacheManager orqali birin-ketin prefetch qiladi.
+  /// Best-effort: har rasm xato bo'lsa ham done++ va onProgress chaqiriladi.
+  Future<void> _prefetchImages(
+    List<String> urls, {
+    required int done,
+    required int total,
+    void Function(int done, int total)? onProgress,
+  }) async {
     if (urls.isEmpty) return;
     final cacheManager = AlochiImageCacheManager();
+    var d = done;
     for (final url in urls) {
-      if (url.isEmpty) continue;
-      cacheManager.downloadFile(url).then((_) {
-        // muvaffaqiyatli kesh'landi
-      }).catchError((Object e) {
-        debugPrint('Image prefetch failed for $url: $e');
-      });
+      if (url.isNotEmpty) {
+        try {
+          await cacheManager.downloadFile(url);
+        } catch (e) {
+          debugPrint('Image prefetch failed for $url: $e');
+        }
+      }
+      d++;
+      onProgress?.call(d, total);
     }
   }
 
