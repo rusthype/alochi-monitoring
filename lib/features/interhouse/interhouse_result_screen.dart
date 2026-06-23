@@ -7,6 +7,8 @@ import '../../core/api/api_client.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/db/history_db.dart';
 import '../../core/sync/sync_service.dart';
+import '../../core/services/pdf_service.dart';
+import 'package:printing/printing.dart';
 import '../local_test/local_grade_screen.dart';
 import 'interhouse_data.dart';
 import 'interhouse_scorer.dart';
@@ -73,6 +75,11 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
     final first = widget.firstName ?? '';
     return '$last $first'.trim();
   }
+
+  List<MapEntry<String, ({int ok, int tot})>> get _engTopics =>
+      widget.result.parts
+          .map((p) => MapEntry(p.partName, (ok: p.score, tot: 6)))
+          .toList();
 
   Map<String, dynamic> _buildDetail() => {
         'test_key': 'interhouse_g2',
@@ -399,6 +406,79 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                                         : AppColors.ink2))),
                   ]),
                 ),
+
+                const SizedBox(height: 16),
+
+                // ── PDF buttons ────────────────────────────────────────────
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final first = widget.firstName ??
+                            (widget.session?.studentName ?? '');
+                        final last = widget.lastName ?? '';
+                        final pdfBytes = await PdfService.generateResultPdf(
+                          firstName: first,
+                          lastName: last,
+                          group: '',
+                          grade: 2,
+                          variant: widget.variant,
+                          mathOk: 0,
+                          mathTotal: 0,
+                          engOk: widget.result.total,
+                          engTotal: 30,
+                          pct: widget.result.totalPct,
+                          mathTopics: const [],
+                          engTopics: _engTopics,
+                        );
+                        await Printing.layoutPdf(
+                            onLayout: (_) => pdfBytes,
+                            name: '${last}_${first}_Natija.pdf');
+                      },
+                      icon: const Icon(Icons.print_rounded, size: 18),
+                      label: const Text('Chop etish'),
+                      style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.ink1,
+                          side: const BorderSide(color: AppColors.border),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final first = widget.firstName ??
+                            (widget.session?.studentName ?? '');
+                        final last = widget.lastName ?? '';
+                        final pdfBytes = await PdfService.generateResultPdf(
+                          firstName: first,
+                          lastName: last,
+                          group: '',
+                          grade: 2,
+                          variant: widget.variant,
+                          mathOk: 0,
+                          mathTotal: 0,
+                          engOk: widget.result.total,
+                          engTotal: 30,
+                          pct: widget.result.totalPct,
+                          mathTopics: const [],
+                          engTopics: _engTopics,
+                        );
+                        await Printing.sharePdf(
+                            bytes: pdfBytes,
+                            filename: '${last}_${first}_Natija.pdf');
+                      },
+                      icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                      label: const Text('PDF Saqlash'),
+                      style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.brand,
+                          side: const BorderSide(color: AppColors.brand),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14)),
+                    ),
+                  ),
+                ]),
 
                 const SizedBox(height: 16),
 
