@@ -291,6 +291,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final n = toDownload.length;
     var doneCount = 0;
+    var failCount = 0;
 
     for (final entry in toDownload) {
       final ok = await testCatalogService.download(
@@ -305,7 +306,11 @@ class _LoginScreenState extends State<LoginScreen> {
         },
       );
       doneCount++;
-      if (ok) _downloadedKeys.add(entry.testKey);
+      if (ok) {
+        _downloadedKeys.add(entry.testKey);
+      } else {
+        failCount++;
+      }
       if (mounted) {
         setState(() => _schoolProgress[schoolCode] = doneCount / n);
       }
@@ -317,6 +322,19 @@ class _LoginScreenState extends State<LoginScreen> {
         _schoolProgress.remove(schoolCode);
         _expandedSchoolCode = schoolCode;
       });
+      if (failCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              failCount == n
+                  ? 'Yuklab bo\'lmadi. Internetni tekshiring.'
+                  : '$failCount ta test yuklanmadi. Qayta urinib ko\'ring.',
+            ),
+            backgroundColor: AppColors.err,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       _loadCatalog();
     }
   }

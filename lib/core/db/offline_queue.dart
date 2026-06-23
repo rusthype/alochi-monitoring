@@ -20,7 +20,7 @@ class OfflineQueue {
     }
     final dir = await getApplicationSupportDirectory();
     final path = join(dir.path, 'monitoring_queue.db');
-    _db = await openDatabase(path, version: 5, onCreate: (db, _) async {
+    _db = await openDatabase(path, version: 6, onCreate: (db, _) async {
       await db.execute('''
         CREATE TABLE queue (
           id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,6 +49,9 @@ class OfflineQueue {
           token    TEXT
         )
       ''');
+      await db.execute(
+        'CREATE UNIQUE INDEX idx_local_queue_token ON local_queue(token) WHERE token IS NOT NULL',
+      );
     }, onUpgrade: (db, oldVersion, newVersion) async {
       if (oldVersion < 2) {
         await db.execute('''
@@ -76,6 +79,11 @@ class OfflineQueue {
         await db.execute('ALTER TABLE queue ADD COLUMN token TEXT');
         await db.execute(
           'CREATE UNIQUE INDEX IF NOT EXISTS idx_queue_token ON queue(token) WHERE token IS NOT NULL',
+        );
+      }
+      if (oldVersion < 6) {
+        await db.execute(
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_local_queue_token ON local_queue(token) WHERE token IS NOT NULL',
         );
       }
     });
@@ -145,12 +153,16 @@ class OfflineQueue {
   // ── Local Result Offline Queue ──────────────────────────────────────────────
   static Future<void> enqueueLocal(Map<String, dynamic> payload, String token) async {
     final d = await db;
-    await d.insert('local_queue', {
-      'payload': jsonEncode(payload),
-      'created': DateTime.now().millisecondsSinceEpoch,
-      'attempts': 0,
-      'token': token,
-    });
+    await d.insert(
+      'local_queue',
+      {
+        'payload': jsonEncode(payload),
+        'created': DateTime.now().millisecondsSinceEpoch,
+        'attempts': 0,
+        'token': token,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
   }
 
   static Future<int> flushLocal(Future<bool> Function(Map<String, dynamic> payload, String token) submitFn) async {
