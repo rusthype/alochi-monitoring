@@ -260,15 +260,28 @@ class _CombinedRunnerState extends State<CombinedRunner>
     // ── Math scoring ──────────────────────────────────────────────────────────
     int mathOk = 0;
     final mathQs = widget.mathQuestions;
+    final List<Map<String, dynamic>> answers = [];
     for (int i = 0; i < mathQs.length; i++) {
       if (i >= _mathAns.length) break;
       final selectedIdx = _mathAns[i];
-      if (selectedIdx == null) continue;
       // correct is 'a'|'b'|'c'|'d', options list is already remapped
       final correctIdx = 'abcd'.indexOf(mathQs[i].correct);
-      if (correctIdx >= 0 && selectedIdx == correctIdx) {
-        mathOk++;
-      }
+      final bool ok =
+          selectedIdx != null && correctIdx >= 0 && selectedIdx == correctIdx;
+      if (ok) mathOk++;
+      answers.add({
+        'section': 'Matematika',
+        'q': mathQs[i].prompt,
+        'chosen': (selectedIdx != null &&
+                selectedIdx >= 0 &&
+                selectedIdx < mathQs[i].options.length)
+            ? mathQs[i].options[selectedIdx]
+            : '',
+        'correct': (correctIdx >= 0 && correctIdx < mathQs[i].options.length)
+            ? mathQs[i].options[correctIdx]
+            : '',
+        'ok': ok,
+      });
     }
 
     // ── English scoring ───────────────────────────────────────────────────────
@@ -276,40 +289,84 @@ class _CombinedRunnerState extends State<CombinedRunner>
 
     int vocabOk = 0;
     for (int i = 0; i < eng.vocab.length; i++) {
-      if (i < _vocabAns.length && _vocabAns[i] == eng.vocab[i].ans) {
-        vocabOk++;
-      }
+      final selectedIdx = i < _vocabAns.length ? _vocabAns[i] : null;
+      final bool ok = selectedIdx != null && selectedIdx == eng.vocab[i].ans;
+      if (ok) vocabOk++;
+      answers.add({
+        'section': 'Vocabulary',
+        'q': eng.vocab[i].q,
+        'chosen': (selectedIdx != null &&
+                selectedIdx >= 0 &&
+                selectedIdx < eng.vocab[i].opts.length)
+            ? eng.vocab[i].opts[selectedIdx]
+            : '',
+        'correct': (eng.vocab[i].ans >= 0 &&
+                eng.vocab[i].ans < eng.vocab[i].opts.length)
+            ? eng.vocab[i].opts[eng.vocab[i].ans]
+            : '',
+        'ok': ok,
+      });
     }
 
     int grammarOk = 0;
     for (int i = 0; i < eng.grammar.length; i++) {
-      if (i < _grammarAns.length && _grammarAns[i] == eng.grammar[i].ans) {
-        grammarOk++;
-      }
+      final selectedIdx = i < _grammarAns.length ? _grammarAns[i] : null;
+      final bool ok =
+          selectedIdx != null && selectedIdx == eng.grammar[i].ans;
+      if (ok) grammarOk++;
+      answers.add({
+        'section': 'Grammar',
+        'q': eng.grammar[i].q,
+        'chosen': (selectedIdx != null &&
+                selectedIdx >= 0 &&
+                selectedIdx < eng.grammar[i].opts.length)
+            ? eng.grammar[i].opts[selectedIdx]
+            : '',
+        'correct': (eng.grammar[i].ans >= 0 &&
+                eng.grammar[i].ans < eng.grammar[i].opts.length)
+            ? eng.grammar[i].opts[eng.grammar[i].ans]
+            : '',
+        'ok': ok,
+      });
     }
 
     int spellingOk = 0;
     for (int i = 0; i < eng.spelling.length; i++) {
-      if (i < _spellingAns.length &&
-          _spellingAns[i].trim().toLowerCase() ==
-              eng.spelling[i].ans.trim().toLowerCase()) {
-        spellingOk++;
-      }
+      final typed =
+          i < _spellingAns.length ? _spellingAns[i].trim() : '';
+      final bool ok = typed.toLowerCase() ==
+          eng.spelling[i].ans.trim().toLowerCase();
+      if (ok) spellingOk++;
+      answers.add({
+        'section': 'Spelling',
+        'q': 'Harflarni tartibga sol: ${eng.spelling[i].scramble}',
+        'chosen': typed,
+        'correct': eng.spelling[i].ans,
+        'ok': ok,
+      });
     }
 
     int sentenceOk = 0;
     for (int i = 0; i < eng.sentences.length; i++) {
-      if (i < _sentenceAns.length) {
-        String userAns = _sentenceAns[i].trim().toLowerCase();
-        if (userAns.endsWith('.')) {
-          userAns = userAns.substring(0, userAns.length - 1).trim();
-        }
-        String correctAns = eng.sentences[i].ans.trim().toLowerCase();
-        if (correctAns.endsWith('.')) {
-          correctAns = correctAns.substring(0, correctAns.length - 1).trim();
-        }
-        if (userAns == correctAns) sentenceOk++;
+      final typed =
+          i < _sentenceAns.length ? _sentenceAns[i].trim() : '';
+      String userAns = typed.toLowerCase();
+      if (userAns.endsWith('.')) {
+        userAns = userAns.substring(0, userAns.length - 1).trim();
       }
+      String correctAns = eng.sentences[i].ans.trim().toLowerCase();
+      if (correctAns.endsWith('.')) {
+        correctAns = correctAns.substring(0, correctAns.length - 1).trim();
+      }
+      final bool ok = userAns == correctAns;
+      if (ok) sentenceOk++;
+      answers.add({
+        'section': 'Sentences',
+        'q': 'Jumlani tuz: ${eng.sentences[i].words}',
+        'chosen': typed,
+        'correct': eng.sentences[i].ans,
+        'ok': ok,
+      });
     }
 
     int readingOk = 0;
@@ -318,29 +375,61 @@ class _CombinedRunnerState extends State<CombinedRunner>
       if (j >= _readingAns.length) break;
       final q = reading.qs[j];
       final ans = _readingAns[j];
+      bool ok = false;
+      String chosen = '';
+      String correct = '';
       if (q.type == 'yn') {
-        if (ans is String &&
+        correct = (q.ans as String).toUpperCase();
+        chosen = (ans is String) ? ans.trim().toUpperCase() : '';
+        ok = ans is String &&
             ans.trim().toLowerCase() ==
-                (q.ans as String).trim().toLowerCase()) {
-          readingOk++;
-        }
+                (q.ans as String).trim().toLowerCase();
+        if (ok) readingOk++;
       } else if (q.type == 'mc') {
-        if (ans is int && ans == q.ans as int) {
-          readingOk++;
-        }
+        final correctIdx = q.ans as int;
+        final opts = q.opts ?? [];
+        correct = (correctIdx >= 0 && correctIdx < opts.length)
+            ? opts[correctIdx]
+            : '';
+        chosen = (ans is int && ans >= 0 && ans < opts.length)
+            ? opts[ans]
+            : '';
+        ok = ans is int && ans == correctIdx;
+        if (ok) readingOk++;
       } else {
         // fill
-        if (ans is String &&
+        correct = (q.ans as String);
+        chosen = (ans is String) ? ans.trim() : '';
+        ok = ans is String &&
             ans.trim().toLowerCase() ==
-                (q.ans as String).trim().toLowerCase()) {
-          readingOk++;
-        }
+                (q.ans as String).trim().toLowerCase();
+        if (ok) readingOk++;
       }
+      answers.add({
+        'section': 'Reading',
+        'q': q.q,
+        'chosen': chosen,
+        'correct': correct,
+        'ok': ok,
+      });
     }
 
     final engOk = vocabOk + grammarOk + spellingOk + sentenceOk + readingOk;
     final totalOk = mathOk + engOk;
     final pct = (totalOk * 100 / _kTotalQs).round();
+
+    // Build detail map
+    final detail = {
+      'test_key': 'monitoring_unit1',
+      'sections': [
+        {'name': 'Matematika', 'cor': mathOk, 'tot': 30},
+        {'name': 'Vocabulary', 'cor': vocabOk, 'tot': 25},
+        {'name': 'Grammar', 'cor': grammarOk, 'tot': 6},
+        {'name': 'Spelling', 'cor': spellingOk, 'tot': 6},
+        {'name': 'Sentences', 'cor': sentenceOk, 'tot': 6},
+        {'name': 'Reading', 'cor': readingOk, 'tot': 6},
+      ],
+    };
 
     // Time string
     final now = DateTime.now();
@@ -382,6 +471,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
           totalOk: totalOk,
           pct: pct,
           timeStr: timeStr,
+          answers: answers,
+          detail: detail,
         ),
       ),
     );
@@ -933,6 +1024,8 @@ class CombinedResultScreen extends StatefulWidget {
   final int totalOk;
   final int pct;
   final String timeStr;
+  final List<Map<String, dynamic>> answers;
+  final Map<String, dynamic> detail;
 
   const CombinedResultScreen({
     super.key,
@@ -951,6 +1044,8 @@ class CombinedResultScreen extends StatefulWidget {
     required this.totalOk,
     required this.pct,
     required this.timeStr,
+    required this.answers,
+    required this.detail,
   });
 
   @override
@@ -1001,6 +1096,8 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
       'pct': widget.pct,
       'time': widget.timeStr,
       'school_code': widget.school,
+      'answers': widget.answers,
+      'detail': widget.detail,
     };
   }
 

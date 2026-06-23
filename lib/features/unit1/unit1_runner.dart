@@ -233,45 +233,91 @@ class _Unit1RunnerState extends State<Unit1Runner>
 
     // Scoring
     final variant = _variant;
+    final List<Map<String, dynamic>> answers = [];
 
     int vocabOk = 0;
     for (int i = 0; i < variant.vocab.length; i++) {
-      if (i < _vocabAns.length && _vocabAns[i] == variant.vocab[i].ans) {
-        vocabOk++;
-      }
+      final selectedIdx = i < _vocabAns.length ? _vocabAns[i] : null;
+      final bool ok =
+          selectedIdx != null && selectedIdx == variant.vocab[i].ans;
+      if (ok) vocabOk++;
+      answers.add({
+        'section': 'Vocabulary',
+        'q': variant.vocab[i].q,
+        'chosen': (selectedIdx != null &&
+                selectedIdx >= 0 &&
+                selectedIdx < variant.vocab[i].opts.length)
+            ? variant.vocab[i].opts[selectedIdx]
+            : '',
+        'correct': (variant.vocab[i].ans >= 0 &&
+                variant.vocab[i].ans < variant.vocab[i].opts.length)
+            ? variant.vocab[i].opts[variant.vocab[i].ans]
+            : '',
+        'ok': ok,
+      });
     }
 
     int grammarOk = 0;
     for (int i = 0; i < variant.grammar.length; i++) {
-      if (i < _grammarAns.length && _grammarAns[i] == variant.grammar[i].ans) {
-        grammarOk++;
-      }
+      final selectedIdx = i < _grammarAns.length ? _grammarAns[i] : null;
+      final bool ok =
+          selectedIdx != null && selectedIdx == variant.grammar[i].ans;
+      if (ok) grammarOk++;
+      answers.add({
+        'section': 'Grammar',
+        'q': variant.grammar[i].q,
+        'chosen': (selectedIdx != null &&
+                selectedIdx >= 0 &&
+                selectedIdx < variant.grammar[i].opts.length)
+            ? variant.grammar[i].opts[selectedIdx]
+            : '',
+        'correct': (variant.grammar[i].ans >= 0 &&
+                variant.grammar[i].ans < variant.grammar[i].opts.length)
+            ? variant.grammar[i].opts[variant.grammar[i].ans]
+            : '',
+        'ok': ok,
+      });
     }
 
     int spellingOk = 0;
     for (int i = 0; i < variant.spelling.length; i++) {
-      if (i < _spellingAns.length &&
-          _spellingAns[i].trim().toLowerCase() ==
-              variant.spelling[i].ans.trim().toLowerCase()) {
-        spellingOk++;
-      }
+      final typed =
+          i < _spellingAns.length ? _spellingAns[i].trim() : '';
+      final bool ok = typed.toLowerCase() ==
+          variant.spelling[i].ans.trim().toLowerCase();
+      if (ok) spellingOk++;
+      answers.add({
+        'section': 'Spelling',
+        'q': 'Harflarni tartibga sol: ${variant.spelling[i].scramble}',
+        'chosen': typed,
+        'correct': variant.spelling[i].ans,
+        'ok': ok,
+      });
     }
 
     int sentenceOk = 0;
     for (int i = 0; i < variant.sentences.length; i++) {
-      if (i < _sentenceAns.length) {
-        String userAns = _sentenceAns[i].trim().toLowerCase();
-        // Strip trailing period if user typed one
-        if (userAns.endsWith('.')) {
-          userAns = userAns.substring(0, userAns.length - 1).trim();
-        }
-        String correctAns = variant.sentences[i].ans.trim().toLowerCase();
-        if (correctAns.endsWith('.')) {
-          correctAns =
-              correctAns.substring(0, correctAns.length - 1).trim();
-        }
-        if (userAns == correctAns) sentenceOk++;
+      final typed =
+          i < _sentenceAns.length ? _sentenceAns[i].trim() : '';
+      String userAns = typed.toLowerCase();
+      // Strip trailing period if user typed one
+      if (userAns.endsWith('.')) {
+        userAns = userAns.substring(0, userAns.length - 1).trim();
       }
+      String correctAns = variant.sentences[i].ans.trim().toLowerCase();
+      if (correctAns.endsWith('.')) {
+        correctAns =
+            correctAns.substring(0, correctAns.length - 1).trim();
+      }
+      final bool ok = userAns == correctAns;
+      if (ok) sentenceOk++;
+      answers.add({
+        'section': 'Sentences',
+        'q': 'Jumlani tuz: ${variant.sentences[i].words}',
+        'chosen': typed,
+        'correct': variant.sentences[i].ans,
+        'ok': ok,
+      });
     }
 
     int readingOk = 0;
@@ -280,28 +326,59 @@ class _Unit1RunnerState extends State<Unit1Runner>
       if (j >= _readingAns.length) break;
       final q = reading.qs[j];
       final ans = _readingAns[j];
+      bool ok = false;
+      String chosen = '';
+      String correct = '';
       if (q.type == 'yn') {
-        if (ans is String &&
+        correct = (q.ans as String).toUpperCase();
+        chosen = (ans is String) ? ans.trim().toUpperCase() : '';
+        ok = ans is String &&
             ans.trim().toLowerCase() ==
-                (q.ans as String).trim().toLowerCase()) {
-          readingOk++;
-        }
+                (q.ans as String).trim().toLowerCase();
+        if (ok) readingOk++;
       } else if (q.type == 'mc') {
-        if (ans is int && ans == q.ans as int) {
-          readingOk++;
-        }
+        final correctIdx = q.ans as int;
+        final opts = q.opts ?? [];
+        correct = (correctIdx >= 0 && correctIdx < opts.length)
+            ? opts[correctIdx]
+            : '';
+        chosen = (ans is int && ans >= 0 && ans < opts.length)
+            ? opts[ans]
+            : '';
+        ok = ans is int && ans == correctIdx;
+        if (ok) readingOk++;
       } else {
         // fill
-        if (ans is String &&
+        correct = (q.ans as String);
+        chosen = (ans is String) ? ans.trim() : '';
+        ok = ans is String &&
             ans.trim().toLowerCase() ==
-                (q.ans as String).trim().toLowerCase()) {
-          readingOk++;
-        }
+                (q.ans as String).trim().toLowerCase();
+        if (ok) readingOk++;
       }
+      answers.add({
+        'section': 'Reading',
+        'q': q.q,
+        'chosen': chosen,
+        'correct': correct,
+        'ok': ok,
+      });
     }
 
     final correct = vocabOk + grammarOk + spellingOk + sentenceOk + readingOk;
     final pct = (correct * 100 / _totalQs).round();
+
+    // Build detail map
+    final detail = {
+      'test_key': 'unit1_eng',
+      'sections': [
+        {'name': 'Vocabulary', 'cor': vocabOk, 'tot': 25},
+        {'name': 'Grammar', 'cor': grammarOk, 'tot': 6},
+        {'name': 'Spelling', 'cor': spellingOk, 'tot': 6},
+        {'name': 'Sentences', 'cor': sentenceOk, 'tot': 6},
+        {'name': 'Reading', 'cor': readingOk, 'tot': 6},
+      ],
+    };
 
     // Save to history
     try {
@@ -336,6 +413,8 @@ class _Unit1RunnerState extends State<Unit1Runner>
           spellingOk: spellingOk,
           sentenceOk: sentenceOk,
           readingOk: readingOk,
+          answers: answers,
+          detail: detail,
         ),
       ),
     );
@@ -860,6 +939,8 @@ class Unit1ResultScreen extends StatefulWidget {
   final int spellingOk;
   final int sentenceOk;
   final int readingOk;
+  final List<Map<String, dynamic>> answers;
+  final Map<String, dynamic> detail;
 
   const Unit1ResultScreen({
     super.key,
@@ -876,6 +957,8 @@ class Unit1ResultScreen extends StatefulWidget {
     required this.spellingOk,
     required this.sentenceOk,
     required this.readingOk,
+    required this.answers,
+    required this.detail,
   });
 
   @override
@@ -929,6 +1012,8 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
       'pct': widget.pct,
       'time': time,
       'school_code': widget.school,
+      'answers': widget.answers,
+      'detail': widget.detail,
     };
   }
 
