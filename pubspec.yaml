@@ -1,6 +1,6 @@
 name: alochi_monitoring
 description: Alochi Monitoring — Maktab test tizimi
-version: 1.0.43+43
+version: 1.1.0+44
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -65,7 +65,7 @@ msix_config:
   publisher_display_name: Alochi Education
   identity_name: alochi.monitoring
   publisher: CN=Alochi Education
-  msix_version: 1.0.35.0
+  msix_version: 1.1.0.0
   logo_path: assets/logo.png
   start_menu_icon_path: assets/logo.png
   tile_icon_path: assets/logo.png

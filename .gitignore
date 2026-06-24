@@ -12,3 +12,11 @@ build/
 .DS_Store
 manifests/
 graphify-out/
+
+# Local agent/dev junk
+.agent-task-*.md
+.superpowers/
+.worktrees/
+CLAUDE.md
+docs/login-redesign/
+login_redesign_mockup.html
