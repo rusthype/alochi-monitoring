@@ -87,8 +87,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
       final target = (idx * _dotItemWidth - viewport / 2 + _dotItemWidth / 2)
           .clamp(0.0, _dotsScrollCtrl.position.maxScrollExtent);
       _dotsScrollCtrl.animateTo(target,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut);
+          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     });
   }
 
@@ -481,8 +480,14 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                       padding: const EdgeInsets.only(bottom: 8),
                                       child: _OptionRow(
                                         label: 'ABCD'[i],
-                                        text: i < _q.options.length ? _q.options[i] : '',
-                                        optionImage: _q.optionImages.length > i && _q.optionImages[i].isNotEmpty ? _q.optionImages[i] : null,
+                                        text: i < _q.options.length
+                                            ? _q.options[i]
+                                            : '',
+                                        optionImage: _q.optionImages.length >
+                                                    i &&
+                                                _q.optionImages[i].isNotEmpty
+                                            ? _q.optionImages[i]
+                                            : null,
                                         selected: _answers[_cur] == ch,
                                         onTap: () => _answer(ch),
                                       ),
@@ -674,7 +679,6 @@ class _QDot extends StatelessWidget {
     );
   }
 }
-
 
 class _OptionRow extends StatefulWidget {
   final String label, text;
@@ -897,31 +901,31 @@ class _QuestionImage extends StatelessWidget {
                   ),
                 ),
               ),
-          errorWidget: Builder(
-            builder: (context) {
-              debugPrint('IMAGE ERROR | URL: $url');
-              return Container(
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.err.withValues(alpha: .07),
-                  borderRadius: BorderRadius.circular(8),
-                  border:
-                      Border.all(color: AppColors.err.withValues(alpha: .2)),
-                ),
-                child: Center(
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.broken_image_outlined,
-                      color: AppColors.err.withValues(alpha: .5), size: 16),
-                  const SizedBox(width: 6),
-                  const Text('Rasm yuklanmadi',
-                      style: TextStyle(fontSize: 11, color: AppColors.ink3)),
-                ])),
-              );
-            },
+              errorWidget: Builder(
+                builder: (context) {
+                  debugPrint('IMAGE ERROR | URL: $url');
+                  return Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: AppColors.err.withValues(alpha: .07),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: AppColors.err.withValues(alpha: .2)),
+                    ),
+                    child: Center(
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.broken_image_outlined,
+                          color: AppColors.err.withValues(alpha: .5), size: 16),
+                      const SizedBox(width: 6),
+                      const Text('Rasm yuklanmadi',
+                          style:
+                              TextStyle(fontSize: 11, color: AppColors.ink3)),
+                    ])),
+                  );
+                },
+              ),
+            ),
           ),
         ),
-      ),
-    ),
-  );
+      );
 }
-

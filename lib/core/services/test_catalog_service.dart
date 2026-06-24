@@ -52,6 +52,7 @@ class CatalogEntry {
   final int version;
   final CatalogStatus status;
   final List<SchoolButton> schoolButtons;
+
   /// Backend catalog LIST'dan keluvchi sinf raqamlari (masalan [1,2] yoki [3,4]).
   /// Bo'sh [] = eski test, sinf ma'lumoti yo'q.
   final List<int> grades;
@@ -180,8 +181,7 @@ class TestCatalogService {
       final buttons = <SchoolButton>[];
       for (final item in raw) {
         if (item is! Map) continue;
-        final b =
-            SchoolButton.fromJson(Map<String, dynamic>.from(item));
+        final b = SchoolButton.fromJson(Map<String, dynamic>.from(item));
         if (b.label.isEmpty || b.schoolCode.isEmpty) continue;
         buttons.add(b);
       }
@@ -246,9 +246,8 @@ class TestCatalogService {
     for (final url in urls) {
       if (url.isNotEmpty) {
         try {
-          final fileInfo = await cacheManager
-              .downloadFile(url)
-              .timeout(_kFileTimeout);
+          final fileInfo =
+              await cacheManager.downloadFile(url).timeout(_kFileTimeout);
           try {
             bytes += await fileInfo.file.length();
           } catch (_) {}

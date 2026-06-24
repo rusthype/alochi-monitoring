@@ -8,8 +8,12 @@ import 'package:alochi_monitoring/features/interhouse/interhouse_scorer.dart';
 
 // ── Fixture helpers ───────────────────────────────────────────────────────────
 
-IhQuestion _mcImgQ(int ans) =>
-    IhQuestion(type: 'mc_img', ans: ans, opts: ['A', 'B', 'C', 'D'], q: 'q', img: 'lamp.png');
+IhQuestion _mcImgQ(int ans) => IhQuestion(
+    type: 'mc_img',
+    ans: ans,
+    opts: ['A', 'B', 'C', 'D'],
+    q: 'q',
+    img: 'lamp.png');
 
 IhQuestion _mcQ(int ans) =>
     IhQuestion(type: 'mc', ans: ans, opts: ['a', 'b', 'c', 'd'], q: 'q');
@@ -45,7 +49,8 @@ IhVariant buildFixtureVariant() {
     _fillQ('cat'),
     _fillQ('Dog'), // upper-case answer — matching must be case-insensitive
   ];
-  final reading = IhReading(img: 'r07.png', title: 'T', text: 'tx', qs: readingQs);
+  final reading =
+      IhReading(img: 'r07.png', title: 'T', text: 'tx', qs: readingQs);
 
   final sentences = List.generate(
     6,
@@ -62,11 +67,41 @@ IhVariant buildFixtureVariant() {
 }
 
 List<IhLevel> buildLevels() => [
-      IhLevel(min: 23, label: 'Outstanding', cambridge: 'A2 Flyers', cefr: 'A1 to A2', bg: '#E6F4EA', col: '#1E6B3A'),
-      IhLevel(min: 18, label: 'Very Good', cambridge: 'A1 Movers', cefr: 'A1', bg: '#D6E4F0', col: '#0C447C'),
-      IhLevel(min: 13, label: 'Good', cambridge: 'A1 Movers', cefr: 'A1', bg: '#FFF3CD', col: '#856404'),
-      IhLevel(min: 8, label: 'Satisfactory', cambridge: 'Pre-A1 to A1', cefr: 'Pre-A1', bg: '#FDE8EF', col: '#7B2041'),
-      IhLevel(min: 0, label: 'Needs Practice', cambridge: 'Pre-A1 Starters', cefr: 'Pre-A1', bg: '#F1EFE8', col: '#555'),
+      IhLevel(
+          min: 23,
+          label: 'Outstanding',
+          cambridge: 'A2 Flyers',
+          cefr: 'A1 to A2',
+          bg: '#E6F4EA',
+          col: '#1E6B3A'),
+      IhLevel(
+          min: 18,
+          label: 'Very Good',
+          cambridge: 'A1 Movers',
+          cefr: 'A1',
+          bg: '#D6E4F0',
+          col: '#0C447C'),
+      IhLevel(
+          min: 13,
+          label: 'Good',
+          cambridge: 'A1 Movers',
+          cefr: 'A1',
+          bg: '#FFF3CD',
+          col: '#856404'),
+      IhLevel(
+          min: 8,
+          label: 'Satisfactory',
+          cambridge: 'Pre-A1 to A1',
+          cefr: 'Pre-A1',
+          bg: '#FDE8EF',
+          col: '#7B2041'),
+      IhLevel(
+          min: 0,
+          label: 'Needs Practice',
+          cambridge: 'Pre-A1 Starters',
+          cefr: 'Pre-A1',
+          bg: '#F1EFE8',
+          col: '#555'),
     ];
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -76,7 +111,8 @@ void main() {
   // shields()
   // ════════════════════════════════════════════════════════
   group('IhScorer.shields', () {
-    test('score 0 → 1 (floor-1 rule, not 0)', () => expect(IhScorer.shields(0), 1));
+    test('score 0 → 1 (floor-1 rule, not 0)',
+        () => expect(IhScorer.shields(0), 1));
     test('score 1 → 1', () => expect(IhScorer.shields(1), 1));
     test('score 2 → 1', () => expect(IhScorer.shields(2), 1));
     test('score 3 → 2', () => expect(IhScorer.shields(3), 2));
@@ -89,7 +125,9 @@ void main() {
   // score() — all correct
   // ════════════════════════════════════════════════════════
   group('IhScorer.score — all correct', () {
-    test('all correct → [6,6,6,6,6], total=30, totalShields=25, level=Outstanding', () {
+    test(
+        'all correct → [6,6,6,6,6], total=30, totalShields=25, level=Outstanding',
+        () {
       final v = buildFixtureVariant();
       final answers = <String, dynamic>{
         'vocab': [0, 0, 0, 0, 0, 0],
@@ -121,7 +159,9 @@ void main() {
   // score() — all blank / wrong
   // ════════════════════════════════════════════════════════
   group('IhScorer.score — all blank/wrong', () {
-    test('all unanswered → scores [0,0,0,0,0], shields [1,1,1,1,1], Needs Practice', () {
+    test(
+        'all unanswered → scores [0,0,0,0,0], shields [1,1,1,1,1], Needs Practice',
+        () {
       final v = buildFixtureVariant();
       final answers = <String, dynamic>{
         'vocab': List<int?>.filled(6, null),
@@ -174,7 +214,8 @@ void main() {
         'sentences': List<String>.filled(6, ''),
       };
       final result = IhScorer.score(v, answers, buildLevels());
-      expect(result.parts[2].score, 6, reason: 'uppercase spelling should still match');
+      expect(result.parts[2].score, 6,
+          reason: 'uppercase spelling should still match');
     });
 
     test('spelling trims whitespace (  cat  matches cat)', () {
@@ -187,20 +228,26 @@ void main() {
         'sentences': List<String>.filled(6, ''),
       };
       final result = IhScorer.score(v, answers, buildLevels());
-      expect(result.parts[2].score, 6, reason: 'whitespace-padded spelling should match');
+      expect(result.parts[2].score, 6,
+          reason: 'whitespace-padded spelling should match');
     });
 
-    test('sentence strips trailing period (no period still matches answer with period)', () {
+    test(
+        'sentence strips trailing period (no period still matches answer with period)',
+        () {
       final v = buildFixtureVariant();
       final answers = <String, dynamic>{
         'vocab': List<int?>.filled(6, null),
         'grammar': List<int?>.filled(6, null),
         'spelling': List<String>.filled(6, ''),
         'reading': List<dynamic>.filled(6, null),
-        'sentences': List<String>.filled(6, 'It is not a car'), // no trailing period
+        'sentences':
+            List<String>.filled(6, 'It is not a car'), // no trailing period
       };
       final result = IhScorer.score(v, answers, buildLevels());
-      expect(result.parts[4].score, 6, reason: 'sentence without trailing period should match answer ending with period');
+      expect(result.parts[4].score, 6,
+          reason:
+              'sentence without trailing period should match answer ending with period');
     });
 
     test('sentence strips trailing exclamation mark', () {
@@ -224,10 +271,13 @@ void main() {
         'sentences': List<String>.filled(6, 'It is not a car'), // no trailing !
       };
       final result = IhScorer.score(v, answers, buildLevels());
-      expect(result.parts[4].score, 6, reason: 'trailing ! should be stripped before comparison');
+      expect(result.parts[4].score, 6,
+          reason: 'trailing ! should be stripped before comparison');
     });
 
-    test('yn answer is case-sensitive (YES matches YES, yes does NOT match YES)', () {
+    test(
+        'yn answer is case-sensitive (YES matches YES, yes does NOT match YES)',
+        () {
       final v = buildFixtureVariant();
       // reading[0] is yn with ans='YES', reading[1] is yn with ans='NO'
       final answersCorrect = <String, dynamic>{
@@ -238,17 +288,26 @@ void main() {
         'sentences': List<String>.filled(6, ''),
       };
       final resultCorrect = IhScorer.score(v, answersCorrect, buildLevels());
-      expect(resultCorrect.parts[3].score, 2, reason: 'uppercase YES/NO should match');
+      expect(resultCorrect.parts[3].score, 2,
+          reason: 'uppercase YES/NO should match');
 
       final answersLower = <String, dynamic>{
         'vocab': List<int?>.filled(6, null),
         'grammar': List<int?>.filled(6, null),
         'spelling': List<String>.filled(6, ''),
-        'reading': ['yes', 'no', null, null, null, null], // lowercase should NOT match
+        'reading': [
+          'yes',
+          'no',
+          null,
+          null,
+          null,
+          null
+        ], // lowercase should NOT match
         'sentences': List<String>.filled(6, ''),
       };
       final resultLower = IhScorer.score(v, answersLower, buildLevels());
-      expect(resultLower.parts[3].score, 0, reason: 'lowercase yes/no should NOT match (yn is exact-match)');
+      expect(resultLower.parts[3].score, 0,
+          reason: 'lowercase yes/no should NOT match (yn is exact-match)');
     });
 
     test('reading fill is case-insensitive (dog matches Dog)', () {
@@ -262,7 +321,8 @@ void main() {
         'sentences': List<String>.filled(6, ''),
       };
       final result = IhScorer.score(v, answers, buildLevels());
-      expect(result.parts[3].score, 2, reason: 'case-insensitive fill: CAT=cat, DOG=Dog');
+      expect(result.parts[3].score, 2,
+          reason: 'case-insensitive fill: CAT=cat, DOG=Dog');
     });
   });
 
@@ -294,9 +354,12 @@ void main() {
       final v = buildFixtureVariant();
 
       // Build vocab answers: first vocabCorrect are correct (0), rest null
-      final vocabAns = List<int?>.generate(6, (i) => i < vocabCorrect ? 0 : null);
-      final grammarAns = List<int?>.generate(6, (i) => i < grammarCorrect ? 1 : null);
-      final spellingAns = List<String>.generate(6, (i) => i < spellingCorrect ? 'cat' : '');
+      final vocabAns =
+          List<int?>.generate(6, (i) => i < vocabCorrect ? 0 : null);
+      final grammarAns =
+          List<int?>.generate(6, (i) => i < grammarCorrect ? 1 : null);
+      final spellingAns =
+          List<String>.generate(6, (i) => i < spellingCorrect ? 'cat' : '');
 
       // Reading: yn(YES), yn(NO), mc(0), mc(2), fill(cat), fill(dog)
       final readingAns = <dynamic>[null, null, null, null, null, null];
@@ -305,15 +368,19 @@ void main() {
         readingAns[i] = correctReadingAns[i];
       }
 
-      final sentenceAns = List<String>.generate(6, (i) => i < sentenceCorrect ? 'It is not a car.' : '');
+      final sentenceAns = List<String>.generate(
+          6, (i) => i < sentenceCorrect ? 'It is not a car.' : '');
 
-      return IhScorer.score(v, {
-        'vocab': vocabAns,
-        'grammar': grammarAns,
-        'spelling': spellingAns,
-        'reading': readingAns,
-        'sentences': sentenceAns,
-      }, buildLevels());
+      return IhScorer.score(
+          v,
+          {
+            'vocab': vocabAns,
+            'grammar': grammarAns,
+            'spelling': spellingAns,
+            'reading': readingAns,
+            'sentences': sentenceAns,
+          },
+          buildLevels());
     }
 
     // Levels use totalShields (not total correct):
@@ -351,14 +418,17 @@ void main() {
       expect(result.level.label, 'Needs Practice');
     });
 
-    test('6 correct per part (all 6s) → shields=5 each → totalShields=25 → Outstanding', () {
+    test(
+        '6 correct per part (all 6s) → shields=5 each → totalShields=25 → Outstanding',
+        () {
       final result = scoreWithTotalCorrect(30);
       expect(result.parts.map((p) => p.shields).toList(), [5, 5, 5, 5, 5]);
       expect(result.totalShields, 25);
       expect(result.level.label, 'Outstanding');
     });
 
-    test('3 correct per part → shields=2 each → totalShields=10 → Satisfactory', () {
+    test('3 correct per part → shields=2 each → totalShields=10 → Satisfactory',
+        () {
       // 3 per part = 15 total, shields: 2 each → totalShields=10 → Good (>=13? no, 10>=8 → Satisfactory)
       final v = buildFixtureVariant();
       final answers = <String, dynamic>{
@@ -366,7 +436,14 @@ void main() {
         'grammar': [1, 1, 1, null, null, null],
         'spelling': ['cat', 'cat', 'cat', '', '', ''],
         'reading': ['YES', 'NO', 0, null, null, null],
-        'sentences': ['It is not a car.', 'It is not a car.', 'It is not a car.', '', '', ''],
+        'sentences': [
+          'It is not a car.',
+          'It is not a car.',
+          'It is not a car.',
+          '',
+          '',
+          ''
+        ],
       };
       final result = IhScorer.score(v, answers, buildLevels());
       expect(result.parts.every((p) => p.score == 3), isTrue);
@@ -382,7 +459,14 @@ void main() {
         'grammar': [1, 1, 1, 1, null, null],
         'spelling': ['cat', 'cat', 'cat', 'cat', '', ''],
         'reading': ['YES', 'NO', 0, 2, null, null],
-        'sentences': ['It is not a car.', 'It is not a car.', 'It is not a car.', 'It is not a car.', '', ''],
+        'sentences': [
+          'It is not a car.',
+          'It is not a car.',
+          'It is not a car.',
+          'It is not a car.',
+          '',
+          ''
+        ],
       };
       final result = IhScorer.score(v, answers, buildLevels());
       expect(result.parts.every((p) => p.score == 4), isTrue);
@@ -391,14 +475,22 @@ void main() {
       expect(result.level.label, 'Good');
     });
 
-    test('5 correct per part → shields=4 each → totalShields=20 → Very Good', () {
+    test('5 correct per part → shields=4 each → totalShields=20 → Very Good',
+        () {
       final v = buildFixtureVariant();
       final answers = <String, dynamic>{
         'vocab': [0, 0, 0, 0, 0, null],
         'grammar': [1, 1, 1, 1, 1, null],
         'spelling': ['cat', 'cat', 'cat', 'cat', 'cat', ''],
         'reading': ['YES', 'NO', 0, 2, 'cat', null],
-        'sentences': ['It is not a car.', 'It is not a car.', 'It is not a car.', 'It is not a car.', 'It is not a car.', ''],
+        'sentences': [
+          'It is not a car.',
+          'It is not a car.',
+          'It is not a car.',
+          'It is not a car.',
+          'It is not a car.',
+          ''
+        ],
       };
       final result = IhScorer.score(v, answers, buildLevels());
       expect(result.parts.every((p) => p.score == 5), isTrue);
@@ -440,7 +532,9 @@ void main() {
       expect(result.parts.length, 5);
     });
 
-    test('parts are named in order: Vocabulary, Grammar, Spelling, Reading, Writing', () {
+    test(
+        'parts are named in order: Vocabulary, Grammar, Spelling, Reading, Writing',
+        () {
       final v = buildFixtureVariant();
       final answers = <String, dynamic>{
         'vocab': List<int?>.filled(6, null),

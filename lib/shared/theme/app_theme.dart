@@ -33,8 +33,10 @@ class AppTheme {
             backgroundColor: AppColors.brand,
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 50),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-            textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+            textStyle:
+                GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
             elevation: 0,
           ),
         ),
@@ -61,7 +63,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(12),
             borderSide: const BorderSide(color: AppColors.err, width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
           labelStyle: const TextStyle(color: AppColors.ink2, fontSize: 13),
           hintStyle: const TextStyle(color: AppColors.ink3, fontSize: 14),
           errorStyle: const TextStyle(color: AppColors.err, fontSize: 12),

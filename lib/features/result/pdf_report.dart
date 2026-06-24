@@ -201,11 +201,13 @@ class PdfReport {
                     pw.SizedBox(height: 12),
                     if (s.grade != null)
                       pw.Text('${s.grade}-sinf',
-                          style: const pw.TextStyle(fontSize: 13, color: _ink2)),
+                          style:
+                              const pw.TextStyle(fontSize: 13, color: _ink2)),
                     if (s.grade != null) pw.SizedBox(height: 6),
                     if (s.variant != null)
                       pw.Text('Variant ${s.variant}',
-                          style: const pw.TextStyle(fontSize: 13, color: _ink2)),
+                          style:
+                              const pw.TextStyle(fontSize: 13, color: _ink2)),
                     if (s.variant != null) pw.SizedBox(height: 6),
                     if (s.groupName != null) ...[
                       pw.SizedBox(height: 6),
@@ -245,7 +247,8 @@ class PdfReport {
                                       fontWeight: pw.FontWeight.bold,
                                       color: clr)),
                               pw.Text('ball',
-                                  style: pw.TextStyle(fontSize: 10, color: clr)),
+                                  style:
+                                      pw.TextStyle(fontSize: 10, color: clr)),
                             ]))),
                     pw.SizedBox(height: 14),
                     pw.Container(
@@ -437,8 +440,8 @@ class PdfReport {
                       color: color)),
               pw.SizedBox(height: 8),
               pw.Container(
-                  padding:
-                      const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const pw.EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
                   decoration: pw.BoxDecoration(
                       color: color,
                       borderRadius:
@@ -478,7 +481,8 @@ class PdfReport {
         padding: const pw.EdgeInsets.all(18),
         decoration: pw.BoxDecoration(
             color: const PdfColor.fromInt(0xFFFFF1F2),
-            border: pw.Border.all(color: const PdfColor.fromInt(0xFFFCA5A5), width: 1.5),
+            border: pw.Border.all(
+                color: const PdfColor.fromInt(0xFFFCA5A5), width: 1.5),
             borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12))),
         child: pw.Row(children: [
           pw.Expanded(
@@ -562,8 +566,10 @@ class PdfReport {
           pw.SizedBox(height: 10),
           pw.Text(prompt,
               style: pw.TextStyle(
-                  fontSize: 14, fontWeight: pw.FontWeight.bold, color: _ink1, lineSpacing: 2)),
-          
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                  color: _ink1,
+                  lineSpacing: 2)),
           if (img != null) ...[
             pw.SizedBox(height: 10),
             pw.ClipRRect(
@@ -572,7 +578,6 @@ class PdfReport {
               child: pw.Image(img, height: 120, fit: pw.BoxFit.contain),
             ),
           ],
-          
           pw.SizedBox(height: 12),
           pw.Row(children: [
             pw.Expanded(child: _answerBadge(sAns, sText, false)),

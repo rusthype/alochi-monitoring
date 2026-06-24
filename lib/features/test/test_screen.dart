@@ -87,8 +87,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
       final target = (idx * _dotItemWidth - viewport / 2 + _dotItemWidth / 2)
           .clamp(0.0, _dotsScrollCtrl.position.maxScrollExtent);
       _dotsScrollCtrl.animateTo(target,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut);
+          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     });
   }
 
@@ -111,7 +110,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
   void _navigate(int idx) {
     if (idx < 0 || idx >= _total) return;
     _autoAdv?.cancel();
-    
+
     if (_scrollCtrl.hasClients) {
       _scrollCtrl.jumpTo(0);
     }
@@ -202,7 +201,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
     final synced = resp['synced'] as bool? ?? false;
     final xpEarned = resp['xp_earned'] as int? ?? 0;
     final rawWrong = resp['wrong_answers'] as List<dynamic>? ?? [];
-    
+
     TestResult finalResult = result;
     if (synced && resp.containsKey('math_score')) {
       finalResult = TestResult(
@@ -978,14 +977,14 @@ class _OptionRowState extends State<_OptionRow>
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                               if (widget.text.isNotEmpty) ...[
-                                  Text(widget.text,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                          color: widget.selected
-                                              ? const Color(0xFF7C2D12)
-                                              : AppColors.ink1)),
+                                Text(widget.text,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color: widget.selected
+                                            ? const Color(0xFF7C2D12)
+                                            : AppColors.ink1)),
                                 const SizedBox(height: 6),
                               ],
                               Center(
@@ -1090,32 +1089,33 @@ class _QuestionImage extends StatelessWidget {
                   ),
                 ),
               ),
-          errorWidget: Builder(
-            builder: (context) {
-              debugPrint('IMAGE ERROR | URL: $url');
-              return Container(
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.err.withValues(alpha: .07),
-                  borderRadius: BorderRadius.circular(8),
-                  border:
-                      Border.all(color: AppColors.err.withValues(alpha: .2)),
-                ),
-                child: Center(
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.broken_image_outlined,
-                      color: AppColors.err.withValues(alpha: .5), size: 16),
-                  const SizedBox(width: 6),
-                  const Text('Rasm yuklanmadi',
-                      style: TextStyle(fontSize: 11, color: AppColors.ink3)),
-                ])),
-              );
-            },
+              errorWidget: Builder(
+                builder: (context) {
+                  debugPrint('IMAGE ERROR | URL: $url');
+                  return Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: AppColors.err.withValues(alpha: .07),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: AppColors.err.withValues(alpha: .2)),
+                    ),
+                    child: Center(
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.broken_image_outlined,
+                          color: AppColors.err.withValues(alpha: .5), size: 16),
+                      const SizedBox(width: 6),
+                      const Text('Rasm yuklanmadi',
+                          style:
+                              TextStyle(fontSize: 11, color: AppColors.ink3)),
+                    ])),
+                  );
+                },
+              ),
+            ),
           ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 class _KbdKey extends StatelessWidget {

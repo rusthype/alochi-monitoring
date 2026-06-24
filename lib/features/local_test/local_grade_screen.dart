@@ -113,8 +113,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
             : IconButton(
                 icon: const Icon(Icons.close_rounded, color: AppColors.ink2),
                 onPressed: () => Navigator.pop(context)),
-        title: Text(
-            _step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
+        title: Text(_step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
             style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
@@ -143,8 +142,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: const Color(0xFF10B981).withValues(alpha: .12),
               borderRadius: BorderRadius.circular(12),

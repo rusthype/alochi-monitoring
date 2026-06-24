@@ -9,7 +9,7 @@ import 'unit1_runner.dart';
 const Color _kBlue = Color(0xFF3B82F6);
 const Color _kBlueDark = Color(0xFF1D4ED8);
 const Color _kBlueBannerTitle = Color(0xFF1E3A8A); // blue-900
-const Color _kBlueBannerSub = Color(0xFF1D4ED8);   // blue-700
+const Color _kBlueBannerSub = Color(0xFF1D4ED8); // blue-700
 
 class Unit1Screen extends StatefulWidget {
   const Unit1Screen({super.key});
@@ -107,14 +107,13 @@ class _Unit1ScreenState extends State<Unit1Screen>
         elevation: 0,
         leading: _step > 0
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded,
-                    color: AppColors.ink1),
+                icon:
+                    const Icon(Icons.arrow_back_rounded, color: AppColors.ink1),
                 onPressed: () => _goStep(0))
             : IconButton(
                 icon: const Icon(Icons.close_rounded, color: AppColors.ink2),
                 onPressed: () => Navigator.pop(context)),
-        title: Text(
-            _step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
+        title: Text(_step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
             style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
@@ -144,13 +143,11 @@ class _Unit1ScreenState extends State<Unit1Screen>
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             // Info banner
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: _kBlue.withValues(alpha: .08),
                 borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: _kBlue.withValues(alpha: .25)),
+                border: Border.all(color: _kBlue.withValues(alpha: .25)),
               ),
               child: const Row(children: [
                 Icon(Icons.menu_book_rounded, color: _kBlue, size: 20),
@@ -166,8 +163,8 @@ class _Unit1ScreenState extends State<Unit1Screen>
                               color: _kBlueBannerTitle)),
                       SizedBox(height: 2),
                       Text('49 savol · 49 daqiqa · Offline rejim',
-                          style: TextStyle(
-                              fontSize: 11, color: _kBlueBannerSub)),
+                          style:
+                              TextStyle(fontSize: 11, color: _kBlueBannerSub)),
                     ])),
               ]),
             ),
@@ -211,8 +208,7 @@ class _Unit1ScreenState extends State<Unit1Screen>
                             style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 16,
-                                color:
-                                    sel ? Colors.white : AppColors.ink2))),
+                                color: sel ? Colors.white : AppColors.ink2))),
                   ),
                 );
               }),
@@ -225,8 +221,8 @@ class _Unit1ScreenState extends State<Unit1Screen>
                 onPressed: _variant == null ? null : () => _goStep(1),
                 icon: const Icon(Icons.arrow_forward_rounded),
                 label: const Text('Davom etish',
-                    style: TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w700)),
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _kBlue,
                   foregroundColor: Colors.white,
@@ -279,9 +275,7 @@ class _Unit1ScreenState extends State<Unit1Screen>
                     Row(children: [
                       Expanded(
                           child: _Field(
-                              label: 'Ism',
-                              ctrl: _firstCtrl,
-                              hint: 'Alisher')),
+                              label: 'Ism', ctrl: _firstCtrl, hint: 'Alisher')),
                       const SizedBox(width: 12),
                       Expanded(
                           child: _Field(
@@ -331,14 +325,12 @@ class _Unit1ScreenState extends State<Unit1Screen>
                                 width: 16,
                                 height: 16,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white))
+                                    strokeWidth: 2, color: Colors.white))
                             : const Icon(Icons.play_arrow_rounded),
                         label: Text(
                             _loading ? 'Yuklanmoqda...' : 'Testni boshlash',
                             style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700)),
+                                fontSize: 15, fontWeight: FontWeight.w700)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _kBlue,
                           foregroundColor: Colors.white,
@@ -370,12 +362,9 @@ class _Unit1Header extends StatelessWidget {
       decoration: BoxDecoration(
           color: _kBlue.withValues(alpha: .12),
           borderRadius: BorderRadius.circular(8)),
-      child: Text(
-          variant != null ? 'V$variant' : 'Unit 1',
+      child: Text(variant != null ? 'V$variant' : 'Unit 1',
           style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: _kBlueDark)),
+              fontSize: 12, fontWeight: FontWeight.w700, color: _kBlueDark)),
     );
   }
 }
@@ -387,15 +376,13 @@ class _VariantBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-          color: _kBlue.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(8)),
-      child: Text('Variant $variant',
-          style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: _kBlueDark)));
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+            color: _kBlue.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(8)),
+        child: Text('Variant $variant',
+            style: const TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700, color: _kBlueDark)));
   }
 }
 
@@ -433,24 +420,20 @@ class _Field extends StatelessWidget {
         style: const TextStyle(fontSize: 14, color: AppColors.ink1),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle:
-              TextStyle(color: AppColors.ink3.withValues(alpha: .6)),
+          hintStyle: TextStyle(color: AppColors.ink3.withValues(alpha: .6)),
           filled: true,
           fillColor: AppColors.bg,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  const BorderSide(color: AppColors.border)),
+              borderSide: const BorderSide(color: AppColors.border)),
           enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  const BorderSide(color: AppColors.border)),
+              borderSide: const BorderSide(color: AppColors.border)),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  const BorderSide(color: _kBlue, width: 1.5)),
+              borderSide: const BorderSide(color: _kBlue, width: 1.5)),
         ),
       ),
       const SizedBox(height: 14),

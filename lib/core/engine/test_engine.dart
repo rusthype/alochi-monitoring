@@ -211,8 +211,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
             'Tugatish?',
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
-          content:
-              Text('$unanswered ta savol javobsiz. Tugatmoqchimisiz?'),
+          content: Text('$unanswered ta savol javobsiz. Tugatmoqchimisiz?'),
           actions: [
             TextButton(
               onPressed: () {
@@ -265,9 +264,8 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
       );
     }
 
-    final progress = _totalQuestions > 0
-        ? _answeredCount / _totalQuestions
-        : 0.0;
+    final progress =
+        _totalQuestions > 0 ? _answeredCount / _totalQuestions : 0.0;
     final isLast = _sectionIdx == sections.length - 1;
 
     return Scaffold(
@@ -287,8 +285,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
               width: MediaQuery.sizeOf(context).width * progress,
               height: 4,
               decoration: BoxDecoration(
-                color:
-                    progress >= 1.0 ? AppColors.ok : AppColors.brand,
+                color: progress >= 1.0 ? AppColors.ok : AppColors.brand,
                 borderRadius:
                     const BorderRadius.horizontal(right: Radius.circular(3)),
               ),
@@ -361,8 +358,8 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     final qs = section.questions;
     if (qs.isEmpty) {
       return const Center(
-        child: Text('Bu bo\'lim bo\'sh.',
-            style: TextStyle(color: AppColors.ink3)),
+        child:
+            Text('Bu bo\'lim bo\'sh.', style: TextStyle(color: AppColors.ink3)),
       );
     }
     return Column(
@@ -444,8 +441,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
         return FillBlankWidget(
           index: i,
           question: q,
-          initialValue:
-              _answers[key] is String ? _answers[key] as String : '',
+          initialValue: _answers[key] is String ? _answers[key] as String : '',
           onChanged: (v) {
             _ctrl(key).text = v;
             setState(() => _answers[key] = v);
@@ -557,13 +553,10 @@ class _TopBar extends StatelessWidget {
           duration: const Duration(milliseconds: 300),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: timerHot
-                ? const Color(0xFFFEF2F2)
-                : const Color(0xFFFFF7ED),
+            color: timerHot ? const Color(0xFFFEF2F2) : const Color(0xFFFFF7ED),
             border: Border.all(
-              color: timerHot
-                  ? const Color(0xFFFCA5A5)
-                  : const Color(0xFFFED7AA),
+              color:
+                  timerHot ? const Color(0xFFFCA5A5) : const Color(0xFFFED7AA),
               width: 1.5,
             ),
             borderRadius: BorderRadius.circular(12),
@@ -645,15 +638,13 @@ class _SectionTabBar extends StatelessWidget {
               onTap: () => onTap(i),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 margin: const EdgeInsets.only(right: 4),
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: isActive
-                          ? AppColors.brand
-                          : Colors.transparent,
+                      color: isActive ? AppColors.brand : Colors.transparent,
                       width: 2.5,
                     ),
                   ),
@@ -663,17 +654,15 @@ class _SectionTabBar extends StatelessWidget {
                     sections[i].name,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: isActive
-                          ? FontWeight.w800
-                          : FontWeight.w500,
+                      fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
                       color: isActive ? AppColors.brand : AppColors.ink2,
                     ),
                   ),
                   const SizedBox(width: 6),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: answered == total
                           ? AppColors.ok.withValues(alpha: .15)
@@ -770,8 +759,7 @@ class _BottomNav extends StatelessWidget {
                   icon: const Icon(Icons.check_rounded, size: 15),
                   label: const Text(
                     'Tugatish',
-                    style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.ok,
@@ -785,8 +773,7 @@ class _BottomNav extends StatelessWidget {
                   onPressed: onNext,
                   icon: const Text(
                     'Keyingi',
-                    style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                   ),
                   label: const Icon(Icons.arrow_forward_rounded, size: 15),
                   style: ElevatedButton.styleFrom(

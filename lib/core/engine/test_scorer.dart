@@ -103,9 +103,8 @@ class TestScorer {
       }
     }
 
-    final totalPct = totalQuestions > 0
-        ? totalCorrect * 100.0 / totalQuestions
-        : 0.0;
+    final totalPct =
+        totalQuestions > 0 ? totalCorrect * 100.0 / totalQuestions : 0.0;
 
     // Shield / level calculation (only if ScoringSpec present)
     int? shields;
@@ -122,7 +121,8 @@ class TestScorer {
       // ≥6→5shields, ≥5→4shields, ≥4→3shields, ≥3→2shields, else 1shield
       int totalShields = 0;
       for (final sc in sectionScores) {
-        totalShields += _correctToShields(sc.correct, scoring.shieldsThresholds);
+        totalShields +=
+            _correctToShields(sc.correct, scoring.shieldsThresholds);
       }
       shields = totalShields;
 

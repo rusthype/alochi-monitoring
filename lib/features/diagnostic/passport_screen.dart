@@ -226,7 +226,8 @@ class _PassportScreenState extends State<PassportScreen>
                                   strokeWidth: 2, color: Colors.white),
                             )
                           : const Icon(Icons.picture_as_pdf_rounded, size: 20),
-                      label: Text(_pdfPath != null ? 'PDF qayta' : 'PDF saqlash'),
+                      label:
+                          Text(_pdfPath != null ? 'PDF qayta' : 'PDF saqlash'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _kTeal,
                         foregroundColor: Colors.white,
@@ -538,8 +539,8 @@ class _Ring extends StatelessWidget {
                       color: color),
                 ),
                 Text(sublabel,
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.ink2)),
+                    style:
+                        const TextStyle(fontSize: 11, color: AppColors.ink2)),
               ],
             ),
           ],

@@ -198,9 +198,7 @@ class _PackageScreenState extends State<PackageScreen>
           borderRadius: BorderRadius.circular(24),
           boxShadow: const [
             BoxShadow(
-                color: Color(0x0FDC2626),
-                blurRadius: 8,
-                offset: Offset(0, 2)),
+                color: Color(0x0FDC2626), blurRadius: 8, offset: Offset(0, 2)),
             BoxShadow(
                 color: Color(0x0ADC2626),
                 blurRadius: 24,
@@ -261,8 +259,7 @@ class _PackageScreenState extends State<PackageScreen>
                   fontSize: 15,
                   color: AppColors.ink1)),
           const SizedBox(height: 6),
-          const Text(
-              'Sizga hali imtihon biriktirilmagan\nyoki muddati tugagan',
+          const Text('Sizga hali imtihon biriktirilmagan\nyoki muddati tugagan',
               style: TextStyle(fontSize: 13, color: AppColors.ink2),
               textAlign: TextAlign.center),
         ]),
@@ -308,10 +305,8 @@ class _PackageScreenState extends State<PackageScreen>
   // ── Package card ──────────────────────────────────────────────────────────
   Widget _buildPackageCard(TestPackage pkg) {
     final isEven = _packages.indexOf(pkg).isEven;
-    final iconBg =
-        isEven ? AppColors.brandLight : AppColors.primaryMuted;
-    final iconColor =
-        isEven ? AppColors.brand : AppColors.primary;
+    final iconBg = isEven ? AppColors.brandLight : AppColors.primaryMuted;
+    final iconColor = isEven ? AppColors.brand : AppColors.primary;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -341,13 +336,19 @@ class _PackageScreenState extends State<PackageScreen>
                         color: AppColors.ink1)),
                 const SizedBox(height: 8),
                 Row(children: [
-                  _StatChip(val: '${pkg.mathCount}', label: 'Math',
+                  _StatChip(
+                      val: '${pkg.mathCount}',
+                      label: 'Math',
                       color: AppColors.math),
                   const SizedBox(width: 6),
-                  _StatChip(val: '${pkg.engCount}', label: 'Ingliz',
+                  _StatChip(
+                      val: '${pkg.engCount}',
+                      label: 'Ingliz',
                       color: AppColors.eng),
                   const SizedBox(width: 6),
-                  _StatChip(val: '${pkg.totalCount}', label: 'Jami',
+                  _StatChip(
+                      val: '${pkg.totalCount}',
+                      label: 'Jami',
                       color: AppColors.ink2),
                 ]),
               ])),
@@ -457,23 +458,21 @@ class _HeaderCard extends StatelessWidget {
         const SizedBox(width: 12),
         // Name + meta
         Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              Text(name,
-                  style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink1)),
-              if (meta.isNotEmpty) ...[
-                const SizedBox(height: 3),
-                Text(meta,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.ink2),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-              ],
-            ])),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(name,
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.ink1)),
+          if (meta.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(meta,
+                style: const TextStyle(fontSize: 12, color: AppColors.ink2),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          ],
+        ])),
         const SizedBox(width: 8),
         // Logout
         Tooltip(
@@ -538,8 +537,7 @@ class _TealButton extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(vertical: 11, horizontal: 22),
+            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 22),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               Icon(icon, color: Colors.white, size: 15),
               const SizedBox(width: 8),
@@ -573,8 +571,8 @@ class _PressCardState extends State<_PressCard>
     super.initState();
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 150));
-    _scale = Tween<double>(begin: 1.0, end: 0.97).animate(
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+    _scale = Tween<double>(begin: 1.0, end: 0.97)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   @override
@@ -626,9 +624,7 @@ class _StatChip extends StatelessWidget {
           TextSpan(
               text: val,
               style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: color)),
+                  fontSize: 10, fontWeight: FontWeight.w600, color: color)),
           TextSpan(
               text: ' $label',
               style: TextStyle(
@@ -675,8 +671,8 @@ class _SkeletonState extends State<_Skeleton>
           height: widget.height,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(widget.radius),
-            color: Color.lerp(
-                AppColors.gray100, AppColors.gray200, _anim.value),
+            color:
+                Color.lerp(AppColors.gray100, AppColors.gray200, _anim.value),
           ),
         ),
       );

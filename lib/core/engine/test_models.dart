@@ -7,13 +7,13 @@ import 'package:flutter/foundation.dart' show debugPrint;
 // ── Question types ─────────────────────────────────────────────────────────────
 
 enum QuestionType {
-  textChoice,    // {q, opts[], ans:index}
-  imageChoice,   // {img, q, opts[], ans:index}
-  spelling,      // {scramble, ans:str}
+  textChoice, // {q, opts[], ans:index}
+  imageChoice, // {img, q, opts[], ans:index}
+  spelling, // {scramble, ans:str}
   sentenceOrder, // {words, ans:str}
-  reading,       // CONTAINER {img,title,text,qs:[...]}
-  yesNo,         // {q, ans:"YES"|"NO"}
-  fillBlank,     // {q, ans:str}
+  reading, // CONTAINER {img,title,text,qs:[...]}
+  yesNo, // {q, ans:"YES"|"NO"}
+  fillBlank, // {q, ans:str}
 }
 
 QuestionType? _parseType(String? raw) {
@@ -43,9 +43,10 @@ class Question {
   final QuestionType type;
 
   // Shared / multiple types
-  final String? q;       // question text (text_choice, image_choice, yes_no, fill_blank)
+  final String?
+      q; // question text (text_choice, image_choice, yes_no, fill_blank)
   final List<String> opts; // options (text_choice, image_choice)
-  final int ans;         // answer index for choice types (0-based)
+  final int ans; // answer index for choice types (0-based)
 
   // image_choice, reading container
   final String? img;
@@ -60,7 +61,7 @@ class Question {
   final String? yesNoAns; // "YES" or "NO"
 
   // fill_blank / spelling / sentence_order
-  final String? strAns;  // string answer
+  final String? strAns; // string answer
 
   // reading container
   final ReadingSection? reading;
@@ -91,7 +92,8 @@ class Question {
     final type = _parseType(rawType);
 
     if (type == null) {
-      debugPrint('[TestEngine] Unknown question type "$rawType", falling back to text_choice');
+      debugPrint(
+          '[TestEngine] Unknown question type "$rawType", falling back to text_choice');
       // Safe fallback — treat as text_choice with empty opts so engine can render
       return Question(
         type: QuestionType.textChoice,
@@ -219,8 +221,8 @@ class ScoringLevel {
   final int min;
   final String label;
   final String? cefr;
-  final String? bgHex;   // e.g. "#E6F4EA"
-  final String? colHex;  // e.g. "#1E6B3A"
+  final String? bgHex; // e.g. "#E6F4EA"
+  final String? colHex; // e.g. "#1E6B3A"
 
   const ScoringLevel({
     required this.min,
@@ -407,14 +409,16 @@ class TestSpec {
           try {
             qs.add(Question.fromJson(item));
           } catch (e) {
-            debugPrint('[TestEngine] question parse error in section "$name": $e');
+            debugPrint(
+                '[TestEngine] question parse error in section "$name": $e');
           }
         }
       }
       return SectionData(name: name, questions: qs);
     }
 
-    debugPrint('[TestEngine] Unrecognised section format for "$name", skipping');
+    debugPrint(
+        '[TestEngine] Unrecognised section format for "$name", skipping');
     return null;
   }
 
@@ -422,9 +426,6 @@ class TestSpec {
   List<SectionData> sectionsForVariant(String variantKey) {
     final sectionMap = variants[variantKey] ?? {};
     // Return in parts order; missing sections are skipped
-    return parts
-        .map((p) => sectionMap[p])
-        .whereType<SectionData>()
-        .toList();
+    return parts.map((p) => sectionMap[p]).whereType<SectionData>().toList();
   }
 }

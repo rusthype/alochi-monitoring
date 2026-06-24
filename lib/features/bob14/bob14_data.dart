@@ -8,16 +8,14 @@ class Bob14Loader {
   static Map<String, dynamic>? _cache;
 
   static Future<Map<String, dynamic>> _load() async {
-    _cache ??=
-        jsonDecode(await rootBundle.loadString('assets/bob1_4.json'))
-            as Map<String, dynamic>;
+    _cache ??= jsonDecode(await rootBundle.loadString('assets/bob1_4.json'))
+        as Map<String, dynamic>;
     return _cache!;
   }
 
   static Future<List<LocalQuestion>> get(int variant) async {
     final data = await _load();
-    final raw =
-        (data['$variant'] as List).cast<Map<String, dynamic>>();
+    final raw = (data['$variant'] as List).cast<Map<String, dynamic>>();
     return raw.map(_parse).toList();
   }
 

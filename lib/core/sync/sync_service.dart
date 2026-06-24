@@ -53,8 +53,10 @@ class SyncService {
   }
 
   void dispose() {
-    _connSub?.cancel(); _connSub = null;
-    _timer?.cancel(); _timer = null;
+    _connSub?.cancel();
+    _connSub = null;
+    _timer?.cancel();
+    _timer = null;
     _started = false;
   }
 }

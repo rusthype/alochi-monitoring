@@ -69,11 +69,13 @@ class _LocalResultScreenState extends State<LocalResultScreen>
   int get _engTotal => _total - _mathTotal;
   int get _totalOk => widget.mathOk + widget.engOk;
 
-  List<MapEntry<String, ({int ok, int tot})>> get _mathTopics => widget.topicScores.entries
+  List<MapEntry<String, ({int ok, int tot})>> get _mathTopics => widget
+      .topicScores.entries
       .where((e) => widget.questions.any((q) => q.isMath && q.topic == e.key))
       .toList();
 
-  List<MapEntry<String, ({int ok, int tot})>> get _engTopics => widget.topicScores.entries
+  List<MapEntry<String, ({int ok, int tot})>> get _engTopics => widget
+      .topicScores.entries
       .where((e) => widget.questions.any((q) => !q.isMath && q.topic == e.key))
       .toList();
 
@@ -115,7 +117,8 @@ class _LocalResultScreenState extends State<LocalResultScreen>
 
   Map<String, dynamic> _buildPayload() {
     final now = DateTime.now();
-    final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final time =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     return {
       'name': '${widget.lastName} ${widget.firstName}'.trim(),
       'grade': widget.grade,
@@ -171,8 +174,8 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                   decoration: const BoxDecoration(
                       color: Colors.white, shape: BoxShape.circle),
                   child: ClipOval(
-                      child: Image.asset('assets/logo.png',
-                          fit: BoxFit.contain)),
+                      child:
+                          Image.asset('assets/logo.png', fit: BoxFit.contain)),
                 ),
                 const SizedBox(height: 8),
                 // Result emoji
@@ -269,13 +272,30 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                 child: OutlinedButton.icon(
                   onPressed: () async {
                     final pdfBytes = await PdfService.generateResultPdf(
-                      firstName: widget.firstName, lastName: widget.lastName, group: widget.group, grade: widget.grade, variant: widget.variant, mathOk: widget.mathOk, mathTotal: _mathTotal, engOk: widget.engOk, engTotal: _engTotal, pct: widget.pct, mathTopics: _mathTopics, engTopics: _engTopics,
+                      firstName: widget.firstName,
+                      lastName: widget.lastName,
+                      group: widget.group,
+                      grade: widget.grade,
+                      variant: widget.variant,
+                      mathOk: widget.mathOk,
+                      mathTotal: _mathTotal,
+                      engOk: widget.engOk,
+                      engTotal: _engTotal,
+                      pct: widget.pct,
+                      mathTopics: _mathTopics,
+                      engTopics: _engTopics,
                     );
-                    await Printing.layoutPdf(onLayout: (_) => pdfBytes, name: '${widget.lastName}_${widget.firstName}_Natija.pdf');
+                    await Printing.layoutPdf(
+                        onLayout: (_) => pdfBytes,
+                        name:
+                            '${widget.lastName}_${widget.firstName}_Natija.pdf');
                   },
                   icon: const Icon(Icons.print_rounded, size: 18),
                   label: const Text('Chop etish'),
-                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink1, side: const BorderSide(color: AppColors.border), padding: const EdgeInsets.symmetric(vertical: 14)),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.ink1,
+                      side: const BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(vertical: 14)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -283,13 +303,30 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                 child: OutlinedButton.icon(
                   onPressed: () async {
                     final pdfBytes = await PdfService.generateResultPdf(
-                      firstName: widget.firstName, lastName: widget.lastName, group: widget.group, grade: widget.grade, variant: widget.variant, mathOk: widget.mathOk, mathTotal: _mathTotal, engOk: widget.engOk, engTotal: _engTotal, pct: widget.pct, mathTopics: _mathTopics, engTopics: _engTopics,
+                      firstName: widget.firstName,
+                      lastName: widget.lastName,
+                      group: widget.group,
+                      grade: widget.grade,
+                      variant: widget.variant,
+                      mathOk: widget.mathOk,
+                      mathTotal: _mathTotal,
+                      engOk: widget.engOk,
+                      engTotal: _engTotal,
+                      pct: widget.pct,
+                      mathTopics: _mathTopics,
+                      engTopics: _engTopics,
                     );
-                    await Printing.sharePdf(bytes: pdfBytes, filename: '${widget.lastName}_${widget.firstName}_Natija.pdf');
+                    await Printing.sharePdf(
+                        bytes: pdfBytes,
+                        filename:
+                            '${widget.lastName}_${widget.firstName}_Natija.pdf');
                   },
                   icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
                   label: const Text('PDF Saqlash'),
-                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.brand, side: const BorderSide(color: AppColors.brand), padding: const EdgeInsets.symmetric(vertical: 14)),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.brand,
+                      side: const BorderSide(color: AppColors.brand),
+                      padding: const EdgeInsets.symmetric(vertical: 14)),
                 ),
               ),
             ]),
@@ -333,14 +370,19 @@ class _LocalResultScreenState extends State<LocalResultScreen>
       decoration: BoxDecoration(
         color: _sent ? const Color(0xFFF0FDF4) : AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _sent ? const Color(0xFF86EFAC) : AppColors.border),
+        border: Border.all(
+            color: _sent ? const Color(0xFF86EFAC) : AppColors.border),
       ),
       child: Row(children: [
         Icon(_sent ? Icons.check_circle_rounded : Icons.cloud_upload_rounded,
             color: _sent ? AppColors.ok : AppColors.brand, size: 20),
         const SizedBox(width: 10),
-        Expanded(child: Text(_sendStatus,
-          style: TextStyle(fontSize: 13, color: _sent ? AppColors.ok : AppColors.ink2, fontWeight: FontWeight.w600))),
+        Expanded(
+            child: Text(_sendStatus,
+                style: TextStyle(
+                    fontSize: 13,
+                    color: _sent ? AppColors.ok : AppColors.ink2,
+                    fontWeight: FontWeight.w600))),
       ]),
     );
   }

@@ -13,6 +13,9 @@ build/
 manifests/
 graphify-out/
 
+# Non-target platforms (Web + Windows only)
+linux/
+
 # Local agent/dev junk
 .agent-task-*.md
 .superpowers/

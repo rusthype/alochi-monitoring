@@ -19,8 +19,7 @@ Widget _buildQuestionImage(
   BorderRadius? borderRadius,
 }) {
   final br = borderRadius ?? BorderRadius.circular(10);
-  final isNetwork =
-      src.startsWith('http://') || src.startsWith('https://');
+  final isNetwork = src.startsWith('http://') || src.startsWith('https://');
 
   if (isNetwork) {
     return AppNetworkImage(
@@ -88,8 +87,7 @@ class EngineQNum extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
         decoration: BoxDecoration(
           color: AppColors.brandLight,
           borderRadius: BorderRadius.circular(20),
@@ -107,7 +105,7 @@ class EngineQNum extends StatelessWidget {
 
 /// Option row used by text_choice and image_choice.
 class EngineOptionRow extends StatelessWidget {
-  final String label;   // "A", "B", "C", "D"
+  final String label; // "A", "B", "C", "D"
   final String text;
   final bool selected;
   final VoidCallback onTap;
@@ -175,8 +173,7 @@ class EngineOptionRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  color:
-                      selected ? const Color(0xFF7C2D12) : AppColors.ink1,
+                  color: selected ? const Color(0xFF7C2D12) : AppColors.ink1,
                 ),
               ),
             ),
@@ -202,8 +199,7 @@ class EngineOptionRow extends StatelessWidget {
 InputDecoration _inputDecoration({String hintText = 'Javob...'}) =>
     InputDecoration(
       hintText: hintText,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: AppColors.border),
@@ -267,12 +263,14 @@ class TextChoiceWidget extends StatelessWidget {
         if (question.svg != null && question.svg!.isNotEmpty)
           _buildSvgInline(question.svg!),
         const SizedBox(height: 10),
-        ...List.generate(question.opts.length, (i) => EngineOptionRow(
-              label: String.fromCharCode(65 + i), // A, B, C…
-              text: question.opts[i],
-              selected: answer == i,
-              onTap: () => onSelect(i),
-            )),
+        ...List.generate(
+            question.opts.length,
+            (i) => EngineOptionRow(
+                  label: String.fromCharCode(65 + i), // A, B, C…
+                  text: question.opts[i],
+                  selected: answer == i,
+                  onTap: () => onSelect(i),
+                )),
       ]),
     );
   }
@@ -326,12 +324,14 @@ class ImageChoiceWidget extends StatelessWidget {
         if (question.svg != null && question.svg!.isNotEmpty)
           _buildSvgInline(question.svg!),
         const SizedBox(height: 10),
-        ...List.generate(question.opts.length, (i) => EngineOptionRow(
-              label: String.fromCharCode(65 + i),
-              text: question.opts[i],
-              selected: answer == i,
-              onTap: () => onSelect(i),
-            )),
+        ...List.generate(
+            question.opts.length,
+            (i) => EngineOptionRow(
+                  label: String.fromCharCode(65 + i),
+                  text: question.opts[i],
+                  selected: answer == i,
+                  onTap: () => onSelect(i),
+                )),
       ]),
     );
   }
@@ -467,8 +467,7 @@ class SentenceOrderWidget extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.brandLight,
             borderRadius: BorderRadius.circular(10),
-            border:
-                Border.all(color: AppColors.brand.withValues(alpha: .3)),
+            border: Border.all(color: AppColors.brand.withValues(alpha: .3)),
           ),
           child: Text(
             question.words ?? '',
@@ -484,8 +483,7 @@ class SentenceOrderWidget extends StatelessWidget {
         TextField(
           controller: controller,
           onChanged: onChanged,
-          decoration:
-              _inputDecoration(hintText: 'To\'liq jumlani yozing...'),
+          decoration: _inputDecoration(hintText: 'To\'liq jumlani yozing...'),
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ]),
@@ -753,7 +751,8 @@ class ReadingSectionWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    assert(section.isReading, 'ReadingSectionWidget requires a reading section');
+    assert(
+        section.isReading, 'ReadingSectionWidget requires a reading section');
     final reading = section.readingContainer!;
 
     return Column(

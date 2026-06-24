@@ -75,7 +75,7 @@ class AppNetworkImage extends StatelessWidget {
     if (borderRadius != null) {
       img = ClipRRect(borderRadius: borderRadius!, child: img);
     }
-    
+
     if (showZoom) {
       img = GestureDetector(
         onTap: () {
@@ -98,9 +98,12 @@ class AppNetworkImage extends StatelessWidget {
                           imageUrl: fixedUrl,
                           cacheManager: AlochiImageCacheManager(),
                           fit: BoxFit.contain,
-                          httpHeaders: const {'User-Agent': 'AlochiMonitoring/1.0'},
+                          httpHeaders: const {
+                            'User-Agent': 'AlochiMonitoring/1.0'
+                          },
                           placeholder: (c, u) => const Center(
-                            child: CircularProgressIndicator(color: Colors.white),
+                            child:
+                                CircularProgressIndicator(color: Colors.white),
                           ),
                         ),
                       ),
@@ -109,7 +112,8 @@ class AppNetworkImage extends StatelessWidget {
                       top: 20,
                       right: 20,
                       child: IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                        icon: const Icon(Icons.close,
+                            color: Colors.white, size: 32),
                         onPressed: () => Navigator.pop(ctx),
                       ),
                     ),

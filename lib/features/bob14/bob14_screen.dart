@@ -109,8 +109,7 @@ class _Bob14ScreenState extends State<Bob14Screen>
             : IconButton(
                 icon: const Icon(Icons.close_rounded, color: AppColors.ink2),
                 onPressed: () => Navigator.pop(context)),
-        title: Text(
-            _step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
+        title: Text(_step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
             style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
@@ -139,8 +138,7 @@ class _Bob14ScreenState extends State<Bob14Screen>
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // Info banner
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: const Color(0xFF10B981).withValues(alpha: .08),
               borderRadius: BorderRadius.circular(12),
@@ -148,8 +146,7 @@ class _Bob14ScreenState extends State<Bob14Screen>
                   color: const Color(0xFF10B981).withValues(alpha: .25)),
             ),
             child: const Row(children: [
-              Icon(Icons.menu_book_rounded,
-                  color: Color(0xFF10B981), size: 20),
+              Icon(Icons.menu_book_rounded, color: Color(0xFF10B981), size: 20),
               SizedBox(width: 10),
               Expanded(
                   child: Column(
@@ -188,14 +185,10 @@ class _Bob14ScreenState extends State<Bob14Screen>
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   decoration: BoxDecoration(
-                    color: sel
-                        ? const Color(0xFF10B981)
-                        : AppColors.surface,
+                    color: sel ? const Color(0xFF10B981) : AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                        color: sel
-                            ? const Color(0xFF10B981)
-                            : AppColors.border,
+                        color: sel ? const Color(0xFF10B981) : AppColors.border,
                         width: sel ? 2 : 1.5),
                     boxShadow: sel
                         ? [
@@ -280,9 +273,7 @@ class _Bob14ScreenState extends State<Bob14Screen>
                 const SizedBox(width: 12),
                 Expanded(
                     child: _Field(
-                        label: 'Familiya',
-                        ctrl: _lastCtrl,
-                        hint: 'Karimov')),
+                        label: 'Familiya', ctrl: _lastCtrl, hint: 'Karimov')),
               ]),
               const SizedBox(height: 14),
               Row(children: [
@@ -370,8 +361,7 @@ class _Bob14Header extends StatelessWidget {
       decoration: BoxDecoration(
           color: const Color(0xFF10B981).withValues(alpha: .12),
           borderRadius: BorderRadius.circular(8)),
-      child: Text(
-          variant != null ? 'V$variant' : 'Bob 1-4',
+      child: Text(variant != null ? 'V$variant' : 'Bob 1-4',
           style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -386,15 +376,15 @@ class _VariantBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-          color: const Color(0xFF10B981).withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(8)),
-      child: Text('Variant $variant',
-          style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF065F46))));
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+            color: const Color(0xFF10B981).withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(8)),
+        child: Text('Variant $variant',
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF065F46))));
   }
 }
 
@@ -443,8 +433,8 @@ class _Field extends StatelessWidget {
               borderSide: const BorderSide(color: AppColors.border)),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(
-                  color: Color(0xFF10B981), width: 1.5)),
+              borderSide:
+                  const BorderSide(color: Color(0xFF10B981), width: 1.5)),
         ),
       ),
       const SizedBox(height: 14),

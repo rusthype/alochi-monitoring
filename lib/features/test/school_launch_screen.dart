@@ -422,15 +422,13 @@ class _SField extends StatelessWidget {
         readOnly: readOnly,
         obscureText: obscure,
         style: TextStyle(
-            fontSize: 14,
-            color: readOnly ? AppColors.ink2 : AppColors.ink1),
+            fontSize: 14, color: readOnly ? AppColors.ink2 : AppColors.ink1),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(color: AppColors.ink3.withValues(alpha: .6)),
           filled: true,
-          fillColor: readOnly
-              ? AppColors.muted.withValues(alpha: .5)
-              : AppColors.bg,
+          fillColor:
+              readOnly ? AppColors.muted.withValues(alpha: .5) : AppColors.bg,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           border: OutlineInputBorder(

@@ -255,8 +255,8 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
               height: 4,
               decoration: BoxDecoration(
                 color: progress >= 1.0 ? AppColors.ok : AppColors.brand,
-                borderRadius: const BorderRadius.horizontal(
-                    right: Radius.circular(3)),
+                borderRadius:
+                    const BorderRadius.horizontal(right: Radius.circular(3)),
               ),
             ),
           ]),
@@ -290,8 +290,7 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                     Row(children: [
                       const _Pill('Interhouse G2', Color(0xFF7C3AED)),
                       const SizedBox(width: 6),
-                      _Pill(
-                          'Variant ${widget.variant}', AppColors.brand),
+                      _Pill('Variant ${widget.variant}', AppColors.brand),
                     ]),
                   ]),
             ),
@@ -305,15 +304,13 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink1)),
                 const Text('javoblandi',
-                    style:
-                        TextStyle(fontSize: 9, color: AppColors.ink3)),
+                    style: TextStyle(fontSize: 9, color: AppColors.ink3)),
               ]),
             ),
             // Timer
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: _timerHot
                     ? const Color(0xFFFEF2F2)
@@ -366,9 +363,8 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
-                          color: isActive
-                              ? AppColors.brand
-                              : Colors.transparent,
+                          color:
+                              isActive ? AppColors.brand : Colors.transparent,
                           width: 2.5,
                         ),
                       ),
@@ -377,12 +373,10 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                       Text(_sectionNames[i],
                           style: TextStyle(
                               fontSize: 13,
-                              fontWeight: isActive
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
-                              color: isActive
-                                  ? AppColors.brand
-                                  : AppColors.ink2)),
+                              fontWeight:
+                                  isActive ? FontWeight.w800 : FontWeight.w500,
+                              color:
+                                  isActive ? AppColors.brand : AppColors.ink2)),
                       const SizedBox(width: 6),
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
@@ -449,8 +443,8 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                       : () => _goSection(_sectionIdx - 1),
                   icon: const Icon(Icons.arrow_back_rounded, size: 15),
                   label: const Text('Oldingi',
-                      style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700)),
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.ink2,
                     side: const BorderSide(color: AppColors.border),
@@ -614,9 +608,7 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                 const SizedBox(height: 8),
                 Text(reading.text,
                     style: const TextStyle(
-                        fontSize: 14,
-                        height: 1.6,
-                        color: AppColors.ink2)),
+                        fontSize: 14, height: 1.6, color: AppColors.ink2)),
               ],
             ),
           ),
@@ -698,8 +690,7 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(
             color: color.withValues(alpha: .1),
             borderRadius: BorderRadius.circular(20)),
@@ -717,8 +708,7 @@ class _QNum extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
         decoration: BoxDecoration(
           color: AppColors.brandLight,
           borderRadius: BorderRadius.circular(20),
@@ -752,11 +742,9 @@ class _IhOptionRow extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           margin: const EdgeInsets.only(bottom: 8),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color:
-                selected ? const Color(0xFFFFF7ED) : AppColors.surface,
+            color: selected ? const Color(0xFFFFF7ED) : AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected ? AppColors.brand : AppColors.border,
@@ -780,9 +768,7 @@ class _IhOptionRow extends StatelessWidget {
                 color: selected ? AppColors.brand : const Color(0xFFF4F4F5),
                 borderRadius: BorderRadius.circular(9),
                 border: Border.all(
-                  color: selected
-                      ? AppColors.brand
-                      : const Color(0xFFD4D4D8),
+                  color: selected ? AppColors.brand : const Color(0xFFD4D4D8),
                   width: 1.5,
                 ),
               ),
@@ -1000,8 +986,7 @@ class _WordQuestion extends StatelessWidget {
                 borderSide: const BorderSide(color: AppColors.border)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: AppColors.brand, width: 2)),
+                borderSide: const BorderSide(color: AppColors.brand, width: 2)),
             filled: true,
             fillColor: AppColors.bg,
           ),
@@ -1085,8 +1070,7 @@ class _YnButton extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: selected ? color : color.withValues(alpha: .08),
             borderRadius: BorderRadius.circular(8),
@@ -1176,8 +1160,7 @@ class _FillQuestionState extends State<_FillQuestion> {
                 borderSide: const BorderSide(color: AppColors.border)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: AppColors.brand, width: 2)),
+                borderSide: const BorderSide(color: AppColors.brand, width: 2)),
             filled: true,
             fillColor: AppColors.bg,
           ),
@@ -1230,8 +1213,7 @@ class _SentenceQuestion extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.brandLight,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-                color: AppColors.brand.withValues(alpha: .3)),
+            border: Border.all(color: AppColors.brand.withValues(alpha: .3)),
           ),
           child: Text(question.words ?? '',
               textAlign: TextAlign.center,
@@ -1256,8 +1238,7 @@ class _SentenceQuestion extends StatelessWidget {
                 borderSide: const BorderSide(color: AppColors.border)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: AppColors.brand, width: 2)),
+                borderSide: const BorderSide(color: AppColors.brand, width: 2)),
             filled: true,
             fillColor: AppColors.bg,
           ),

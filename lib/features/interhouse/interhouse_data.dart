@@ -69,9 +69,8 @@ class IhQuestion {
         q: j['q'] as String?,
         scramble: j['scramble'] as String?,
         words: j['words'] as String?,
-        opts: j['opts'] != null
-            ? List<String>.from(j['opts'] as List)
-            : const [],
+        opts:
+            j['opts'] != null ? List<String>.from(j['opts'] as List) : const [],
         ans: j['ans'],
       );
 }
@@ -128,8 +127,7 @@ class IhVariant {
         spelling: (j['spelling'] as List)
             .map((q) => IhQuestion.fromJson(q as Map<String, dynamic>))
             .toList(),
-        reading:
-            IhReading.fromJson(j['reading'] as Map<String, dynamic>),
+        reading: IhReading.fromJson(j['reading'] as Map<String, dynamic>),
         sentences: (j['sentences'] as List)
             .map((q) => IhQuestion.fromJson(q as Map<String, dynamic>))
             .toList(),
@@ -158,8 +156,8 @@ class IhTestData {
     return IhTestData(
       testKey: j['test_key'] as String,
       parts: List<String>.from(j['parts'] as List),
-      shieldsThresholds: List<int>.from(
-          (scoring['shields_thresholds'] as List).map((e) => (e as num).toInt())),
+      shieldsThresholds: List<int>.from((scoring['shields_thresholds'] as List)
+          .map((e) => (e as num).toInt())),
       levels: (scoring['levels'] as List)
           .map((l) => IhLevel.fromJson(l as Map<String, dynamic>))
           .toList(),

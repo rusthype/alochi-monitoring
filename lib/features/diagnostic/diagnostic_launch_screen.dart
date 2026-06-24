@@ -252,9 +252,7 @@ class _DiagnosticLaunchScreenState extends State<DiagnosticLaunchScreen> {
                               style: TextStyle(
                                   fontWeight: FontWeight.w800,
                                   fontSize: 16,
-                                  color: sel
-                                      ? Colors.white
-                                      : AppColors.ink2))),
+                                  color: sel ? Colors.white : AppColors.ink2))),
                     ),
                   );
                 }),
@@ -419,8 +417,8 @@ class _SubjectPill extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-            fontSize: 11, fontWeight: FontWeight.w700, color: color),
+        style:
+            TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }
@@ -471,8 +469,7 @@ class _Field extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  const BorderSide(color: _kBrand, width: 2),
+              borderSide: const BorderSide(color: _kBrand, width: 2),
             ),
           ),
         ),

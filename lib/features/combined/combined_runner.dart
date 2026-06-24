@@ -312,8 +312,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
     int grammarOk = 0;
     for (int i = 0; i < eng.grammar.length; i++) {
       final selectedIdx = i < _grammarAns.length ? _grammarAns[i] : null;
-      final bool ok =
-          selectedIdx != null && selectedIdx == eng.grammar[i].ans;
+      final bool ok = selectedIdx != null && selectedIdx == eng.grammar[i].ans;
       if (ok) grammarOk++;
       answers.add({
         'section': 'Grammar',
@@ -333,10 +332,9 @@ class _CombinedRunnerState extends State<CombinedRunner>
 
     int spellingOk = 0;
     for (int i = 0; i < eng.spelling.length; i++) {
-      final typed =
-          i < _spellingAns.length ? _spellingAns[i].trim() : '';
-      final bool ok = typed.toLowerCase() ==
-          eng.spelling[i].ans.trim().toLowerCase();
+      final typed = i < _spellingAns.length ? _spellingAns[i].trim() : '';
+      final bool ok =
+          typed.toLowerCase() == eng.spelling[i].ans.trim().toLowerCase();
       if (ok) spellingOk++;
       answers.add({
         'section': 'Spelling',
@@ -349,8 +347,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
 
     int sentenceOk = 0;
     for (int i = 0; i < eng.sentences.length; i++) {
-      final typed =
-          i < _sentenceAns.length ? _sentenceAns[i].trim() : '';
+      final typed = i < _sentenceAns.length ? _sentenceAns[i].trim() : '';
       String userAns = typed.toLowerCase();
       if (userAns.endsWith('.')) {
         userAns = userAns.substring(0, userAns.length - 1).trim();
@@ -383,8 +380,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
         correct = (q.ans as String).toUpperCase();
         chosen = (ans is String) ? ans.trim().toUpperCase() : '';
         ok = ans is String &&
-            ans.trim().toLowerCase() ==
-                (q.ans as String).trim().toLowerCase();
+            ans.trim().toLowerCase() == (q.ans as String).trim().toLowerCase();
         if (ok) readingOk++;
       } else if (q.type == 'mc') {
         final correctIdx = q.ans as int;
@@ -392,9 +388,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
         correct = (correctIdx >= 0 && correctIdx < opts.length)
             ? opts[correctIdx]
             : '';
-        chosen = (ans is int && ans >= 0 && ans < opts.length)
-            ? opts[ans]
-            : '';
+        chosen = (ans is int && ans >= 0 && ans < opts.length) ? opts[ans] : '';
         ok = ans is int && ans == correctIdx;
         if (ok) readingOk++;
       } else {
@@ -402,8 +396,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
         correct = (q.ans as String);
         chosen = (ans is String) ? ans.trim() : '';
         ok = ans is String &&
-            ans.trim().toLowerCase() ==
-                (q.ans as String).trim().toLowerCase();
+            ans.trim().toLowerCase() == (q.ans as String).trim().toLowerCase();
         if (ok) readingOk++;
       }
       answers.add({
@@ -524,10 +517,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
             Image.asset('assets/logo.png',
                 width: 30,
                 height: 30,
-                errorBuilder: (_, __, ___) => const Icon(
-                    Icons.school_outlined,
-                    size: 30,
-                    color: _kPurple)),
+                errorBuilder: (_, __, ___) => const Icon(Icons.school_outlined,
+                    size: 30, color: _kPurple)),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -562,16 +553,11 @@ class _CombinedRunnerState extends State<CombinedRunner>
             // Timer
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _timerHot
-                    ? const Color(0xFFFEF2F2)
-                    : _kPurpleMuted,
+                color: _timerHot ? const Color(0xFFFEF2F2) : _kPurpleMuted,
                 border: Border.all(
-                  color: _timerHot
-                      ? const Color(0xFFFCA5A5)
-                      : _kPurpleBorder,
+                  color: _timerHot ? const Color(0xFFFCA5A5) : _kPurpleBorder,
                   width: 1.5,
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -581,16 +567,12 @@ class _CombinedRunnerState extends State<CombinedRunner>
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: _timerHot
-                            ? const Color(0xFFDC2626)
-                            : _kPurple)),
+                        color: _timerHot ? const Color(0xFFDC2626) : _kPurple)),
                 Text('qoldi',
                     style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
-                        color: _timerHot
-                            ? const Color(0xFFDC2626)
-                            : _kPurple)),
+                        color: _timerHot ? const Color(0xFFDC2626) : _kPurple)),
               ]),
             ),
           ]),
@@ -628,9 +610,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
                       Text(_kSectionNames[i],
                           style: TextStyle(
                               fontSize: 13,
-                              fontWeight: isActive
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
+                              fontWeight:
+                                  isActive ? FontWeight.w800 : FontWeight.w500,
                               color: isActive ? tabColor : AppColors.ink2)),
                       const SizedBox(width: 6),
                       AnimatedContainer(
@@ -679,8 +660,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            border:
-                const Border(top: BorderSide(color: AppColors.border)),
+            border: const Border(top: BorderSide(color: AppColors.border)),
             boxShadow: [
               BoxShadow(
                   color: Colors.black.withValues(alpha: .04),
@@ -701,8 +681,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
                       : () => _goSection(_sectionIdx - 1),
                   icon: const Icon(Icons.arrow_back_rounded, size: 15),
                   label: const Text('Oldingi',
-                      style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700)),
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.ink2,
                     side: const BorderSide(color: AppColors.border),
@@ -722,8 +702,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
                       icon: const Icon(Icons.check_rounded, size: 15),
                       label: const Text('Tugatish',
                           style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700)),
+                              fontSize: 13, fontWeight: FontWeight.w700)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.ok,
                         foregroundColor: Colors.white,
@@ -736,11 +715,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
                       onPressed: () => _goSection(_sectionIdx + 1),
                       icon: const Text('Keyingi',
                           style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700)),
-                      label: const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 15),
+                              fontSize: 13, fontWeight: FontWeight.w700)),
+                      label: const Icon(Icons.arrow_forward_rounded, size: 15),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _kPurple,
                         foregroundColor: Colors.white,
@@ -869,8 +845,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
             index: i,
             scramble: q.scramble,
             controller: _spellingCtrl[i],
-            onChanged: (v) =>
-                setState(() => _spellingAns[i] = v.toLowerCase()),
+            onChanged: (v) => setState(() => _spellingAns[i] = v.toLowerCase()),
           );
         }),
       ),
@@ -954,9 +929,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
                 if (reading.text.isNotEmpty)
                   Text(reading.text,
                       style: const TextStyle(
-                          fontSize: 14,
-                          height: 1.6,
-                          color: AppColors.ink2)),
+                          fontSize: 14, height: 1.6, color: AppColors.ink2)),
               ],
             ),
           ),
@@ -983,19 +956,16 @@ class _CombinedRunnerState extends State<CombinedRunner>
                   questionText: q.q,
                   opts: opts,
                   selected: _readingAns[i] as int?,
-                  onSelect: (idx) =>
-                      setState(() => _readingAns[i] = idx),
+                  onSelect: (idx) => setState(() => _readingAns[i] = idx),
                 );
               } else {
                 // fill
                 return _CFillQuestion(
                   index: i,
                   questionText: q.q,
-                  initialValue: _readingAns[i] is String
-                      ? _readingAns[i] as String
-                      : '',
-                  onChanged: (v) =>
-                      setState(() => _readingAns[i] = v),
+                  initialValue:
+                      _readingAns[i] is String ? _readingAns[i] as String : '',
+                  onChanged: (v) => setState(() => _readingAns[i] = v),
                 );
               }
             }),
@@ -1126,8 +1096,7 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 540),
             child: SingleChildScrollView(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -1160,8 +1129,7 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                           color: AppColors.ink1)),
                   const SizedBox(height: 4),
                   const Text('Monitoring Test Unit 1',
-                      style: TextStyle(
-                          fontSize: 13, color: AppColors.ink2)),
+                      style: TextStyle(fontSize: 13, color: AppColors.ink2)),
                   const SizedBox(height: 24),
 
                   // Score card
@@ -1332,8 +1300,7 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                         style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.ink1,
                             side: const BorderSide(color: AppColors.border),
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 14)),
+                            padding: const EdgeInsets.symmetric(vertical: 14)),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1359,13 +1326,13 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                               filename:
                                   '${widget.lastName}_${widget.firstName}_Natija.pdf');
                         },
-                        icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                        icon:
+                            const Icon(Icons.picture_as_pdf_rounded, size: 18),
                         label: const Text('PDF Saqlash'),
                         style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.brand,
                             side: const BorderSide(color: AppColors.brand),
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 14)),
+                            padding: const EdgeInsets.symmetric(vertical: 14)),
                       ),
                     ),
                   ]),
@@ -1377,13 +1344,12 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                     width: double.infinity,
                     height: 52,
                     child: OutlinedButton.icon(
-                      onPressed: () => Navigator.of(context)
-                          .popUntil((r) => r.isFirst),
+                      onPressed: () =>
+                          Navigator.of(context).popUntil((r) => r.isFirst),
                       icon: const Icon(Icons.home_outlined, size: 18),
                       label: const Text('Qaytish',
                           style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700)),
+                              fontSize: 15, fontWeight: FontWeight.w700)),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.ink1,
                         side: const BorderSide(
@@ -1453,9 +1419,7 @@ class _CQNum extends StatelessWidget {
         ),
         child: Text('${index + 1}',
             style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: _kBlue)),
+                fontSize: 12, fontWeight: FontWeight.w800, color: _kBlue)),
       );
 }
 
@@ -1472,9 +1436,7 @@ class _CMathQNum extends StatelessWidget {
         ),
         child: Text('${index + 1}',
             style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: _kGreen)),
+                fontSize: 12, fontWeight: FontWeight.w800, color: _kGreen)),
       );
 }
 
@@ -1522,9 +1484,7 @@ class _CBreakdownRow extends StatelessWidget {
           child: Text('$correct/$total',
               textAlign: TextAlign.right,
               style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: color)),
+                  fontSize: 13, fontWeight: FontWeight.w800, color: color)),
         ),
       ]),
     );
@@ -1607,8 +1567,8 @@ class _CMathOptionRow extends StatelessWidget {
                 width: 20,
                 height: 20,
                 margin: const EdgeInsets.only(left: 8),
-                decoration: const BoxDecoration(
-                    color: _kGreen, shape: BoxShape.circle),
+                decoration:
+                    const BoxDecoration(color: _kGreen, shape: BoxShape.circle),
                 child: const Icon(Icons.check_rounded,
                     size: 12, color: Colors.white),
               ),
@@ -1746,8 +1706,8 @@ class _COptionRow extends StatelessWidget {
                 width: 20,
                 height: 20,
                 margin: const EdgeInsets.only(left: 8),
-                decoration: const BoxDecoration(
-                    color: _kBlue, shape: BoxShape.circle),
+                decoration:
+                    const BoxDecoration(color: _kBlue, shape: BoxShape.circle),
                 child: const Icon(Icons.check_rounded,
                     size: 12, color: Colors.white),
               ),
@@ -1996,9 +1956,7 @@ class _CSentenceQuestion extends StatelessWidget {
           child: Text(words,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: _kBlue)),
+                  fontSize: 16, fontWeight: FontWeight.w700, color: _kBlue)),
         ),
         const SizedBox(height: 10),
         TextField(

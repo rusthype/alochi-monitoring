@@ -185,7 +185,8 @@ class _ResultScreenState extends State<ResultScreen>
             curve: Curves.elasticOut,
             builder: (_, v, __) => Transform.scale(
               scale: v,
-              child: const Icon(Icons.emoji_events_rounded, size: 80, color: Colors.amber),
+              child: const Icon(Icons.emoji_events_rounded,
+                  size: 80, color: Colors.amber),
             ),
           ),
           const SizedBox(height: 16),
@@ -345,8 +346,8 @@ class _ResultScreenState extends State<ResultScreen>
                     ],
                   ),
                   child: ClipOval(
-                      child: Image.asset('assets/logo.png',
-                          fit: BoxFit.contain)),
+                      child:
+                          Image.asset('assets/logo.png', fit: BoxFit.contain)),
                 ),
                 const SizedBox(height: 16),
                 // ── Score ring ──────────────────────────────────
@@ -458,7 +459,8 @@ class _ResultScreenState extends State<ResultScreen>
                         size: 18, color: AppColors.ink2),
                     const SizedBox(width: 8),
                     Text('Jami ball',
-                        style: AppTextStyles.labelLarge.copyWith(color: AppColors.ink2)),
+                        style: AppTextStyles.labelLarge
+                            .copyWith(color: AppColors.ink2)),
                     const Spacer(),
                     Text(
                         '${widget.result.mathScore + widget.result.engScore} / ${widget.package.totalCount}',

@@ -38,8 +38,15 @@ class IhResult {
 
 class IhScorer {
   /// Converts a part score (0–6) → shields (1–5). MINIMUM 1 even at 0.
-  static int shields(int s) =>
-      s >= 6 ? 5 : s >= 5 ? 4 : s >= 4 ? 3 : s >= 3 ? 2 : 1;
+  static int shields(int s) => s >= 6
+      ? 5
+      : s >= 5
+          ? 4
+          : s >= 4
+              ? 3
+              : s >= 3
+                  ? 2
+                  : 1;
 
   /// Scores all 5 parts.
   ///
@@ -75,10 +82,8 @@ class IhScorer {
     // ── Spelling ────────────────────────────────────────────────────
     int cntSp = 0;
     for (int i = 0; i < variant.spelling.length; i++) {
-      final typed =
-          i < spAns.length ? spAns[i].trim().toLowerCase() : '';
-      final expected =
-          (variant.spelling[i].ans as String).toLowerCase();
+      final typed = i < spAns.length ? spAns[i].trim().toLowerCase() : '';
+      final expected = (variant.spelling[i].ans as String).toLowerCase();
       if (typed == expected) cntSp++;
     }
 
@@ -115,7 +120,13 @@ class IhScorer {
 
     // ── Assemble ────────────────────────────────────────────────────
     final partScores = [cntV, cntG, cntSp, cntR, cntSen];
-    final partNames = ['Vocabulary', 'Grammar', 'Spelling', 'Reading', 'Writing'];
+    final partNames = [
+      'Vocabulary',
+      'Grammar',
+      'Spelling',
+      'Reading',
+      'Writing'
+    ];
     final partShields = partScores.map(shields).toList();
     final total = partScores.fold(0, (a, b) => a + b);
     final totalShields = partShields.fold(0, (a, b) => a + b);

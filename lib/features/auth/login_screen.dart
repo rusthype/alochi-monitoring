@@ -258,8 +258,7 @@ class _LoginScreenState extends State<LoginScreen> {
   ) async {
     final mathData =
         await BundledCatalogService.loadTestData(mathEntry.testKey);
-    final engData =
-        await BundledCatalogService.loadTestData(engEntry.testKey);
+    final engData = await BundledCatalogService.loadTestData(engEntry.testKey);
     if (!mounted) return;
     if (mathData == null || engData == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -715,7 +714,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final isExpanded = _expandedSchoolCode == group.schoolCode;
     final downloadedBytes = _schoolDownloadedBytes[group.schoolCode] ?? 0;
     final doneTests = _schoolDoneTests[group.schoolCode] ?? 0;
-    final totalTests = _schoolTotalTests[group.schoolCode] ?? group.entries.length;
+    final totalTests =
+        _schoolTotalTests[group.schoolCode] ?? group.entries.length;
 
     final allCached = group.entries.every((e) =>
         e.status == CatalogStatus.cached ||
@@ -811,8 +811,7 @@ class _LoginScreenState extends State<LoginScreen> {
               else if (allCached)
                 GestureDetector(
                   onTap: () => setState(() {
-                    _expandedSchoolCode =
-                        isExpanded ? null : group.schoolCode;
+                    _expandedSchoolCode = isExpanded ? null : group.schoolCode;
                     if (isExpanded) _selectedGrade.remove(group.schoolCode);
                   }),
                   child: Container(
@@ -841,8 +840,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 )
               else
                 GestureDetector(
-                  onTap: () =>
-                      _downloadSchool(group.schoolCode, group.entries),
+                  onTap: () => _downloadSchool(group.schoolCode, group.entries),
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -872,10 +870,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// Maktab kengaytirilganda: sinf picker → test ro'yxati oqimi.
   Widget _buildSchoolExpandedContent(_SchoolGroup group) {
-    final allGrades = group.entries
-        .expand((e) => e.grades)
-        .toSet()
-        .toList()
+    final allGrades = group.entries.expand((e) => e.grades).toSet().toList()
       ..sort();
 
     final selected = _selectedGrade[group.schoolCode];
@@ -885,8 +880,8 @@ class _LoginScreenState extends State<LoginScreen> {
       final filtered = selected == null
           ? group.entries
           : group.entries.where((e) => e.grades.contains(selected)).toList();
-      return _buildSchoolTestList(group, entries: filtered,
-          showBack: selected != null);
+      return _buildSchoolTestList(group,
+          entries: filtered, showBack: selected != null);
     }
 
     return _buildGradeSelector(group, allGrades);
@@ -947,23 +942,18 @@ class _LoginScreenState extends State<LoginScreen> {
     final testEntries = entries ?? group.entries;
 
     // Detect math+english pair for diagnostik combined card.
-    final mathEntry = testEntries
-        .where((e) => e.testKey.startsWith('math_diag'))
-        .firstOrNull;
-    final engEntry = testEntries
-        .where((e) => e.testKey.startsWith('eng_unit'))
-        .firstOrNull;
+    final mathEntry =
+        testEntries.where((e) => e.testKey.startsWith('math_diag')).firstOrNull;
+    final engEntry =
+        testEntries.where((e) => e.testKey.startsWith('eng_unit')).firstOrNull;
     final hasPair = mathEntry != null && engEntry != null;
 
     // Entries not part of the pair (shown individually).
     final individualEntries = hasPair
-        ? testEntries
-            .where((e) => e != mathEntry && e != engEntry)
-            .toList()
+        ? testEntries.where((e) => e != mathEntry && e != engEntry).toList()
         : testEntries;
 
-    SchoolButton _btn(CatalogEntry entry) =>
-        entry.schoolButtons.firstWhere(
+    SchoolButton _btn(CatalogEntry entry) => entry.schoolButtons.firstWhere(
           (b) => b.schoolCode == group.schoolCode,
           orElse: () => SchoolButton(
             label: group.label,
@@ -1004,8 +994,8 @@ class _LoginScreenState extends State<LoginScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
@@ -1037,12 +1027,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 3),
                         Row(children: [
                           _SubjectTag(
-                              label: 'Matematika',
-                              color: AppColors.math),
+                              label: 'Matematika', color: AppColors.math),
                           const SizedBox(width: 5),
                           _SubjectTag(
-                              label: 'Ingliz tili',
-                              color: AppColors.eng),
+                              label: 'Ingliz tili', color: AppColors.eng),
                         ]),
                       ],
                     ),
@@ -1064,8 +1052,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Text(
                           'Boshlash',
                           style: AppTextStyles.caption.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700),
+                              color: Colors.white, fontWeight: FontWeight.w700),
                         ),
                       ]),
                     ),
@@ -1113,8 +1100,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Text(
                           'Boshlash',
                           style: AppTextStyles.caption.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700),
+                              color: Colors.white, fontWeight: FontWeight.w700),
                         ),
                       ]),
                     ),
@@ -1140,8 +1126,8 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       child: Text(
         label,
-        style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w600, color: color),
+        style:
+            TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }
@@ -1538,4 +1524,3 @@ class _SchoolGroup {
     required this.entries,
   });
 }
-

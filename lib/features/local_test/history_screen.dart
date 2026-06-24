@@ -35,10 +35,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
       builder: (c) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text('Tozalash', style: TextStyle(color: AppColors.ink1)),
-        content: const Text("Barcha natijalar tarixi o'chirib yuborilsinmi?", style: TextStyle(color: AppColors.ink2)),
+        content: const Text("Barcha natijalar tarixi o'chirib yuborilsinmi?",
+            style: TextStyle(color: AppColors.ink2)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text("Yo'q", style: TextStyle(color: AppColors.ink3))),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text("Ha, o'chirish", style: TextStyle(color: AppColors.err))),
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child:
+                  const Text("Yo'q", style: TextStyle(color: AppColors.ink3))),
+          TextButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text("Ha, o'chirish",
+                  style: TextStyle(color: AppColors.err))),
         ],
       ),
     );
@@ -56,7 +63,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 1,
-        title: const Text('Oflayn Natijalar Tarixi', style: TextStyle(color: AppColors.ink1, fontSize: 16, fontWeight: FontWeight.bold)),
+        title: const Text('Oflayn Natijalar Tarixi',
+            style: TextStyle(
+                color: AppColors.ink1,
+                fontSize: 16,
+                fontWeight: FontWeight.bold)),
         iconTheme: const IconThemeData(color: AppColors.ink1),
         actions: [
           if (_records.isNotEmpty)
@@ -68,15 +79,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.brand))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.brand))
           : _records.isEmpty
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.history_toggle_off_rounded, size: 64, color: AppColors.ink3.withValues(alpha: .5)),
+                      Icon(Icons.history_toggle_off_rounded,
+                          size: 64,
+                          color: AppColors.ink3.withValues(alpha: .5)),
                       const SizedBox(height: 16),
-                      const Text("Hozircha tarix yo'q", style: TextStyle(color: AppColors.ink2, fontSize: 16)),
+                      const Text("Hozircha tarix yo'q",
+                          style:
+                              TextStyle(color: AppColors.ink2, fontSize: 16)),
                     ],
                   ),
                 )
@@ -86,7 +102,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (ctx, i) {
                     final r = _records[i];
-                    final date = DateTime.fromMillisecondsSinceEpoch(r['date_taken'] as int);
+                    final date = DateTime.fromMillisecondsSinceEpoch(
+                        r['date_taken'] as int);
                     final dateStr = DateFormat('dd.MM.yyyy HH:mm').format(date);
                     final pct = r['total_pct'] as double;
                     final isPass = pct >= 60.0;
@@ -104,7 +121,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             width: 50,
                             height: 50,
                             decoration: BoxDecoration(
-                              color: isPass ? AppColors.ok.withValues(alpha: .1) : AppColors.err.withValues(alpha: .1),
+                              color: isPass
+                                  ? AppColors.ok.withValues(alpha: .1)
+                                  : AppColors.err.withValues(alpha: .1),
                               shape: BoxShape.circle,
                             ),
                             child: Center(
@@ -123,19 +142,36 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('${r['first_name']} ${r['last_name']}', style: const TextStyle(color: AppColors.ink1, fontSize: 15, fontWeight: FontWeight.bold)),
+                                Text('${r['first_name']} ${r['last_name']}',
+                                    style: const TextStyle(
+                                        color: AppColors.ink1,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
-                                Text('Maktab: ${r['school']} | Sinf/Guruh: ${r['grade_group']}', style: const TextStyle(color: AppColors.ink2, fontSize: 12)),
+                                Text(
+                                    'Maktab: ${r['school']} | Sinf/Guruh: ${r['grade_group']}',
+                                    style: const TextStyle(
+                                        color: AppColors.ink2, fontSize: 12)),
                                 const SizedBox(height: 2),
-                                Text('Sana: $dateStr', style: const TextStyle(color: AppColors.ink3, fontSize: 11)),
+                                Text('Sana: $dateStr',
+                                    style: const TextStyle(
+                                        color: AppColors.ink3, fontSize: 11)),
                               ],
                             ),
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text('Mat: ${r['math_score']}', style: const TextStyle(color: AppColors.brand, fontSize: 12, fontWeight: FontWeight.w600)),
-                              Text('Ing: ${r['eng_score']}', style: const TextStyle(color: AppColors.ok, fontSize: 12, fontWeight: FontWeight.w600)),
+                              Text('Mat: ${r['math_score']}',
+                                  style: const TextStyle(
+                                      color: AppColors.brand,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600)),
+                              Text('Ing: ${r['eng_score']}',
+                                  style: const TextStyle(
+                                      color: AppColors.ok,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ],

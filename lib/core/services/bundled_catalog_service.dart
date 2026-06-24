@@ -84,7 +84,9 @@ class BundledCatalogService {
     if (node is Map) {
       final out = <String, dynamic>{};
       for (final e in node.entries) {
-        if (e.key == 'img' && e.value is String && (e.value as String).isNotEmpty) {
+        if (e.key == 'img' &&
+            e.value is String &&
+            (e.value as String).isNotEmpty) {
           final src = e.value as String;
           out[e.key] = src.startsWith('http') ? src : '$_kImgDir$src';
         } else {

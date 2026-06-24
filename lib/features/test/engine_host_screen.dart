@@ -87,9 +87,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   }
 
   String get _testKey =>
-      _spec?.testKey ??
-      widget.testData['test_key']?.toString() ??
-      '';
+      _spec?.testKey ?? widget.testData['test_key']?.toString() ?? '';
 
   void _ping(String status) {
     api.pingSession(

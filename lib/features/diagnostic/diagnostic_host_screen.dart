@@ -41,8 +41,7 @@ class DiagnosticHostScreen extends StatefulWidget {
   });
 
   @override
-  State<DiagnosticHostScreen> createState() =>
-      _DiagnosticHostScreenState();
+  State<DiagnosticHostScreen> createState() => _DiagnosticHostScreenState();
 }
 
 class _DiagnosticHostScreenState extends State<DiagnosticHostScreen> {
@@ -73,14 +72,12 @@ class _DiagnosticHostScreenState extends State<DiagnosticHostScreen> {
   void _parseSpecs() {
     try {
       final mathBlob = (widget.mathTestData['test_data'] is Map)
-          ? Map<String, dynamic>.from(
-              widget.mathTestData['test_data'] as Map)
+          ? Map<String, dynamic>.from(widget.mathTestData['test_data'] as Map)
           : widget.mathTestData;
       _mathSpec = TestSpec.fromJson(mathBlob);
 
       final engBlob = (widget.engTestData['test_data'] is Map)
-          ? Map<String, dynamic>.from(
-              widget.engTestData['test_data'] as Map)
+          ? Map<String, dynamic>.from(widget.engTestData['test_data'] as Map)
           : widget.engTestData;
       _engSpec = TestSpec.fromJson(engBlob);
     } catch (e) {
@@ -89,10 +86,8 @@ class _DiagnosticHostScreenState extends State<DiagnosticHostScreen> {
   }
 
   Duration _duration(TestSpec spec) {
-    final sections =
-        spec.sectionsForVariant(widget.variant.toString());
-    final totalQs =
-        sections.fold(0, (sum, s) => sum + s.questionCount);
+    final sections = spec.sectionsForVariant(widget.variant.toString());
+    final totalQs = sections.fold(0, (sum, s) => sum + s.questionCount);
     final secs = (totalQs * 60).clamp(60, 90 * 60);
     return Duration(seconds: secs);
   }
@@ -111,9 +106,9 @@ class _DiagnosticHostScreenState extends State<DiagnosticHostScreen> {
   void _startHeartbeat() {
     final key = _mathSpec?.testKey ?? 'diag_combined_${widget.grade}';
     _ping('active', key);
-    _heartbeatTimer =
-        Timer.periodic(const Duration(seconds: 30), (_) {
-      _ping('active',
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _ping(
+          'active',
           _phase == _DiagPhase.math
               ? (_mathSpec?.testKey ?? '')
               : (_engSpec?.testKey ?? ''));
@@ -139,8 +134,7 @@ class _DiagnosticHostScreenState extends State<DiagnosticHostScreen> {
     final engCor = engResult.totalCorrect;
     final engTot = engResult.totalQuestions;
     final totalTot = mathTot + engTot;
-    final totalPct =
-        totalTot > 0 ? (mathCor + engCor) * 100.0 / totalTot : 0.0;
+    final totalPct = totalTot > 0 ? (mathCor + engCor) * 100.0 / totalTot : 0.0;
 
     final testKey = 'diag_combined_${widget.grade}';
 
@@ -298,8 +292,8 @@ class _DiagnosticHostScreenState extends State<DiagnosticHostScreen> {
               const SizedBox(height: 16),
               Text(message,
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.bodyLarge
-                      .copyWith(color: AppColors.ink2)),
+                  style:
+                      AppTextStyles.bodyLarge.copyWith(color: AppColors.ink2)),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),
@@ -364,13 +358,13 @@ class _TransitionScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 decoration: BoxDecoration(
                   color: AppColors.eng.withValues(alpha: .08),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: AppColors.eng.withValues(alpha: .3)),
+                  border:
+                      Border.all(color: AppColors.eng.withValues(alpha: .3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -393,8 +387,7 @@ class _TransitionScreen extends StatelessWidget {
                           'Tayyorlaning...',
                           style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.eng
-                                  .withValues(alpha: .7)),
+                              color: AppColors.eng.withValues(alpha: .7)),
                         ),
                       ],
                     ),
