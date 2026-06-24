@@ -238,6 +238,11 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       await OfflineQueue.enqueueLocal(payload, token);
     } catch (e) {
       debugPrint('EngineHostScreen: enqueueLocal error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Natija saqlanmadi')),
+        );
+      }
     }
 
     // 3. Attempt an immediate flush (fire-and-forget — don't block navigation).

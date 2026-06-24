@@ -14,12 +14,17 @@ class OfflineQueue {
 
   static Future<Database> get db async {
     if (_db != null) return _db!;
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
+    final String path;
+    if (kIsWeb) {
+      path = 'monitoring_queue.db';
+    } else {
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        sqfliteFfiInit();
+        databaseFactory = databaseFactoryFfi;
+      }
+      final dir = await getApplicationSupportDirectory();
+      path = join(dir.path, 'monitoring_queue.db');
     }
-    final dir = await getApplicationSupportDirectory();
-    final path = join(dir.path, 'monitoring_queue.db');
     _db = await openDatabase(path, version: 6, onCreate: (db, _) async {
       await db.execute('''
         CREATE TABLE queue (

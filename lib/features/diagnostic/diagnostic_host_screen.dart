@@ -198,6 +198,11 @@ class _DiagnosticHostScreenState extends State<DiagnosticHostScreen> {
       await OfflineQueue.enqueueLocal(payload, token);
     } catch (e) {
       debugPrint('DiagnosticHostScreen enqueueLocal error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Natija saqlanmadi')),
+        );
+      }
     }
 
     SyncService.instance.flushNow().catchError((e) {
