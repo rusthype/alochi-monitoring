@@ -14,6 +14,8 @@ import '../../core/services/pdf_service.dart';
 import '../../core/services/pdf_tips.dart';
 import '../../shared/theme/app_theme.dart';
 
+const Color _kTeal = Color(0xFF1F6F65);
+
 class PassportScreen extends StatefulWidget {
   final String firstName;
   final String lastName;
@@ -150,21 +152,14 @@ class _PassportScreenState extends State<PassportScreen>
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: _kTeal,
         elevation: 0,
         automaticallyImplyLeading: false,
         title: const Text('Diagnostik Pasport',
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: AppColors.ink1)),
-        actions: [
-          TextButton.icon(
-            onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
-            icon: const Icon(Icons.home_rounded, size: 18),
-            label: const Text('Bosh sahifa'),
-          ),
-        ],
+                color: Colors.white)),
       ),
       body: FadeTransition(
         opacity: _fade,
@@ -182,7 +177,12 @@ class _PassportScreenState extends State<PassportScreen>
                 scoreLabel: _scoreLabel(_totalPct),
                 scoreColor: _scoreColor(_totalPct),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: _SubmitStatusChip(status: widget.submitStatus),
+              ),
+              const SizedBox(height: 12),
               _ScoreRingsCard(
                 totalPct: _totalPct,
                 mathPct: _mathPct,
@@ -213,26 +213,46 @@ class _PassportScreenState extends State<PassportScreen>
                 totalPct: _totalPct.round(),
               ),
               const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: _pdfGenerating ? null : _generatePdf,
-                icon: _pdfGenerating
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.picture_as_pdf_rounded, size: 20),
-                label: Text(_pdfPath != null
-                    ? 'PDF qayta ochish'
-                    : 'PDF pasport saqlash'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.brand,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _pdfGenerating ? null : _generatePdf,
+                      icon: _pdfGenerating
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.picture_as_pdf_rounded, size: 20),
+                      label: Text(_pdfPath != null ? 'PDF qayta' : 'PDF saqlash'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _kTeal,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(0, 50),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          Navigator.of(context).popUntil((r) => r.isFirst),
+                      icon: const Icon(Icons.home_rounded, size: 20),
+                      label: const Text('Bosh sahifa'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _kTeal,
+                        side: const BorderSide(color: _kTeal, width: 1.5),
+                        minimumSize: const Size(0, 50),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
             ],
@@ -488,36 +508,42 @@ class _Ring extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          SizedBox.expand(
-            child: CircularProgressIndicator(
-              value: pct / 100,
-              strokeWidth: strokeWidth,
-              backgroundColor: AppColors.gray100,
-              color: color,
-              strokeCap: StrokeCap.round,
-            ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                    fontSize: size * 0.18,
-                    fontWeight: FontWeight.w900,
-                    color: color),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: pct / 100),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeOutCubic,
+      builder: (_, value, __) => SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox.expand(
+              child: CircularProgressIndicator(
+                value: value,
+                strokeWidth: strokeWidth,
+                backgroundColor: AppColors.gray100,
+                color: color,
+                strokeCap: StrokeCap.round,
               ),
-              Text(sublabel,
-                  style: const TextStyle(fontSize: 11, color: AppColors.ink2)),
-            ],
-          ),
-        ],
+            ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                      fontSize: size * 0.18,
+                      fontWeight: FontWeight.w900,
+                      color: color),
+                ),
+                Text(sublabel,
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.ink2)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -776,6 +802,55 @@ class _RecommendationsCard extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Submit status chip ────────────────────────────────────────────────────────
+
+class _SubmitStatusChip extends StatelessWidget {
+  final String status;
+  const _SubmitStatusChip({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bg;
+    final Color fg;
+    final IconData icon;
+    final String label;
+    if (status == 'sent') {
+      bg = AppColors.successMuted;
+      fg = AppColors.ok;
+      icon = Icons.check_circle_outline_rounded;
+      label = 'Natija serverga yuborildi';
+    } else if (status == 'error') {
+      bg = AppColors.errMuted;
+      fg = AppColors.err;
+      icon = Icons.error_outline_rounded;
+      label = 'Natija yuborilmadi';
+    } else {
+      bg = const Color(0xFFFFFBEB);
+      fg = const Color(0xFFD97706);
+      icon = Icons.cloud_upload_outlined;
+      label = 'Internet ulanganda yuboriladi';
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: fg.withValues(alpha: .3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: fg),
+          const SizedBox(width: 6),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: fg)),
         ],
       ),
     );
