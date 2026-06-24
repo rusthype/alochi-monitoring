@@ -14,12 +14,8 @@
     "4-bob — Uch xonali sonlar"
   ],
   "school_buttons": [
-    {
-      "label": "26-maktab",
-      "school_code": "26",
-      "random_variant": true,
-      "pin": "2626"
-    }
+    {"label":"26-maktab","school_code":"26","random_variant":true,"pin":"2626"},
+    {"label":"56-maktab","school_code":"56","random_variant":true,"pin":"5656"}
   ],
   "variants": {
     "1": {
