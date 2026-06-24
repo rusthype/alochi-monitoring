@@ -18,7 +18,8 @@
   "Vocabulary",
   "Grammar",
   "Spelling",
-  "Sentences"
+  "Sentences",
+  "Reading"
  ],
  "variants": {
   "1": {
@@ -336,7 +337,57 @@
      ],
      "ans": "The cat is under the table."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_in_the_living_room.jpg",
+    "title": "In the Living Room",
+    "text": "Look! This is my living room. It is big and yellow.\nThe sofa is orange. It is very big. The cushions are purple and pink.\nMy cat is on the sofa. It is orange and white. It is funny!\nMy dog is under the table. It is brown. It is small.\nThere is a TV in the room. It is big and black.\nI have got a brother. His name is Tom. He is happy today!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The living room is big and yellow.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The cat is under the sofa.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The dog is brown.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the sofa?",
+      "opts": [
+       "Purple",
+       "Orange",
+       "Pink",
+       "Brown"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "text_choice",
+      "q": "Where is the dog?",
+      "opts": [
+       "On the sofa",
+       "On the table",
+       "Under the table",
+       "In the box"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "Tom is _______ today.",
+      "ans": "happy"
+     }
+    ]
+   }
   },
   "2": {
    "Vocabulary": [
@@ -651,7 +702,57 @@
      ],
      "ans": "I've got a sister."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_my_school_bag.jpg",
+    "title": "My School Bag",
+    "text": "Look at my bag! It is big and blue.\nI have got a ruler. It is green. I have got a pencil. It is red.\nI have got a book. It is yellow and white. It is very big.\nI have got a rubber. It is small and pink.\nI have not got a crayon. I have not got a pen.\nMy desk is brown. My chair is green. I like school!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The bag is big and blue.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The pencil is green.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The rubber is small and pink.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the ruler?",
+      "opts": [
+       "Red",
+       "Blue",
+       "Green",
+       "Yellow"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the book?",
+      "opts": [
+       "Red and white",
+       "Yellow and white",
+       "Blue and green",
+       "Pink and purple"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "fill_blank",
+      "q": "The desk is _______.",
+      "ans": "brown"
+     }
+    ]
+   }
   },
   "3": {
    "Vocabulary": [
@@ -968,7 +1069,57 @@
      ],
      "ans": "The doll is on the sofa."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_in_the_garden.jpg",
+    "title": "In the Garden",
+    "text": "This is our garden. It is big and green.\nThere are three trees. They are tall and green.\nThere are four flowers. They are red and yellow. They are pretty!\nThere is a small pond. The pond is blue. There are two fish in the pond. They are orange.\nLook! There is a frog. It is green and small. It is on a flower.\nA brown mouse is under the tree. It is very quiet.",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The garden is big and green.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "There are five trees.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The frog is on a flower.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour are the flowers?",
+      "opts": [
+       "Blue and white",
+       "Pink and purple",
+       "Red and yellow",
+       "Orange and green"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "Where is the mouse?",
+      "opts": [
+       "On the tree",
+       "In the pond",
+       "On the flower",
+       "Under the tree"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "fill_blank",
+      "q": "There are two _______ in the pond.",
+      "ans": "fish"
+     }
+    ]
+   }
   },
   "4": {
    "Vocabulary": [
@@ -1283,7 +1434,57 @@
      ],
      "ans": "She has got a doll."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_at_the_toy_shop.jpg",
+    "title": "At the Toy Shop",
+    "text": "Look! This is a toy shop. It is big and fun!\nThere is a red car. It is small. There is a blue boat. It is very big.\nLook at the teddy! It is orange. It is pretty.\nThere is a purple doll. It is pink and purple. It is very pretty.\nThere is a green ball and a yellow train.\nA boy and a girl are in the shop. They are happy!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The toy shop is big and fun.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The car is blue.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The doll is pink and purple.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the teddy?",
+      "opts": [
+       "Purple",
+       "Blue",
+       "Green",
+       "Orange"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the train?",
+      "opts": [
+       "Red",
+       "Green",
+       "Yellow",
+       "Blue"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "The boat is very _______.",
+      "ans": "big"
+     }
+    ]
+   }
   },
   "5": {
    "Vocabulary": [
@@ -1600,7 +1801,57 @@
      ],
      "ans": "The ball is in the box."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_grandpa_s_shop.jpg",
+    "title": "Grandpa's Shop",
+    "text": "This is Grandpa's shop. It is big and colourful!\nThere are yellow bananas and purple grapes. There are red peppers and green beans.\nLook! There are orange carrots. They are long and thin.\nThere is a big green melon. It is round.\nGrandpa has got white hair. He is old. He is funny and happy.\nA small orange cat is sleeping under the table. Its name is Fizz!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "There are yellow bananas in the shop.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The carrots are short and fat.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The cat is sleeping under the table.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the melon?",
+      "opts": [
+       "Yellow",
+       "Orange",
+       "Green",
+       "Red"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "How is Grandpa?",
+      "opts": [
+       "Sad and thin",
+       "Funny and happy",
+       "Short and fat",
+       "New and pretty"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "fill_blank",
+      "q": "The carrots are long and _______.",
+      "ans": "thin"
+     }
+    ]
+   }
   },
   "6": {
    "Vocabulary": [
@@ -1914,7 +2165,57 @@
      ],
      "ans": "I've got a brother."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_my_bedroom.jpg",
+    "title": "My Bedroom",
+    "text": "This is my bedroom. It is small and cosy.\nI have got a blue bed. My teddy is on the bed. It is orange.\nI have got a green lamp. It is on the table.\nMy books are on the shelf. There are five books.\nI have got a computer. It is white. It is on the desk.\nMy doll is under the bed. It is pink and pretty.\nI like my bedroom. It is fun!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The bedroom is small and cosy.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The teddy is under the bed.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The computer is white.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "Where is the lamp?",
+      "opts": [
+       "On the shelf",
+       "On the bed",
+       "On the table",
+       "Under the desk"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "How many books are on the shelf?",
+      "opts": [
+       "Three",
+       "Four",
+       "Five",
+       "Six"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "The doll is _______ the bed.",
+      "ans": "under"
+     }
+    ]
+   }
   },
   "7": {
    "Vocabulary": [
@@ -2231,7 +2532,57 @@
      ],
      "ans": "The cat is on the sofa."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_my_family.jpg",
+    "title": "My Family",
+    "text": "This is my family. We have got a big house.\nThis is my mother. Her name is Anna. She has got long brown hair. She is pretty.\nThis is my father. He has got short black hair. He is tall.\nI have got a sister. Her name is Lily. She has got a pink doll.\nI have got a brother. His name is Dan. He has got a blue ball.\nThis is my grandmother. She is old. She is funny and happy.\nI like my family!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The family has got a big house.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The mother has got short hair.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The grandmother is funny and happy.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What has Lily got?",
+      "opts": [
+       "A blue ball",
+       "A red car",
+       "A pink doll",
+       "A green book"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is Dan's ball?",
+      "opts": [
+       "Red",
+       "Green",
+       "Pink",
+       "Blue"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "fill_blank",
+      "q": "The father has got short _______ hair.",
+      "ans": "black"
+     }
+    ]
+   }
   },
   "8": {
    "Vocabulary": [
@@ -2546,7 +2897,57 @@
      ],
      "ans": "He has got a brother."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_fast_and_slow.jpg",
+    "title": "Fast and Slow",
+    "text": "Look at the transport!\nThis is a red plane. It is very big. It is very fast. It is in the blue sky.\nThis is a white ship. It is big and slow. It is on the blue water.\nThis is a brown bus. It is big. It is slow.\nThis is a grey motorbike. It is small and fast.\nLook! There is a yellow taxi and a blue bike.\nGrandpa has got a red lorry. It is very big and slow!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The plane is red and very fast.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The ship is fast.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The motorbike is grey and fast.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the bus?",
+      "opts": [
+       "Red",
+       "Grey",
+       "Yellow",
+       "Brown"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the taxi?",
+      "opts": [
+       "Blue",
+       "Red",
+       "Yellow",
+       "White"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "Grandpa's lorry is very big and _______.",
+      "ans": "slow"
+     }
+    ]
+   }
   },
   "9": {
    "Vocabulary": [
@@ -2863,7 +3264,57 @@
      ],
      "ans": "The book is on the desk."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_the_birthday_party.jpg",
+    "title": "The Birthday Party",
+    "text": "It is Tom's birthday today! He is seven.\nThere are many balloons. They are red, blue and yellow. They are pretty!\nThere is a big birthday cake. It is pink and white. It is very big.\nThere are lollipops and sweets on the table.\nTom has got a new teddy. It is orange. He is very happy.\nHis sister Lily has got a purple balloon. She is happy too.\nThere are birds in the garden. They are small and noisy!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "Tom is seven years old.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The cake is blue and white.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "Tom's new teddy is orange.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is Lily's balloon?",
+      "opts": [
+       "Red",
+       "Blue",
+       "Yellow",
+       "Purple"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "text_choice",
+      "q": "Where are the birds?",
+      "opts": [
+       "In the house",
+       "In the garden",
+       "On the table",
+       "Under the tree"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "fill_blank",
+      "q": "The birds are small and _______.",
+      "ans": "noisy"
+     }
+    ]
+   }
   },
   "10": {
    "Vocabulary": [
@@ -3177,7 +3628,57 @@
      ],
      "ans": "I've got a sister."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_my_house.jpg",
+    "title": "My House",
+    "text": "Look! This is my house. It is big and white.\nI have got a living room. The sofa is orange. The cushions are purple.\nI have got a bedroom. My bed is blue. My teddy is on the bed.\nMy cat is under the table. It is orange and funny!\nI have got a sister. Her name is Lily. She has got a pink doll.\nThere are two birds in the garden. They are small and noisy.\nIt is sunny today. I like my house!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The house is big and white.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The sofa is blue.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The cat is under the table.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "Where is the teddy?",
+      "opts": [
+       "Under the bed",
+       "On the bed",
+       "In the bag",
+       "On the sofa"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is Lily's doll?",
+      "opts": [
+       "Blue",
+       "Purple",
+       "Pink",
+       "Orange"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "There are two _______ in the garden.",
+      "ans": "birds"
+     }
+    ]
+   }
   },
   "11": {
    "Vocabulary": [
@@ -3494,7 +3995,57 @@
      ],
      "ans": "The cat is under the table."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_at_school.jpg",
+    "title": "At School",
+    "text": "This is my school. It is big and white.\nI have got a green bag. My ruler is in the bag. It is blue.\nI have got a red pencil and a yellow crayon.\nMy book is on the desk. It is big and orange.\nMy rubber is small. It is pink. It is under the book.\nLook! There is a funny clown picture on the wall. It is purple and green!\nI like school. It is fun!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The school is big and white.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The ruler is red.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The rubber is under the book.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the bag?",
+      "opts": [
+       "Blue",
+       "Red",
+       "Yellow",
+       "Green"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the book?",
+      "opts": [
+       "Green",
+       "Purple",
+       "Orange",
+       "White"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "The crayon is _______.",
+      "ans": "yellow"
+     }
+    ]
+   }
   },
   "12": {
    "Vocabulary": [
@@ -3809,7 +4360,57 @@
      ],
      "ans": "She has got a doll."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_in_the_park.jpg",
+    "title": "In the Park",
+    "text": "Look! This is a park. It is big and green.\nThere is a boy. His name is Tom. He has got a red ball. The ball is very big.\nThere is a girl. Her name is Lily. She has got a pink doll. The doll is pretty.\nLook at the cat! It is orange and white. It is small. It is funny!\nThere are two birds. They are blue and yellow. They are on the tree.\nIt is sunny today. The sky is blue. It is a beautiful day!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The park is big and green.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "Tom has got a blue ball.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The cat is orange and white.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is Lily's doll?",
+      "opts": [
+       "Red",
+       "Blue",
+       "Pink",
+       "Yellow"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "Where are the two birds?",
+      "opts": [
+       "On the grass",
+       "On the tree",
+       "In the sky",
+       "On the ball"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "fill_blank",
+      "q": "The sky is _______ today.",
+      "ans": "blue"
+     }
+    ]
+   }
   },
   "13": {
    "Vocabulary": [
@@ -4126,7 +4727,57 @@
      ],
      "ans": "The ball is in the box."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_the_funny_clown.jpg",
+    "title": "The Funny Clown",
+    "text": "Look! This is Jimbo. He is a funny clown.\nHe is short and fat. He is not very big.\nJimbo has got a purple wig. It is very big!\nHis car is new and yellow. It is small.\nHis hat is old and black. His balloon is red.\nThere is a long thin snake. It is blue and green. It is under the car!\nJimbo is happy. He is a very funny clown!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "Jimbo is tall and thin.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The wig is purple.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The snake is under the car.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is Jimbo's car?",
+      "opts": [
+       "Red",
+       "Black",
+       "Blue",
+       "Yellow"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the snake?",
+      "opts": [
+       "Purple and red",
+       "Blue and green",
+       "Black and yellow",
+       "Orange and white"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "fill_blank",
+      "q": "Jimbo's hat is old and _______.",
+      "ans": "black"
+     }
+    ]
+   }
   },
   "14": {
    "Vocabulary": [
@@ -4440,7 +5091,57 @@
      ],
      "ans": "I've got a brother."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_my_room.jpg",
+    "title": "My Room",
+    "text": "My name is Lily. This is my room. It is big and pink.\nI have got a white bed. My orange teddy is on the bed.\nI have got a blue lamp. It is on the shelf.\nThere are three photos on the shelf. They are my family photos.\nMy green bag is under the desk. My red pencil is in the bag.\nI have got a sister. She has got a purple doll.\nI like my room. It is cosy and fun!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The room is big and pink.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The teddy is under the bed.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The bag is under the desk.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the lamp?",
+      "opts": [
+       "Green",
+       "Red",
+       "Blue",
+       "White"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "How many photos are on the shelf?",
+      "opts": [
+       "Two",
+       "Three",
+       "Four",
+       "Five"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "fill_blank",
+      "q": "The pencil is _______ the bag.",
+      "ans": "in"
+     }
+    ]
+   }
   },
   "15": {
    "Vocabulary": [
@@ -4757,7 +5458,57 @@
      ],
      "ans": "The doll is on the bed."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_the_garden_party.jpg",
+    "title": "The Garden Party",
+    "text": "Look! It is a garden party. It is fun!\nThere are red and yellow flowers. They are pretty.\nThere is a big table. On the table there are cakes and lollipops.\nThere are orange carrots and green beans too.\nLook at the pond! There are three frogs. They are green and small.\nA white bird is on the tree. It is noisy!\nThere are balloons — red, blue and purple. They are very pretty.\nEverybody is happy. It is a fantastic party!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "There are red and yellow flowers.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "There are four frogs in the pond.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The bird is on the tree.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What is on the table?",
+      "opts": [
+       "Frogs and birds",
+       "Cakes and lollipops",
+       "Flowers and balloons",
+       "Carrots and books"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the bird?",
+      "opts": [
+       "Green",
+       "Blue",
+       "Yellow",
+       "White"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "fill_blank",
+      "q": "Everybody is _______.",
+      "ans": "happy"
+     }
+    ]
+   }
   },
   "16": {
    "Vocabulary": [
@@ -5072,7 +5823,57 @@
      ],
      "ans": "She has got a sister."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_in_the_living_room.jpg",
+    "title": "In the Living Room",
+    "text": "Look! This is my living room. It is big and yellow.\nThe sofa is orange. It is very big. The cushions are purple and pink.\nMy cat is on the sofa. It is orange and white. It is funny!\nMy dog is under the table. It is brown. It is small.\nThere is a TV in the room. It is big and black.\nI have got a brother. His name is Tom. He is happy today!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The cushions are purple and pink.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The TV is small.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The cat is funny.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the cat?",
+      "opts": [
+       "Brown and white",
+       "Black and white",
+       "Orange and white",
+       "Yellow and white"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the TV?",
+      "opts": [
+       "White",
+       "Brown",
+       "Orange",
+       "Black"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "fill_blank",
+      "q": "The dog is under the _______.",
+      "ans": "table"
+     }
+    ]
+   }
   },
   "17": {
    "Vocabulary": [
@@ -5389,7 +6190,57 @@
      ],
      "ans": "The cat is on the sofa."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_my_school_bag.jpg",
+    "title": "My School Bag",
+    "text": "Look at my bag! It is big and blue.\nI have got a ruler. It is green. I have got a pencil. It is red.\nI have got a book. It is yellow and white. It is very big.\nI have got a rubber. It is small and pink.\nI have not got a crayon. I have not got a pen.\nMy desk is brown. My chair is green. I like school!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The chair is green.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "There is a crayon in the bag.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The book is very big.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the pencil?",
+      "opts": [
+       "Green",
+       "Blue",
+       "Red",
+       "Yellow"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the chair?",
+      "opts": [
+       "Brown",
+       "Red",
+       "Blue",
+       "Green"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "fill_blank",
+      "q": "The ruler is _______.",
+      "ans": "green"
+     }
+    ]
+   }
   },
   "18": {
    "Vocabulary": [
@@ -5703,7 +6554,57 @@
      ],
      "ans": "I've got a brother."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_in_the_garden.jpg",
+    "title": "In the Garden",
+    "text": "This is our garden. It is big and green.\nThere are three trees. They are tall and green.\nThere are four flowers. They are red and yellow. They are pretty!\nThere is a small pond. The pond is blue. There are two fish in the pond. They are orange.\nLook! There is a frog. It is green and small. It is on a flower.\nA brown mouse is under the tree. It is very quiet.",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The pond is blue.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The fish are green.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The mouse is quiet.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the frog?",
+      "opts": [
+       "Blue and yellow",
+       "Red and white",
+       "Green and small",
+       "Orange and big"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "How many flowers are there?",
+      "opts": [
+       "Two",
+       "Three",
+       "Four",
+       "Five"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "The trees are tall and _______.",
+      "ans": "green"
+     }
+    ]
+   }
   },
   "19": {
    "Vocabulary": [
@@ -6020,7 +6921,57 @@
      ],
      "ans": "The book is in the bag."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_at_the_toy_shop.jpg",
+    "title": "At the Toy Shop",
+    "text": "Look! This is a toy shop. It is big and fun!\nThere is a red car. It is small. There is a blue boat. It is very big.\nLook at the teddy! It is orange. It is pretty.\nThere is a purple doll. It is pink and purple. It is very pretty.\nThere is a green ball and a yellow train.\nA boy and a girl are in the shop. They are happy!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The car is small.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The ball is yellow.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The teddy is pretty.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the car?",
+      "opts": [
+       "Blue",
+       "Green",
+       "Red",
+       "Yellow"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the ball?",
+      "opts": [
+       "Yellow",
+       "Red",
+       "Blue",
+       "Green"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "fill_blank",
+      "q": "The doll is pink and _______.",
+      "ans": "purple"
+     }
+    ]
+   }
   },
   "20": {
    "Vocabulary": [
@@ -6335,7 +7286,57 @@
      ],
      "ans": "He has got a sister."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_grandpa_s_shop.jpg",
+    "title": "Grandpa's Shop",
+    "text": "This is Grandpa's shop. It is big and colourful!\nThere are yellow bananas and purple grapes. There are red peppers and green beans.\nLook! There are orange carrots. They are long and thin.\nThere is a big green melon. It is round.\nGrandpa has got white hair. He is old. He is funny and happy.\nA small orange cat is sleeping under the table. Its name is Fizz!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The melon is round.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "Grandpa has got black hair.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The cat's name is Fizz.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour are the grapes?",
+      "opts": [
+       "Red",
+       "Green",
+       "Yellow",
+       "Purple"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour are the carrots?",
+      "opts": [
+       "Red",
+       "Orange",
+       "Yellow",
+       "Green"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "fill_blank",
+      "q": "Grandpa has got _______ hair.",
+      "ans": "white"
+     }
+    ]
+   }
   },
   "21": {
    "Vocabulary": [
@@ -6650,7 +7651,57 @@
      ],
      "ans": "I've got a sister."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_my_bedroom.jpg",
+    "title": "My Bedroom",
+    "text": "This is my bedroom. It is small and cosy.\nI have got a blue bed. My teddy is on the bed. It is orange.\nI have got a green lamp. It is on the table.\nMy books are on the shelf. There are five books.\nI have got a computer. It is white. It is on the desk.\nMy doll is under the bed. It is pink and pretty.\nI like my bedroom. It is fun!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The bed is blue.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The lamp is yellow.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The doll is pretty.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the teddy?",
+      "opts": [
+       "Blue",
+       "White",
+       "Pink",
+       "Orange"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "text_choice",
+      "q": "Where is the doll?",
+      "opts": [
+       "On the bed",
+       "On the shelf",
+       "Under the bed",
+       "On the desk"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "The lamp is _______.",
+      "ans": "green"
+     }
+    ]
+   }
   },
   "22": {
    "Vocabulary": [
@@ -6966,7 +8017,57 @@
      ],
      "ans": "The doll is under the bed."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_my_family.jpg",
+    "title": "My Family",
+    "text": "This is my family. We have got a big house.\nThis is my mother. Her name is Anna. She has got long brown hair. She is pretty.\nThis is my father. He has got short black hair. He is tall.\nI have got a sister. Her name is Lily. She has got a pink doll.\nI have got a brother. His name is Dan. He has got a blue ball.\nThis is my grandmother. She is old. She is funny and happy.\nI like my family!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The mother's name is Anna.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The father is short.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "Dan has got a blue ball.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the mother's hair?",
+      "opts": [
+       "Black",
+       "Brown",
+       "Yellow",
+       "Red"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "text_choice",
+      "q": "What is the grandmother like?",
+      "opts": [
+       "Sad and pretty",
+       "Short and thin",
+       "Old and funny",
+       "Big and happy"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "Lily has got a pink _______.",
+      "ans": "doll"
+     }
+    ]
+   }
   },
   "23": {
    "Vocabulary": [
@@ -7282,7 +8383,57 @@
      ],
      "ans": "She has got a brother."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_fast_and_slow.jpg",
+    "title": "Fast and Slow",
+    "text": "Look at the transport!\nThis is a red plane. It is very big. It is very fast. It is in the blue sky.\nThis is a white ship. It is big and slow. It is on the blue water.\nThis is a brown bus. It is big. It is slow.\nThis is a grey motorbike. It is small and fast.\nLook! There is a yellow taxi and a blue bike.\nGrandpa has got a red lorry. It is very big and slow!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The ship is white.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The bus is fast.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The taxi is yellow.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the motorbike?",
+      "opts": [
+       "Brown",
+       "Yellow",
+       "Red",
+       "Grey"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the lorry?",
+      "opts": [
+       "Grey",
+       "Brown",
+       "Red",
+       "Blue"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "The plane is in the blue _______.",
+      "ans": "sky"
+     }
+    ]
+   }
   },
   "24": {
    "Vocabulary": [
@@ -7598,7 +8749,57 @@
      ],
      "ans": "The cat is on the table."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_the_birthday_party.jpg",
+    "title": "The Birthday Party",
+    "text": "It is Tom's birthday today! He is seven.\nThere are many balloons. They are red, blue and yellow. They are pretty!\nThere is a big birthday cake. It is pink and white. It is very big.\nThere are lollipops and sweets on the table.\nTom has got a new teddy. It is orange. He is very happy.\nHis sister Lily has got a purple balloon. She is happy too.\nThere are birds in the garden. They are small and noisy!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The cake is very big.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "Tom has got an old teddy.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "Lily is happy.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the cake?",
+      "opts": [
+       "Red and white",
+       "Pink and white",
+       "Blue and yellow",
+       "Orange and pink"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "text_choice",
+      "q": "What is on the table?",
+      "opts": [
+       "Balloons and birds",
+       "Teddies and dolls",
+       "Lollipops and sweets",
+       "Books and rulers"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "Tom is very _______.",
+      "ans": "happy"
+     }
+    ]
+   }
   },
   "25": {
    "Vocabulary": [
@@ -7913,7 +9114,57 @@
      ],
      "ans": "I've got a brother."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_my_house.jpg",
+    "title": "My House",
+    "text": "Look! This is my house. It is big and white.\nI have got a living room. The sofa is orange. The cushions are purple.\nI have got a bedroom. My bed is blue. My teddy is on the bed.\nMy cat is under the table. It is orange and funny!\nI have got a sister. Her name is Lily. She has got a pink doll.\nThere are two birds in the garden. They are small and noisy.\nIt is sunny today. I like my house!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The bed is blue.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The cushions are orange.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "It is sunny today.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the sofa?",
+      "opts": [
+       "Blue",
+       "Purple",
+       "Pink",
+       "Orange"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "text_choice",
+      "q": "What is the cat like?",
+      "opts": [
+       "Big and sad",
+       "Small and pretty",
+       "Orange and funny",
+       "Brown and quiet"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "The cushions are _______.",
+      "ans": "purple"
+     }
+    ]
+   }
   },
   "26": {
    "Vocabulary": [
@@ -8229,7 +9480,57 @@
      ],
      "ans": "The pen is on the desk."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_at_school.jpg",
+    "title": "At School",
+    "text": "This is my school. It is big and white.\nI have got a green bag. My ruler is in the bag. It is blue.\nI have got a red pencil and a yellow crayon.\nMy book is on the desk. It is big and orange.\nMy rubber is small. It is pink. It is under the book.\nLook! There is a funny clown picture on the wall. It is purple and green!\nI like school. It is fun!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The bag is green.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The book is small.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The clown picture is funny.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "Where is the ruler?",
+      "opts": [
+       "On the desk",
+       "In the bag",
+       "Under the book",
+       "On the wall"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the clown picture?",
+      "opts": [
+       "Red and blue",
+       "Orange and white",
+       "Purple and green",
+       "Pink and yellow"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "The rubber is _______ and pink.",
+      "ans": "small"
+     }
+    ]
+   }
   },
   "27": {
    "Vocabulary": [
@@ -8545,7 +9846,57 @@
      ],
      "ans": "She has got a sister."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_in_the_park.jpg",
+    "title": "In the Park",
+    "text": "Look! This is a park. It is big and green.\nThere is a boy. His name is Tom. He has got a red ball. The ball is very big.\nThere is a girl. Her name is Lily. She has got a pink doll. The doll is pretty.\nLook at the cat! It is orange and white. It is small. It is funny!\nThere are two birds. They are blue and yellow. They are on the tree.\nIt is sunny today. The sky is blue. It is a beautiful day!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The ball is very big.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The cat is big.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "It is sunny today.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is Tom's ball?",
+      "opts": [
+       "Blue",
+       "Pink",
+       "Orange",
+       "Red"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour are the birds?",
+      "opts": [
+       "Red and white",
+       "Orange and green",
+       "Blue and yellow",
+       "Pink and purple"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "The doll is _______.",
+      "ans": "pretty"
+     }
+    ]
+   }
   },
   "28": {
    "Vocabulary": [
@@ -8861,7 +10212,57 @@
      ],
      "ans": "The ball is in the box."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_the_funny_clown.jpg",
+    "title": "The Funny Clown",
+    "text": "Look! This is Jimbo. He is a funny clown.\nHe is short and fat. He is not very big.\nJimbo has got a purple wig. It is very big!\nHis car is new and yellow. It is small.\nHis hat is old and black. His balloon is red.\nThere is a long thin snake. It is blue and green. It is under the car!\nJimbo is happy. He is a very funny clown!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "Jimbo's car is new.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The balloon is blue.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "Jimbo is happy.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is Jimbo's wig?",
+      "opts": [
+       "Red",
+       "Yellow",
+       "Purple",
+       "Black"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is Jimbo's balloon?",
+      "opts": [
+       "Blue",
+       "Red",
+       "Yellow",
+       "Purple"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "fill_blank",
+      "q": "The snake is long and _______.",
+      "ans": "thin"
+     }
+    ]
+   }
   },
   "29": {
    "Vocabulary": [
@@ -9176,7 +10577,57 @@
      ],
      "ans": "I've got a sister."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_my_room.jpg",
+    "title": "My Room",
+    "text": "My name is Lily. This is my room. It is big and pink.\nI have got a white bed. My orange teddy is on the bed.\nI have got a blue lamp. It is on the shelf.\nThere are three photos on the shelf. They are my family photos.\nMy green bag is under the desk. My red pencil is in the bag.\nI have got a sister. She has got a purple doll.\nI like my room. It is cosy and fun!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The bed is white.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The lamp is on the desk.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The room is cosy.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the teddy?",
+      "opts": [
+       "White",
+       "Pink",
+       "Orange",
+       "Blue"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "Where is the lamp?",
+      "opts": [
+       "On the desk",
+       "Under the shelf",
+       "On the shelf",
+       "In the bag"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "My bag is _______.",
+      "ans": "green"
+     }
+    ]
+   }
   },
   "30": {
    "Vocabulary": [
@@ -9492,7 +10943,57 @@
      ],
      "ans": "The teddy is on the bed."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_the_garden_party.jpg",
+    "title": "The Garden Party",
+    "text": "Look! It is a garden party. It is fun!\nThere are red and yellow flowers. They are pretty.\nThere is a big table. On the table there are cakes and lollipops.\nThere are orange carrots and green beans too.\nLook at the pond! There are three frogs. They are green and small.\nA white bird is on the tree. It is noisy!\nThere are balloons — red, blue and purple. They are very pretty.\nEverybody is happy. It is a fantastic party!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The party is fun.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The frogs are big.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The bird is noisy.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "How many frogs are in the pond?",
+      "opts": [
+       "Two",
+       "Three",
+       "Four",
+       "Five"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour are the frogs?",
+      "opts": [
+       "Blue",
+       "Orange",
+       "Green",
+       "Yellow"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "The flowers are red and _______.",
+      "ans": "yellow"
+     }
+    ]
+   }
   },
   "31": {
    "Vocabulary": [
@@ -9808,7 +11309,57 @@
      ],
      "ans": "He has got a brother."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_in_the_living_room.jpg",
+    "title": "In the Living Room",
+    "text": "Look! This is my living room. It is big and yellow.\nThe sofa is orange. It is very big. The cushions are purple and pink.\nMy cat is on the sofa. It is orange and white. It is funny!\nMy dog is under the table. It is brown. It is small.\nThere is a TV in the room. It is big and black.\nI have got a brother. His name is Tom. He is happy today!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The living room is small.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The sofa is very big.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "Tom has got a brother.",
+      "ans": "NO"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the living room?",
+      "opts": [
+       "Orange",
+       "Purple",
+       "Black",
+       "Yellow"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "text_choice",
+      "q": "Who is happy today?",
+      "opts": [
+       "The cat",
+       "The dog",
+       "Tom",
+       "The TV"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "The dog is _______ and small.",
+      "ans": "brown"
+     }
+    ]
+   }
   },
   "32": {
    "Vocabulary": [
@@ -10124,7 +11675,57 @@
      ],
      "ans": "The book is on the shelf."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_my_school_bag.jpg",
+    "title": "My School Bag",
+    "text": "Look at my bag! It is big and blue.\nI have got a ruler. It is green. I have got a pencil. It is red.\nI have got a book. It is yellow and white. It is very big.\nI have got a rubber. It is small and pink.\nI have not got a crayon. I have not got a pen.\nMy desk is brown. My chair is green. I like school!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The bag is small.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The rubber is pink.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "There is a pen in the bag.",
+      "ans": "NO"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the bag?",
+      "opts": [
+       "Green",
+       "Red",
+       "Blue",
+       "Yellow"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the desk?",
+      "opts": [
+       "Green",
+       "Brown",
+       "Blue",
+       "Red"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "fill_blank",
+      "q": "The book is yellow and _______.",
+      "ans": "white"
+     }
+    ]
+   }
   },
   "33": {
    "Vocabulary": [
@@ -10439,7 +12040,57 @@
      ],
      "ans": "I've got a brother."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_in_the_garden.jpg",
+    "title": "In the Garden",
+    "text": "This is our garden. It is big and green.\nThere are three trees. They are tall and green.\nThere are four flowers. They are red and yellow. They are pretty!\nThere is a small pond. The pond is blue. There are two fish in the pond. They are orange.\nLook! There is a frog. It is green and small. It is on a flower.\nA brown mouse is under the tree. It is very quiet.",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The garden is small.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The flowers are pretty.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The mouse is brown.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "How many trees are there?",
+      "opts": [
+       "Two",
+       "Three",
+       "Four",
+       "Five"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour are the fish?",
+      "opts": [
+       "Blue",
+       "Green",
+       "Yellow",
+       "Orange"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "fill_blank",
+      "q": "The mouse is under the _______.",
+      "ans": "tree"
+     }
+    ]
+   }
   },
   "34": {
    "Vocabulary": [
@@ -10755,7 +12406,57 @@
      ],
      "ans": "The cat is under the chair."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_at_the_toy_shop.jpg",
+    "title": "At the Toy Shop",
+    "text": "Look! This is a toy shop. It is big and fun!\nThere is a red car. It is small. There is a blue boat. It is very big.\nLook at the teddy! It is orange. It is pretty.\nThere is a purple doll. It is pink and purple. It is very pretty.\nThere is a green ball and a yellow train.\nA boy and a girl are in the shop. They are happy!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The boat is small.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "The boy and girl are happy.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "The teddy is orange.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour is the boat?",
+      "opts": [
+       "Red",
+       "Green",
+       "Yellow",
+       "Blue"
+      ],
+      "ans": 3
+     },
+     {
+      "type": "text_choice",
+      "q": "What is in the toy shop?",
+      "opts": [
+       "A red boat",
+       "A blue car",
+       "A red car",
+       "A blue ball"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "fill_blank",
+      "q": "The train is _______.",
+      "ans": "yellow"
+     }
+    ]
+   }
   },
   "35": {
    "Vocabulary": [
@@ -11071,7 +12772,57 @@
      ],
      "ans": "She has got a brother."
     }
-   ]
+   ],
+   "Reading": {
+    "type": "reading",
+    "img": "r_grandpa_s_shop.jpg",
+    "title": "Grandpa's Shop",
+    "text": "This is Grandpa's shop. It is big and colourful!\nThere are yellow bananas and purple grapes. There are red peppers and green beans.\nLook! There are orange carrots. They are long and thin.\nThere is a big green melon. It is round.\nGrandpa has got white hair. He is old. He is funny and happy.\nA small orange cat is sleeping under the table. Its name is Fizz!",
+    "qs": [
+     {
+      "type": "yes_no",
+      "q": "The shop is small.",
+      "ans": "NO"
+     },
+     {
+      "type": "yes_no",
+      "q": "There are green beans in the shop.",
+      "ans": "YES"
+     },
+     {
+      "type": "yes_no",
+      "q": "Grandpa is old.",
+      "ans": "YES"
+     },
+     {
+      "type": "text_choice",
+      "q": "What colour are the peppers?",
+      "opts": [
+       "Green",
+       "Yellow",
+       "Red",
+       "Orange"
+      ],
+      "ans": 2
+     },
+     {
+      "type": "text_choice",
+      "q": "Where is the cat?",
+      "opts": [
+       "On the table",
+       "Under the table",
+       "In the box",
+       "On the shelf"
+      ],
+      "ans": 1
+     },
+     {
+      "type": "fill_blank",
+      "q": "The melon is big and _______.",
+      "ans": "green"
+     }
+    ]
+   }
   }
  }
 }
