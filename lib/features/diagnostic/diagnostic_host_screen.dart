@@ -180,6 +180,24 @@ class _DiagnosticHostScreenState extends State<DiagnosticHostScreen> {
 
     final token = newIdempotencyToken();
 
+    // 1. Online-first: try direct submit, fall back to queue.
+    var submitStatus = 'queued';
+    final directOk = await api.submitLocalResult(payload, token);
+    if (directOk) {
+      submitStatus = 'sent';
+    } else {
+      try {
+        await OfflineQueue.enqueueLocal(payload, token);
+      } catch (e) {
+        debugPrint('DiagnosticHostScreen enqueueLocal error: $e');
+      }
+      SyncService.instance.flushNow().catchError((e) {
+        debugPrint('DiagnosticHostScreen flushNow error: $e');
+        return Future<void>.value();
+      });
+    }
+
+    // 2. Local history (non-blocking).
     try {
       await HistoryDb.insertResult(
         firstName: widget.firstName,
@@ -193,22 +211,6 @@ class _DiagnosticHostScreenState extends State<DiagnosticHostScreen> {
     } catch (e) {
       debugPrint('DiagnosticHostScreen HistoryDb error: $e');
     }
-
-    try {
-      await OfflineQueue.enqueueLocal(payload, token);
-    } catch (e) {
-      debugPrint('DiagnosticHostScreen enqueueLocal error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Natija saqlanmadi')),
-        );
-      }
-    }
-
-    SyncService.instance.flushNow().catchError((e) {
-      debugPrint('DiagnosticHostScreen flushNow error: $e');
-      return Future<void>.value();
-    });
 
     _ping('finished', testKey);
 
@@ -225,6 +227,7 @@ class _DiagnosticHostScreenState extends State<DiagnosticHostScreen> {
           variant: widget.variant,
           mathResult: mathResult,
           engResult: engResult,
+          submitStatus: submitStatus,
         ),
       ),
     );

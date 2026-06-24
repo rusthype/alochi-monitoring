@@ -23,6 +23,8 @@ class PassportScreen extends StatefulWidget {
   final int variant;
   final ScoredResult mathResult;
   final ScoredResult engResult;
+  // 'sent' | 'queued' | 'error'
+  final String submitStatus;
 
   const PassportScreen({
     super.key,
@@ -34,6 +36,7 @@ class PassportScreen extends StatefulWidget {
     required this.variant,
     required this.mathResult,
     required this.engResult,
+    this.submitStatus = 'queued',
   });
 
   @override
