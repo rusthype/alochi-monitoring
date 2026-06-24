@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:printing/printing.dart';
 
 import '../../core/engine/test_scorer.dart';
 import '../../core/services/pdf_service.dart';
@@ -68,12 +69,9 @@ class _PassportScreenState extends State<PassportScreen>
   int get _engTot => widget.engResult.totalQuestions;
   int get _totalCor => _mathCor + _engCor;
   int get _totalTot => _mathTot + _engTot;
-  double get _totalPct =>
-      _totalTot > 0 ? _totalCor * 100.0 / _totalTot : 0.0;
-  double get _mathPct =>
-      _mathTot > 0 ? _mathCor * 100.0 / _mathTot : 0.0;
-  double get _engPct =>
-      _engTot > 0 ? _engCor * 100.0 / _engTot : 0.0;
+  double get _totalPct => _totalTot > 0 ? _totalCor * 100.0 / _totalTot : 0.0;
+  double get _mathPct => _mathTot > 0 ? _mathCor * 100.0 / _mathTot : 0.0;
+  double get _engPct => _engTot > 0 ? _engCor * 100.0 / _engTot : 0.0;
 
   Color _scoreColor(double pct) {
     if (pct >= 80) return AppColors.ok;
@@ -115,7 +113,12 @@ class _PassportScreenState extends State<PassportScreen>
         engTopics: engTopics,
       );
 
-      if (!kIsWeb) {
+      if (kIsWeb) {
+        await Printing.sharePdf(
+          bytes: bytes,
+          filename: 'passport_${widget.lastName}_${widget.firstName}.pdf',
+        );
+      } else {
         final dir = await getApplicationSupportDirectory();
         final path =
             '${dir.path}/passport_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
@@ -154,8 +157,7 @@ class _PassportScreenState extends State<PassportScreen>
                 color: AppColors.ink1)),
         actions: [
           TextButton.icon(
-            onPressed: () =>
-                Navigator.of(context).popUntil((r) => r.isFirst),
+            onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
             icon: const Icon(Icons.home_rounded, size: 18),
             label: const Text('Bosh sahifa'),
           ),
@@ -324,15 +326,10 @@ class _StudentCard extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 4,
                   children: [
+                    _MetaChip(icon: Icons.school_rounded, label: '$grade-sinf'),
+                    _MetaChip(icon: Icons.pin_rounded, label: 'V$variant'),
                     _MetaChip(
-                        icon: Icons.school_rounded,
-                        label: '$grade-sinf'),
-                    _MetaChip(
-                        icon: Icons.pin_rounded,
-                        label: 'V$variant'),
-                    _MetaChip(
-                        icon: Icons.calendar_today_rounded,
-                        label: dateStr),
+                        icon: Icons.calendar_today_rounded, label: dateStr),
                   ],
                 ),
               ],
@@ -343,8 +340,7 @@ class _StudentCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: scoreColor.withValues(alpha: .25),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: scoreColor.withValues(alpha: .5)),
+              border: Border.all(color: scoreColor.withValues(alpha: .5)),
             ),
             child: Text(
               scoreLabel,
@@ -373,8 +369,7 @@ class _MetaChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon,
-            size: 11, color: Colors.white.withValues(alpha: .6)),
+        Icon(icon, size: 11, color: Colors.white.withValues(alpha: .6)),
         const SizedBox(width: 4),
         Text(label,
             style: TextStyle(
@@ -516,8 +511,7 @@ class _Ring extends StatelessWidget {
                     color: color),
               ),
               Text(sublabel,
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.ink2)),
+                  style: const TextStyle(fontSize: 11, color: AppColors.ink2)),
             ],
           ),
         ],
@@ -561,9 +555,7 @@ class _FanRing extends StatelessWidget {
           const SizedBox(width: 5),
           Text(label,
               style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: color)),
+                  fontSize: 12, fontWeight: FontWeight.w600, color: color)),
         ]),
       ],
     );
@@ -602,9 +594,7 @@ class _SectionBarsCard extends StatelessWidget {
             const SizedBox(width: 8),
             Text(title,
                 style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: color)),
+                    fontSize: 13, fontWeight: FontWeight.w700, color: color)),
           ]),
           if (sections.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -659,16 +649,13 @@ class _SectionBar extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 '${section.correct}/${section.total}',
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.ink2),
+                style: const TextStyle(fontSize: 11, color: AppColors.ink2),
               ),
               const SizedBox(width: 6),
               Text(
                 '${pct.round()}%',
                 style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: barColor),
+                    fontSize: 12, fontWeight: FontWeight.w700, color: barColor),
               ),
             ],
           ),
@@ -754,15 +741,13 @@ class _RecommendationsCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: totalPct >= 75
-                  ? AppColors.successMuted
-                  : AppColors.warnMuted,
+              color:
+                  totalPct >= 75 ? AppColors.successMuted : AppColors.warnMuted,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                   color: totalPct >= 75
                       ? AppColors.ok.withValues(alpha: .4)
-                      : const Color(0xFFD97706)
-                          .withValues(alpha: .4)),
+                      : const Color(0xFFD97706).withValues(alpha: .4)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -772,9 +757,8 @@ class _RecommendationsCard extends StatelessWidget {
                       ? Icons.check_circle_outline_rounded
                       : Icons.trending_up_rounded,
                   size: 18,
-                  color: totalPct >= 75
-                      ? AppColors.ok
-                      : const Color(0xFFD97706),
+                  color:
+                      totalPct >= 75 ? AppColors.ok : const Color(0xFFD97706),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -813,9 +797,7 @@ class _TipsColumn extends StatelessWidget {
       children: [
         Text(label,
             style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: color)),
+                fontSize: 12, fontWeight: FontWeight.w700, color: color)),
         const SizedBox(height: 8),
         ...tips.map(
           (t) => Padding(
@@ -829,8 +811,7 @@ class _TipsColumn extends StatelessWidget {
                 Expanded(
                   child: Text(
                     t,
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.ink2),
+                    style: const TextStyle(fontSize: 11, color: AppColors.ink2),
                   ),
                 ),
               ],

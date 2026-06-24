@@ -183,7 +183,7 @@ class MonitoringApi {
           idempotencyToken != null && idempotencyToken.isNotEmpty
               ? {'Idempotency-Key': idempotencyToken}
               : const <String, String>{};
-      final resp = await _post('/results/', result.toJson(detail: detail),
+      final resp = await _post('/result/', result.toJson(detail: detail),
           extraHeaders: extraHeaders);
       // Natija saqlangandan keyin wrong answers yuklaymiz
       final wrongAnswers =
@@ -305,7 +305,8 @@ class MonitoringApi {
             headers: {..._headers, 'Idempotency-Key': token},
             body: jsonEncode(payload),
           ));
-      if (resp.statusCode == 409) return true; // idempotency match — already saved
+      if (resp.statusCode == 409)
+        return true; // idempotency match — already saved
       if (resp.statusCode >= 400) return false;
       return true;
     } on ApiException {
