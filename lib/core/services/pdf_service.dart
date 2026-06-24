@@ -327,4 +327,223 @@ class PdfService {
       }).toList(),
     );
   }
+
+  // ── Passport PDF (Diagnostik pasport) ────────────────────────────────────────
+
+  static Future<Uint8List> generatePassportPdf({
+    required String firstName,
+    required String lastName,
+    required String school,
+    required String group,
+    required int grade,
+    required int variant,
+    required int mathOk,
+    required int mathTotal,
+    required int engOk,
+    required int engTotal,
+    required int totalPct,
+    required List<MapEntry<String, ({int ok, int tot})>> mathTopics,
+    required List<MapEntry<String, ({int ok, int tot})>> engTopics,
+  }) async {
+    final pdf = pw.Document();
+
+    final fontData = await rootBundle.load('assets/fonts/Inter-Regular.ttf');
+    final fontBoldData = await rootBundle.load('assets/fonts/Inter-Bold.ttf');
+    final ttf = pw.Font.ttf(fontData);
+    final ttfBold = pw.Font.ttf(fontBoldData);
+
+    pw.MemoryImage? logoImage;
+    try {
+      final logoBytes = await rootBundle.load('assets/logo.png');
+      logoImage = pw.MemoryImage(logoBytes.buffer.asUint8List());
+    } catch (_) {}
+
+    final dateStr =
+        '${DateTime.now().day.toString().padLeft(2, '0')}.${DateTime.now().month.toString().padLeft(2, '0')}.${DateTime.now().year}';
+
+    final primaryColor = PdfColor.fromHex('#E8954E');
+    final mathColor = PdfColor.fromHex('#0EA5E9');
+    final engColor = PdfColor.fromHex('#8B5CF6');
+    final textColor = PdfColor.fromHex('#1A1A1A');
+    final subTextColor = PdfColor.fromHex('#6B7280');
+    final passColor = PdfColor.fromHex('#10B981');
+    final warnColor = PdfColor.fromHex('#F59E0B');
+
+    final mathPctD = mathTotal > 0 ? mathOk / mathTotal : 0.0;
+    final engPctD = engTotal > 0 ? engOk / engTotal : 0.0;
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(36),
+        footer: (ctx) => pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 8),
+          child: pw.Center(
+            child: pw.Text('Alochi Education | alochi.uz — Diagnostik Pasport',
+                style: pw.TextStyle(
+                    font: ttf, fontSize: 9, color: subTextColor)),
+          ),
+        ),
+        build: (pw.Context context) {
+          return [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // HEADER
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Row(children: [
+                      if (logoImage != null)
+                        pw.Image(logoImage, width: 44, height: 44),
+                      pw.SizedBox(width: 10),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('Alochi Monitoring',
+                              style: pw.TextStyle(
+                                  font: ttfBold,
+                                  fontSize: 20,
+                                  color: primaryColor)),
+                          pw.Text('Diagnostik Pasport',
+                              style: pw.TextStyle(
+                                  font: ttf,
+                                  fontSize: 11,
+                                  color: subTextColor)),
+                        ],
+                      ),
+                    ]),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text('Sana:',
+                            style: pw.TextStyle(
+                                font: ttf, fontSize: 9, color: subTextColor)),
+                        pw.Text(dateStr,
+                            style: pw.TextStyle(
+                                font: ttfBold,
+                                fontSize: 11,
+                                color: textColor)),
+                      ],
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 20),
+                pw.Divider(color: PdfColors.grey300),
+                pw.SizedBox(height: 16),
+
+                // STUDENT INFO
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(14),
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                    borderRadius:
+                        pw.BorderRadius.all(pw.Radius.circular(10)),
+                  ),
+                  child: pw.Row(
+                    mainAxisAlignment:
+                        pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text("O'quvchi",
+                              style: pw.TextStyle(
+                                  font: ttf,
+                                  fontSize: 10,
+                                  color: subTextColor)),
+                          pw.Text('$lastName $firstName',
+                              style: pw.TextStyle(
+                                  font: ttfBold,
+                                  fontSize: 16,
+                                  color: textColor)),
+                        ],
+                      ),
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.end,
+                        children: [
+                          pw.Text('Sinf / Variant',
+                              style: pw.TextStyle(
+                                  font: ttf,
+                                  fontSize: 10,
+                                  color: subTextColor)),
+                          pw.Text(
+                              '$grade-sinf | V$variant${group.isNotEmpty ? ' | $group' : ''}',
+                              style: pw.TextStyle(
+                                  font: ttfBold,
+                                  fontSize: 12,
+                                  color: textColor)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 20),
+
+                // SCORE SUMMARY
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildScoreCard(
+                        'Umumiy Natija',
+                        '$totalPct%',
+                        totalPct >= 60 ? passColor : warnColor,
+                        ttf,
+                        ttfBold),
+                    _buildScoreCard(
+                        'Matematika',
+                        '$mathOk / $mathTotal',
+                        mathColor,
+                        ttf,
+                        ttfBold),
+                    _buildScoreCard(
+                        'Ingliz tili',
+                        '$engOk / $engTotal',
+                        engColor,
+                        ttf,
+                        ttfBold),
+                  ],
+                ),
+                pw.SizedBox(height: 28),
+
+                // TOPICS
+                pw.Text("Bo'limlar bo'yicha tahlil",
+                    style: pw.TextStyle(
+                        font: ttfBold,
+                        fontSize: 14,
+                        color: textColor)),
+                pw.SizedBox(height: 12),
+
+                if (mathTopics.isNotEmpty) ...[
+                  pw.Text('Matematika',
+                      style: pw.TextStyle(
+                          font: ttfBold,
+                          fontSize: 12,
+                          color: mathColor)),
+                  pw.SizedBox(height: 6),
+                  _buildTopicsTable(mathTopics, ttf, ttfBold),
+                  pw.SizedBox(height: 16),
+                ],
+                if (engTopics.isNotEmpty) ...[
+                  pw.Text('Ingliz tili',
+                      style: pw.TextStyle(
+                          font: ttfBold,
+                          fontSize: 12,
+                          color: engColor)),
+                  pw.SizedBox(height: 6),
+                  _buildTopicsTable(engTopics, ttf, ttfBold),
+                ],
+              ],
+            ),
+
+            pw.SizedBox(height: 20),
+            _buildRecommendations(
+                mathPctD, engPctD, totalPct, ttf, ttfBold),
+          ];
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
 }

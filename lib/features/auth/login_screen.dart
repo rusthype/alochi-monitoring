@@ -15,6 +15,7 @@ import '../local_test/sync_images_button.dart';
 import '../local_test/history_screen.dart';
 import '../combined/combined_screen.dart';
 import '../test/school_launch_screen.dart';
+import '../diagnostic/diagnostic_launch_screen.dart';
 
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
@@ -244,6 +245,52 @@ class _LoginScreenState extends State<LoginScreen> {
           variantCount: variantCount > 0 ? variantCount : 15,
           preselectedVariant: preselectedVariant,
           pin: btn.pin,
+        ),
+      ),
+    );
+  }
+
+  /// Diagnostik (math+eng birlashgan) testni boshlash.
+  Future<void> _launchDiagnosticTest(
+    CatalogEntry mathEntry,
+    CatalogEntry engEntry,
+    SchoolButton btn,
+  ) async {
+    final mathData =
+        await BundledCatalogService.loadTestData(mathEntry.testKey);
+    final engData =
+        await BundledCatalogService.loadTestData(engEntry.testKey);
+    if (!mounted) return;
+    if (mathData == null || engData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Test topilmadi.'),
+          backgroundColor: AppColors.err,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final rawVariants = mathData['variants'];
+    final variantCount = rawVariants is Map ? rawVariants.length : 0;
+    int? preselectedVariant;
+    if (btn.randomVariant) {
+      preselectedVariant =
+          variantCount > 0 ? math.Random().nextInt(variantCount) + 1 : 1;
+    }
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => DiagnosticLaunchScreen(
+          mathTestData: mathData,
+          engTestData: engData,
+          schoolCode: btn.schoolCode,
+          schoolLabel: btn.label,
+          variantCount: variantCount > 0 ? variantCount : 15,
+          preselectedVariant: preselectedVariant,
+          pin: btn.pin,
+          grade: mathEntry.grade,
         ),
       ),
     );
@@ -898,6 +945,34 @@ class _LoginScreenState extends State<LoginScreen> {
     bool showBack = false,
   }) {
     final testEntries = entries ?? group.entries;
+
+    // Detect math+english pair for diagnostik combined card.
+    final mathEntry = testEntries
+        .where((e) => e.testKey.startsWith('math_diag'))
+        .firstOrNull;
+    final engEntry = testEntries
+        .where((e) => e.testKey.startsWith('eng_unit'))
+        .firstOrNull;
+    final hasPair = mathEntry != null && engEntry != null;
+
+    // Entries not part of the pair (shown individually).
+    final individualEntries = hasPair
+        ? testEntries
+            .where((e) => e != mathEntry && e != engEntry)
+            .toList()
+        : testEntries;
+
+    SchoolButton _btn(CatalogEntry entry) =>
+        entry.schoolButtons.firstWhere(
+          (b) => b.schoolCode == group.schoolCode,
+          orElse: () => SchoolButton(
+            label: group.label,
+            schoolCode: group.schoolCode,
+            randomVariant: group.randomVariant,
+            pin: group.pin,
+          ),
+        );
+
     return Padding(
       padding: const EdgeInsets.only(top: 6, bottom: 2),
       child: Column(
@@ -924,16 +999,83 @@ class _LoginScreenState extends State<LoginScreen> {
                 ]),
               ),
             ),
-          ...testEntries.map((entry) {
-            final btn = entry.schoolButtons.firstWhere(
-              (b) => b.schoolCode == group.schoolCode,
-              orElse: () => SchoolButton(
-                label: group.label,
-                schoolCode: group.schoolCode,
-                randomVariant: group.randomVariant,
-                pin: group.pin,
+          // ── Diagnostik combined card ──────────────────────────────────────
+          if (hasPair)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppColors.brand.withValues(alpha: .35),
+                      width: 1.5),
+                ),
+                child: Row(children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.brand.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.science_rounded,
+                        size: 18, color: AppColors.brand),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Diagnostik test',
+                          style: AppTextStyles.labelLarge
+                              .copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 3),
+                        Row(children: [
+                          _SubjectTag(
+                              label: 'Matematika',
+                              color: AppColors.math),
+                          const SizedBox(width: 5),
+                          _SubjectTag(
+                              label: 'Ingliz tili',
+                              color: AppColors.eng),
+                        ]),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => _launchDiagnosticTest(
+                        mathEntry, engEntry, _btn(mathEntry)),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.brand,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.play_arrow_rounded,
+                            size: 14, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Boshlash',
+                          style: AppTextStyles.caption.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ]),
+                    ),
+                  ),
+                ]),
               ),
-            );
+            ),
+          // ── Individual entries ────────────────────────────────────────────
+          ...individualEntries.map((entry) {
+            final btn = _btn(entry);
             return Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Container(
@@ -971,7 +1113,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         Text(
                           'Boshlash',
                           style: AppTextStyles.caption.copyWith(
-                              color: Colors.white, fontWeight: FontWeight.w700),
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700),
                         ),
                       ]),
                     ),
@@ -981,6 +1124,24 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           }),
         ],
+      ),
+    );
+  }
+
+  // ── Small subject tag widget ────────────────────────────────────────────────
+  // ignore: non_constant_identifier_names
+  Widget _SubjectTag({required String label, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: .3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+            fontSize: 10, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }
