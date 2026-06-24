@@ -49,7 +49,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -57,10 +57,11 @@
       "a pencil",
       "a crayon"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "pencil.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -68,7 +69,8 @@
       "a book",
       "a desk"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "book.jpg"
     },
     {
      "type": "image_choice",
@@ -95,7 +97,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -103,10 +105,11 @@
       "a doll",
       "a girl"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "princess.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is very ___.",
      "opts": [
       "sad",
@@ -114,10 +117,11 @@
       "happy",
       "thin"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "happy.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a snake",
@@ -125,10 +129,11 @@
       "a wig",
       "a clown"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "pretty",
@@ -136,7 +141,8 @@
       "sad",
       "thin"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "funny.jpg"
     },
     {
      "type": "image_choice",
@@ -409,7 +415,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -417,10 +423,11 @@
       "a bag",
       "a box"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "bag.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a rubber",
@@ -428,7 +435,8 @@
       "a pen",
       "a crayon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "rubber.jpg"
     },
     {
      "type": "image_choice",
@@ -455,7 +463,7 @@
      "ans": 3
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -463,10 +471,11 @@
       "a princess",
       "a wig"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "fat",
@@ -474,10 +483,11 @@
       "pretty",
       "tall"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "fat.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -485,10 +495,11 @@
       "a worm",
       "a lizard"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "happy",
@@ -496,7 +507,8 @@
       "pretty",
       "funny"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "sad.jpg"
     },
     {
      "type": "image_choice",
@@ -769,7 +781,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a box",
@@ -777,10 +789,11 @@
       "a pencil",
       "a book"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "book.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a ruler",
@@ -788,7 +801,8 @@
       "a crayon",
       "a rubber"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "crayon.jpg"
     },
     {
      "type": "image_choice",
@@ -815,7 +829,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -823,10 +837,11 @@
       "a princess",
       "a balloon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "fat",
@@ -834,10 +849,11 @@
       "funny",
       "pretty"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "pretty.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -845,10 +861,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "The snake is ___.",
      "opts": [
       "short",
@@ -856,7 +873,8 @@
       "long",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "long.jpg"
     },
     {
      "type": "image_choice",
@@ -1129,7 +1147,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a desk",
@@ -1137,10 +1155,11 @@
       "a box",
       "a rubber"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "rubber.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -1148,7 +1167,8 @@
       "a ruler",
       "a crayon"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "ruler.jpg"
     },
     {
      "type": "image_choice",
@@ -1175,7 +1195,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -1183,10 +1203,11 @@
       "a worm",
       "a lizard"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "pretty",
@@ -1194,10 +1215,11 @@
       "sad",
       "tall"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "sad.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -1205,10 +1227,11 @@
       "a clown",
       "a princess"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "princess.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "sad",
@@ -1216,11 +1239,12 @@
       "happy",
       "thin"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "happy.jpg"
     },
     {
      "type": "image_choice",
-     "img": "grandfa.jpg",
+     "img": "grandpa.jpg",
      "q": "Who is this?",
      "opts": [
       "Dad",
@@ -1489,7 +1513,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -1497,10 +1521,11 @@
       "a bag",
       "a desk"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "bag.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -1508,7 +1533,8 @@
       "a desk",
       "a bag"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "desk.jpg"
     },
     {
      "type": "image_choice",
@@ -1535,7 +1561,7 @@
      "ans": 3
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -1543,10 +1569,11 @@
       "a clown",
       "a princess"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "The snake is very ___.",
      "opts": [
       "short",
@@ -1554,10 +1581,11 @@
       "long",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "long.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a princess",
@@ -1565,10 +1593,11 @@
       "a clown",
       "a snake"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "sad",
@@ -1576,7 +1605,8 @@
       "old",
       "funny"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "funny.jpg"
     },
     {
      "type": "image_choice",
@@ -1849,7 +1879,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -1857,10 +1887,11 @@
       "a ruler",
       "a crayon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "pen.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -1868,7 +1899,8 @@
       "a desk",
       "a chair"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "chair.jpg"
     },
     {
      "type": "image_choice",
@@ -1895,7 +1927,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a snake",
@@ -1903,10 +1935,11 @@
       "a wig",
       "a clown"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "pretty",
@@ -1914,10 +1947,11 @@
       "sad",
       "funny"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "funny.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a hat",
@@ -1925,10 +1959,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "wig.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "long",
@@ -1936,7 +1971,8 @@
       "short",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "short.jpg"
     },
     {
      "type": "image_choice",
@@ -2209,7 +2245,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -2217,10 +2253,11 @@
       "a ruler",
       "a box"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "desk.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -2228,11 +2265,12 @@
       "a box",
       "a chair"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "box.jpg"
     },
     {
      "type": "image_choice",
-     "img": "grandfa.jpg",
+     "img": "grandpa.jpg",
      "q": "Who is this?",
      "opts": [
       "Dad",
@@ -2255,7 +2293,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a hat",
@@ -2263,10 +2301,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "wig.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "long",
@@ -2274,10 +2313,11 @@
       "short",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "short.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -2285,10 +2325,11 @@
       "a snake",
       "a lizard"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "sad",
@@ -2296,7 +2337,8 @@
       "fat",
       "old"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "pretty.jpg"
     },
     {
      "type": "image_choice",
@@ -2569,7 +2611,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -2577,10 +2619,11 @@
       "a pencil",
       "a crayon"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "pencil.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -2588,7 +2631,8 @@
       "a book",
       "a desk"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "book.jpg"
     },
     {
      "type": "image_choice",
@@ -2615,7 +2659,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -2623,10 +2667,11 @@
       "a doll",
       "a girl"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "princess.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is very ___.",
      "opts": [
       "sad",
@@ -2634,10 +2679,11 @@
       "happy",
       "thin"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "happy.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a snake",
@@ -2645,10 +2691,11 @@
       "a wig",
       "a clown"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "pretty",
@@ -2656,7 +2703,8 @@
       "sad",
       "thin"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "funny.jpg"
     },
     {
      "type": "image_choice",
@@ -2929,7 +2977,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -2937,10 +2985,11 @@
       "a bag",
       "a box"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "bag.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a rubber",
@@ -2948,7 +2997,8 @@
       "a pen",
       "a crayon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "rubber.jpg"
     },
     {
      "type": "image_choice",
@@ -2975,7 +3025,7 @@
      "ans": 3
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -2983,10 +3033,11 @@
       "a princess",
       "a wig"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "fat",
@@ -2994,10 +3045,11 @@
       "pretty",
       "tall"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "fat.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -3005,10 +3057,11 @@
       "a worm",
       "a lizard"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "happy",
@@ -3016,7 +3069,8 @@
       "pretty",
       "funny"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "sad.jpg"
     },
     {
      "type": "image_choice",
@@ -3289,7 +3343,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a box",
@@ -3297,10 +3351,11 @@
       "a pencil",
       "a book"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "book.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a ruler",
@@ -3308,7 +3363,8 @@
       "a crayon",
       "a rubber"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "crayon.jpg"
     },
     {
      "type": "image_choice",
@@ -3335,7 +3391,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -3343,10 +3399,11 @@
       "a princess",
       "a balloon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "fat",
@@ -3354,10 +3411,11 @@
       "funny",
       "pretty"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "pretty.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -3365,10 +3423,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "The snake is ___.",
      "opts": [
       "short",
@@ -3376,7 +3435,8 @@
       "long",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "long.jpg"
     },
     {
      "type": "image_choice",
@@ -3649,7 +3709,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a desk",
@@ -3657,10 +3717,11 @@
       "a box",
       "a rubber"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "rubber.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -3668,7 +3729,8 @@
       "a ruler",
       "a crayon"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "ruler.jpg"
     },
     {
      "type": "image_choice",
@@ -3695,7 +3757,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -3703,10 +3765,11 @@
       "a worm",
       "a lizard"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "pretty",
@@ -3714,10 +3777,11 @@
       "sad",
       "tall"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "sad.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -3725,10 +3789,11 @@
       "a clown",
       "a princess"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "princess.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "sad",
@@ -3736,11 +3801,12 @@
       "happy",
       "thin"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "happy.jpg"
     },
     {
      "type": "image_choice",
-     "img": "grandfa.jpg",
+     "img": "grandpa.jpg",
      "q": "Who is this?",
      "opts": [
       "Dad",
@@ -4009,7 +4075,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -4017,10 +4083,11 @@
       "a bag",
       "a desk"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "bag.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -4028,7 +4095,8 @@
       "a desk",
       "a bag"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "desk.jpg"
     },
     {
      "type": "image_choice",
@@ -4055,7 +4123,7 @@
      "ans": 3
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -4063,10 +4131,11 @@
       "a clown",
       "a princess"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "The snake is very ___.",
      "opts": [
       "short",
@@ -4074,10 +4143,11 @@
       "long",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "long.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a princess",
@@ -4085,10 +4155,11 @@
       "a clown",
       "a snake"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "sad",
@@ -4096,7 +4167,8 @@
       "old",
       "funny"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "funny.jpg"
     },
     {
      "type": "image_choice",
@@ -4369,7 +4441,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -4377,10 +4449,11 @@
       "a ruler",
       "a crayon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "pen.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -4388,7 +4461,8 @@
       "a desk",
       "a chair"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "chair.jpg"
     },
     {
      "type": "image_choice",
@@ -4415,7 +4489,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a snake",
@@ -4423,10 +4497,11 @@
       "a wig",
       "a clown"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "pretty",
@@ -4434,10 +4509,11 @@
       "sad",
       "funny"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "funny.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a hat",
@@ -4445,10 +4521,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "wig.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "long",
@@ -4456,7 +4533,8 @@
       "short",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "short.jpg"
     },
     {
      "type": "image_choice",
@@ -4729,7 +4807,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -4737,10 +4815,11 @@
       "a ruler",
       "a box"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "desk.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -4748,11 +4827,12 @@
       "a box",
       "a chair"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "box.jpg"
     },
     {
      "type": "image_choice",
-     "img": "grandfa.jpg",
+     "img": "grandpa.jpg",
      "q": "Who is this?",
      "opts": [
       "Dad",
@@ -4775,7 +4855,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a hat",
@@ -4783,10 +4863,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "wig.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "long",
@@ -4794,10 +4875,11 @@
       "short",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "short.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -4805,10 +4887,11 @@
       "a snake",
       "a lizard"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "sad",
@@ -4816,7 +4899,8 @@
       "fat",
       "old"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "pretty.jpg"
     },
     {
      "type": "image_choice",
@@ -5089,7 +5173,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -5097,10 +5181,11 @@
       "a pencil",
       "a crayon"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "pencil.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -5108,7 +5193,8 @@
       "a book",
       "a desk"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "book.jpg"
     },
     {
      "type": "image_choice",
@@ -5135,7 +5221,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -5143,10 +5229,11 @@
       "a doll",
       "a girl"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "princess.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is very ___.",
      "opts": [
       "sad",
@@ -5154,10 +5241,11 @@
       "happy",
       "thin"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "happy.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a snake",
@@ -5165,10 +5253,11 @@
       "a wig",
       "a clown"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "pretty",
@@ -5176,7 +5265,8 @@
       "sad",
       "thin"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "funny.jpg"
     },
     {
      "type": "image_choice",
@@ -5449,7 +5539,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -5457,10 +5547,11 @@
       "a bag",
       "a box"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "bag.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a rubber",
@@ -5468,7 +5559,8 @@
       "a pen",
       "a crayon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "rubber.jpg"
     },
     {
      "type": "image_choice",
@@ -5495,7 +5587,7 @@
      "ans": 3
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -5503,10 +5595,11 @@
       "a princess",
       "a wig"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "fat",
@@ -5514,10 +5607,11 @@
       "pretty",
       "tall"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "fat.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -5525,10 +5619,11 @@
       "a worm",
       "a lizard"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "happy",
@@ -5536,7 +5631,8 @@
       "pretty",
       "funny"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "sad.jpg"
     },
     {
      "type": "image_choice",
@@ -5809,7 +5905,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a box",
@@ -5817,10 +5913,11 @@
       "a pencil",
       "a book"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "book.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a ruler",
@@ -5828,7 +5925,8 @@
       "a crayon",
       "a rubber"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "crayon.jpg"
     },
     {
      "type": "image_choice",
@@ -5855,7 +5953,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -5863,10 +5961,11 @@
       "a princess",
       "a balloon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "fat",
@@ -5874,10 +5973,11 @@
       "funny",
       "pretty"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "pretty.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -5885,10 +5985,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "The snake is ___.",
      "opts": [
       "short",
@@ -5896,7 +5997,8 @@
       "long",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "long.jpg"
     },
     {
      "type": "image_choice",
@@ -6169,7 +6271,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a desk",
@@ -6177,10 +6279,11 @@
       "a box",
       "a rubber"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "rubber.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -6188,7 +6291,8 @@
       "a ruler",
       "a crayon"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "ruler.jpg"
     },
     {
      "type": "image_choice",
@@ -6215,7 +6319,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -6223,10 +6327,11 @@
       "a worm",
       "a lizard"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "pretty",
@@ -6234,10 +6339,11 @@
       "sad",
       "tall"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "sad.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -6245,10 +6351,11 @@
       "a clown",
       "a princess"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "princess.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "sad",
@@ -6256,11 +6363,12 @@
       "happy",
       "thin"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "happy.jpg"
     },
     {
      "type": "image_choice",
-     "img": "grandfa.jpg",
+     "img": "grandpa.jpg",
      "q": "Who is this?",
      "opts": [
       "Dad",
@@ -6529,7 +6637,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -6537,10 +6645,11 @@
       "a bag",
       "a desk"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "bag.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -6548,7 +6657,8 @@
       "a desk",
       "a bag"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "desk.jpg"
     },
     {
      "type": "image_choice",
@@ -6575,7 +6685,7 @@
      "ans": 3
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -6583,10 +6693,11 @@
       "a clown",
       "a princess"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "The snake is very ___.",
      "opts": [
       "short",
@@ -6594,10 +6705,11 @@
       "long",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "long.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a princess",
@@ -6605,10 +6717,11 @@
       "a clown",
       "a snake"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "sad",
@@ -6616,7 +6729,8 @@
       "old",
       "funny"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "funny.jpg"
     },
     {
      "type": "image_choice",
@@ -6889,7 +7003,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -6897,10 +7011,11 @@
       "a ruler",
       "a crayon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "pen.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -6908,7 +7023,8 @@
       "a desk",
       "a chair"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "chair.jpg"
     },
     {
      "type": "image_choice",
@@ -6935,7 +7051,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a snake",
@@ -6943,10 +7059,11 @@
       "a wig",
       "a clown"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "pretty",
@@ -6954,10 +7071,11 @@
       "sad",
       "funny"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "funny.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a hat",
@@ -6965,10 +7083,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "wig.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "long",
@@ -6976,7 +7095,8 @@
       "short",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "short.jpg"
     },
     {
      "type": "image_choice",
@@ -7249,7 +7369,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -7257,10 +7377,11 @@
       "a ruler",
       "a box"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "desk.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -7268,11 +7389,12 @@
       "a box",
       "a chair"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "box.jpg"
     },
     {
      "type": "image_choice",
-     "img": "grandfa.jpg",
+     "img": "grandpa.jpg",
      "q": "Who is this?",
      "opts": [
       "Dad",
@@ -7295,7 +7417,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a hat",
@@ -7303,10 +7425,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "wig.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "long",
@@ -7314,10 +7437,11 @@
       "short",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "short.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -7325,10 +7449,11 @@
       "a snake",
       "a lizard"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "sad",
@@ -7336,7 +7461,8 @@
       "fat",
       "old"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "pretty.jpg"
     },
     {
      "type": "image_choice",
@@ -7609,7 +7735,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -7617,10 +7743,11 @@
       "a pencil",
       "a crayon"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "pencil.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -7628,7 +7755,8 @@
       "a book",
       "a desk"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "book.jpg"
     },
     {
      "type": "image_choice",
@@ -7655,7 +7783,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -7663,10 +7791,11 @@
       "a doll",
       "a girl"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "princess.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is very ___.",
      "opts": [
       "sad",
@@ -7674,10 +7803,11 @@
       "happy",
       "thin"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "happy.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a snake",
@@ -7685,10 +7815,11 @@
       "a wig",
       "a clown"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "pretty",
@@ -7696,7 +7827,8 @@
       "sad",
       "thin"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "funny.jpg"
     },
     {
      "type": "image_choice",
@@ -7969,7 +8101,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -7977,10 +8109,11 @@
       "a bag",
       "a box"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "bag.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a rubber",
@@ -7988,7 +8121,8 @@
       "a pen",
       "a crayon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "rubber.jpg"
     },
     {
      "type": "image_choice",
@@ -8015,7 +8149,7 @@
      "ans": 3
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -8023,10 +8157,11 @@
       "a princess",
       "a wig"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "fat",
@@ -8034,10 +8169,11 @@
       "pretty",
       "tall"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "fat.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -8045,10 +8181,11 @@
       "a worm",
       "a lizard"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "happy",
@@ -8056,7 +8193,8 @@
       "pretty",
       "funny"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "sad.jpg"
     },
     {
      "type": "image_choice",
@@ -8329,7 +8467,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a box",
@@ -8337,10 +8475,11 @@
       "a pencil",
       "a book"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "book.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a ruler",
@@ -8348,7 +8487,8 @@
       "a crayon",
       "a rubber"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "crayon.jpg"
     },
     {
      "type": "image_choice",
@@ -8375,7 +8515,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -8383,10 +8523,11 @@
       "a princess",
       "a balloon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "fat",
@@ -8394,10 +8535,11 @@
       "funny",
       "pretty"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "pretty.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -8405,10 +8547,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "The snake is ___.",
      "opts": [
       "short",
@@ -8416,7 +8559,8 @@
       "long",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "long.jpg"
     },
     {
      "type": "image_choice",
@@ -8689,7 +8833,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a desk",
@@ -8697,10 +8841,11 @@
       "a box",
       "a rubber"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "rubber.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -8708,7 +8853,8 @@
       "a ruler",
       "a crayon"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "ruler.jpg"
     },
     {
      "type": "image_choice",
@@ -8735,7 +8881,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -8743,10 +8889,11 @@
       "a worm",
       "a lizard"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "pretty",
@@ -8754,10 +8901,11 @@
       "sad",
       "tall"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "sad.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -8765,10 +8913,11 @@
       "a clown",
       "a princess"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "princess.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "sad",
@@ -8776,11 +8925,12 @@
       "happy",
       "thin"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "happy.jpg"
     },
     {
      "type": "image_choice",
-     "img": "grandfa.jpg",
+     "img": "grandpa.jpg",
      "q": "Who is this?",
      "opts": [
       "Dad",
@@ -9049,7 +9199,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -9057,10 +9207,11 @@
       "a bag",
       "a desk"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "bag.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -9068,7 +9219,8 @@
       "a desk",
       "a bag"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "desk.jpg"
     },
     {
      "type": "image_choice",
@@ -9095,7 +9247,7 @@
      "ans": 3
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -9103,10 +9255,11 @@
       "a clown",
       "a princess"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "The snake is very ___.",
      "opts": [
       "short",
@@ -9114,10 +9267,11 @@
       "long",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "long.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a princess",
@@ -9125,10 +9279,11 @@
       "a clown",
       "a snake"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "sad",
@@ -9136,7 +9291,8 @@
       "old",
       "funny"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "funny.jpg"
     },
     {
      "type": "image_choice",
@@ -9409,7 +9565,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -9417,10 +9573,11 @@
       "a ruler",
       "a crayon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "pen.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -9428,7 +9585,8 @@
       "a desk",
       "a chair"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "chair.jpg"
     },
     {
      "type": "image_choice",
@@ -9455,7 +9613,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a snake",
@@ -9463,10 +9621,11 @@
       "a wig",
       "a clown"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "pretty",
@@ -9474,10 +9633,11 @@
       "sad",
       "funny"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "funny.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a hat",
@@ -9485,10 +9645,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "wig.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "long",
@@ -9496,7 +9657,8 @@
       "short",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "short.jpg"
     },
     {
      "type": "image_choice",
@@ -9769,7 +9931,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -9777,10 +9939,11 @@
       "a ruler",
       "a box"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "desk.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -9788,11 +9951,12 @@
       "a box",
       "a chair"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "box.jpg"
     },
     {
      "type": "image_choice",
-     "img": "grandfa.jpg",
+     "img": "grandpa.jpg",
      "q": "Who is this?",
      "opts": [
       "Dad",
@@ -9815,7 +9979,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a hat",
@@ -9823,10 +9987,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "wig.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "long",
@@ -9834,10 +9999,11 @@
       "short",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "short.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -9845,10 +10011,11 @@
       "a snake",
       "a lizard"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "sad",
@@ -9856,7 +10023,8 @@
       "fat",
       "old"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "pretty.jpg"
     },
     {
      "type": "image_choice",
@@ -10129,7 +10297,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -10137,10 +10305,11 @@
       "a pencil",
       "a crayon"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "pencil.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -10148,7 +10317,8 @@
       "a book",
       "a desk"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "book.jpg"
     },
     {
      "type": "image_choice",
@@ -10175,7 +10345,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -10183,10 +10353,11 @@
       "a doll",
       "a girl"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "princess.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is very ___.",
      "opts": [
       "sad",
@@ -10194,10 +10365,11 @@
       "happy",
       "thin"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "happy.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a snake",
@@ -10205,10 +10377,11 @@
       "a wig",
       "a clown"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "pretty",
@@ -10216,7 +10389,8 @@
       "sad",
       "thin"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "funny.jpg"
     },
     {
      "type": "image_choice",
@@ -10489,7 +10663,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -10497,10 +10671,11 @@
       "a bag",
       "a box"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "bag.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a rubber",
@@ -10508,7 +10683,8 @@
       "a pen",
       "a crayon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "rubber.jpg"
     },
     {
      "type": "image_choice",
@@ -10535,7 +10711,7 @@
      "ans": 3
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -10543,10 +10719,11 @@
       "a princess",
       "a wig"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "fat",
@@ -10554,10 +10731,11 @@
       "pretty",
       "tall"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "fat.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -10565,10 +10743,11 @@
       "a worm",
       "a lizard"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "happy",
@@ -10576,7 +10755,8 @@
       "pretty",
       "funny"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "sad.jpg"
     },
     {
      "type": "image_choice",
@@ -10849,7 +11029,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a box",
@@ -10857,10 +11037,11 @@
       "a pencil",
       "a book"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "book.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a ruler",
@@ -10868,7 +11049,8 @@
       "a crayon",
       "a rubber"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "crayon.jpg"
     },
     {
      "type": "image_choice",
@@ -10895,7 +11077,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a clown",
@@ -10903,10 +11085,11 @@
       "a princess",
       "a balloon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "fat",
@@ -10914,10 +11097,11 @@
       "funny",
       "pretty"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "pretty.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -10925,10 +11109,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "The snake is ___.",
      "opts": [
       "short",
@@ -10936,7 +11121,8 @@
       "long",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "long.jpg"
     },
     {
      "type": "image_choice",
@@ -11209,7 +11395,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a desk",
@@ -11217,10 +11403,11 @@
       "a box",
       "a rubber"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "rubber.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -11228,7 +11415,8 @@
       "a ruler",
       "a crayon"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "ruler.jpg"
     },
     {
      "type": "image_choice",
@@ -11255,7 +11443,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -11263,10 +11451,11 @@
       "a worm",
       "a lizard"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "pretty",
@@ -11274,10 +11463,11 @@
       "sad",
       "tall"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "sad.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -11285,10 +11475,11 @@
       "a clown",
       "a princess"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "princess.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "sad",
@@ -11296,11 +11487,12 @@
       "happy",
       "thin"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "happy.jpg"
     },
     {
      "type": "image_choice",
-     "img": "grandfa.jpg",
+     "img": "grandpa.jpg",
      "q": "Who is this?",
      "opts": [
       "Dad",
@@ -11569,7 +11761,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -11577,10 +11769,11 @@
       "a bag",
       "a desk"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "bag.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -11588,7 +11781,8 @@
       "a desk",
       "a bag"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "desk.jpg"
     },
     {
      "type": "image_choice",
@@ -11615,7 +11809,7 @@
      "ans": 3
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a wig",
@@ -11623,10 +11817,11 @@
       "a clown",
       "a princess"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "balloon.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "The snake is very ___.",
      "opts": [
       "short",
@@ -11634,10 +11829,11 @@
       "long",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "long.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a princess",
@@ -11645,10 +11841,11 @@
       "a clown",
       "a snake"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is ___.",
      "opts": [
       "sad",
@@ -11656,7 +11853,8 @@
       "old",
       "funny"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "funny.jpg"
     },
     {
      "type": "image_choice",
@@ -11929,7 +12127,7 @@
      "ans": 1
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a pen",
@@ -11937,10 +12135,11 @@
       "a ruler",
       "a crayon"
      ],
-     "ans": 0
+     "ans": 0,
+     "img": "pen.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -11948,7 +12147,8 @@
       "a desk",
       "a chair"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "chair.jpg"
     },
     {
      "type": "image_choice",
@@ -11975,7 +12175,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a snake",
@@ -11983,10 +12183,11 @@
       "a wig",
       "a clown"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "clown.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "pretty",
@@ -11994,10 +12195,11 @@
       "sad",
       "funny"
      ],
-     "ans": 3
+     "ans": 3,
+     "img": "funny.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a hat",
@@ -12005,10 +12207,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "wig.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "long",
@@ -12016,7 +12219,8 @@
       "short",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "short.jpg"
     },
     {
      "type": "image_choice",
@@ -12289,7 +12493,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a chair",
@@ -12297,10 +12501,11 @@
       "a ruler",
       "a box"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "desk.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a bag",
@@ -12308,11 +12513,12 @@
       "a box",
       "a chair"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "box.jpg"
     },
     {
      "type": "image_choice",
-     "img": "grandfa.jpg",
+     "img": "grandpa.jpg",
      "q": "Who is this?",
      "opts": [
       "Dad",
@@ -12335,7 +12541,7 @@
      "ans": 2
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a hat",
@@ -12343,10 +12549,11 @@
       "a balloon",
       "a clown"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "wig.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "He is very ___.",
      "opts": [
       "long",
@@ -12354,10 +12561,11 @@
       "short",
       "old"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "short.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "What is this?",
      "opts": [
       "a frog",
@@ -12365,10 +12573,11 @@
       "a snake",
       "a lizard"
      ],
-     "ans": 2
+     "ans": 2,
+     "img": "snake.jpg"
     },
     {
-     "type": "text_choice",
+     "type": "image_choice",
      "q": "She is ___.",
      "opts": [
       "sad",
@@ -12376,7 +12585,8 @@
       "fat",
       "old"
      ],
-     "ans": 1
+     "ans": 1,
+     "img": "pretty.jpg"
     },
     {
      "type": "image_choice",
