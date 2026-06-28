@@ -1245,7 +1245,6 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
                             pct: widget.pct,
                             mathTopics: const [],
                             engTopics: _engTopics,
-                            l10n: AppLocalizations.of(context)!,
                           );
                           await Printing.layoutPdf(
                               onLayout: (_) => pdfBytes,
@@ -1278,7 +1277,6 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
                             pct: widget.pct,
                             mathTopics: const [],
                             engTopics: _engTopics,
-                            l10n: AppLocalizations.of(context)!,
                           );
                           await Printing.sharePdf(
                               bytes: pdfBytes,
