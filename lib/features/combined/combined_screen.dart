@@ -1,6 +1,7 @@
 // lib/features/combined/combined_screen.dart
 // Combined Monitoring Test — Math (30) + English Unit 1 (49) = 79 questions
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
 import '../bob14/bob14_data.dart';
 import '../unit1/unit1_data.dart';
@@ -62,14 +63,15 @@ class _CombinedScreenState extends State<CombinedScreen>
   }
 
   Future<void> _startTest() async {
+    final l10n = AppLocalizations.of(context)!;
     final first = _firstCtrl.text.trim();
     final last = _lastCtrl.text.trim();
     if (first.isEmpty || last.isEmpty) {
-      setState(() => _err = 'Ism va familiyani kiriting');
+      setState(() => _err = l10n.enterFirstAndLastName);
       return;
     }
     if (_passCtrl.text.trim() != '1234') {
-      setState(() => _err = "Maxfiy parol noto'g'ri");
+      setState(() => _err = l10n.incorrectPassword);
       return;
     }
     setState(() {
@@ -80,7 +82,7 @@ class _CombinedScreenState extends State<CombinedScreen>
       // Load both data sources in parallel
       final results = await Future.wait([
         Bob14Loader.get(_variant!),
-        Unit1Loader.load(),
+        Unit1Loader.loadResolved(),
       ]);
       if (!mounted) return;
       final mathQuestions = results[0] as List;
@@ -99,8 +101,9 @@ class _CombinedScreenState extends State<CombinedScreen>
           ));
     } catch (e) {
       if (!mounted) return;
+      final l10nFallback = AppLocalizations.of(context)!;
       setState(() {
-        _err = 'Xato: $e';
+        _err = l10nFallback.errorPrefix(e.toString());
         _loading = false;
       });
     }
@@ -108,6 +111,7 @@ class _CombinedScreenState extends State<CombinedScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -122,7 +126,7 @@ class _CombinedScreenState extends State<CombinedScreen>
                 icon: const Icon(Icons.close_rounded, color: AppColors.ink2),
                 onPressed: () => Navigator.pop(context)),
         title: Text(
-            _step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
+            _step == 0 ? l10n.selectVariant : l10n.studentInfoTitle,
             style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
@@ -136,13 +140,13 @@ class _CombinedScreenState extends State<CombinedScreen>
       ),
       body: FadeTransition(
         opacity: _fade,
-        child: _step == 0 ? _buildVariant() : _buildStudent(),
+        child: _step == 0 ? _buildVariant(l10n) : _buildStudent(l10n),
       ),
     );
   }
 
   // ── Step 0: Variant 1-15 ──────────────────────────────────────────────────
-  Widget _buildVariant() {
+  Widget _buildVariant(AppLocalizations l10n) {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
@@ -159,33 +163,33 @@ class _CombinedScreenState extends State<CombinedScreen>
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: _kPurple.withValues(alpha: .25)),
               ),
-              child: const Row(children: [
-                Icon(Icons.menu_book_rounded, color: _kPurple, size: 20),
-                SizedBox(width: 10),
+              child: Row(children: [
+                const Icon(Icons.menu_book_rounded, color: _kPurple, size: 20),
+                const SizedBox(width: 10),
                 Expanded(
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                      Text('Monitoring Test Unit 1',
-                          style: TextStyle(
+                      Text(l10n.monitoringTestUnit1,
+                          style: const TextStyle(
                               fontWeight: FontWeight.w800,
                               fontSize: 13,
                               color: _kPurpleBannerTitle)),
-                      SizedBox(height: 2),
-                      Text('79 savol · 75 daqiqa · Offline rejim',
-                          style: TextStyle(
+                      const SizedBox(height: 2),
+                      Text(l10n.combinedTestInfo,
+                          style: const TextStyle(
                               fontSize: 11, color: _kPurpleBannerSub)),
-                      SizedBox(height: 2),
-                      Text('30 matematika + 49 ingliz tili',
-                          style: TextStyle(
+                      const SizedBox(height: 2),
+                      Text(l10n.combinedTestSubjects,
+                          style: const TextStyle(
                               fontSize: 10,
                               color: _kPurpleBannerSub)),
                     ])),
               ]),
             ),
             const SizedBox(height: 20),
-            const Text('Variantni tanlang',
-                style: TextStyle(
+            Text(l10n.selectVariant,
+                style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: AppColors.ink2)),
@@ -236,8 +240,8 @@ class _CombinedScreenState extends State<CombinedScreen>
               child: ElevatedButton.icon(
                 onPressed: _variant == null ? null : () => _goStep(1),
                 icon: const Icon(Icons.arrow_forward_rounded),
-                label: const Text('Davom etish',
-                    style: TextStyle(
+                label: Text(l10n.continueButton,
+                    style: const TextStyle(
                         fontSize: 15, fontWeight: FontWeight.w700)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _kPurple,
@@ -255,7 +259,7 @@ class _CombinedScreenState extends State<CombinedScreen>
   }
 
   // ── Step 1: Student Info ──────────────────────────────────────────────────
-  Widget _buildStudent() {
+  Widget _buildStudent(AppLocalizations l10n) {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
@@ -282,8 +286,8 @@ class _CombinedScreenState extends State<CombinedScreen>
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("O'quvchi ma'lumotlari",
-                        style: TextStyle(
+                    Text(l10n.studentInfoTitle,
+                        style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: AppColors.ink1)),
@@ -291,25 +295,25 @@ class _CombinedScreenState extends State<CombinedScreen>
                     Row(children: [
                       Expanded(
                           child: _CField(
-                              label: 'Ism',
+                              label: l10n.firstNameLabel,
                               ctrl: _firstCtrl,
-                              hint: 'Alisher')),
+                              hint: l10n.firstNameHint)),
                       const SizedBox(width: 12),
                       Expanded(
                           child: _CField(
-                              label: 'Familiya',
+                              label: l10n.lastNameLabel,
                               ctrl: _lastCtrl,
-                              hint: 'Karimov')),
+                              hint: l10n.lastNameHint)),
                     ]),
                     const SizedBox(height: 14),
                     _CField(
-                        label: 'Maktab',
+                        label: l10n.schoolNameLabel,
                         ctrl: _schoolCtrl,
-                        hint: '12-maktab',
+                        hint: l10n.schoolNameHint,
                         required: false),
                     const SizedBox(height: 14),
                     _CField(
-                        label: 'Parol (PIN kod)',
+                        label: l10n.pinCodeLabel,
                         ctrl: _passCtrl,
                         hint: '****',
                         obscure: true,
@@ -347,7 +351,7 @@ class _CombinedScreenState extends State<CombinedScreen>
                                     color: Colors.white))
                             : const Icon(Icons.play_arrow_rounded),
                         label: Text(
-                            _loading ? 'Yuklanmoqda...' : 'Testni boshlash',
+                            _loading ? l10n.serverChecking : l10n.startTest,
                             style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700)),

@@ -23,8 +23,8 @@ class StudentSession {
         token: j['token'] as String? ?? '',
         studentId: j['student_id'] as String? ?? '',
         studentName: j['student_name'] as String? ?? '',
-        variant: (j['variant'] as num?)?.toInt(),
-        grade: (j['grade'] as num?)?.toInt(),
+        variant: j['variant'] == null ? null : int.tryParse(j['variant'].toString()),
+        grade: j['grade'] == null ? null : int.tryParse(j['grade'].toString()),
         groupName: j['group_name'] as String?,
       );
 }

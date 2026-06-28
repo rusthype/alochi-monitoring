@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
+import '../models/test_catalog.dart';
 import '../db/offline_queue.dart';
 
 class ApiException implements Exception {
@@ -159,6 +160,17 @@ class MonitoringApi {
     }
   }
 
+  Future<List<TestCatalogEntry>> getTestCatalog() async {
+    final data = await _get('/tests/catalog/') as List;
+    return data
+        .map((j) => TestCatalogEntry.fromJson(j as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> getTestDetail(String testKey) async {
+    return await _get('/tests/$testKey/') as Map<String, dynamic>;
+  }
+
   Future<List<TestPackage>> getPackages(int grade) async {
     final data = await _get('/packages/?grade=$grade') as List;
     return data.map((j) => TestPackage.fromJson(j)).toList();
@@ -281,6 +293,56 @@ class MonitoringApi {
     } catch (_) {
       return false;
     }
+  }
+
+  // --- Admin / Boss API ---
+  String? _adminToken;
+
+  Future<void> loadAdminToken() async {
+    // Stub: in a real implementation, read from secure storage
+    _adminToken = null;
+  }
+
+  bool get isAdminLoggedIn => _adminToken != null;
+
+  Future<void> adminLogin(String username, String password) async {
+    // Stub
+    await Future.delayed(const Duration(seconds: 1));
+    _adminToken = 'dummy_admin_token';
+  }
+
+  Future<void> adminLogout() async {
+    _adminToken = null;
+  }
+
+  Future<List<dynamic>> generateFromPdf({
+    required File pdf,
+    required String subject,
+    required int grade,
+    required int count,
+  }) async {
+    // Stub
+    await Future.delayed(const Duration(seconds: 2));
+    return [];
+  }
+
+  Future<String> createPackage({
+    required String title,
+    required int grade,
+    required int mathCount,
+    required int engCount,
+    required int variantCount,
+  }) async {
+    // Stub
+    return 'pkg-123';
+  }
+
+  Future<void> bulkQuestions(String packageId, List<dynamic> questions) async {
+    // Stub
+  }
+
+  Future<void> publishPackage(String packageId) async {
+    // Stub
   }
 
   /// Offline navbatdagi (online + lokal) natijalarni qayta yuborishga urinadi.
