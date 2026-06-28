@@ -14,6 +14,7 @@ import '../local_test/sync_images_button.dart';
 import '../local_test/history_screen.dart';
 import '../combined/combined_screen.dart';
 import '../session/session_setup_screen.dart';
+import '../downloads/downloads_sheet.dart';
 
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
@@ -451,6 +452,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: _downloadsButton(),
+                ),
+              ),
+            ),
             ],
           ),
         ),
@@ -544,6 +555,48 @@ class _LoginScreenState extends State<LoginScreen> {
     ).whenComplete(_loadCatalog);
   }
 
+  Widget _downloadsButton() {
+    return GestureDetector(
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => DownloadsSheet(
+          schoolCode: _userCtrl.text.trim(),
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1e293b),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF334155)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .12),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.folder_rounded, size: 16, color: Color(0xFF00d68f)),
+            SizedBox(width: 6),
+            Text(
+              'Hujjatlar',
+              style: TextStyle(
+                color: Color(0xFFf1f5f9),
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _routeButtons() {
     return IntrinsicHeight(
