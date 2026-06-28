@@ -13,8 +13,6 @@ import '../local_test/local_grade_screen.dart';
 import '../local_test/sync_images_button.dart';
 import '../local_test/history_screen.dart';
 import '../combined/combined_screen.dart';
-import '../test/engine_host_screen.dart';
-import '../../core/db/test_cache.dart' as testcache;
 
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
@@ -178,8 +176,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ── Test katalog banner holati ─────────────────────────────────────────────
   List<CatalogEntry> _catalogEntries = [];
-  final Set<String> _downloadingKeys = {};
-  final Set<String> _downloadedKeys = {};
 
   @override
   void initState() {
@@ -197,82 +193,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _downloadTest(CatalogEntry entry) async {
-    if (_downloadingKeys.contains(entry.testKey)) return;
-    setState(() => _downloadingKeys.add(entry.testKey));
-    try {
-      final ok = await testCatalogService.download(entry.testKey);
-      if (mounted) {
-        setState(() {
-          _downloadingKeys.remove(entry.testKey);
-          if (ok) _downloadedKeys.add(entry.testKey);
-        });
-        if (ok) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${entry.title} yuklandi'),
-              backgroundColor: AppColors.ok,
-              behavior: SnackBarBehavior.floating,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-          // Katalogni yangilash — versiya mos holat bilan
-          _loadCatalog();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Yuklashda xato. Qayta urinib koring.'),
-              backgroundColor: AppColors.err,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('_downloadTest(${entry.testKey}) error: $e');
-      if (mounted) setState(() => _downloadingKeys.remove(entry.testKey));
-    }
-  }
-
-  /// Yuklab olingan test uchun talaba ma'lumoti + variant dialog ko'rsatib,
-  /// EngineHostScreen'ga o'tadi.
-  Future<void> _launchTest(CatalogEntry entry) async {
-    final result = await showDialog<_LaunchArgs>(
-      context: context,
-      builder: (_) => _LaunchDialog(entry: entry),
-    );
-    if (result == null || !mounted) return;
-
-    // Load test data from cache.
-    final testData = await _TestCacheLoader.get(entry.testKey);
-    if (!mounted) return;
-    if (testData == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Keshdan test topilmadi. Qayta yuklab ko\'ring.'),
-          backgroundColor: AppColors.err,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => EngineHostScreen(
-          testData: testData,
-          variant: result.variant,
-          firstName: result.firstName,
-          lastName: result.lastName,
-          school: result.school,
-          group: result.group,
-        ),
-      ),
-    );
-  }
-
-  @override
   void dispose() {
     _userCtrl.dispose();
     _passCtrl.dispose();
@@ -486,7 +406,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: AppTextStyles.bodyMedium
                                     .copyWith(color: AppColors.ink2)),
                             const SizedBox(height: 24),
-                            _catalogBanner(),
                             _routeButtons(),
                             _accordion(),
                             const SizedBox(height: 16),
@@ -521,6 +440,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
+            Positioned(
+              top: 0,
+              left: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: _newTestsButton(),
+                ),
+              ),
+            ),
             ],
           ),
         ),
@@ -528,205 +457,92 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Katalog banner: yangi/yangilanishi kerak testlar chiqadi.
-  /// Offline + kesh bo'sh → neytral xabar.
-  /// Kesh bor + offline → cachedOnly yozuvlar chiqadi (yuklab olingan).
-  Widget _catalogBanner() {
-    // notDownloaded va updatable testlar — yuklash taklif qilinadi
-    final actionable = _catalogEntries
+  Widget _newTestsButton() {
+    final downloadable = _catalogEntries
         .where((e) =>
             e.status == CatalogStatus.notDownloaded ||
             e.status == CatalogStatus.updatable)
-        .toList();
+        .length;
+    final cached = _catalogEntries
+        .where((e) =>
+            e.status == CatalogStatus.cached ||
+            e.status == CatalogStatus.cachedOnly)
+        .length;
+    final total = _catalogEntries.length;
+    final hasNew = downloadable > 0;
 
-    // cachedOnly: offline + keshda bor
-    final cachedOnly = _catalogEntries
-        .where((e) => e.status == CatalogStatus.cachedOnly)
-        .toList();
-
-    // Hech narsa yo'q — banner ko'rsatma
-    if (actionable.isEmpty && cachedOnly.isEmpty) {
-      // Internet yo'q + kesh bo'sh
-      if (_catalogEntries.isEmpty) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.muted,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.cloud_off_rounded,
-                    size: 18, color: AppColors.ink3),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Internet kerak (testlarni yuklash uchun)',
-                    style: AppTextStyles.labelMedium
-                        .copyWith(color: AppColors.ink2),
-                  ),
-                ),
-              ],
-            ),
+    return GestureDetector(
+      onTap: _showCatalogSheet,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: hasNew ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: hasNew ? AppColors.primary : AppColors.border,
           ),
-        );
-      }
-      return const SizedBox.shrink();
-    }
-
-    final items = [...actionable, ...cachedOnly];
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: items.map((entry) {
-          final isDownloading = _downloadingKeys.contains(entry.testKey);
-          final isDone = _downloadedKeys.contains(entry.testKey) ||
-              entry.status == CatalogStatus.cached ||
-              entry.status == CatalogStatus.cachedOnly;
-          final isUpdatable = entry.status == CatalogStatus.updatable;
-          final isOfflineCached = entry.status == CatalogStatus.cachedOnly;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-              decoration: BoxDecoration(
-                color:
-                    isOfflineCached ? AppColors.muted : AppColors.primaryMuted,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isOfflineCached
-                      ? AppColors.border
-                      : AppColors.primary.withValues(alpha: .25),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    isOfflineCached
-                        ? Icons.offline_pin_rounded
-                        : (isDone
-                            ? Icons.check_circle_rounded
-                            : Icons.cloud_download_rounded),
-                    size: 20,
-                    color: isOfflineCached
-                        ? AppColors.ink3
-                        : (isDone ? AppColors.ok : AppColors.primary),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          entry.title,
-                          style: AppTextStyles.labelLarge.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: isOfflineCached
-                                ? AppColors.ink2
-                                : AppColors.ink1,
-                          ),
-                        ),
-                        if (isUpdatable && !isDone)
-                          Text(
-                            'Yangi versiya mavjud',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        if (isOfflineCached)
-                          Text(
-                            'Keshda bor (offline)',
-                            style: AppTextStyles.caption
-                                .copyWith(color: AppColors.ink3),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (isOfflineCached)
-                    // Offline kesh: hech narsa bosib bo'lmaydi — faqat holat
-                    const SizedBox.shrink()
-                  else if (isDone && !isUpdatable)
-                    // Cached test — launch via EngineHostScreen
-                    GestureDetector(
-                      onTap: () => _launchTest(entry),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: AppColors.ok,
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.play_arrow_rounded,
-                                size: 14, color: Colors.white),
-                            const SizedBox(width: 5),
-                            Text(
-                              'Ishga tushirish',
-                              style: AppTextStyles.caption.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else if (isDownloading)
-                    const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        color: AppColors.primary,
-                      ),
-                    )
-                  else
-                    GestureDetector(
-                      onTap: () => _downloadTest(entry),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.download_rounded,
-                                size: 14, color: Colors.white),
-                            const SizedBox(width: 5),
-                            Text(
-                              'Yuklash',
-                              style: AppTextStyles.caption.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .12),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.download_rounded,
+              size: 16,
+              color: hasNew ? Colors.white : AppColors.ink2,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Yangi testlar',
+              style: AppTextStyles.labelMedium.copyWith(
+                color: hasNew ? Colors.white : AppColors.ink1,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          );
-        }).toList(),
+            if (total > 0) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: hasNew
+                      ? Colors.white.withValues(alpha: .25)
+                      : AppColors.primaryMuted,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$cached/$total',
+                  style: AppTextStyles.caption.copyWith(
+                    color: hasNew ? Colors.white : AppColors.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
+
+  void _showCatalogSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CatalogBottomSheet(
+        initialEntries: _catalogEntries,
+        onRefreshed: _loadCatalog,
+      ),
+    ).whenComplete(_loadCatalog);
+  }
+
 
   Widget _routeButtons() {
     return IntrinsicHeight(
@@ -1324,12 +1140,262 @@ class _LaunchDialogState extends State<_LaunchDialog> {
     );
   }
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
-// _TestCacheLoader — thin wrapper around TestCache (imported at top of file)
+// _CatalogBottomSheet — "Yangi testlar" modal panel
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _TestCacheLoader {
-  static Future<Map<String, dynamic>?> get(String testKey) =>
-      testcache.TestCache.get(testKey);
+class _CatalogBottomSheet extends StatefulWidget {
+  final List<CatalogEntry> initialEntries;
+  final VoidCallback onRefreshed;
+
+  const _CatalogBottomSheet({
+    required this.initialEntries,
+    required this.onRefreshed,
+  });
+
+  @override
+  State<_CatalogBottomSheet> createState() => _CatalogBottomSheetState();
+}
+
+class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
+  late List<CatalogEntry> _entries;
+  final Set<String> _downloadingKeys = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _entries = List.from(widget.initialEntries);
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    try {
+      final fresh = await testCatalogService.refresh();
+      if (mounted) setState(() => _entries = fresh);
+    } catch (_) {}
+  }
+
+  Future<void> _download(CatalogEntry entry) async {
+    if (_downloadingKeys.contains(entry.testKey)) return;
+    setState(() => _downloadingKeys.add(entry.testKey));
+    try {
+      final ok = await testCatalogService.download(entry.testKey);
+      if (!mounted) return;
+      if (ok) {
+        widget.onRefreshed();
+        await _refresh();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('${entry.title} yuklandi'),
+            backgroundColor: AppColors.ok,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ));
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text("Yuklashda xato. Qayta urinib ko'ring."),
+            backgroundColor: AppColors.err,
+            behavior: SnackBarBehavior.floating,
+          ));
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _downloadingKeys.remove(entry.testKey));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cached = _entries
+        .where((e) =>
+            e.status == CatalogStatus.cached ||
+            e.status == CatalogStatus.cachedOnly)
+        .length;
+    final total = _entries.length;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      maxChildSize: 0.92,
+      minChildSize: 0.35,
+      builder: (ctx, scrollCtrl) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFFAF8F4),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryMuted,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.download_rounded,
+                        size: 18, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Yangi testlar',
+                          style: AppTextStyles.titleMedium
+                              .copyWith(fontWeight: FontWeight.w800)),
+                      Text('$cached / $total ta yuklab olindi',
+                          style: AppTextStyles.caption
+                              .copyWith(color: AppColors.ink2)),
+                    ],
+                  ),
+                  const Spacer(),
+                  if (total > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: cached == total
+                            ? AppColors.okMuted
+                            : AppColors.primaryMuted,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '$cached/$total',
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: cached == total
+                              ? AppColors.ok
+                              : AppColors.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (total > 0)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: total > 0 ? cached / total : 0,
+                    minHeight: 6,
+                    backgroundColor: AppColors.border,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      cached == total ? AppColors.ok : AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
+            const Divider(height: 1),
+            Expanded(
+              child: _entries.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.cloud_off_rounded,
+                              size: 36, color: AppColors.ink3),
+                          const SizedBox(height: 8),
+                          Text('Testlar topilmadi',
+                              style: AppTextStyles.bodyMedium
+                                  .copyWith(color: AppColors.ink2)),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      controller: scrollCtrl,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: _entries.length,
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, indent: 60),
+                      itemBuilder: (_, i) => _buildItem(_entries[i]),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItem(CatalogEntry entry) {
+    final isDownloading = _downloadingKeys.contains(entry.testKey);
+    final isDone = entry.status == CatalogStatus.cached ||
+        entry.status == CatalogStatus.cachedOnly;
+    final isUpdatable = entry.status == CatalogStatus.updatable;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: isDone ? AppColors.okMuted : AppColors.primaryMuted,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(
+          isDone ? Icons.check_rounded : Icons.cloud_download_rounded,
+          size: 18,
+          color: isDone ? AppColors.ok : AppColors.primary,
+        ),
+      ),
+      title: Text(
+        entry.title,
+        style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700),
+      ),
+      subtitle: isUpdatable && !isDownloading
+          ? Text('Yangi versiya mavjud',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ))
+          : isDone
+              ? Text('Yuklab olingan',
+                  style:
+                      AppTextStyles.caption.copyWith(color: AppColors.ink3))
+              : null,
+      trailing: isDownloading
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppColors.primary,
+              ),
+            )
+          : isDone && !isUpdatable
+              ? null
+              : GestureDetector(
+                  onTap: () => _download(entry),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      isUpdatable ? 'Yangilash' : 'Yuklash',
+                      style: AppTextStyles.caption.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+    );
+  }
 }
