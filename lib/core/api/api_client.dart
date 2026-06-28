@@ -169,6 +169,17 @@ class MonitoringApi {
     });
   }
 
+  Future<List<Map<String, dynamic>>> fetchDownloads(String schoolCode) async {
+    final resp = await http.get(
+      Uri.parse('$_base/downloads/?school=${Uri.encodeComponent(schoolCode)}'),
+    );
+    if (resp.statusCode == 200) {
+      final List data = jsonDecode(resp.body);
+      return data.cast<Map<String, dynamic>>();
+    }
+    return [];
+  }
+
   Future<String?> fetchGuestPin() async {
     try {
       final data = await _get('/pack/version/') as Map<String, dynamic>;
