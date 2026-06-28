@@ -43,6 +43,7 @@ class EngineHostScreen extends StatefulWidget {
   final String lastName;
   final String school;
   final String? group;
+  final int? grade;
 
   /// Optional override. When null, defaults to 60 s/question (min 60s, max 90min).
   final Duration? duration;
@@ -55,6 +56,7 @@ class EngineHostScreen extends StatefulWidget {
     required this.lastName,
     required this.school,
     this.group,
+    this.grade,
     this.duration,
   });
 
@@ -144,7 +146,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
 
     return <String, dynamic>{
       'name': '${widget.lastName} ${widget.firstName}',
-      'grade': _spec?.grade ?? 0,
+      'grade': widget.grade ?? _spec?.grade ?? 0,
       'variant': widget.variant.toString(),
       'source': 'flutter',
       'math': {'cor': math.correct, 'tot': math.total},
@@ -214,7 +216,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
           lastName: widget.lastName,
           school: widget.school,
           group: widget.group,
-          grade: _spec?.grade ?? 0,
+          grade: widget.grade ?? _spec?.grade ?? 0,
           variant: widget.variant,
           result: result,
         ),
@@ -430,6 +432,12 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         automaticallyImplyLeading: false,
         title: const Text('Natija', style: AppTextStyles.titleMedium),
         actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.of(context)
+                .popUntil((route) => route.settings.name == 'student_entry'),
+            icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+            label: const Text("Keyingi o'quvchi"),
+          ),
           TextButton.icon(
             onPressed: () =>
                 Navigator.of(context).popUntil((route) => route.isFirst),
