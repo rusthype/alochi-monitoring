@@ -20,6 +20,28 @@ enum CatalogStatus {
   cachedOnly,
 }
 
+/// Maktab tugmasi — catalog'dan keladi.
+class SchoolButton {
+  final String pin;
+  final String label;
+  final String schoolCode;
+  final bool randomVariant;
+
+  const SchoolButton({
+    required this.pin,
+    required this.label,
+    required this.schoolCode,
+    required this.randomVariant,
+  });
+
+  factory SchoolButton.fromJson(Map<String, dynamic> j) => SchoolButton(
+        pin: j['pin']?.toString() ?? '',
+        label: j['label']?.toString() ?? '',
+        schoolCode: j['school_code']?.toString() ?? '',
+        randomVariant: j['random_variant'] == true,
+      );
+}
+
 /// Katalog ro'yxat elementi — kichik model.
 class CatalogEntry {
   final String testKey;
@@ -27,6 +49,7 @@ class CatalogEntry {
   final int grade;
   final int version;
   final CatalogStatus status;
+  final List<SchoolButton> schoolButtons;
 
   const CatalogEntry({
     required this.testKey,
@@ -34,6 +57,7 @@ class CatalogEntry {
     required this.grade,
     required this.version,
     required this.status,
+    this.schoolButtons = const [],
   });
 }
 
@@ -103,12 +127,21 @@ class TestCatalogService {
         status = CatalogStatus.cached;
       }
 
+      final rawButtons = item['school_buttons'];
+      final schoolButtons = (rawButtons is List)
+          ? rawButtons
+              .whereType<Map<String, dynamic>>()
+              .map(SchoolButton.fromJson)
+              .toList()
+          : <SchoolButton>[];
+
       entries.add(CatalogEntry(
         testKey: key,
         title: title,
         grade: grade,
         version: version,
         status: status,
+        schoolButtons: schoolButtons,
       ));
     }
     return entries;

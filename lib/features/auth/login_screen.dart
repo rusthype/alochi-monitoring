@@ -1316,17 +1316,101 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                         ],
                       ),
                     )
-                  : ListView.separated(
-                      controller: scrollCtrl,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: _entries.length,
-                      separatorBuilder: (_, __) =>
-                          const Divider(height: 1, indent: 60),
-                      itemBuilder: (_, i) => _buildItem(_entries[i]),
-                    ),
+                  : _buildGroupedList(scrollCtrl),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildGroupedList(ScrollController scrollCtrl) {
+    const umumiy = '__umumiy__';
+    final Map<String, String> codeToLabel = {};
+    final Map<String, List<CatalogEntry>> groups = {};
+
+    for (final entry in _entries) {
+      if (entry.schoolButtons.isEmpty) {
+        groups.putIfAbsent(umumiy, () => []).add(entry);
+      } else {
+        for (final sb in entry.schoolButtons) {
+          codeToLabel[sb.schoolCode] = sb.label;
+          groups.putIfAbsent(sb.schoolCode, () => []).add(entry);
+        }
+      }
+    }
+
+    final codes = groups.keys.toList()
+      ..sort((a, b) {
+        if (a == umumiy) return 1;
+        if (b == umumiy) return -1;
+        return a.compareTo(b);
+      });
+
+    final widgets = <Widget>[];
+    for (final code in codes) {
+      final groupEntries = groups[code]!;
+      final label = code == umumiy
+          ? 'Umumiy testlar'
+          : (codeToLabel[code] ?? '$code-maktab');
+      final groupCached = groupEntries
+          .where((e) =>
+              e.status == CatalogStatus.cached ||
+              e.status == CatalogStatus.cachedOnly)
+          .length;
+      widgets.add(_buildSectionHeader(label, groupCached, groupEntries.length));
+      for (var i = 0; i < groupEntries.length; i++) {
+        widgets.add(_buildItem(groupEntries[i]));
+        if (i < groupEntries.length - 1) {
+          widgets.add(const Divider(height: 1, indent: 60));
+        }
+      }
+    }
+
+    return ListView.builder(
+      controller: scrollCtrl,
+      padding: const EdgeInsets.only(top: 4, bottom: 24),
+      itemCount: widgets.length,
+      itemBuilder: (_, i) => widgets[i],
+    );
+  }
+
+  Widget _buildSectionHeader(String label, int cached, int total) {
+    final allDone = cached == total && total > 0;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
+      child: Row(
+        children: [
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: allDone ? AppColors.okMuted : AppColors.muted,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.school_rounded,
+                    size: 14,
+                    color: allDone ? AppColors.ok : AppColors.ink2),
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  style: AppTextStyles.caption.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: allDone ? AppColors.ok : AppColors.ink1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$cached/$total',
+            style: AppTextStyles.caption.copyWith(color: AppColors.ink3),
+          ),
+        ],
       ),
     );
   }
