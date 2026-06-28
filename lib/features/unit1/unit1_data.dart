@@ -1,8 +1,9 @@
 // lib/features/unit1/unit1_data.dart
-// 1-sinf Ingliz tili Unit 1 — test data loader (offline)
+// 1-sinf Ingliz tili Unit 1 — test data loader (offline + server)
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import '../../core/sync/test_catalog_service.dart';
 
 // ── Models ────────────────────────────────────────────────────────────────────
 
@@ -251,5 +252,18 @@ class Unit1Loader {
       debugPrint('Unit1Loader.load error: $e\n$st');
       rethrow;
     }
+  }
+
+  /// Server-first loader: online sync → disk cache → bundled asset fallback.
+  static Future<Unit1TestData> loadResolved({String testKey = 'unit1_eng'}) async {
+    final svc = TestCatalogService.instance;
+    // 1. Online: download if newer, otherwise return cached version
+    final downloaded = await svc.ensureDownloaded(testKey);
+    if (downloaded != null) return Unit1TestData.fromJson(downloaded);
+    // 2. Cache-only read (defensive fallback)
+    final cached = await svc.cached(testKey);
+    if (cached != null) return Unit1TestData.fromJson(cached);
+    // 3. Bundled asset fallback
+    return load();
   }
 }

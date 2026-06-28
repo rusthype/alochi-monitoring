@@ -2,6 +2,7 @@
 // Offline English test runner — Grade 1, Unit 1 (49 questions, 49 minutes)
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../core/db/history_db.dart';
 import '../../core/db/offline_queue.dart';
@@ -10,6 +11,7 @@ import '../../core/sync/sync_service.dart';
 import '../../core/services/pdf_service.dart';
 import 'package:printing/printing.dart';
 import 'unit1_data.dart';
+import '../../shared/widgets/app_network_image.dart';
 
 // ── Unit1 blue accent (distinct from brand orange) ────────────────────────────
 const Color _kBlue = Color(0xFF3B82F6);
@@ -839,26 +841,33 @@ class _Unit1RunnerState extends State<Unit1Runner>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (reading.img.isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.asset(
-                      'assets/unit1/img/${reading.img}',
-                      width: double.infinity,
-                      height: 200,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => Container(
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color:
-                              AppColors.err.withValues(alpha: .07),
-                          borderRadius: BorderRadius.circular(10),
+                  reading.img.startsWith('http')
+                    ? AppNetworkImage(
+                        url: reading.img,
+                        width: double.infinity,
+                        height: 200,
+                        fit: BoxFit.contain,
+                        borderRadius: BorderRadius.circular(10),
+                      )
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.asset(
+                          'assets/unit1/img/${reading.img}',
+                          width: double.infinity,
+                          height: 200,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: AppColors.err.withValues(alpha: .07),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Center(
+                                child: Icon(Icons.broken_image_outlined,
+                                    color: AppColors.ink3)),
+                          ),
                         ),
-                        child: const Center(
-                            child: Icon(Icons.broken_image_outlined,
-                                color: AppColors.ink3)),
                       ),
-                    ),
-                  ),
                 if (reading.img.isNotEmpty) const SizedBox(height: 12),
                 if (reading.title.isNotEmpty)
                   Text(reading.title,
@@ -1236,6 +1245,7 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
                             pct: widget.pct,
                             mathTopics: const [],
                             engTopics: _engTopics,
+                            l10n: AppLocalizations.of(context)!,
                           );
                           await Printing.layoutPdf(
                               onLayout: (_) => pdfBytes,
@@ -1268,6 +1278,7 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
                             pct: widget.pct,
                             mathTopics: const [],
                             engTopics: _engTopics,
+                            l10n: AppLocalizations.of(context)!,
                           );
                           await Printing.sharePdf(
                               bytes: pdfBytes,
@@ -1275,7 +1286,7 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
                                   '${widget.lastName}_${widget.firstName}_Natija.pdf');
                         },
                         icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
-                        label: const Text('PDF Saqlash'),
+                        label: Text(AppLocalizations.of(context)!.savePdf),
                         style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.brand,
                             side: const BorderSide(color: AppColors.brand),
@@ -1553,24 +1564,31 @@ class _VocabImgQuestion extends StatelessWidget {
         ]),
         if (question.img != null && question.img!.isNotEmpty) ...[
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.asset(
-              'assets/unit1/img/${question.img}',
-              height: 160,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Container(
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.err.withValues(alpha: .07),
-                  borderRadius: BorderRadius.circular(10),
+          question.img!.startsWith('http')
+            ? AppNetworkImage(
+                url: question.img,
+                height: 160,
+                fit: BoxFit.contain,
+                borderRadius: BorderRadius.circular(10),
+              )
+            : ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  'assets/unit1/img/${question.img}',
+                  height: 160,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: AppColors.err.withValues(alpha: .07),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                        child: Icon(Icons.broken_image_outlined,
+                            color: AppColors.ink3)),
+                  ),
                 ),
-                child: const Center(
-                    child: Icon(Icons.broken_image_outlined,
-                        color: AppColors.ink3)),
               ),
-            ),
-          ),
         ],
         const SizedBox(height: 10),
         if (question.opts.isEmpty)

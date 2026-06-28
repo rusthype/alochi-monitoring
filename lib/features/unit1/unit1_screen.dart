@@ -1,6 +1,7 @@
 // lib/features/unit1/unit1_screen.dart
 // 1-sinf Ingliz tili — Unit 1 monitoring testi · variant (1-15) + o'quvchi ma'lumotlari
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
 import 'unit1_data.dart';
 import 'unit1_runner.dart';
@@ -76,7 +77,7 @@ class _Unit1ScreenState extends State<Unit1Screen>
       _err = null;
     });
     try {
-      final testData = await Unit1Loader.load();
+      final testData = await Unit1Loader.loadResolved();
       if (!mounted) return;
       Navigator.pushReplacement(
           context,
@@ -335,7 +336,7 @@ class _Unit1ScreenState extends State<Unit1Screen>
                                     color: Colors.white))
                             : const Icon(Icons.play_arrow_rounded),
                         label: Text(
-                            _loading ? 'Yuklanmoqda...' : 'Testni boshlash',
+                            _loading ? AppLocalizations.of(context)!.loadingLabelDots : AppLocalizations.of(context)!.startTest,
                             style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700)),
