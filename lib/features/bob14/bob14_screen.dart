@@ -71,7 +71,7 @@ class _Bob14ScreenState extends State<Bob14Screen>
       _err = null;
     });
     try {
-      final qs = await Bob14Loader.get(_variant!);
+      final qs = await Bob14Loader.getResolved(_variant!);
       if (!mounted) return;
       Navigator.pushReplacement(
           context,

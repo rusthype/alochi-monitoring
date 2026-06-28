@@ -81,7 +81,7 @@ class _CombinedScreenState extends State<CombinedScreen>
     try {
       // Load both data sources in parallel
       final results = await Future.wait([
-        Bob14Loader.get(_variant!),
+        Bob14Loader.getResolved(_variant!),
         Unit1Loader.loadResolved(),
       ]);
       if (!mounted) return;
