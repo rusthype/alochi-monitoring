@@ -151,6 +151,24 @@ class MonitoringApi {
     }
   }
 
+  Future<void> sessionPing({
+    required String sessionId,
+    String schoolCode = '',
+    String name = '',
+    String variant = '',
+    String testKey = '',
+    String status = 'active',
+  }) async {
+    await _post('/session/ping/', {
+      'session_id': sessionId,
+      'school_code': schoolCode,
+      'name': name,
+      'variant': variant,
+      'test_key': testKey,
+      'status': status,
+    });
+  }
+
   Future<String?> fetchGuestPin() async {
     try {
       final data = await _get('/pack/version/') as Map<String, dynamic>;
