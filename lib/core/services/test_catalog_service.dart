@@ -50,6 +50,7 @@ class CatalogEntry {
   final int version;
   final CatalogStatus status;
   final List<SchoolButton> schoolButtons;
+  final String runnerType;
 
   const CatalogEntry({
     required this.testKey,
@@ -58,6 +59,7 @@ class CatalogEntry {
     required this.version,
     required this.status,
     this.schoolButtons = const [],
+    this.runnerType = 'engine',
   });
 }
 
@@ -142,6 +144,7 @@ class TestCatalogService {
         version: version,
         status: status,
         schoolButtons: schoolButtons,
+        runnerType: item['runner_type']?.toString() ?? 'engine',
       ));
     }
     return entries;
