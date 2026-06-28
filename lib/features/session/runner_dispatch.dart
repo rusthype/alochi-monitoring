@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../core/db/test_cache.dart';
+import '../../core/services/heartbeat_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../test/engine_host_screen.dart';
 import 'test_session.dart';
@@ -29,6 +30,14 @@ Future<void> launchRunner(
   final variant = _pickRandomVariant(cached);
 
   if (!context.mounted) return;
+
+  HeartbeatService.instance.startTest(
+    schoolCode: session.schoolCode,
+    name: '$firstName $lastName'.trim(),
+    variant: variant.toString(),
+    testKey: session.testKey,
+  );
+
   await Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => EngineHostScreen(
@@ -41,6 +50,8 @@ Future<void> launchRunner(
       ),
     ),
   );
+
+  HeartbeatService.instance.finishTest();
 }
 
 int _pickRandomVariant(Map<String, dynamic> cached) {
