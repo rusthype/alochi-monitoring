@@ -1,0 +1,252 @@
+{
+  "@@locale": "uz",
+  "appTitle": "Alochi Monitoring",
+  "loginTitle": "Kirish",
+  "languageUzbek": "O'zbek",
+  "languageRussian": "Русский",
+  "bossCreateTitle": "Kitobdan test yaratish",
+  "logout": "Chiqish",
+  "serverChecking": "Server tekshirilmoqda...",
+  "serverConnected": "Server bilan ulandi",
+  "offlineMode": "Offline rejim",
+  "invalidCredentials": "Login yoki parol noto'g'ri",
+  "tooManyAttempts": "Ko'p urinish. Biroz kuting.",
+  "serverErrorRetry": "Server xatosi. Qayta urinib ko'ring.",
+  "offlineNoSavedLogin": "Internet yo'q va bu login ilgari saqlanmagan.",
+  "connectionError": "Ulanishda xato. Qayta urinib ko'ring.",
+  "loggingIn": "Kirish...",
+  "appSubtitle": "Ta'lim monitoring platformasi",
+  "testsRoute": "Testlar",
+  "comingSoon": "Tez kunda",
+  "retryCheck": "Qayta tekshirish",
+  "loginInstruction": "Login va parolni o'qituvchingizdan oling",
+  "usernameLabel": "Login",
+  "passwordLabel": "Parol",
+  "usernameRequired": "Login kiriting",
+  "passwordRequired": "Parol kiriting",
+  "offlineLogin": "Offline kirish",
+  "localGradeEntry": "Oddiy kirish (Internet kerak emas)",
+  "monitoringTestUnit1": "Monitoring Test Unit 1",
+  "offlineHistory": "Oflayn Tarix",
+  "selectPdfFirst": "Avval PDF fayl tanlang",
+  "aiGeneratingMessage": "AI savollar yaratmoqda...\nBu 1-2 daqiqa olishi mumkin",
+  "enterPackageTitle": "Paket sarlavhasini kiriting",
+  "savingMessage": "Saqlanyapti...",
+  "backButton": "Orqaga",
+  "packageTitleLabel": "Paket sarlavhasi",
+  "saveAndPublish": "Saqlash va nashr etish ({grade}-sinf, {variantCount} variant)",
+  "@saveAndPublish": {
+    "placeholders": {
+      "grade": {"type": "int"},
+      "variantCount": {"type": "int"}
+    }
+  },
+  "questionTextLabel": "Savol matni",
+  "variantLetterLabel": "Variant {letter}",
+  "@variantLetterLabel": {
+    "placeholders": {
+      "letter": {"type": "String"}
+    }
+  },
+  "aiImagePromptHint": "AI rasm taklifi (saqlanmaydi):",
+  "mathSubject": "Matematika",
+  "englishSubject": "Ingliz tili",
+  "selectPdfBook": "PDF kitob tanlang",
+  "pdfFileHint": ".pdf fayl, max 10MB, 50 bet",
+  "subjectLabel": "Fan",
+  "gradeLabel": "Sinf",
+  "questionCountLabel": "Savollar soni",
+  "variantCountLabel": "Variant soni",
+  "generateWithAi": "AI bilan savollar yaratish",
+  "gradeN": "{n}-sinf",
+  "@gradeN": {
+    "placeholders": {"n": {"type": "int"}}
+  },
+  "nQuestions": "{n} ta savol",
+  "@nQuestions": {
+    "placeholders": {"n": {"type": "int"}}
+  },
+  "nVariants": "{n} variant",
+  "@nVariants": {
+    "placeholders": {"n": {"type": "int"}}
+  },
+  "questionIndex": "{index}-savol",
+  "@questionIndex": {
+    "placeholders": {"index": {"type": "int"}}
+  },
+  "enterFirstAndLastName": "Ism va familiyani kiriting",
+  "incorrectSecretPassword": "Maxfiy parol noto'g'ri (Maslahat: 1234)",
+  "errorPrefix": "Xato: {error}",
+  "@errorPrefix": {
+    "placeholders": {"error": {"type": "String"}}
+  },
+  "selectVariant": "Variantni tanlang",
+  "studentInfoTitle": "O'quvchi ma'lumotlari",
+  "localTestInfo": "2-sinf Ingliz tili — Interhouse testi\n10 variant · 30 savol · Offline rejim",
+  "continueButton": "Davom etish",
+  "firstNameLabel": "Ism",
+  "firstNameHint": "Alisher",
+  "lastNameLabel": "Familiya",
+  "lastNameHint": "Karimov",
+  "groupGradeLabel": "Guruh / Sinf",
+  "groupGradeHint": "3-A",
+  "schoolNameLabel": "Maktab nomi",
+  "schoolNameHint": "12-maktab",
+  "pinCodeLabel": "Parol (PIN kod)",
+  "startTest": "Testni boshlash",
+  "combinedTestInfo": "79 savol · 75 daqiqa · Offline rejim",
+  "combinedTestSubjects": "30 matematika + 49 ingliz tili",
+  "incorrectPassword": "Maxfiy parol noto'g'ri",
+  "logout": "Chiqish",
+  "confirmLogout": "Hisobdan chiqmoqchimisiz?",
+  "cancel": "Bekor qilish",
+  "noActiveExamOrExpired": "Faol imtihon topilmadi yoki muddati tugagan",
+  "loadFailed": "Yuklanmadi. Qayta urinib ko'ring.",
+  "gradeClass": "{grade}-sinf",
+  "@gradeClass": {
+    "placeholders": {
+      "grade": {"type": "int"}
+    }
+  },
+  "variantBadge": "Variant {variant}",
+  "@variantBadge": {
+    "placeholders": {
+      "variant": {"type": "int"}
+    }
+  },
+  "selectTest": "Test tanlang",
+  "selectMonitoringTest": "Mavjud monitoring testlaridan birini tanlang",
+  "connectionError": "Ulanishda xatolik",
+  "retry": "Qayta urinish",
+  "noActiveExam": "Aktiv imtihon yo'q",
+  "noExamAssignedOrExpired": "Sizga hali imtihon biriktirilmagan\nyoki muddati tugagan",
+  "testsNotLoadedYet": "Testlar hali yuklanmagan",
+  "tryAgainAfterTeacherUploads": "O'qituvchingiz test yuklagandan so'ng\nqayta urinib ko'ring",
+  "refresh": "Yangilash",
+  "mathSubject": "Math",
+  "englishSubject": "Ingliz",
+  "totalLabel": "Jami",
+  "helloGreeting": "Salom!",
+  "mathSubjectFull": "Matematika",
+  "englishSubjectFull": "Ingliz tili",
+  "finishConfirmTitle": "Tugatish?",
+  "unansweredWarning": "{unanswered} ta savol javobsiz qoldi. Shunga qaramay tugatmoqchimisiz?",
+  "@unansweredWarning": {
+    "placeholders": {
+      "unanswered": {
+        "type": "int"
+      }
+    }
+  },
+  "mathSectionLabel": "Matematika bo'limi",
+  "engSectionLabel": "Ingliz tili bo'limi",
+  "keyboardButtons": "tugmalar",
+  "previousButton": "Oldingi",
+  "nextButton": "Keyingi",
+  "answeredLabel": "javoblandi",
+  "uploadingLabel": "Yuklanmoqda",
+  "timeLeftLabel": "qoldi",
+  "engSectionTransitionTitle": "Ingliz tili bo'limiga o'tildi",
+  "engSectionTransitionDesc": "40 daqiqa · Keyingi savollar ingliz tilida",
+  "imageLoadFailed": "Rasm yuklanmadi",
+  "pdfError": "PDF xatosi: {error}",
+  "@pdfError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "congratsTitle": "Tabriklaymiz!",
+  "goodEffortTitle": "Yaxshi harakat!",
+  "testFinishedSuccess": "Test muvaffaqiyatli yakunlandi",
+  "betterNextTime": "Keyingi safarida yaxshiroq bo'ladi!",
+  "scorePoint": "ball",
+  "passedMessage": "Tabriklaymiz! O'tdingiz!",
+  "failedMessage": "O'tmadi. Harakat qiling!",
+  "totalScoreLabel": "Jami ball",
+  "syncedSuccess": "Natija serverga muvaffaqiyatli yuborildi",
+  "savedOffline": "Offline saqlandi. Internet bo'lganda avtomatik yuboriladi",
+  "pdfReady": "PDF tayyor",
+  "downloadPdf": "PDF yuklab olish",
+  "nextStudent": "Keyingi talaba",
+  "wrongAnswersCount": "Xato javoblar — {count} ta",
+  "@wrongAnswersCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "wrongAnswersBreakdown": "Mat: {math}  ·  Ing: {eng}",
+  "@wrongAnswersBreakdown": {
+    "placeholders": {
+      "math": { "type": "int" },
+      "eng": { "type": "int" }
+    }
+  },
+  "statusGood": "Yaxshi ✓",
+  "statusAverage": "O'rtacha",
+  "statusWeak": "Zaif — mashq kerak",
+  "subjectAnalysisTitle": "Mavzu tahlili",
+
+  "mathTipLow1": "Asosiy amallar (qo'shish, ayirish, ko'paytirish, bo'lish)ni qayta o'rganing.",
+  "mathTipLow2": "Har kuni 20 daqiqa misollar yeching.",
+  "mathTipLow3": "2-sinf dasturidan boshlang.",
+  "mathTipMed1": "Jadval va kasr sonlarni mustahkamlang.",
+  "mathTipMed2": "Xato qilgan savollar turini aniqlang va shu mavzuga e'tibor bering.",
+  "mathTipMed3": "Har kuni 2-3 ta test masala yeching.",
+  "mathTipHigh1": "Qiyin masalalar (muammo masalalar) ustida ishlang.",
+  "mathTipHigh2": "Vaqtni boshqarishni mashq qiling.",
+  "mathTipHigh3": "Har savolga 1-2 daqiqa ajrating.",
+  "mathTipExc1": "Ajoyib!",
+  "mathTipExc2": "Murakkab olimpiada masalalarini hal qilishga o'ting.",
+  "mathTipExc3": "Natijani barqaror saqlash uchun muntazam mashq qiling.",
+
+  "engTipLow1": "Kunlik 10 ta yangi so'z yodlang (flashcard usuli).",
+  "engTipLow2": "Asosiy grammatika: to be, present simple, plural nouns.",
+  "engTipLow3": "BBC Learning English, Duolingo ilovalaridan foydalaning.",
+  "engTipMed1": "Past simple va present continuous grammatikasini o'rganing.",
+  "engTipMed2": "Har kuni inglizcha 1 ta qisqa matn o'qing.",
+  "engTipMed3": "So'z boyligini mavzu bo'yicha guruhlab yodlang.",
+  "engTipHigh1": "Tinglash ko'nikmalarini rivojlantiring.",
+  "engTipHigh2": "YouTube ingliz kontentidan foydalaning.",
+  "engTipHigh3": "Esselar va qisqa hikoyalar yozing.",
+  "engTipExc1": "Ajoyib!",
+  "engTipExc2": "IELTS/Cambridge sertifikati uchun tayyorlaning.",
+  "engTipExc3": "Murakkab matnlarni o'qish va tinglashni davom ettiring.",
+
+  "statusGold": "Oltin medal darajasi! Davom eting!",
+  "statusGoodMsg": "Yaxshi natija! Yana bir oz harakat kerak.",
+  "statusSatisfactory": "Qoniqarli. Tavsiyalarga amal qiling va qayta sinab ko'ring.",
+  "statusKeepTrying": "Xafa bo'lmang! Har bir muvaffaqiyatsizlik yangi boshlang'ich.",
+
+  "pdfTitle": "Natija - {name}",
+  "@pdfTitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "subjectsResultTitle": "Fanlar bo'yicha natija",
+  "totalCorrectAnswers": "Jami to'g'ri javoblar:",
+  "howToImprove": "Qanday yaxshilash mumkin?",
+  "mathRecommendations": "Matematika tavsiyalari",
+  "englishRecommendations": "Ingliz tili tavsiyalari",
+  "wrongAnswersTitle": "Xato javoblar",
+  "wrongAnswersAnalysis": "Xato javoblar tahlili",
+  "studentLabel": "O'quvchi",
+  "passed": "O'tdi",
+  "failed": "O'tmadi",
+  "keepTrying": "Harakat qiling!",
+  "monitoringTestResult": "Monitoring test natijasi",
+  "alochiMonitoringSystem": "Alochi Monitoring tizimi",
+  "homePage": "Bosh sahifa",
+  "savePdf": "PDF Saqlash",
+  "printPdf": "Chop etish",
+  "sharePdf": "Ulashish",
+  "loadingLabelDots": "Yuklanmoqda...",
+  "errorLater": "Xatolik. Keyinroq yuboriladi.",
+  "gradeAndVariant": "Sinf va Variant",
+  "overallResult": "Umumiy Natija",
+  "topicAnalysisTitle": "Mavzular bo'yicha tahlil",
+  "topicName": "Mavzu nomi",
+  "correctAnswersCount": "To'g'ri javoblar",
+  "percentage": "Foiz",
+  "offlineTestResult": "Oflayn Test Natijasi"
+}
