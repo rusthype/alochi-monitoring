@@ -21,6 +21,38 @@ class SectionScore {
   double get pct => total > 0 ? correct * 100.0 / total : 0.0;
 }
 
+// ── Per-question / per-topic detail (TZ §10 result analysis) ────────────────────
+
+/// One answered question's outcome — feeds the per-§ accordion.
+class QuestionResult {
+  final String section;      // chapter/section name
+  final int index;           // 0-based within its section
+  final String questionText;
+  final String? topic;       // e.g. "§17 Matnli masala"
+  final String? category;    // e.g. "matnli"
+  final bool correct;
+
+  const QuestionResult({
+    required this.section,
+    required this.index,
+    required this.questionText,
+    required this.correct,
+    this.topic,
+    this.category,
+  });
+}
+
+/// Aggregated score for one topic — feeds strong/weak + the 14-day plan.
+class TopicScore {
+  final String topic;
+  final int correct;
+  final int total;
+
+  const TopicScore({required this.topic, required this.correct, required this.total});
+
+  double get pct => total > 0 ? correct * 100.0 / total : 0.0;
+}
+
 // ── ScoredResult ──────────────────────────────────────────────────────────────
 
 /// Unified result object returned by [TestScorer.score].
@@ -40,6 +72,10 @@ class ScoredResult {
   final int totalQuestions;
   final double totalPct;
 
+  // Per-§ analysis (TZ §10)
+  final List<QuestionResult> questionResults;
+  final List<TopicScore> topicScores;
+
   // Shield / level (only populated when TestSpec.scoring != null)
   final int? shields;
   final String? levelLabel;
@@ -53,6 +89,8 @@ class ScoredResult {
     required this.totalCorrect,
     required this.totalQuestions,
     required this.totalPct,
+    this.questionResults = const [],
+    this.topicScores = const [],
     this.shields,
     this.levelLabel,
     this.levelCefr,
@@ -147,12 +185,16 @@ class TestScorer {
       }
     }
 
+    final detail = _buildDetail(sections, answers);
+
     return ScoredResult(
       testKey: spec.testKey,
       sectionScores: sectionScores,
       totalCorrect: totalCorrect,
       totalQuestions: totalQuestions,
       totalPct: totalPct,
+      questionResults: detail.$1,
+      topicScores: detail.$2,
       shields: shields,
       levelLabel: levelLabel,
       levelCefr: levelCefr,
@@ -232,5 +274,42 @@ class TestScorer {
       if (correct >= sorted[i]) return sorted.length - i + 1;
     }
     return 1; // minimum 1 shield
+  }
+
+  // ── Per-§ detail builder (TZ §10) ───────────────────────────────────────────
+
+  static (List<QuestionResult>, List<TopicScore>) _buildDetail(
+      List<SectionData> sections, Map<String, dynamic> answers) {
+    final List<QuestionResult> results = [];
+    for (final section in sections) {
+      final qs =
+          section.isReading ? section.readingContainer!.qs : section.questions;
+      for (int i = 0; i < qs.length; i++) {
+        final q = qs[i];
+        results.add(QuestionResult(
+          section: section.name,
+          index: i,
+          questionText: q.q ?? q.strAns ?? '',
+          topic: q.topic,
+          category: q.category,
+          correct: _isCorrect(q, answers['${section.name}/$i']),
+        ));
+      }
+    }
+
+    final Map<String, List<QuestionResult>> byTopic = {};
+    for (final r in results) {
+      final key = r.topic ?? r.category ?? r.section;
+      (byTopic[key] ??= []).add(r);
+    }
+    final topics = byTopic.entries
+        .map((e) => TopicScore(
+              topic: e.key,
+              correct: e.value.where((r) => r.correct).length,
+              total: e.value.length,
+            ))
+        .toList()
+      ..sort((a, b) => a.pct.compareTo(b.pct)); // weakest first
+    return (results, topics);
   }
 }
