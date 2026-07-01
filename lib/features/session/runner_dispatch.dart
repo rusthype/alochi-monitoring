@@ -12,6 +12,8 @@ Future<void> launchRunner(
   required String firstName,
   required String lastName,
   required int studentGrade,
+  String groupName = '',
+  String studentId = '',
 }) async {
   final cached = await TestCache.get(session.testKey);
   if (cached == null) {
@@ -46,7 +48,9 @@ Future<void> launchRunner(
         firstName: firstName,
         lastName: lastName,
         school: session.schoolCode,
+        group: groupName.isEmpty ? null : groupName,
         grade: studentGrade,
+        studentId: studentId,
       ),
     ),
   );
