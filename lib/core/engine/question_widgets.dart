@@ -4,9 +4,23 @@
 // Engine-agnostic: works with Question model from test_models.dart.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../shared/widgets/app_network_image.dart';
 import '../../shared/theme/app_theme.dart';
 import 'test_models.dart';
+
+/// Inline SVG diagram (math geometry questions). Rendered above the options,
+/// centered, in the same slot the raster image uses — keeps the monitoring look.
+Widget _buildQuestionSvg(String svg, {double height = 130}) => Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      alignment: Alignment.center,
+      child: SvgPicture.string(
+        svg,
+        height: height,
+        fit: BoxFit.contain,
+        placeholderBuilder: (_) => SizedBox(height: height),
+      ),
+    );
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Image helper — dual-source: http(s) → AppNetworkImage, otherwise Image.asset
@@ -240,6 +254,10 @@ class TextChoiceWidget extends StatelessWidget {
             ),
           ),
         ]),
+        if (question.svg != null && question.svg!.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildQuestionSvg(question.svg!),
+        ],
         const SizedBox(height: 10),
         ...List.generate(question.opts.length, (i) => EngineOptionRow(
               label: String.fromCharCode(65 + i), // A, B, C…
