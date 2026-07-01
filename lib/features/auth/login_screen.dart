@@ -1226,7 +1226,9 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
     try {
       final fresh = await testCatalogService.refresh();
       if (mounted) setState(() => _entries = fresh);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('CatalogSheet refresh error: $e');
+    }
   }
 
   Future<void> _download(CatalogEntry entry) async {
