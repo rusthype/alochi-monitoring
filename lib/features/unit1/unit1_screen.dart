@@ -2,9 +2,12 @@
 // 1-sinf Ingliz tili — Unit 1 monitoring testi · variant (1-15) + o'quvchi ma'lumotlari
 import 'package:flutter/material.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import '../../core/config/feature_flags.dart';
 import '../../shared/theme/app_theme.dart';
+import '../test/engine_host_screen.dart';
 import 'unit1_data.dart';
 import 'unit1_runner.dart';
+import 'unit1_spec_adapter.dart';
 
 // Blue accent used throughout this screen (instead of green used in Bob14)
 const Color _kBlue = Color(0xFF3B82F6);
@@ -77,19 +80,36 @@ class _Unit1ScreenState extends State<Unit1Screen>
       _err = null;
     });
     try {
-      final testData = await Unit1Loader.loadResolved();
-      if (!mounted) return;
-      Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => Unit1Runner(
-              firstName: first,
-              lastName: last,
-              school: _schoolCtrl.text.trim(),
-              variant: _variant!,
-              testData: testData,
-            ),
-          ));
+      if (kUseEngineForUnit1) {
+        final specMap = await Unit1SpecAdapter.loadSpec();
+        if (!mounted) return;
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => EngineHostScreen(
+                testData: specMap,
+                variant: _variant!,
+                firstName: first,
+                lastName: last,
+                school: _schoolCtrl.text.trim(),
+                grade: 1,
+              ),
+            ));
+      } else {
+        final testData = await Unit1Loader.loadResolved();
+        if (!mounted) return;
+        Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => Unit1Runner(
+                firstName: first,
+                lastName: last,
+                school: _schoolCtrl.text.trim(),
+                variant: _variant!,
+                testData: testData,
+              ),
+            ));
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
