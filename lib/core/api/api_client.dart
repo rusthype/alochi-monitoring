@@ -180,6 +180,44 @@ class MonitoringApi {
     return [];
   }
 
+  Future<List<Map<String, dynamic>>> fetchGroups(String schoolCode) async {
+    try {
+      final resp = await _send(() => http.get(
+            Uri.parse(
+                '$_base/groups/?school=${Uri.encodeComponent(schoolCode)}'),
+            headers: _headers,
+          ));
+      if (resp.statusCode != 200) return [];
+      final data = jsonDecode(resp.body);
+      if (data is! List) return [];
+      return data
+          .whereType<Map>()
+          .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchStudents(String groupId) async {
+    try {
+      final resp = await _send(() => http.get(
+            Uri.parse(
+                '$_base/groups/${Uri.encodeComponent(groupId)}/students/'),
+            headers: _headers,
+          ));
+      if (resp.statusCode != 200) return [];
+      final data = jsonDecode(resp.body);
+      if (data is! List) return [];
+      return data
+          .whereType<Map>()
+          .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<String?> fetchGuestPin() async {
     try {
       final data = await _get('/pack/version/') as Map<String, dynamic>;

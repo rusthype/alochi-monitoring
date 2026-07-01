@@ -44,6 +44,7 @@ class EngineHostScreen extends StatefulWidget {
   final String school;
   final String? group;
   final int? grade;
+  final String studentId;
 
   /// Optional override. When null, defaults to 60 s/question (min 60s, max 90min).
   final Duration? duration;
@@ -57,6 +58,7 @@ class EngineHostScreen extends StatefulWidget {
     required this.school,
     this.group,
     this.grade,
+    this.studentId = '',
     this.duration,
   });
 
@@ -154,6 +156,8 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       'vocab': {'cor': 0, 'tot': 0},
       'pct': result.totalPct.round(),
       'school_code': widget.school,
+      'group_name': widget.group ?? '',
+      'student_id': widget.studentId,
       'detail': <String, dynamic>{
         'sections': result.sectionScores
             .map((s) => <String, dynamic>{
