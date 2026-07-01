@@ -573,6 +573,9 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                 ),
               ),
 
+              const SizedBox(height: 16),
+              _TzAnalysis(result: widget.result),
+
               const SizedBox(height: 24),
 
               // ── PDF button ────────────────────────────────────────────────
@@ -643,6 +646,220 @@ class _BadgeChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── TZ per-§ analysis: accordion + strong/weak + 14-day plan (TZ §10) ───────────
+
+class _TzAnalysis extends StatelessWidget {
+  final ScoredResult result;
+  const _TzAnalysis({required this.result});
+
+  Color _c(double pct) {
+    if (pct >= 80) return AppColors.ok;
+    if (pct >= 55) return const Color(0xFFD97706);
+    return AppColors.err;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final qrs = result.questionResults;
+    if (qrs.isEmpty) return const SizedBox.shrink();
+
+    final Map<String, List<QuestionResult>> bySection = {};
+    for (final r in qrs) {
+      (bySection[r.section] ??= []).add(r);
+    }
+    final strong = result.topicScores.where((t) => t.pct >= 80).toList();
+    final weak = result.topicScores.where((t) => t.pct < 55).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Mavzu bo'yicha tahlil (accordion) — TZ §10.1
+        Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 14, 16, 10),
+              child: Row(children: [
+                Icon(Icons.checklist_rounded, size: 18, color: AppColors.primary),
+                SizedBox(width: 8),
+                Text('Mavzu bo\'yicha tahlil', style: AppTextStyles.labelLarge),
+              ]),
+            ),
+            const Divider(height: 1),
+            ...bySection.entries.map((e) {
+              final correct = e.value.where((r) => r.correct).length;
+              final total = e.value.length;
+              final pct = total > 0 ? correct * 100.0 / total : 0.0;
+              return Theme(
+                data: Theme.of(context)
+                    .copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                  title: Text(e.key,
+                      style: AppTextStyles.bodyLarge
+                          .copyWith(fontWeight: FontWeight.w700)),
+                  trailing: Text('$correct/$total — ${pct.round()}%',
+                      style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w800,
+                          color: _c(pct))),
+                  childrenPadding: const EdgeInsets.only(bottom: 8),
+                  children: e.value.map(_qRow).toList(),
+                ),
+              );
+            }),
+          ]),
+        ),
+
+        // Kuchli / zaif — TZ §10.2
+        if (strong.isNotEmpty || weak.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Kuchli va zaif tomonlar',
+                  style: AppTextStyles.labelLarge),
+              const SizedBox(height: 10),
+              if (strong.isNotEmpty) ...[
+                _chipRow('Kuchli', strong.map((t) => t.topic).toList(), AppColors.ok),
+                const SizedBox(height: 8),
+              ],
+              if (weak.isNotEmpty)
+                _chipRow('Mustahkamlash kerak',
+                    weak.map((t) => t.topic).toList(), AppColors.err),
+            ]),
+          ),
+        ],
+
+        // 14 kunlik reja — TZ §10.3
+        if (weak.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _plan14(weak),
+        ],
+      ],
+    );
+  }
+
+  Widget _qRow(QuestionResult r) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(r.correct ? Icons.check_circle_rounded : Icons.cancel_rounded,
+              size: 16, color: r.correct ? AppColors.ok : AppColors.err),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(r.questionText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodyMedium),
+          ),
+          if (r.topic != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.border)),
+              child: Text(r.topic!,
+                  style: const TextStyle(
+                      fontFamily: 'Inter', fontSize: 10, color: AppColors.ink3)),
+            ),
+          ],
+        ]),
+      );
+
+  Widget _chipRow(String label, List<String> items, Color color) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color)),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: items
+                .map((t) => Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                          color: color.withValues(alpha: .08),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: color.withValues(alpha: .25))),
+                      child: Text(t,
+                          style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 11,
+                              color: color,
+                              fontWeight: FontWeight.w600)),
+                    ))
+                .toList(),
+          ),
+        ],
+      );
+
+  Widget _plan14(List<TopicScore> weak) {
+    final f1 = weak.isNotEmpty ? weak[0].topic : 'zaif mavzu';
+    final f2 = weak.length > 1 ? weak[1].topic : f1;
+    final rows = <(String, String)>[
+      ('1–3 kun', 'Eng zaif mavzu: $f1 (15 daqiqa/kun)'),
+      ('4–7 kun', 'Ikkinchi mavzu: $f2 (5 ta misol/kun)'),
+      ('8–11 kun', 'Aralash mashqlar — barcha mavzularni takrorlash'),
+      ('12–14 kun', 'Nazorat testi — natijani solishtirish'),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [
+          Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.primary),
+          SizedBox(width: 8),
+          Text('14 kunlik reja', style: AppTextStyles.labelLarge),
+        ]),
+        const SizedBox(height: 12),
+        ...rows.map((r) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(
+                  width: 68,
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: .1),
+                      borderRadius: BorderRadius.circular(8)),
+                  child: Text(r.$1,
+                      style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Text(r.$2, style: AppTextStyles.bodyMedium)),
+              ]),
+            )),
+      ]),
     );
   }
 }
