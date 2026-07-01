@@ -1796,31 +1796,33 @@ class _CVocabImgQuestion extends StatelessWidget {
         ]),
         if (question.img != null && question.img!.isNotEmpty) ...[
           const SizedBox(height: 12),
-          question.img!.startsWith('http')
-            ? AppNetworkImage(
-                url: question.img,
-                height: 160,
-                fit: BoxFit.contain,
-                borderRadius: BorderRadius.circular(10),
-              )
-            : ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/unit1/img/${question.img}',
+          Center(
+            child: question.img!.startsWith('http')
+              ? AppNetworkImage(
+                  url: question.img,
                   height: 160,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AppColors.err.withValues(alpha: .07),
-                      borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10),
+                )
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/unit1/img/${question.img}',
+                    height: 160,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: AppColors.err.withValues(alpha: .07),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Center(
+                          child: Icon(Icons.broken_image_outlined,
+                              color: AppColors.ink3)),
                     ),
-                    child: const Center(
-                        child: Icon(Icons.broken_image_outlined,
-                            color: AppColors.ink3)),
                   ),
                 ),
-              ),
+          ),
         ],
         const SizedBox(height: 10),
         if (question.opts.isEmpty)

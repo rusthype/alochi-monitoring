@@ -358,10 +358,45 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     super.dispose();
   }
 
-  Color _scoreColor(double pct) {
-    if (pct >= 90) return AppColors.ok;
-    if (pct >= 60) return const Color(0xFFD97706); // warning amber
-    return AppColors.err;
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  int _secPct(SectionScore s) =>
+      s.total > 0 ? (s.correct / s.total * 100).round() : 0;
+
+  Color _secColor(int pct) {
+    if (pct >= 80) return AppColors.success;
+    if (pct >= 55) return AppColors.secondary;
+    return const Color(0xFFEF4444);
+  }
+
+  String _gradeLabel(int pct) {
+    if (pct >= 90) return "A'lo";
+    if (pct >= 75) return 'Yaxshi';
+    if (pct >= 55) return 'Qoniqarli';
+    return "Qo'shimcha mashq kerak";
+  }
+
+  List<SectionScore> _weakSections() {
+    final list = widget.result.sectionScores
+        .where((s) => _secPct(s) < 75)
+        .toList()
+      ..sort((a, b) => _secPct(a).compareTo(_secPct(b)));
+    return list;
+  }
+
+  List<SectionScore> _strongSections() =>
+      widget.result.sectionScores.where((s) => _secPct(s) >= 75).toList();
+
+  String _aiSummary(int pct, List<SectionScore> weak) {
+    if (pct >= 80) {
+      return "${widget.firstName} yaxshi natija ($pct%) ko'rsatdi. "
+          "Zaif bo'limlarni mustahkamlasa, keyingi testda 90%+ ga erishishi mumkin! 🎯";
+    }
+    final weakNames = weak.take(2).map((w) => w.name).join(', ');
+    final weakPart =
+        weak.isNotEmpty ? " $weakNames bo'limlarida qiynalmoqda." : '';
+    return "${widget.firstName} $pct% natija ko'rsatdi.$weakPart "
+        "14 kunlik reja bajarilsa, 2–3 haftada sezilarli o'zgarish bo'ladi! 📚";
   }
 
   Future<void> _generatePdf() async {
@@ -425,8 +460,17 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
 
   @override
   Widget build(BuildContext context) {
-    final pct = widget.result.totalPct;
-    final color = _scoreColor(pct);
+    final result = widget.result;
+    final pct = result.totalPct.round();
+    final correct = result.totalCorrect;
+    final wrong = result.totalQuestions - result.totalCorrect;
+    final heroColor = _secColor(pct);
+    final gradeLabel = _gradeLabel(pct);
+    final weak = _weakSections();
+    final strong = _strongSections();
+    final studentName = '${widget.firstName} ${widget.lastName}';
+    final subLine =
+        '${widget.group?.isNotEmpty == true ? widget.group! : widget.school} · Variant ${widget.variant}';
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -453,89 +497,117 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       body: FadeTransition(
         opacity: _fade,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Score card ────────────────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
+              // ── 1. Header ─────────────────────────────────────────────────
+              _ReportCard(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        color: AppColors.secondaryMuted,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.person_rounded,
+                          size: 22, color: AppColors.secondary),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(studentName, style: AppTextStyles.titleMedium),
+                          const SizedBox(height: 2),
+                          Text(subLine, style: AppTextStyles.bodyMedium),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── 2. Score hero ─────────────────────────────────────────────
+              _ReportCard(
                 child: Column(
                   children: [
                     SizedBox(
-                      width: 120,
-                      height: 120,
+                      width: 110,
+                      height: 110,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
                           SizedBox.expand(
                             child: CircularProgressIndicator(
-                              value: pct / 100,
-                              strokeWidth: 10,
+                              value: result.totalPct / 100,
+                              strokeWidth: 9,
                               backgroundColor: AppColors.gray100,
-                              color: color,
+                              color: heroColor,
                               strokeCap: StrokeCap.round,
                             ),
                           ),
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '${pct.round()}%',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800,
-                                  color: color,
-                                ),
-                              ),
-                              Text(
-                                '${widget.result.totalCorrect}/'
-                                '${widget.result.totalQuestions}',
-                                style: AppTextStyles.bodyMedium,
-                              ),
-                            ],
+                          Text(
+                            '$pct%',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              color: heroColor,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     Text(
-                      '${widget.lastName} ${widget.firstName}',
-                      style: AppTextStyles.titleMedium,
-                      textAlign: TextAlign.center,
+                      gradeLabel,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: heroColor,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.school.isNotEmpty
-                          ? '${widget.school} · Variant ${widget.variant}'
-                          : 'Variant ${widget.variant}',
-                      style: AppTextStyles.bodyMedium,
-                      textAlign: TextAlign.center,
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _StatChip(
+                          icon: Icons.check_circle_rounded,
+                          label: "To'g'ri $correct",
+                          color: AppColors.success,
+                        ),
+                        const SizedBox(width: 8),
+                        _StatChip(
+                          icon: Icons.cancel_rounded,
+                          label: 'Xato $wrong',
+                          color: const Color(0xFFEF4444),
+                        ),
+                      ],
                     ),
-                    if (widget.result.shields != null ||
-                        widget.result.levelLabel != null) ...[
+                    if (result.shields != null ||
+                        result.levelLabel != null) ...[
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
                         alignment: WrapAlignment.center,
                         children: [
-                          if (widget.result.shields != null)
+                          if (result.shields != null)
                             _BadgeChip(
                               icon: Icons.shield_rounded,
-                              label: '${widget.result.shields} qalqon',
+                              label: '${result.shields} qalqon',
                               color: AppColors.primary,
                             ),
-                          if (widget.result.levelLabel != null)
+                          if (result.levelLabel != null)
                             _BadgeChip(
                               icon: Icons.military_tech_rounded,
-                              label: widget.result.levelLabel!,
-                              color: AppColors.ok,
+                              label: result.levelLabel!,
+                              color: AppColors.success,
                             ),
                         ],
                       ),
@@ -544,51 +616,244 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-              // ── Per-section breakdown ─────────────────────────────────────
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                ),
+              // ── 3. Bo'limlar bo'yicha ─────────────────────────────────────
+              _ReportCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(16, 14, 16, 10),
-                      child: Row(
-                        children: [
-                          Icon(Icons.bar_chart_rounded,
-                              size: 18, color: AppColors.primary),
-                          SizedBox(width: 8),
-                          Text(
-                            'Bo\'limlar bo\'yicha',
-                            style: AppTextStyles.labelLarge,
-                          ),
-                        ],
-                      ),
+                    const _SectionHead(
+                      icon: Icons.bar_chart_rounded,
+                      label: "BO'LIMLAR BO'YICHA",
                     ),
-                    const Divider(height: 1),
-                    if (widget.result.sectionScores.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Text(
-                          'Ma\'lumot yo\'q',
-                          style: AppTextStyles.bodyMedium,
-                        ),
-                      )
+                    const SizedBox(height: 8),
+                    if (result.sectionScores.isEmpty)
+                      const Text("Ma'lumot yo'q", style: AppTextStyles.bodyMedium)
                     else
-                      ...widget.result.sectionScores.map((s) => _SectionRow(s)),
+                      ...result.sectionScores.map(
+                        (s) => _SectionRowV2(
+                          section: s,
+                          pct: _secPct(s),
+                          color: _secColor(_secPct(s)),
+                        ),
+                      ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
 
-              // ── PDF button ────────────────────────────────────────────────
+              // ── 4. Tahlil ─────────────────────────────────────────────────
+              _ReportCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _SectionHead(
+                      icon: Icons.insights_rounded,
+                      label: 'TAHLIL',
+                    ),
+                    const SizedBox(height: 8),
+                    if (strong.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          const Icon(Icons.check_circle_outline_rounded,
+                              size: 16, color: AppColors.success),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Kuchli tomonlar',
+                            style: AppTextStyles.labelLarge
+                                .copyWith(color: AppColors.success),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ...strong.take(4).map((s) {
+                        final p = _secPct(s);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                margin:
+                                    const EdgeInsets.only(right: 8, top: 4),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.success,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  "${s.name} — $p% · yaxshi o'zlashtirilgan",
+                                  style: AppTextStyles.bodyMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                    if (strong.isNotEmpty && weak.isNotEmpty)
+                      const SizedBox(height: 12),
+                    if (weak.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded,
+                              size: 16, color: Color(0xFFEF4444)),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Mustahkamlash kerak',
+                            style: AppTextStyles.labelLarge.copyWith(
+                              color: const Color(0xFFEF4444),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ...weak.take(5).map((s) {
+                        final p = _secPct(s);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                margin:
+                                    const EdgeInsets.only(right: 8, top: 4),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFEF4444),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  "${s.name} — $p% · qo'shimcha mashq",
+                                  style: AppTextStyles.bodyMedium,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                    if (weak.isEmpty)
+                      Row(
+                        children: [
+                          const Icon(Icons.celebration_rounded,
+                              size: 18, color: AppColors.success),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "Barcha bo'limlar yaxshi o'zlashtirilgan!",
+                              style: AppTextStyles.bodyMedium
+                                  .copyWith(color: AppColors.success),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── 5. 14 kunlik reja ─────────────────────────────────────────
+              _ReportCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _SectionHead(
+                      icon: Icons.calendar_month_rounded,
+                      label: '14 KUNLIK REJA',
+                    ),
+                    const SizedBox(height: 8),
+                    _PlanRow(
+                      days: '1–3 KUN',
+                      title: weak.isNotEmpty
+                          ? '${weak[0].name} takrorlash'
+                          : "Barcha bo'limlar takrorlash",
+                      desc: 'Har kuni 15 daqiqa mashq',
+                    ),
+                    _PlanRow(
+                      days: '4–7 KUN',
+                      title: weak.length > 1
+                          ? '${weak[1].name} mashqlari'
+                          : 'Mustahkamlash mashqlari',
+                      desc: 'Har kuni 5 ta misol yechish',
+                    ),
+                    const _PlanRow(
+                      days: '8–11 KUN',
+                      title: 'Aralash mashqlar',
+                      desc: "Barcha bo'limlarni takrorlash",
+                    ),
+                    const _PlanRow(
+                      days: '12–14 KUN',
+                      title: 'Nazorat testi',
+                      desc: 'Natijalarni solishtirish',
+                      isLast: true,
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // ── 6. AI xulosa ──────────────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.secondaryMuted,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: AppColors.secondary.withValues(alpha: .25)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.auto_awesome_rounded,
+                            size: 18, color: AppColors.secondary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'AI XULOSA',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _aiSummary(pct, weak),
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.ink1,
+                        height: 1.6,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // ── 7. PDF action ─────────────────────────────────────────────
               ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.secondary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 onPressed: _pdfGenerating ? null : _generatePdf,
                 icon: _pdfGenerating
                     ? const SizedBox(
@@ -599,10 +864,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(
-                        Icons.picture_as_pdf_rounded,
-                        size: 20,
-                      ),
+                    : const Icon(Icons.picture_as_pdf_rounded, size: 20),
                 label: Text(
                   _pdfPath != null ? 'PDF qayta ochish' : 'PDF hisobot',
                 ),
@@ -659,24 +921,69 @@ class _BadgeChip extends StatelessWidget {
   }
 }
 
-// ── Section row ────────────────────────────────────────────────────────────────
+// ── Report card ────────────────────────────────────────────────────────────────
 
-class _SectionRow extends StatelessWidget {
-  final SectionScore section;
-  const _SectionRow(this.section);
-
-  Color _color(double pct) {
-    if (pct >= 90) return AppColors.ok;
-    if (pct >= 60) return const Color(0xFFD97706);
-    return AppColors.err;
-  }
+class _ReportCard extends StatelessWidget {
+  final Widget child;
+  const _ReportCard({required this.child});
 
   @override
   Widget build(BuildContext context) {
-    final pct = section.pct;
-    final color = _color(pct);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: child,
+    );
+  }
+}
+
+// ── Section head ──────────────────────────────────────────────────────────────
+
+class _SectionHead extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _SectionHead({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.secondary),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.ink3,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Section row v2 ────────────────────────────────────────────────────────────
+
+class _SectionRowV2 extends StatelessWidget {
+  final SectionScore section;
+  final int pct;
+  final Color color;
+
+  const _SectionRowV2({
+    required this.section,
+    required this.pct,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -691,7 +998,7 @@ class _SectionRow extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                '${pct.round()}%',
+                '$pct%',
                 style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 13,
@@ -709,6 +1016,105 @@ class _SectionRow extends StatelessWidget {
               backgroundColor: AppColors.gray100,
               color: color,
               minHeight: 6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Plan row ──────────────────────────────────────────────────────────────────
+
+class _PlanRow extends StatelessWidget {
+  final String days;
+  final String title;
+  final String desc;
+  final bool isLast;
+
+  const _PlanRow({
+    required this.days,
+    required this.title,
+    required this.desc,
+    this.isLast = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.secondaryMuted,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                  color: AppColors.secondary.withValues(alpha: .3)),
+            ),
+            child: Text(
+              days,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppColors.secondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTextStyles.labelLarge),
+                const SizedBox(height: 2),
+                Text(desc, style: AppTextStyles.bodyMedium),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Stat chip ─────────────────────────────────────────────────────────────────
+
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: .25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
             ),
           ),
         ],
