@@ -170,14 +170,20 @@ class MonitoringApi {
   }
 
   Future<List<Map<String, dynamic>>> fetchDownloads(String schoolCode) async {
-    final resp = await http.get(
-      Uri.parse('$_base/downloads/?school=${Uri.encodeComponent(schoolCode)}'),
-    );
-    if (resp.statusCode == 200) {
-      final List data = jsonDecode(resp.body);
-      return data.cast<Map<String, dynamic>>();
+    try {
+      final resp = await _send(() => http.get(
+            Uri.parse(
+                '$_base/downloads/?school=${Uri.encodeComponent(schoolCode)}'),
+          ));
+      if (resp.statusCode == 200) {
+        final List data = jsonDecode(resp.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('fetchDownloads error: $e');
+      return [];
     }
-    return [];
   }
 
   Future<List<Map<String, dynamic>>> fetchGroups(String schoolCode) async {
@@ -194,7 +200,8 @@ class MonitoringApi {
           .whereType<Map>()
           .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
           .toList();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('fetchGroups error: $e');
       return [];
     }
   }
@@ -213,7 +220,8 @@ class MonitoringApi {
           .whereType<Map>()
           .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
           .toList();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('fetchStudents error: $e');
       return [];
     }
   }
@@ -222,7 +230,8 @@ class MonitoringApi {
     try {
       final data = await _get('/pack/version/') as Map<String, dynamic>;
       return data['guest_pin'] as String?;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('fetchGuestPin error: $e');
       return null;
     }
   }
@@ -353,11 +362,15 @@ class MonitoringApi {
             headers: {..._headers, 'Idempotency-Key': token},
             body: jsonEncode(payload),
           ));
-      if (resp.statusCode >= 400) return false;
+      if (resp.statusCode >= 400) {
+        debugPrint('submitLocalResult non-2xx: ${resp.statusCode}');
+        return false;
+      }
       return true;
     } on ApiException {
       return false;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('submitLocalResult error: $e');
       return false;
     }
   }

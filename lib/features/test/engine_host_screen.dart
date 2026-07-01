@@ -202,6 +202,14 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       await OfflineQueue.enqueueLocal(payload, token);
     } catch (e) {
       debugPrint('EngineHostScreen: enqueueLocal error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text(
+              "Natija saqlanmadi — internet yoki xotira muammosi. Qayta urinib ko'ring."),
+          backgroundColor: AppColors.err,
+          duration: const Duration(seconds: 6),
+        ));
+      }
     }
 
     // 3. Attempt an immediate flush (fire-and-forget — don't block navigation).
