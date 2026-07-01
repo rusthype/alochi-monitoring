@@ -22,22 +22,32 @@ Widget _buildQuestionImage(
       src.startsWith('http://') || src.startsWith('https://');
 
   if (isNetwork) {
-    return AppNetworkImage(
-      url: src,
-      height: height,
-      fit: BoxFit.contain,
-      borderRadius: br,
-      errorWidget: _brokenImagePlaceholder(height),
+    return SizedBox(
+      width: double.infinity,
+      child: Center(
+        child: AppNetworkImage(
+          url: src,
+          height: height,
+          fit: BoxFit.contain,
+          borderRadius: br,
+          errorWidget: _brokenImagePlaceholder(height),
+        ),
+      ),
     );
   }
 
-  return ClipRRect(
-    borderRadius: br,
-    child: Image.asset(
-      src,
-      height: height,
-      fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => _brokenImagePlaceholder(height),
+  return SizedBox(
+    width: double.infinity,
+    child: Center(
+      child: ClipRRect(
+        borderRadius: br,
+        child: Image.asset(
+          src,
+          height: height,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _brokenImagePlaceholder(height),
+        ),
+      ),
     ),
   );
 }
