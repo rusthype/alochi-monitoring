@@ -51,6 +51,25 @@ Invoke-WebRequest -Uri $DownloadUrl -OutFile $ZipPath -UseBasicParsing
 $SizeMB = [math]::Round((Get-Item $ZipPath).Length / 1MB, 1)
 Write-Host "  OK: $SizeMB MB yuklandi" -ForegroundColor Green
 
+# SHA256 tekshiruvi — release notes'dagi hash bilan solishtiramiz
+$ExpectedHash = $null
+if ($Release -and $Release.body -match 'SHA256 \(ZIP\):\s*`([A-Fa-f0-9]{64})`') {
+    $ExpectedHash = $Matches[1].ToUpper()
+}
+if ($ExpectedHash) {
+    $ActualHash = (Get-FileHash $ZipPath -Algorithm SHA256).Hash
+    if ($ActualHash -ne $ExpectedHash) {
+        Write-Host "  [!] XATO: SHA256 mos kelmadi! Fayl buzilgan yoki almashtirilgan." -ForegroundColor Red
+        Write-Host "      Kutilgan: $ExpectedHash"
+        Write-Host "      Haqiqiy:  $ActualHash"
+        Remove-Item $ZipPath -Force -ErrorAction SilentlyContinue
+        exit 1
+    }
+    Write-Host "  OK: SHA256 tasdiqlandi" -ForegroundColor Green
+} else {
+    Write-Host "  [!] Ogohlantirish: SHA256 topilmadi, tekshiruv o'tkazib yuborildi" -ForegroundColor Yellow
+}
+
 # O'rnatish
 Write-Host "  [3/4] O'rnatilmoqda: $InstallDir ..." -ForegroundColor Yellow
 if (Test-Path $InstallDir) { Remove-Item $InstallDir -Recurse -Force }
