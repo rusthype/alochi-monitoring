@@ -851,21 +851,23 @@ class _McImgQuestion extends StatelessWidget {
         ]),
         const SizedBox(height: 12),
         if (question.img != null)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.asset(
-              'assets/interhouse/img/${question.img}',
-              height: 160,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Container(
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.err.withValues(alpha: .07),
-                  borderRadius: BorderRadius.circular(10),
+          Center(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset(
+                'assets/interhouse/img/${question.img}',
+                height: 160,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppColors.err.withValues(alpha: .07),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Center(
+                      child: Icon(Icons.broken_image_outlined,
+                          color: AppColors.ink3)),
                 ),
-                child: const Center(
-                    child: Icon(Icons.broken_image_outlined,
-                        color: AppColors.ink3)),
               ),
             ),
           ),
