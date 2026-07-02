@@ -306,6 +306,11 @@ class TestSpec {
   final List<String> parts;
   final ScoringSpec? scoring;
 
+  /// Optional timer override from the test JSON (`duration_minutes`).
+  /// When set and > 0, engine_host_screen._effectiveDuration uses it
+  /// (clamped to [1, 180] minutes) instead of the per-question estimate.
+  final int? durationMinutes;
+
   /// variant key → section name → SectionData
   final Map<String, Map<String, SectionData>> variants;
 
@@ -316,6 +321,7 @@ class TestSpec {
     required this.version,
     required this.parts,
     this.scoring,
+    this.durationMinutes,
     required this.variants,
   });
 
@@ -324,6 +330,7 @@ class TestSpec {
     final title = json['title']?.toString() ?? '';
     final grade = (json['grade'] as num?)?.toInt() ?? 0;
     final version = (json['version'] as num?)?.toInt() ?? 1;
+    final durationMinutes = (json['duration_minutes'] as num?)?.toInt();
 
     // parts
     final rawParts = json['parts'];
@@ -374,6 +381,7 @@ class TestSpec {
       version: version,
       parts: parts,
       scoring: scoring,
+      durationMinutes: durationMinutes,
       variants: variants,
     );
   }

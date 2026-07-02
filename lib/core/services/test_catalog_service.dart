@@ -52,6 +52,10 @@ class CatalogEntry {
   final List<SchoolButton> schoolButtons;
   final String runnerType;
 
+  /// Vaqt-qulf: null = qulflanmagan. Kelajakdagi vaqt bo'lsa, test
+  /// oldindan yuklab olinishi mumkin, lekin ochilmaydi (TASK 08d).
+  final DateTime? lockedUntil;
+
   const CatalogEntry({
     required this.testKey,
     required this.title,
@@ -60,6 +64,7 @@ class CatalogEntry {
     required this.status,
     this.schoolButtons = const [],
     this.runnerType = 'engine',
+    this.lockedUntil,
   });
 }
 
@@ -68,6 +73,15 @@ class TestCatalogService {
   final MonitoringApi _api;
 
   TestCatalogService(this._api);
+
+  /// Last known `locked_until` per test_key from the most recent refresh().
+  /// Used by runner_dispatch.dart as a second, defense-in-depth lock check
+  /// (the primary gate lives in the catalog UI — login_screen.dart) in case
+  /// launchRunner is ever reached through a path other than that UI.
+  static final Map<String, DateTime?> _lockedUntilCache = {};
+
+  static DateTime? lockedUntilFor(String testKey) =>
+      _lockedUntilCache[testKey];
 
   /// Katalogni yangilaydi va holat bilan CatalogEntry ro'yxatini qaytaradi.
   ///
@@ -137,6 +151,12 @@ class TestCatalogService {
               .toList()
           : <SchoolButton>[];
 
+      final lockedUntilRaw = item['locked_until'];
+      final lockedUntil = (lockedUntilRaw is String && lockedUntilRaw.isNotEmpty)
+          ? DateTime.tryParse(lockedUntilRaw)
+          : null;
+      _lockedUntilCache[key] = lockedUntil;
+
       entries.add(CatalogEntry(
         testKey: key,
         title: title,
@@ -145,6 +165,7 @@ class TestCatalogService {
         status: status,
         schoolButtons: schoolButtons,
         runnerType: item['runner_type']?.toString() ?? 'engine',
+        lockedUntil: lockedUntil,
       ));
     }
     return entries;
