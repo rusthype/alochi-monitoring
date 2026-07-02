@@ -336,6 +336,11 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
   bool _pdfGenerating = false;
   String? _pdfPath;
 
+  // AI summary (TZ §10.4) — null until loaded; stays null if offline/unavailable
+  // (in which case the card is not shown at all).
+  Map<String, dynamic>? _aiSummary;
+  bool _aiLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -344,6 +349,40 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       duration: const Duration(milliseconds: 350),
     )..forward();
     _fade = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
+    _loadAiSummary();
+  }
+
+  /// Fetches the AI analysis (TZ §10.4) for the per-topic breakdown.
+  /// Silent on failure — `api.fetchAiSummary` returns null offline / when the
+  /// AI service is unavailable, and the card simply stays hidden.
+  Future<void> _loadAiSummary() async {
+    final topics = widget.result.topicScores;
+    if (topics.isEmpty) return; // nothing to analyze — card stays hidden
+
+    setState(() => _aiLoading = true);
+    try {
+      final payload = topics
+          .map((t) => <String, dynamic>{
+                'topic': t.topic,
+                'correct': t.correct,
+                'total': t.total,
+                'pct': t.pct.round(),
+              })
+          .toList();
+      final data = await api.fetchAiSummary(
+        grade: widget.grade,
+        totalPct: widget.result.totalPct.round(),
+        topics: payload,
+      );
+      if (!mounted) return;
+      setState(() {
+        _aiSummary = data;
+        _aiLoading = false;
+      });
+    } catch (e) {
+      debugPrint('_EngineResultScreen._loadAiSummary error: $e');
+      if (mounted) setState(() => _aiLoading = false);
+    }
   }
 
   @override
@@ -379,6 +418,11 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         }
       }
 
+      // Per-§ / per-topic breakdown + AI summary for the TZ §11 passport.
+      final topicScores = widget.result.topicScores
+          .map((t) => MapEntry(t.topic, (ok: t.correct, tot: t.total)))
+          .toList();
+
       final bytes = await PdfService.generateResultPdf(
         firstName: widget.firstName,
         lastName: widget.lastName,
@@ -392,6 +436,8 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         pct: widget.result.totalPct.round(),
         mathTopics: mathTopics,
         engTopics: engTopics,
+        topicScores: topicScores,
+        aiSummary: _aiSummary,
       );
 
       final dir = await getApplicationSupportDirectory();
@@ -576,6 +622,12 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
               const SizedBox(height: 16),
               _TzAnalysis(result: widget.result),
 
+              // ── AI summary (TZ §10.4) — hidden when offline/unavailable ────
+              if (_aiLoading || _aiSummary != null) ...[
+                const SizedBox(height: 16),
+                _AiSummaryCard(loading: _aiLoading, data: _aiSummary),
+              ],
+
               const SizedBox(height: 24),
 
               // ── PDF button ────────────────────────────────────────────────
@@ -648,6 +700,113 @@ class _BadgeChip extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── AI summary card (TZ §10.4) ──────────────────────────────────────────────────
+
+class _AiSummaryCard extends StatelessWidget {
+  final bool loading;
+  final Map<String, dynamic>? data;
+  const _AiSummaryCard({required this.loading, this.data});
+
+  static List<String> _strList(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .map((e) => e?.toString().trim() ?? '')
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = data?['summary']?.toString().trim() ?? '';
+    final strengths = _strList(data?['strengths']);
+    final weaknesses = _strList(data?['weaknesses']);
+    final recs = _strList(data?['recommendations']);
+    final focus = _strList(data?['focus_14day']);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(children: [
+            Icon(Icons.auto_awesome_rounded, size: 18, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('AI tahlil', style: AppTextStyles.labelLarge),
+          ]),
+          const SizedBox(height: 12),
+          if (loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Row(children: [
+                SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2)),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text('Tahlil tayyorlanmoqda…',
+                      style: AppTextStyles.bodyMedium),
+                ),
+              ]),
+            )
+          else ...[
+            if (summary.isNotEmpty)
+              Text(summary, style: AppTextStyles.bodyLarge.copyWith(height: 1.4)),
+            if (strengths.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _block('Kuchli tomonlar', strengths,
+                  Icons.check_circle_rounded, AppColors.ok),
+            ],
+            if (weaknesses.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _block('Zaif tomonlar', weaknesses, Icons.error_rounded,
+                  AppColors.err),
+            ],
+            if (recs.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _block('Tavsiyalar', recs, Icons.lightbulb_rounded,
+                  const Color(0xFFD97706)),
+            ],
+            if (focus.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _block('14 kunlik e\'tibor', focus,
+                  Icons.calendar_today_rounded, AppColors.primary),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _block(String title, List<String> items, IconData icon, Color color) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title,
+            style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: color)),
+        const SizedBox(height: 6),
+        ...items.map((t) => Padding(
+              padding: const EdgeInsets.only(bottom: 5),
+              child:
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Icon(icon, size: 14, color: color),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(t, style: AppTextStyles.bodyMedium)),
+              ]),
+            )),
+      ]);
 }
 
 // ── TZ per-§ analysis: accordion + strong/weak + 14-day plan (TZ §10) ───────────
