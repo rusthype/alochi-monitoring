@@ -10,6 +10,16 @@ import '../../core/sync/sync_service.dart';
 import '../auth/login_screen.dart';
 import 'pdf_report.dart';
 
+/// Returns a threshold-based color for subject score bars:
+/// >=80% → green, >=60% → amber, <60% → red.
+Color _scoreBarColor(int score, int total) {
+  if (total == 0) return AppColors.secondary;
+  final p = score / total;
+  if (p >= 0.8) return AppColors.ok;
+  if (p >= 0.6) return const Color(0xFFF59E0B);
+  return AppColors.err;
+}
+
 class ResultScreen extends StatefulWidget {
   final StudentSession session;
   final TestPackage package;
@@ -96,7 +106,9 @@ class _ResultScreenState extends State<ResultScreen>
       if (mounted) _cardCtrl.forward();
     });
 
-    SyncService.instance.flushNow();
+    SyncService.instance.flushNow().catchError((Object e) {
+      debugPrint('ResultScreen flushNow error: $e');
+    });
   }
 
   void _animateScore() {
@@ -138,7 +150,6 @@ class _ResultScreenState extends State<ResultScreen>
 
   @override
   void dispose() {
-    SyncService.instance.flushNow();
     _celebCtrl.dispose();
     _overlayFadeCtrl.dispose();
     _cardCtrl.dispose();
@@ -429,7 +440,7 @@ class _ResultScreenState extends State<ResultScreen>
                     icon: Icons.calculate_outlined,
                     score: widget.result.mathScore,
                     total: widget.package.mathCount,
-                    color: const Color(0xFF3B82F6),
+                    color: _scoreBarColor(widget.result.mathScore, widget.package.mathCount),
                     ring: _ring,
                   )),
                   const SizedBox(width: 12),
@@ -439,7 +450,7 @@ class _ResultScreenState extends State<ResultScreen>
                     icon: Icons.language_rounded,
                     score: widget.result.engScore,
                     total: widget.package.engCount,
-                    color: const Color(0xFF0D9488),
+                    color: _scoreBarColor(widget.result.engScore, widget.package.engCount),
                     ring: _ring,
                   )),
                 ]),
@@ -993,7 +1004,7 @@ class _SubjectAnalysis extends StatelessWidget {
           pct: mathPct,
           status: mathStatus,
           statusColor: mathColor,
-          barColor: const Color(0xFF3B82F6),
+          barColor: mathColor,
         ),
         const SizedBox(height: 10),
         _AnalysisRow(
@@ -1003,7 +1014,7 @@ class _SubjectAnalysis extends StatelessWidget {
           pct: engPct,
           status: engStatus,
           statusColor: engColor,
-          barColor: const Color(0xFF0D9488),
+          barColor: engColor,
         ),
       ]),
     );

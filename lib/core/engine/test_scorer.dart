@@ -105,6 +105,20 @@ class TestScorer {
   // Trailing punctuation / whitespace pattern for sentence_order comparison
   static final _trailRe = RegExp(r'[.!?\s]+$');
 
+  // Collapses runs of whitespace to a single space.
+  static final _multiSpaceRe = RegExp(r'\s+');
+
+  /// Normalizes a typed/expected string before comparison: trims, lowercases,
+  /// maps curly apostrophe (’) to straight ('), and collapses multiple
+  /// whitespace to one. Applies to spelling, sentence_order and fill_blank.
+  static String _normalize(String s) {
+    return s
+        .trim()
+        .toLowerCase()
+        .replaceAll('’', "'")
+        .replaceAll(_multiSpaceRe, ' ');
+  }
+
   /// Score a completed test variant.
   ///
   /// [spec]       — the parsed TestSpec
@@ -247,14 +261,12 @@ class TestScorer {
       case QuestionType.spelling:
       case QuestionType.fillBlank:
         if (given is! String) return false;
-        return given.trim().toLowerCase() ==
-            (q.strAns ?? '').trim().toLowerCase();
+        return _normalize(given) == _normalize(q.strAns ?? '');
 
       case QuestionType.sentenceOrder:
         if (given is! String) return false;
-        final typed = given.trim().toLowerCase().replaceAll(_trailRe, '');
-        final expected =
-            (q.strAns ?? '').trim().toLowerCase().replaceAll(_trailRe, '');
+        final typed = _normalize(given).replaceAll(_trailRe, '');
+        final expected = _normalize(q.strAns ?? '').replaceAll(_trailRe, '');
         return typed == expected;
 
       case QuestionType.reading:

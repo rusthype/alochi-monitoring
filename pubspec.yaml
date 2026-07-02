@@ -1,6 +1,6 @@
 name: alochi_monitoring
 description: Alochi Monitoring — Maktab test tizimi
-version: 1.0.43+43
+version: 1.0.44+44
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -8,6 +8,8 @@ environment:
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
 
   # Network
@@ -39,6 +41,7 @@ dependencies:
   # Windows MSIX installer
   msix: ^3.16.7
   intl: ^0.20.2
+  flutter_riverpod: ^2.6.1
 
 dev_dependencies:
   flutter_test:
@@ -46,6 +49,7 @@ dev_dependencies:
   flutter_lints: ^4.0.0
 
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - assets/logo.png
