@@ -40,5 +40,19 @@ void main() {
 
       expect(result, isNull);
     });
+
+    test(
+        'returns null when studentId is empty — manual-entry students have '
+        'no reliable identifier to match against, so never resume', () async {
+      await AttemptStore.save('test-key', {
+        'variant': 2,
+        'answers': {'Math/0': 'a'},
+        'student_id': '', // another manually-entered student, also empty id
+      });
+
+      final result = await AttemptStore.loadForStudent('test-key', '');
+
+      expect(result, isNull);
+    });
   });
 }
