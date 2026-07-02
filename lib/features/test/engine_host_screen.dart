@@ -448,18 +448,6 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
   List<SectionScore> _strongSections() =>
       widget.result.sectionScores.where((s) => _secPct(s) >= 75).toList();
 
-  String _aiSummary(int pct, List<SectionScore> weak) {
-    if (pct >= 80) {
-      return "${widget.firstName} yaxshi natija ($pct%) ko'rsatdi. "
-          "Zaif bo'limlarni mustahkamlasa, keyingi testda 90%+ ga erishishi mumkin! 🎯";
-    }
-    final weakNames = weak.take(2).map((w) => w.name).join(', ');
-    final weakPart =
-        weak.isNotEmpty ? " $weakNames bo'limlarida qiynalmoqda." : '';
-    return "${widget.firstName} $pct% natija ko'rsatdi.$weakPart "
-        "14 kunlik reja bajarilsa, 2–3 haftada sezilarli o'zgarish bo'ladi! 📚";
-  }
-
   Future<void> _generatePdf() async {
     if (_pdfGenerating) return;
     setState(() => _pdfGenerating = true);
@@ -719,10 +707,14 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                 _AiSummaryCard(loading: _aiLoading, data: _aiSummary),
               ],
 
-              // TODO(merge-review): PR#1's per-topic analysis/AI-summary above
-              // and the pre-existing "4. Tahlil" / "5. 14 kunlik reja" /
-              // "6. AI xulosa" sections below both render now — pick one,
-              // don't ship both stacked on the same result screen.
+              // TODO(merge-review): user chose to keep both the new
+              // per-topic _TzAnalysis (with its own 14-day plan) above AND
+              // the pre-existing "4. Tahlil" / "5. 14 kunlik reja" sections
+              // below — only the old fake local "6. AI xulosa" was removed
+              // (replaced by the real _AiSummaryCard above). Note this still
+              // means "14 kunlik reja" effectively appears twice (once
+              // inside _TzAnalysis, once in the old section 5 below) —
+              // revisit if that reads as redundant in practice.
               const SizedBox(height: 24),
 
               // ── 4. Tahlil ─────────────────────────────────────────────────
@@ -877,47 +869,6 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                       title: 'Nazorat testi',
                       desc: 'Natijalarni solishtirish',
                       isLast: true,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── 6. AI xulosa ──────────────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.secondaryMuted,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: AppColors.secondary.withValues(alpha: .25)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.auto_awesome_rounded,
-                            size: 18, color: AppColors.secondary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'AI XULOSA',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.secondary,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _aiSummary(pct, weak),
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.ink1,
-                        height: 1.6,
-                      ),
                     ),
                   ],
                 ),
