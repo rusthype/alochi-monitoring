@@ -99,7 +99,7 @@ Future<int> _resolveVariant(
   required String studentId,
   required String groupName,
 }) async {
-  final saved = await AttemptStore.load(testKey);
+  final saved = await AttemptStore.loadForStudent(testKey, studentId);
   final nowMs = DateTime.now().millisecondsSinceEpoch;
 
   if (saved != null) {

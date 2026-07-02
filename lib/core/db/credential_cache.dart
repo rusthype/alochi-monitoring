@@ -70,6 +70,13 @@ class CredentialCache {
   }
 
   static Future<void> clear() async {
-    await _storage.deleteAll();
+    await _storage.delete(key: _keyUsername);
+    await _storage.delete(key: _keyPassword);
+    await _storage.delete(key: _keyToken);
+    await _storage.delete(key: _keyStudentId);
+    await _storage.delete(key: _keyStudentName);
+    await _storage.delete(key: _keyVariant);
+    await _storage.delete(key: _keyGrade);
+    await _storage.delete(key: _keyGroupName);
   }
 }

@@ -151,13 +151,13 @@ class WrongAnswer {
   });
 
   factory WrongAnswer.fromJson(Map<String, dynamic> j) => WrongAnswer(
-        position: j['position'] as int,
-        subject: j['subject'] as String,
-        prompt: j['prompt'] as String,
-        studentAnswer: j['student_answer'] as String,
-        correctAnswer: j['correct_answer'] as String,
-        studentText: j['student_text'] as String,
-        correctText: j['correct_text'] as String,
+        position: (j['position'] as num?)?.toInt() ?? 0,
+        subject: j['subject']?.toString() ?? '',
+        prompt: j['prompt']?.toString() ?? '',
+        studentAnswer: j['student_answer']?.toString() ?? '',
+        correctAnswer: j['correct_answer']?.toString() ?? '',
+        studentText: j['student_text']?.toString() ?? '',
+        correctText: j['correct_text']?.toString() ?? '',
         image: _fixUrl(j['image'] as String?),
       );
 }
