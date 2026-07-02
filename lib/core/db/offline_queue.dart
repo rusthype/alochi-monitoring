@@ -8,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:http/http.dart' as http;
 import '../models/models.dart';
 import '../api/api_client.dart';
+import 'queue_crypto.dart';
 
 class OfflineQueue {
   static Database? _db;
@@ -88,7 +89,7 @@ class OfflineQueue {
     await d.insert(
       'queue',
       {
-        'payload': jsonEncode(result.toJson()),
+        'payload': await QueueCrypto.encryptPayload(jsonEncode(result.toJson())),
         'created': DateTime.now().millisecondsSinceEpoch,
         'attempts': 0,
         'token': t,
@@ -104,7 +105,7 @@ class OfflineQueue {
     int synced = 0;
     for (final row in rows) {
       try {
-        final json = jsonDecode(row['payload'] as String);
+        final json = jsonDecode(await QueueCrypto.decryptPayload(row['payload'] as String));
         final result = TestResult(
           packageId: json['package_id'],
           variant: json['variant'],
@@ -146,7 +147,7 @@ class OfflineQueue {
   static Future<void> enqueueLocal(Map<String, dynamic> payload, String token) async {
     final d = await db;
     await d.insert('local_queue', {
-      'payload': jsonEncode(payload),
+      'payload': await QueueCrypto.encryptPayload(jsonEncode(payload)),
       'created': DateTime.now().millisecondsSinceEpoch,
       'attempts': 0,
       'token': token,
@@ -159,7 +160,7 @@ class OfflineQueue {
     int synced = 0;
     for (final row in rows) {
       try {
-        final json = jsonDecode(row['payload'] as String);
+        final json = jsonDecode(await QueueCrypto.decryptPayload(row['payload'] as String));
         final token = (row['token'] as String?) ?? newIdempotencyToken();
         final ok = await submitFn(json, token);
         if (ok) {
