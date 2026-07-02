@@ -19,18 +19,20 @@ class QueueCrypto {
   static const _keyStorageKey = 'queue_aes_key_v1';
   static const _prefix = 'ENC1:';
 
-  static enc.Key? _cachedKey;
+  static Future<enc.Key>? _keyFuture;
 
-  static Future<enc.Key> _getKey() async {
-    if (_cachedKey != null) return _cachedKey!;
+  static Future<enc.Key> _getKey() {
+    return _keyFuture ??= _loadOrCreateKey();
+  }
+
+  static Future<enc.Key> _loadOrCreateKey() async {
     var stored = await _storage.read(key: _keyStorageKey);
     if (stored == null) {
       final generated = enc.Key.fromSecureRandom(32);
       stored = base64Encode(generated.bytes);
       await _storage.write(key: _keyStorageKey, value: stored);
     }
-    _cachedKey = enc.Key(base64Decode(stored));
-    return _cachedKey!;
+    return enc.Key(base64Decode(stored));
   }
 
   /// Pure encrypt given an explicit key — split out from [encryptPayload]
