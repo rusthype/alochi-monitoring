@@ -707,14 +707,13 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                 _AiSummaryCard(loading: _aiLoading, data: _aiSummary),
               ],
 
-              // TODO(merge-review): user chose to keep both the new
-              // per-topic _TzAnalysis (with its own 14-day plan) above AND
-              // the pre-existing "4. Tahlil" / "5. 14 kunlik reja" sections
-              // below — only the old fake local "6. AI xulosa" was removed
-              // (replaced by the real _AiSummaryCard above). Note this still
-              // means "14 kunlik reja" effectively appears twice (once
-              // inside _TzAnalysis, once in the old section 5 below) —
-              // revisit if that reads as redundant in practice.
+              // NOTE(merge-review): old "6. AI xulosa" (fake local template)
+              // and old "5. 14 kunlik reja" were both removed — the new
+              // _TzAnalysis above already covers per-topic analysis + its
+              // own 14-day plan, and _AiSummaryCard replaces the AI xulosa.
+              // The remaining "4. Tahlil" section below is section-level
+              // (coarser than _TzAnalysis's per-topic breakdown) — left as
+              // a separate, lower-priority overlap; revisit if desired.
               const SizedBox(height: 24),
 
               // ── 4. Tahlil ─────────────────────────────────────────────────
@@ -829,47 +828,6 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                           ),
                         ],
                       ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── 5. 14 kunlik reja ─────────────────────────────────────────
-              _ReportCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _SectionHead(
-                      icon: Icons.calendar_month_rounded,
-                      label: '14 KUNLIK REJA',
-                    ),
-                    const SizedBox(height: 8),
-                    _PlanRow(
-                      days: '1–3 KUN',
-                      title: weak.isNotEmpty
-                          ? '${weak[0].name} takrorlash'
-                          : "Barcha bo'limlar takrorlash",
-                      desc: 'Har kuni 15 daqiqa mashq',
-                    ),
-                    _PlanRow(
-                      days: '4–7 KUN',
-                      title: weak.length > 1
-                          ? '${weak[1].name} mashqlari'
-                          : 'Mustahkamlash mashqlari',
-                      desc: 'Har kuni 5 ta misol yechish',
-                    ),
-                    const _PlanRow(
-                      days: '8–11 KUN',
-                      title: 'Aralash mashqlar',
-                      desc: "Barcha bo'limlarni takrorlash",
-                    ),
-                    const _PlanRow(
-                      days: '12–14 KUN',
-                      title: 'Nazorat testi',
-                      desc: 'Natijalarni solishtirish',
-                      isLast: true,
-                    ),
                   ],
                 ),
               ),
@@ -1369,63 +1327,6 @@ class _SectionRowV2 extends StatelessWidget {
               backgroundColor: AppColors.gray100,
               color: color,
               minHeight: 6,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Plan row ──────────────────────────────────────────────────────────────────
-
-class _PlanRow extends StatelessWidget {
-  final String days;
-  final String title;
-  final String desc;
-  final bool isLast;
-
-  const _PlanRow({
-    required this.days,
-    required this.title,
-    required this.desc,
-    this.isLast = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.secondaryMuted,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                  color: AppColors.secondary.withValues(alpha: .3)),
-            ),
-            child: Text(
-              days,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: AppColors.secondary,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppTextStyles.labelLarge),
-                const SizedBox(height: 2),
-                Text(desc, style: AppTextStyles.bodyMedium),
-              ],
             ),
           ),
         ],
