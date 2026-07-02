@@ -143,7 +143,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   // ── Payload builder ─────────────────────────────────────────────────────────
   //
   // Maps ScoredResult → the Map<String, dynamic> shape consumed by
-  // OfflineQueue.enqueueLocal / api.submitLocalResult.
+  // OfflineQueue.enqueueLocal / api.submitLocalResultFull.
   // math/english top-level are for legacy panel only.
   // detail.sections is the canonical per-section breakdown.
 

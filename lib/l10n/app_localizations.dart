@@ -1,0 +1,1195 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart' as intl;
+
+import 'app_localizations_ru.dart';
+import 'app_localizations_uz.dart';
+
+// ignore_for_file: type=lint
+
+/// Callers can lookup localized strings with an instance of AppLocalizations
+/// returned by `AppLocalizations.of(context)`.
+///
+/// Applications need to include `AppLocalizations.delegate()` in their app's
+/// `localizationDelegates` list, and the locales they support in the app's
+/// `supportedLocales` list. For example:
+///
+/// ```dart
+/// import 'l10n/app_localizations.dart';
+///
+/// return MaterialApp(
+///   localizationsDelegates: AppLocalizations.localizationsDelegates,
+///   supportedLocales: AppLocalizations.supportedLocales,
+///   home: MyApplicationHome(),
+/// );
+/// ```
+///
+/// ## Update pubspec.yaml
+///
+/// Please make sure to update your pubspec.yaml to include the following
+/// packages:
+///
+/// ```yaml
+/// dependencies:
+///   # Internationalization support.
+///   flutter_localizations:
+///     sdk: flutter
+///   intl: any # Use the pinned version from flutter_localizations
+///
+///   # Rest of dependencies
+/// ```
+///
+/// ## iOS Applications
+///
+/// iOS applications define key application metadata, including supported
+/// locales, in an Info.plist file that is built into the application bundle.
+/// To configure the locales supported by your app, you’ll need to edit this
+/// file.
+///
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
+///
+/// Next, select the Information Property List item, select Add Item from the
+/// Editor menu, then select Localizations from the pop-up menu.
+///
+/// Select and expand the newly-created Localizations item then, for each
+/// locale your application supports, add a new item and select the locale
+/// you wish to add from the pop-up menu in the Value field. This list should
+/// be consistent with the languages listed in the AppLocalizations.supportedLocales
+/// property.
+abstract class AppLocalizations {
+  AppLocalizations(String locale)
+      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+
+  final String localeName;
+
+  static AppLocalizations? of(BuildContext context) {
+    return Localizations.of<AppLocalizations>(context, AppLocalizations);
+  }
+
+  static const LocalizationsDelegate<AppLocalizations> delegate =
+      _AppLocalizationsDelegate();
+
+  /// A list of this localizations delegate along with the default localizations
+  /// delegates.
+  ///
+  /// Returns a list of localizations delegates containing this delegate along with
+  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
+  /// and GlobalWidgetsLocalizations.delegate.
+  ///
+  /// Additional delegates can be added by appending to this list in
+  /// MaterialApp. This list does not have to be used at all if a custom list
+  /// of delegates is preferred or required.
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
+      <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
+
+  /// A list of this localizations delegate's supported locales.
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('ru'),
+    Locale('uz')
+  ];
+
+  /// No description provided for @appTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Alochi Monitoring'**
+  String get appTitle;
+
+  /// No description provided for @loginTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kirish'**
+  String get loginTitle;
+
+  /// No description provided for @languageUzbek.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'zbek'**
+  String get languageUzbek;
+
+  /// No description provided for @languageRussian.
+  ///
+  /// In uz, this message translates to:
+  /// **'Русский'**
+  String get languageRussian;
+
+  /// No description provided for @bossCreateTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kitobdan test yaratish'**
+  String get bossCreateTitle;
+
+  /// No description provided for @logout.
+  ///
+  /// In uz, this message translates to:
+  /// **'Chiqish'**
+  String get logout;
+
+  /// No description provided for @serverChecking.
+  ///
+  /// In uz, this message translates to:
+  /// **'Server tekshirilmoqda...'**
+  String get serverChecking;
+
+  /// No description provided for @serverConnected.
+  ///
+  /// In uz, this message translates to:
+  /// **'Server bilan ulandi'**
+  String get serverConnected;
+
+  /// No description provided for @offlineMode.
+  ///
+  /// In uz, this message translates to:
+  /// **'Offline rejim'**
+  String get offlineMode;
+
+  /// No description provided for @invalidCredentials.
+  ///
+  /// In uz, this message translates to:
+  /// **'Login yoki parol noto\'g\'ri'**
+  String get invalidCredentials;
+
+  /// No description provided for @tooManyAttempts.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko\'p urinish. Biroz kuting.'**
+  String get tooManyAttempts;
+
+  /// No description provided for @serverErrorRetry.
+  ///
+  /// In uz, this message translates to:
+  /// **'Server xatosi. Qayta urinib ko\'ring.'**
+  String get serverErrorRetry;
+
+  /// No description provided for @offlineNoSavedLogin.
+  ///
+  /// In uz, this message translates to:
+  /// **'Internet yo\'q va bu login ilgari saqlanmagan.'**
+  String get offlineNoSavedLogin;
+
+  /// No description provided for @connectionError.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ulanishda xatolik'**
+  String get connectionError;
+
+  /// No description provided for @loggingIn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kirish...'**
+  String get loggingIn;
+
+  /// No description provided for @appSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ta\'lim monitoring platformasi'**
+  String get appSubtitle;
+
+  /// No description provided for @testsRoute.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testlar'**
+  String get testsRoute;
+
+  /// No description provided for @comingSoon.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tez kunda'**
+  String get comingSoon;
+
+  /// No description provided for @retryCheck.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qayta tekshirish'**
+  String get retryCheck;
+
+  /// No description provided for @loginInstruction.
+  ///
+  /// In uz, this message translates to:
+  /// **'Login va parolni o\'qituvchingizdan oling'**
+  String get loginInstruction;
+
+  /// No description provided for @usernameLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Login'**
+  String get usernameLabel;
+
+  /// No description provided for @passwordLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Parol'**
+  String get passwordLabel;
+
+  /// No description provided for @usernameRequired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Login kiriting'**
+  String get usernameRequired;
+
+  /// No description provided for @passwordRequired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Parol kiriting'**
+  String get passwordRequired;
+
+  /// No description provided for @offlineLogin.
+  ///
+  /// In uz, this message translates to:
+  /// **'Offline kirish'**
+  String get offlineLogin;
+
+  /// No description provided for @localGradeEntry.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oddiy kirish (Internet kerak emas)'**
+  String get localGradeEntry;
+
+  /// No description provided for @monitoringTestUnit1.
+  ///
+  /// In uz, this message translates to:
+  /// **'Monitoring Test Unit 1'**
+  String get monitoringTestUnit1;
+
+  /// No description provided for @offlineHistory.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oflayn Tarix'**
+  String get offlineHistory;
+
+  /// No description provided for @selectPdfFirst.
+  ///
+  /// In uz, this message translates to:
+  /// **'Avval PDF fayl tanlang'**
+  String get selectPdfFirst;
+
+  /// No description provided for @aiGeneratingMessage.
+  ///
+  /// In uz, this message translates to:
+  /// **'AI savollar yaratmoqda...\nBu 1-2 daqiqa olishi mumkin'**
+  String get aiGeneratingMessage;
+
+  /// No description provided for @enterPackageTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket sarlavhasini kiriting'**
+  String get enterPackageTitle;
+
+  /// No description provided for @savingMessage.
+  ///
+  /// In uz, this message translates to:
+  /// **'Saqlanyapti...'**
+  String get savingMessage;
+
+  /// No description provided for @backButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Orqaga'**
+  String get backButton;
+
+  /// No description provided for @packageTitleLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket sarlavhasi'**
+  String get packageTitleLabel;
+
+  /// No description provided for @saveAndPublish.
+  ///
+  /// In uz, this message translates to:
+  /// **'Saqlash va nashr etish ({grade}-sinf, {variantCount} variant)'**
+  String saveAndPublish(int grade, int variantCount);
+
+  /// No description provided for @questionTextLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Savol matni'**
+  String get questionTextLabel;
+
+  /// No description provided for @variantLetterLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Variant {letter}'**
+  String variantLetterLabel(String letter);
+
+  /// No description provided for @aiImagePromptHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'AI rasm taklifi (saqlanmaydi):'**
+  String get aiImagePromptHint;
+
+  /// No description provided for @mathSubject.
+  ///
+  /// In uz, this message translates to:
+  /// **'Math'**
+  String get mathSubject;
+
+  /// No description provided for @englishSubject.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ingliz'**
+  String get englishSubject;
+
+  /// No description provided for @selectPdfBook.
+  ///
+  /// In uz, this message translates to:
+  /// **'PDF kitob tanlang'**
+  String get selectPdfBook;
+
+  /// No description provided for @pdfFileHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'.pdf fayl, max 10MB, 50 bet'**
+  String get pdfFileHint;
+
+  /// No description provided for @subjectLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Fan'**
+  String get subjectLabel;
+
+  /// No description provided for @gradeLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinf'**
+  String get gradeLabel;
+
+  /// No description provided for @questionCountLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Savollar soni'**
+  String get questionCountLabel;
+
+  /// No description provided for @variantCountLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Variant soni'**
+  String get variantCountLabel;
+
+  /// No description provided for @generateWithAi.
+  ///
+  /// In uz, this message translates to:
+  /// **'AI bilan savollar yaratish'**
+  String get generateWithAi;
+
+  /// No description provided for @gradeN.
+  ///
+  /// In uz, this message translates to:
+  /// **'{n}-sinf'**
+  String gradeN(int n);
+
+  /// No description provided for @nQuestions.
+  ///
+  /// In uz, this message translates to:
+  /// **'{n} ta savol'**
+  String nQuestions(int n);
+
+  /// No description provided for @nVariants.
+  ///
+  /// In uz, this message translates to:
+  /// **'{n} variant'**
+  String nVariants(int n);
+
+  /// No description provided for @questionIndex.
+  ///
+  /// In uz, this message translates to:
+  /// **'{index}-savol'**
+  String questionIndex(int index);
+
+  /// No description provided for @enterFirstAndLastName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ism va familiyani kiriting'**
+  String get enterFirstAndLastName;
+
+  /// No description provided for @incorrectSecretPassword.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maxfiy parol noto\'g\'ri (Maslahat: 1234)'**
+  String get incorrectSecretPassword;
+
+  /// No description provided for @errorPrefix.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xato: {error}'**
+  String errorPrefix(String error);
+
+  /// No description provided for @selectVariant.
+  ///
+  /// In uz, this message translates to:
+  /// **'Variantni tanlang'**
+  String get selectVariant;
+
+  /// No description provided for @studentInfoTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'quvchi ma\'lumotlari'**
+  String get studentInfoTitle;
+
+  /// No description provided for @localTestInfo.
+  ///
+  /// In uz, this message translates to:
+  /// **'2-sinf Ingliz tili — Interhouse testi\n10 variant · 30 savol · Offline rejim'**
+  String get localTestInfo;
+
+  /// No description provided for @continueButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Davom etish'**
+  String get continueButton;
+
+  /// No description provided for @firstNameLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ism'**
+  String get firstNameLabel;
+
+  /// No description provided for @firstNameHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Alisher'**
+  String get firstNameHint;
+
+  /// No description provided for @lastNameLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Familiya'**
+  String get lastNameLabel;
+
+  /// No description provided for @lastNameHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Karimov'**
+  String get lastNameHint;
+
+  /// No description provided for @groupGradeLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Guruh / Sinf'**
+  String get groupGradeLabel;
+
+  /// No description provided for @groupGradeHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'3-A'**
+  String get groupGradeHint;
+
+  /// No description provided for @schoolNameLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maktab nomi'**
+  String get schoolNameLabel;
+
+  /// No description provided for @schoolNameHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'12-maktab'**
+  String get schoolNameHint;
+
+  /// No description provided for @pinCodeLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Parol (PIN kod)'**
+  String get pinCodeLabel;
+
+  /// No description provided for @startTest.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testni boshlash'**
+  String get startTest;
+
+  /// No description provided for @combinedTestInfo.
+  ///
+  /// In uz, this message translates to:
+  /// **'79 savol · 75 daqiqa · Offline rejim'**
+  String get combinedTestInfo;
+
+  /// No description provided for @combinedTestSubjects.
+  ///
+  /// In uz, this message translates to:
+  /// **'30 matematika + 49 ingliz tili'**
+  String get combinedTestSubjects;
+
+  /// No description provided for @incorrectPassword.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maxfiy parol noto\'g\'ri'**
+  String get incorrectPassword;
+
+  /// No description provided for @confirmLogout.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hisobdan chiqmoqchimisiz?'**
+  String get confirmLogout;
+
+  /// No description provided for @cancel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bekor qilish'**
+  String get cancel;
+
+  /// No description provided for @noActiveExamOrExpired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faol imtihon topilmadi yoki muddati tugagan'**
+  String get noActiveExamOrExpired;
+
+  /// No description provided for @loadFailed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuklanmadi. Qayta urinib ko\'ring.'**
+  String get loadFailed;
+
+  /// No description provided for @gradeClass.
+  ///
+  /// In uz, this message translates to:
+  /// **'{grade}-sinf'**
+  String gradeClass(int grade);
+
+  /// No description provided for @variantBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Variant {variant}'**
+  String variantBadge(int variant);
+
+  /// No description provided for @selectTest.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test tanlang'**
+  String get selectTest;
+
+  /// No description provided for @selectMonitoringTest.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mavjud monitoring testlaridan birini tanlang'**
+  String get selectMonitoringTest;
+
+  /// No description provided for @retry.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qayta urinish'**
+  String get retry;
+
+  /// No description provided for @noActiveExam.
+  ///
+  /// In uz, this message translates to:
+  /// **'Aktiv imtihon yo\'q'**
+  String get noActiveExam;
+
+  /// No description provided for @noExamAssignedOrExpired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sizga hali imtihon biriktirilmagan\nyoki muddati tugagan'**
+  String get noExamAssignedOrExpired;
+
+  /// No description provided for @testsNotLoadedYet.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testlar hali yuklanmagan'**
+  String get testsNotLoadedYet;
+
+  /// No description provided for @tryAgainAfterTeacherUploads.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchingiz test yuklagandan so\'ng\nqayta urinib ko\'ring'**
+  String get tryAgainAfterTeacherUploads;
+
+  /// No description provided for @refresh.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangilash'**
+  String get refresh;
+
+  /// No description provided for @totalLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Jami'**
+  String get totalLabel;
+
+  /// No description provided for @helloGreeting.
+  ///
+  /// In uz, this message translates to:
+  /// **'Salom!'**
+  String get helloGreeting;
+
+  /// No description provided for @mathSubjectFull.
+  ///
+  /// In uz, this message translates to:
+  /// **'Matematika'**
+  String get mathSubjectFull;
+
+  /// No description provided for @englishSubjectFull.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ingliz tili'**
+  String get englishSubjectFull;
+
+  /// No description provided for @finishConfirmTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tugatish?'**
+  String get finishConfirmTitle;
+
+  /// No description provided for @unansweredWarning.
+  ///
+  /// In uz, this message translates to:
+  /// **'{unanswered} ta savol javobsiz qoldi. Shunga qaramay tugatmoqchimisiz?'**
+  String unansweredWarning(int unanswered);
+
+  /// No description provided for @mathSectionLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Matematika bo\'limi'**
+  String get mathSectionLabel;
+
+  /// No description provided for @engSectionLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ingliz tili bo\'limi'**
+  String get engSectionLabel;
+
+  /// No description provided for @keyboardButtons.
+  ///
+  /// In uz, this message translates to:
+  /// **'tugmalar'**
+  String get keyboardButtons;
+
+  /// No description provided for @previousButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oldingi'**
+  String get previousButton;
+
+  /// No description provided for @nextButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Keyingi'**
+  String get nextButton;
+
+  /// No description provided for @answeredLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'javoblandi'**
+  String get answeredLabel;
+
+  /// No description provided for @uploadingLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuklanmoqda'**
+  String get uploadingLabel;
+
+  /// No description provided for @timeLeftLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'qoldi'**
+  String get timeLeftLabel;
+
+  /// No description provided for @engSectionTransitionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ingliz tili bo\'limiga o\'tildi'**
+  String get engSectionTransitionTitle;
+
+  /// No description provided for @engSectionTransitionDesc.
+  ///
+  /// In uz, this message translates to:
+  /// **'40 daqiqa · Keyingi savollar ingliz tilida'**
+  String get engSectionTransitionDesc;
+
+  /// No description provided for @imageLoadFailed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasm yuklanmadi'**
+  String get imageLoadFailed;
+
+  /// No description provided for @pdfError.
+  ///
+  /// In uz, this message translates to:
+  /// **'PDF xatosi: {error}'**
+  String pdfError(String error);
+
+  /// No description provided for @congratsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tabriklaymiz!'**
+  String get congratsTitle;
+
+  /// No description provided for @goodEffortTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yaxshi harakat!'**
+  String get goodEffortTitle;
+
+  /// No description provided for @testFinishedSuccess.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test muvaffaqiyatli yakunlandi'**
+  String get testFinishedSuccess;
+
+  /// No description provided for @betterNextTime.
+  ///
+  /// In uz, this message translates to:
+  /// **'Keyingi safarida yaxshiroq bo\'ladi!'**
+  String get betterNextTime;
+
+  /// No description provided for @scorePoint.
+  ///
+  /// In uz, this message translates to:
+  /// **'ball'**
+  String get scorePoint;
+
+  /// No description provided for @passedMessage.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tabriklaymiz! O\'tdingiz!'**
+  String get passedMessage;
+
+  /// No description provided for @failedMessage.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'tmadi. Harakat qiling!'**
+  String get failedMessage;
+
+  /// No description provided for @totalScoreLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Jami ball'**
+  String get totalScoreLabel;
+
+  /// No description provided for @syncedSuccess.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natija serverga muvaffaqiyatli yuborildi'**
+  String get syncedSuccess;
+
+  /// No description provided for @savedOffline.
+  ///
+  /// In uz, this message translates to:
+  /// **'Offline saqlandi. Internet bo\'lganda avtomatik yuboriladi'**
+  String get savedOffline;
+
+  /// No description provided for @pdfReady.
+  ///
+  /// In uz, this message translates to:
+  /// **'PDF tayyor'**
+  String get pdfReady;
+
+  /// No description provided for @downloadPdf.
+  ///
+  /// In uz, this message translates to:
+  /// **'PDF yuklab olish'**
+  String get downloadPdf;
+
+  /// No description provided for @nextStudent.
+  ///
+  /// In uz, this message translates to:
+  /// **'Keyingi talaba'**
+  String get nextStudent;
+
+  /// No description provided for @wrongAnswersCount.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xato javoblar — {count} ta'**
+  String wrongAnswersCount(int count);
+
+  /// No description provided for @wrongAnswersBreakdown.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mat: {math}  ·  Ing: {eng}'**
+  String wrongAnswersBreakdown(int math, int eng);
+
+  /// No description provided for @statusGood.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yaxshi ✓'**
+  String get statusGood;
+
+  /// No description provided for @statusAverage.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'rtacha'**
+  String get statusAverage;
+
+  /// No description provided for @statusWeak.
+  ///
+  /// In uz, this message translates to:
+  /// **'Zaif — mashq kerak'**
+  String get statusWeak;
+
+  /// No description provided for @subjectAnalysisTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mavzu tahlili'**
+  String get subjectAnalysisTitle;
+
+  /// No description provided for @mathTipLow1.
+  ///
+  /// In uz, this message translates to:
+  /// **'Asosiy amallar (qo\'shish, ayirish, ko\'paytirish, bo\'lish)ni qayta o\'rganing.'**
+  String get mathTipLow1;
+
+  /// No description provided for @mathTipLow2.
+  ///
+  /// In uz, this message translates to:
+  /// **'Har kuni 20 daqiqa misollar yeching.'**
+  String get mathTipLow2;
+
+  /// No description provided for @mathTipLow3.
+  ///
+  /// In uz, this message translates to:
+  /// **'2-sinf dasturidan boshlang.'**
+  String get mathTipLow3;
+
+  /// No description provided for @mathTipMed1.
+  ///
+  /// In uz, this message translates to:
+  /// **'Jadval va kasr sonlarni mustahkamlang.'**
+  String get mathTipMed1;
+
+  /// No description provided for @mathTipMed2.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xato qilgan savollar turini aniqlang va shu mavzuga e\'tibor bering.'**
+  String get mathTipMed2;
+
+  /// No description provided for @mathTipMed3.
+  ///
+  /// In uz, this message translates to:
+  /// **'Har kuni 2-3 ta test masala yeching.'**
+  String get mathTipMed3;
+
+  /// No description provided for @mathTipHigh1.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qiyin masalalar (muammo masalalar) ustida ishlang.'**
+  String get mathTipHigh1;
+
+  /// No description provided for @mathTipHigh2.
+  ///
+  /// In uz, this message translates to:
+  /// **'Vaqtni boshqarishni mashq qiling.'**
+  String get mathTipHigh2;
+
+  /// No description provided for @mathTipHigh3.
+  ///
+  /// In uz, this message translates to:
+  /// **'Har savolga 1-2 daqiqa ajrating.'**
+  String get mathTipHigh3;
+
+  /// No description provided for @mathTipExc1.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ajoyib!'**
+  String get mathTipExc1;
+
+  /// No description provided for @mathTipExc2.
+  ///
+  /// In uz, this message translates to:
+  /// **'Murakkab olimpiada masalalarini hal qilishga o\'ting.'**
+  String get mathTipExc2;
+
+  /// No description provided for @mathTipExc3.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijani barqaror saqlash uchun muntazam mashq qiling.'**
+  String get mathTipExc3;
+
+  /// No description provided for @engTipLow1.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kunlik 10 ta yangi so\'z yodlang (flashcard usuli).'**
+  String get engTipLow1;
+
+  /// No description provided for @engTipLow2.
+  ///
+  /// In uz, this message translates to:
+  /// **'Asosiy grammatika: to be, present simple, plural nouns.'**
+  String get engTipLow2;
+
+  /// No description provided for @engTipLow3.
+  ///
+  /// In uz, this message translates to:
+  /// **'BBC Learning English, Duolingo ilovalaridan foydalaning.'**
+  String get engTipLow3;
+
+  /// No description provided for @engTipMed1.
+  ///
+  /// In uz, this message translates to:
+  /// **'Past simple va present continuous grammatikasini o\'rganing.'**
+  String get engTipMed1;
+
+  /// No description provided for @engTipMed2.
+  ///
+  /// In uz, this message translates to:
+  /// **'Har kuni inglizcha 1 ta qisqa matn o\'qing.'**
+  String get engTipMed2;
+
+  /// No description provided for @engTipMed3.
+  ///
+  /// In uz, this message translates to:
+  /// **'So\'z boyligini mavzu bo\'yicha guruhlab yodlang.'**
+  String get engTipMed3;
+
+  /// No description provided for @engTipHigh1.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tinglash ko\'nikmalarini rivojlantiring.'**
+  String get engTipHigh1;
+
+  /// No description provided for @engTipHigh2.
+  ///
+  /// In uz, this message translates to:
+  /// **'YouTube ingliz kontentidan foydalaning.'**
+  String get engTipHigh2;
+
+  /// No description provided for @engTipHigh3.
+  ///
+  /// In uz, this message translates to:
+  /// **'Esselar va qisqa hikoyalar yozing.'**
+  String get engTipHigh3;
+
+  /// No description provided for @engTipExc1.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ajoyib!'**
+  String get engTipExc1;
+
+  /// No description provided for @engTipExc2.
+  ///
+  /// In uz, this message translates to:
+  /// **'IELTS/Cambridge sertifikati uchun tayyorlaning.'**
+  String get engTipExc2;
+
+  /// No description provided for @engTipExc3.
+  ///
+  /// In uz, this message translates to:
+  /// **'Murakkab matnlarni o\'qish va tinglashni davom ettiring.'**
+  String get engTipExc3;
+
+  /// No description provided for @statusGold.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oltin medal darajasi! Davom eting!'**
+  String get statusGold;
+
+  /// No description provided for @statusGoodMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yaxshi natija! Yana bir oz harakat kerak.'**
+  String get statusGoodMsg;
+
+  /// No description provided for @statusSatisfactory.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qoniqarli. Tavsiyalarga amal qiling va qayta sinab ko\'ring.'**
+  String get statusSatisfactory;
+
+  /// No description provided for @statusKeepTrying.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xafa bo\'lmang! Har bir muvaffaqiyatsizlik yangi boshlang\'ich.'**
+  String get statusKeepTrying;
+
+  /// No description provided for @pdfTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natija - {name}'**
+  String pdfTitle(String name);
+
+  /// No description provided for @subjectsResultTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Fanlar bo\'yicha natija'**
+  String get subjectsResultTitle;
+
+  /// No description provided for @totalCorrectAnswers.
+  ///
+  /// In uz, this message translates to:
+  /// **'Jami to\'g\'ri javoblar:'**
+  String get totalCorrectAnswers;
+
+  /// No description provided for @howToImprove.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qanday yaxshilash mumkin?'**
+  String get howToImprove;
+
+  /// No description provided for @mathRecommendations.
+  ///
+  /// In uz, this message translates to:
+  /// **'Matematika tavsiyalari'**
+  String get mathRecommendations;
+
+  /// No description provided for @englishRecommendations.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ingliz tili tavsiyalari'**
+  String get englishRecommendations;
+
+  /// No description provided for @wrongAnswersTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xato javoblar'**
+  String get wrongAnswersTitle;
+
+  /// No description provided for @wrongAnswersAnalysis.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xato javoblar tahlili'**
+  String get wrongAnswersAnalysis;
+
+  /// No description provided for @studentLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'quvchi'**
+  String get studentLabel;
+
+  /// No description provided for @passed.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'tdi'**
+  String get passed;
+
+  /// No description provided for @failed.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'tmadi'**
+  String get failed;
+
+  /// No description provided for @keepTrying.
+  ///
+  /// In uz, this message translates to:
+  /// **'Harakat qiling!'**
+  String get keepTrying;
+
+  /// No description provided for @monitoringTestResult.
+  ///
+  /// In uz, this message translates to:
+  /// **'Monitoring test natijasi'**
+  String get monitoringTestResult;
+
+  /// No description provided for @alochiMonitoringSystem.
+  ///
+  /// In uz, this message translates to:
+  /// **'Alochi Monitoring tizimi'**
+  String get alochiMonitoringSystem;
+
+  /// No description provided for @homePage.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bosh sahifa'**
+  String get homePage;
+
+  /// No description provided for @savePdf.
+  ///
+  /// In uz, this message translates to:
+  /// **'PDF Saqlash'**
+  String get savePdf;
+
+  /// No description provided for @printPdf.
+  ///
+  /// In uz, this message translates to:
+  /// **'Chop etish'**
+  String get printPdf;
+
+  /// No description provided for @sharePdf.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ulashish'**
+  String get sharePdf;
+
+  /// No description provided for @loadingLabelDots.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuklanmoqda...'**
+  String get loadingLabelDots;
+
+  /// No description provided for @errorLater.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xatolik. Keyinroq yuboriladi.'**
+  String get errorLater;
+
+  /// No description provided for @gradeAndVariant.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinf va Variant'**
+  String get gradeAndVariant;
+
+  /// No description provided for @overallResult.
+  ///
+  /// In uz, this message translates to:
+  /// **'Umumiy Natija'**
+  String get overallResult;
+
+  /// No description provided for @topicAnalysisTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mavzular bo\'yicha tahlil'**
+  String get topicAnalysisTitle;
+
+  /// No description provided for @topicName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mavzu nomi'**
+  String get topicName;
+
+  /// No description provided for @correctAnswersCount.
+  ///
+  /// In uz, this message translates to:
+  /// **'To\'g\'ri javoblar'**
+  String get correctAnswersCount;
+
+  /// No description provided for @percentage.
+  ///
+  /// In uz, this message translates to:
+  /// **'Foiz'**
+  String get percentage;
+
+  /// No description provided for @offlineTestResult.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oflayn Test Natijasi'**
+  String get offlineTestResult;
+}
+
+class _AppLocalizationsDelegate
+    extends LocalizationsDelegate<AppLocalizations> {
+  const _AppLocalizationsDelegate();
+
+  @override
+  Future<AppLocalizations> load(Locale locale) {
+    return SynchronousFuture<AppLocalizations>(lookupAppLocalizations(locale));
+  }
+
+  @override
+  bool isSupported(Locale locale) =>
+      <String>['ru', 'uz'].contains(locale.languageCode);
+
+  @override
+  bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+AppLocalizations lookupAppLocalizations(Locale locale) {
+  // Lookup logic when only language code is specified.
+  switch (locale.languageCode) {
+    case 'ru':
+      return AppLocalizationsRu();
+    case 'uz':
+      return AppLocalizationsUz();
+  }
+
+  throw FlutterError(
+      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+      'an issue with the localizations generation tool. Please file an issue '
+      'on GitHub with a reproducible sample app and the gen-l10n configuration '
+      'that was used.');
+}
