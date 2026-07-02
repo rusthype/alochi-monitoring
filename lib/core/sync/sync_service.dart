@@ -14,6 +14,7 @@ class SyncService {
   Timer? _timer;
   bool _flushing = false;
   bool _started = false;
+  int _consecutiveFailures = 0;
   static const Duration _interval = Duration(seconds: 60);
 
   void start() {
@@ -45,8 +46,14 @@ class SyncService {
       // bo'lsa-da internet yo'q bo'lsa, bu N ta 20s timeout urinishidan saqlaydi.
       if (!await api.ping()) return;
       await api.flushOfflineQueue();
+      _consecutiveFailures = 0;
     } catch (e) {
+      _consecutiveFailures++;
       debugPrint('SyncService._flushAll error: $e');
+      if (_consecutiveFailures >= 5) {
+        debugPrint(
+            '⚠️ SyncService: $_consecutiveFailures consecutive flush failures — results may not be reaching the server');
+      }
     } finally {
       _flushing = false;
     }

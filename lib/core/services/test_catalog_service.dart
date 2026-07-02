@@ -20,6 +20,28 @@ enum CatalogStatus {
   cachedOnly,
 }
 
+/// Maktab tugmasi — catalog'dan keladi.
+class SchoolButton {
+  final String pin;
+  final String label;
+  final String schoolCode;
+  final bool randomVariant;
+
+  const SchoolButton({
+    required this.pin,
+    required this.label,
+    required this.schoolCode,
+    required this.randomVariant,
+  });
+
+  factory SchoolButton.fromJson(Map<String, dynamic> j) => SchoolButton(
+        pin: j['pin']?.toString() ?? '',
+        label: j['label']?.toString() ?? '',
+        schoolCode: j['school_code']?.toString() ?? '',
+        randomVariant: j['random_variant'] == true,
+      );
+}
+
 /// Katalog ro'yxat elementi — kichik model.
 class CatalogEntry {
   final String testKey;
@@ -27,6 +49,12 @@ class CatalogEntry {
   final int grade;
   final int version;
   final CatalogStatus status;
+  final List<SchoolButton> schoolButtons;
+  final String runnerType;
+
+  /// Vaqt-qulf: null = qulflanmagan. Kelajakdagi vaqt bo'lsa, test
+  /// oldindan yuklab olinishi mumkin, lekin ochilmaydi (TASK 08d).
+  final DateTime? lockedUntil;
 
   const CatalogEntry({
     required this.testKey,
@@ -34,6 +62,9 @@ class CatalogEntry {
     required this.grade,
     required this.version,
     required this.status,
+    this.schoolButtons = const [],
+    this.runnerType = 'engine',
+    this.lockedUntil,
   });
 }
 
@@ -42,6 +73,15 @@ class TestCatalogService {
   final MonitoringApi _api;
 
   TestCatalogService(this._api);
+
+  /// Last known `locked_until` per test_key from the most recent refresh().
+  /// Used by runner_dispatch.dart as a second, defense-in-depth lock check
+  /// (the primary gate lives in the catalog UI — login_screen.dart) in case
+  /// launchRunner is ever reached through a path other than that UI.
+  static final Map<String, DateTime?> _lockedUntilCache = {};
+
+  static DateTime? lockedUntilFor(String testKey) =>
+      _lockedUntilCache[testKey];
 
   /// Katalogni yangilaydi va holat bilan CatalogEntry ro'yxatini qaytaradi.
   ///
@@ -103,12 +143,29 @@ class TestCatalogService {
         status = CatalogStatus.cached;
       }
 
+      final rawButtons = item['school_buttons'];
+      final schoolButtons = (rawButtons is List)
+          ? rawButtons
+              .whereType<Map<String, dynamic>>()
+              .map(SchoolButton.fromJson)
+              .toList()
+          : <SchoolButton>[];
+
+      final lockedUntilRaw = item['locked_until'];
+      final lockedUntil = (lockedUntilRaw is String && lockedUntilRaw.isNotEmpty)
+          ? DateTime.tryParse(lockedUntilRaw)
+          : null;
+      _lockedUntilCache[key] = lockedUntil;
+
       entries.add(CatalogEntry(
         testKey: key,
         title: title,
         grade: grade,
         version: version,
         status: status,
+        schoolButtons: schoolButtons,
+        runnerType: item['runner_type']?.toString() ?? 'engine',
+        lockedUntil: lockedUntil,
       ));
     }
     return entries;

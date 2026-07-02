@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
+import '../models/test_catalog.dart';
 import '../db/offline_queue.dart';
 
 class ApiException implements Exception {
@@ -150,13 +151,100 @@ class MonitoringApi {
     }
   }
 
+  Future<void> sessionPing({
+    required String sessionId,
+    String schoolCode = '',
+    String name = '',
+    String variant = '',
+    String testKey = '',
+    String status = 'active',
+  }) async {
+    await _post('/session/ping/', {
+      'session_id': sessionId,
+      'school_code': schoolCode,
+      'name': name,
+      'variant': variant,
+      'test_key': testKey,
+      'status': status,
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> fetchDownloads(String schoolCode) async {
+    try {
+      final resp = await _send(() => http.get(
+            Uri.parse(
+                '$_base/downloads/?school=${Uri.encodeComponent(schoolCode)}'),
+          ));
+      if (resp.statusCode == 200) {
+        final List data = jsonDecode(resp.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('fetchDownloads error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchGroups(String schoolCode) async {
+    try {
+      final resp = await _send(() => http.get(
+            Uri.parse(
+                '$_base/groups/?school=${Uri.encodeComponent(schoolCode)}'),
+            headers: _headers,
+          ));
+      if (resp.statusCode != 200) return [];
+      final data = jsonDecode(resp.body);
+      if (data is! List) return [];
+      return data
+          .whereType<Map>()
+          .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
+          .toList();
+    } catch (e) {
+      debugPrint('fetchGroups error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchStudents(String groupId) async {
+    try {
+      final resp = await _send(() => http.get(
+            Uri.parse(
+                '$_base/groups/${Uri.encodeComponent(groupId)}/students/'),
+            headers: _headers,
+          ));
+      if (resp.statusCode != 200) return [];
+      final data = jsonDecode(resp.body);
+      if (data is! List) return [];
+      return data
+          .whereType<Map>()
+          .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
+          .toList();
+    } catch (e) {
+      debugPrint('fetchStudents error: $e');
+      return [];
+    }
+  }
+
   Future<String?> fetchGuestPin() async {
     try {
       final data = await _get('/pack/version/') as Map<String, dynamic>;
       return data['guest_pin'] as String?;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('fetchGuestPin error: $e');
       return null;
     }
+  }
+
+  Future<List<TestCatalogEntry>> getTestCatalog() async {
+    final data = await _get('/tests/catalog/') as List;
+    return data
+        .map((j) => TestCatalogEntry.fromJson(j as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> getTestDetail(String testKey) async {
+    return await _get('/tests/$testKey/') as Map<String, dynamic>;
   }
 
   Future<List<TestPackage>> getPackages(int grade) async {
@@ -239,11 +327,14 @@ class MonitoringApi {
   /// Idempotency-Key header orqali token yuboradi — duplikat oldini olish uchun.
   /// Server DB ga saqlaydi VA Telegram ni server tomonda jo'natadi.
   /// HTTP 200 = durabl muvaffaqiyat (telegram_sent=false bo'lsa ham qayta yubormaymiz — dublikat oldini olish).
-  /// Katalogni yuklaydi — faqat published testlar ro'yxati.
+  /// Katalogni yuklaydi — published testlar ro'yxati.
+  /// `client=2` — bu app locked (vaqt-qulflangan) testlarni ham
+  /// `locked_until` maydoni bilan qabul qiladi (pre-download uchun); eski
+  /// parametrsiz javob xulqiga hech narsa qo'shilmaydi (backend kontrakti).
   /// Xato holatida [] qaytaradi, crash qilmaydi.
   Future<List<Map<String, dynamic>>> fetchTestCatalog() async {
     try {
-      final data = await _get('/tests/catalog/');
+      final data = await _get('/tests/catalog/?client=2');
       if (data is! List) return [];
       if (data.isEmpty) return [];
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -253,11 +344,12 @@ class MonitoringApi {
     }
   }
 
-  /// Bitta test JSON'ini yuklaydi.
+  /// Bitta test JSON'ini yuklaydi. `client=2` — locked testni ham
+  /// pre-download qilish uchun ruxsat beradi (UI darajasida qulflangan).
   /// Xato holatida null qaytaradi, crash qilmaydi.
   Future<Map<String, dynamic>?> fetchTest(String testKey) async {
     try {
-      final data = await _get('/tests/$testKey/');
+      final data = await _get('/tests/$testKey/?client=2');
       if (data is! Map) return null;
       return Map<String, dynamic>.from(data);
     } catch (e) {
@@ -294,13 +386,67 @@ class MonitoringApi {
             headers: {..._headers, 'Idempotency-Key': token},
             body: jsonEncode(payload),
           ));
-      if (resp.statusCode >= 400) return false;
+      if (resp.statusCode >= 400) {
+        debugPrint('submitLocalResult non-2xx: ${resp.statusCode}');
+        return false;
+      }
       return true;
     } on ApiException {
       return false;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('submitLocalResult error: $e');
       return false;
     }
+  }
+
+  // --- Admin / Boss API ---
+  String? _adminToken;
+
+  Future<void> loadAdminToken() async {
+    // Stub: in a real implementation, read from secure storage
+    _adminToken = null;
+  }
+
+  bool get isAdminLoggedIn => _adminToken != null;
+
+  Future<void> adminLogin(String username, String password) async {
+    // Stub
+    await Future.delayed(const Duration(seconds: 1));
+    _adminToken = 'dummy_admin_token';
+  }
+
+  Future<void> adminLogout() async {
+    _adminToken = null;
+  }
+
+  Future<List<dynamic>> generateFromPdf({
+    required File pdf,
+    required String subject,
+    required int grade,
+    required int count,
+  }) async {
+    // Stub
+    await Future.delayed(const Duration(seconds: 2));
+    return [];
+  }
+
+  Future<String> createPackage({
+    required String title,
+    required int grade,
+    required int mathCount,
+    required int engCount,
+    required int variantCount,
+  }) async {
+    // Stub
+    return 'pkg-123';
+  }
+
+  Future<void> bulkQuestions(String packageId, List<dynamic> questions) async {
+    // Stub
+  }
+
+  Future<void> publishPackage(String packageId) async {
+    // Stub
   }
 
   /// Offline navbatdagi (online + lokal) natijalarni qayta yuborishga urinadi.

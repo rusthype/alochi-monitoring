@@ -1,7 +1,9 @@
 // lib/features/local_test/local_data.dart
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/services.dart';
+import '../../core/sync/test_catalog_service.dart';
 
 class LocalQuestion {
   final String id;
@@ -36,6 +38,43 @@ class LocalQuestionsLoader {
     final raw =
         (data['$grade']['$variant'] as List).cast<Map<String, dynamic>>();
     return raw.map(_shuffleOptions).toList();
+  }
+
+  static Future<List<LocalQuestion>> getResolved(int grade, int variant) async {
+    final svc = TestCatalogService.instance;
+    final cached = await svc.cached('math_g$grade');
+    unawaited(svc.ensureDownloaded('math_g$grade'));
+    if (cached != null) {
+      final sections = cached['variants']['$variant'] as Map<String, dynamic>;
+      return sections.values
+          .expand((l) => (l as List).cast<Map<String, dynamic>>())
+          .map(_shuffleUnified)
+          .toList();
+    }
+    return get(grade, variant);
+  }
+
+  static LocalQuestion _shuffleUnified(Map<String, dynamic> q) {
+    final opts = List<String>.from(q['opts'] as List);
+    final ansIdx = q['ans'] as int;
+    final rng = Random();
+    final idx = [0, 1, 2, 3];
+    for (int j = 3; j > 0; j--) {
+      final k = rng.nextInt(j + 1);
+      final tmp = idx[j];
+      idx[j] = idx[k];
+      idx[k] = tmp;
+    }
+    return LocalQuestion(
+      id: '',
+      subject: 'm',
+      prompt: q['q'] as String,
+      options: idx.map((i) => opts[i]).toList(),
+      correct: 'abcd'[idx.indexOf(ansIdx)],
+      topic: '',
+      image: null,
+      optionImages: const [],
+    );
   }
 
   static LocalQuestion _shuffleOptions(Map<String, dynamic> q) {
