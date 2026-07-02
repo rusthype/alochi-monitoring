@@ -437,17 +437,6 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     return "Qo'shimcha mashq kerak";
   }
 
-  List<SectionScore> _weakSections() {
-    final list = widget.result.sectionScores
-        .where((s) => _secPct(s) < 75)
-        .toList()
-      ..sort((a, b) => _secPct(a).compareTo(_secPct(b)));
-    return list;
-  }
-
-  List<SectionScore> _strongSections() =>
-      widget.result.sectionScores.where((s) => _secPct(s) >= 75).toList();
-
   Future<void> _generatePdf() async {
     if (_pdfGenerating) return;
     setState(() => _pdfGenerating = true);
@@ -522,8 +511,6 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     final wrong = result.totalQuestions - result.totalCorrect;
     final heroColor = _secColor(pct);
     final gradeLabel = _gradeLabel(pct);
-    final weak = _weakSections();
-    final strong = _strongSections();
     final studentName = '${widget.firstName} ${widget.lastName}';
     final subLine =
         '${widget.group?.isNotEmpty == true ? widget.group! : widget.school} · Variant ${widget.variant}';
@@ -706,131 +693,6 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                 const SizedBox(height: 16),
                 _AiSummaryCard(loading: _aiLoading, data: _aiSummary),
               ],
-
-              // NOTE(merge-review): old "6. AI xulosa" (fake local template)
-              // and old "5. 14 kunlik reja" were both removed — the new
-              // _TzAnalysis above already covers per-topic analysis + its
-              // own 14-day plan, and _AiSummaryCard replaces the AI xulosa.
-              // The remaining "4. Tahlil" section below is section-level
-              // (coarser than _TzAnalysis's per-topic breakdown) — left as
-              // a separate, lower-priority overlap; revisit if desired.
-              const SizedBox(height: 24),
-
-              // ── 4. Tahlil ─────────────────────────────────────────────────
-              _ReportCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _SectionHead(
-                      icon: Icons.insights_rounded,
-                      label: 'TAHLIL',
-                    ),
-                    const SizedBox(height: 8),
-                    if (strong.isNotEmpty) ...[
-                      Row(
-                        children: [
-                          const Icon(Icons.check_circle_outline_rounded,
-                              size: 16, color: AppColors.success),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Kuchli tomonlar',
-                            style: AppTextStyles.labelLarge
-                                .copyWith(color: AppColors.success),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ...strong.take(4).map((s) {
-                        final p = _secPct(s);
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                margin:
-                                    const EdgeInsets.only(right: 8, top: 4),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.success,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  "${s.name} — $p% · yaxshi o'zlashtirilgan",
-                                  style: AppTextStyles.bodyMedium,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
-                    if (strong.isNotEmpty && weak.isNotEmpty)
-                      const SizedBox(height: 12),
-                    if (weak.isNotEmpty) ...[
-                      Row(
-                        children: [
-                          const Icon(Icons.warning_amber_rounded,
-                              size: 16, color: Color(0xFFEF4444)),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Mustahkamlash kerak',
-                            style: AppTextStyles.labelLarge.copyWith(
-                              color: const Color(0xFFEF4444),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ...weak.take(5).map((s) {
-                        final p = _secPct(s);
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                margin:
-                                    const EdgeInsets.only(right: 8, top: 4),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFEF4444),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  "${s.name} — $p% · qo'shimcha mashq",
-                                  style: AppTextStyles.bodyMedium,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
-                    if (weak.isEmpty)
-                      Row(
-                        children: [
-                          const Icon(Icons.celebration_rounded,
-                              size: 18, color: AppColors.success),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              "Barcha bo'limlar yaxshi o'zlashtirilgan!",
-                              style: AppTextStyles.bodyMedium
-                                  .copyWith(color: AppColors.success),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
 
               const SizedBox(height: 16),
 
