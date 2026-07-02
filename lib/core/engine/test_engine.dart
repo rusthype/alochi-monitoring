@@ -156,7 +156,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   /// its deadline immediately so a crash right after start can still resume.
   Future<void> _restoreAttempt() async {
     final testKey = widget.spec.testKey;
-    final saved = await AttemptStore.load(testKey);
+    final saved = await AttemptStore.loadForStudent(testKey, widget.studentId);
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     bool resumed = false;
 

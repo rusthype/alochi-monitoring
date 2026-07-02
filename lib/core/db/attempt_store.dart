@@ -47,6 +47,19 @@ class AttemptStore {
     }
   }
 
+  /// Loads the saved attempt for [testKey] only if it belongs to
+  /// [studentId]. A saved attempt left behind by a DIFFERENT student (e.g.
+  /// an abandoned attempt on a shared kiosk) must never resume for someone
+  /// else, so this returns null in that case even though a record
+  /// technically exists on disk.
+  static Future<Map<String, dynamic>?> loadForStudent(
+      String testKey, String studentId) async {
+    final saved = await load(testKey);
+    if (saved == null) return null;
+    if (saved['student_id'] != studentId) return null;
+    return saved;
+  }
+
   /// Saves/overwrites the attempt for [testKey]. Best-effort — swallows
   /// storage errors so a save failure never crashes the running test.
   static Future<void> save(String testKey, Map<String, dynamic> data) async {
