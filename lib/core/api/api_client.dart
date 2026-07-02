@@ -358,7 +358,14 @@ class MonitoringApi {
     }
   }
 
-  Future<bool> submitLocalResult(
+  /// Xato holatida `permanent:true` (4xx, retry qilma) yoki `retryable:true`
+  /// (5xx/network) qaytaradi — submitResultFull bilan bir xil klassifikatsiya.
+  ///
+  /// NOTE: `_send()` only ever throws ApiException for network/timeout
+  /// failures (always statusCode 0) — real HTTP status codes come back as a
+  /// normal Response, so the 4xx/5xx split MUST happen on `resp.statusCode`
+  /// directly, not in an `on ApiException catch` block.
+  Future<Map<String, dynamic>> submitLocalResultFull(
       Map<String, dynamic> payload, String token) async {
     try {
       final resp = await _send(() => http.post(
@@ -367,15 +374,16 @@ class MonitoringApi {
             body: jsonEncode(payload),
           ));
       if (resp.statusCode >= 400) {
-        debugPrint('submitLocalResult non-2xx: ${resp.statusCode}');
-        return false;
+        debugPrint('submitLocalResultFull non-2xx: ${resp.statusCode}');
+        return {'synced': false, 'permanent': resp.statusCode < 500};
       }
-      return true;
+      return {'synced': true};
     } on ApiException {
-      return false;
+      // Network/timeout — always retryable, never permanent.
+      return {'synced': false, 'permanent': false};
     } catch (e) {
-      debugPrint('submitLocalResult error: $e');
-      return false;
+      debugPrint('submitLocalResultFull error: $e');
+      return {'synced': false, 'permanent': false};
     }
   }
 
@@ -435,7 +443,7 @@ class MonitoringApi {
     final online = await OfflineQueue.flush(
       (r, token) => submitResultFull(r, idempotencyToken: token),
     );
-    final local = await OfflineQueue.flushLocal(submitLocalResult);
+    final local = await OfflineQueue.flushLocal(submitLocalResultFull);
     await OfflineQueue.purgeStale();
     return online + local;
   }
