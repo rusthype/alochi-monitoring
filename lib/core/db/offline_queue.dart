@@ -154,7 +154,8 @@ class OfflineQueue {
     });
   }
 
-  static Future<int> flushLocal(Future<bool> Function(Map<String, dynamic> payload, String token) submitFn) async {
+  static Future<int> flushLocal(
+      Future<Map<String, dynamic>> Function(Map<String, dynamic> payload, String token) submitFn) async {
     final d = await db;
     final rows = await d.query('local_queue', orderBy: 'created ASC');
     int synced = 0;
@@ -162,10 +163,13 @@ class OfflineQueue {
       try {
         final json = jsonDecode(await QueueCrypto.decryptPayload(row['payload'] as String));
         final token = (row['token'] as String?) ?? newIdempotencyToken();
-        final ok = await submitFn(json, token);
-        if (ok) {
+        final r = await submitFn(json, token);
+        final ok = r['synced'] as bool? ?? false;
+        final permanent = r['permanent'] as bool? ?? false;
+        if (ok || permanent) {
           await d.delete('local_queue', where: 'id = ?', whereArgs: [row['id']]);
-          synced++;
+          if (ok) synced++;
+          if (permanent) debugPrint('OfflineQueue.flushLocal: id=${row['id']} permanent error, dropping');
         } else {
           await d.update('local_queue', {'attempts': (row['attempts'] as int) + 1},
               where: 'id = ?', whereArgs: [row['id']]);
