@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
+import '../db/attempt_store.dart';
 import 'test_models.dart';
 import 'test_scorer.dart';
 import 'question_widgets.dart';
@@ -23,6 +24,10 @@ class TestEngine extends StatefulWidget {
   final String lastName;
   final String school;
   final String? group;
+
+  /// Used only as the crash-recovery attempt record's student_id field —
+  /// scoring/payload logic does not read it.
+  final String studentId;
 
   /// Test duration. Countdown starts immediately.
   final Duration duration;
@@ -40,6 +45,7 @@ class TestEngine extends StatefulWidget {
     required this.lastName,
     required this.school,
     this.group,
+    this.studentId = '',
     required this.duration,
     required this.onComplete,
   });
@@ -54,6 +60,11 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   int _sectionIdx = 0;
   late int _secs;
   Timer? _timer;
+
+  /// Crash-recovery attempt bookkeeping (attempt_store.dart).
+  int? _startedAtMs;
+  int? _deadlineMs;
+  Timer? _saveDebounce;
 
   /// All answers: key = "SectionName/questionIndex", value = int | String
   final Map<String, dynamic> _answers = {};
@@ -126,14 +137,95 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _secs = widget.duration.inSeconds;
+    _secs = widget.duration.inSeconds; // fresh-start default; may be
+    // corrected once _restoreAttempt() resolves (crash-recovery resume).
 
     _fadeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 200),
     )..forward();
 
+    _restoreAttempt();
+  }
+
+  // ── Crash-recovery (attempt_store.dart) ─────────────────────────────────────
+
+  /// Restores a saved attempt (same variant, matching test_key) if one
+  /// exists, seeding [_answers]/[_controllers] and the remaining countdown
+  /// from the saved deadline. Otherwise starts a fresh attempt and persists
+  /// its deadline immediately so a crash right after start can still resume.
+  Future<void> _restoreAttempt() async {
+    final testKey = widget.spec.testKey;
+    final saved = await AttemptStore.load(testKey);
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    bool resumed = false;
+
+    if (saved != null) {
+      final savedVariant = int.tryParse(saved['variant']?.toString() ?? '');
+      final deadlineRaw = saved['deadline_epoch_ms'];
+      final deadlineMs = deadlineRaw is num ? deadlineRaw.toInt() : null;
+      if (savedVariant == widget.variant && deadlineMs != null) {
+        final ans = saved['answers'];
+        if (ans is Map) {
+          for (final entry in ans.entries) {
+            final key = entry.key.toString();
+            _answers[key] = entry.value;
+            if (entry.value is String) {
+              _ctrl(key).text = entry.value as String;
+            }
+          }
+        }
+        final startedRaw = saved['started_at'];
+        _startedAtMs = startedRaw is num ? startedRaw.toInt() : nowMs;
+        _deadlineMs = deadlineMs;
+        resumed = true;
+      }
+    }
+
+    if (!resumed) {
+      _startedAtMs = nowMs;
+      _deadlineMs = nowMs + widget.duration.inMilliseconds;
+      await _persistNow();
+    }
+
+    if (!mounted) return;
+
+    final remainingMs = _deadlineMs! - nowMs;
+    if (remainingMs <= 0) {
+      // Deadline already passed while the app was closed — auto-submit.
+      setState(() => _secs = 0);
+      _finishNow();
+      return;
+    }
+
+    setState(() => _secs = (remainingMs / 1000).ceil());
     _startTimer();
+  }
+
+  /// Wraps a single answer mutation with a debounced attempt_store save.
+  void _setAnswer(String key, dynamic value) {
+    setState(() => _answers[key] = value);
+    _scheduleSave();
+  }
+
+  void _scheduleSave() {
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 500), () {
+      _persistNow();
+    });
+  }
+
+  Future<void> _persistNow() async {
+    if (_deadlineMs == null) return; // restore still in flight
+    await AttemptStore.save(widget.spec.testKey, {
+      'variant': widget.variant,
+      'answers': Map<String, dynamic>.from(_answers),
+      'started_at': _startedAtMs,
+      'deadline_epoch_ms': _deadlineMs,
+      'student_name': _studentName(),
+      'student_id': widget.studentId,
+      'group_name': widget.group ?? '',
+    });
   }
 
   void _startTimer() {
@@ -154,6 +246,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   @override
   void dispose() {
     _timer?.cancel();
+    _saveDebounce?.cancel();
     _fadeCtrl.dispose();
     for (final c in _controllers.values) {
       c.dispose();
@@ -191,6 +284,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
       final current = entry.value.text;
       _answers[entry.key] = current;
     }
+    _scheduleSave();
   }
 
   // ── Finish flow ────────────────────────────────────────────────────────────
@@ -242,7 +336,13 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     if (_finishing) return;
     _finishing = true;
     _timer?.cancel();
-    _syncTextAnswers();
+    for (final entry in _controllers.entries) {
+      _answers[entry.key] = entry.value.text;
+    }
+    // Cancel any pending debounced save — the host screen deletes the
+    // attempt record on successful submit; a stray delayed write here could
+    // race that deletion and leave a finished test resumable.
+    _saveDebounce?.cancel();
 
     final result = TestScorer.score(widget.spec, _variantKey, _answers);
     widget.onComplete(result);
@@ -392,7 +492,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
         if (value is String) {
           _ctrl(fullKey).text = value;
         }
-        setState(() => _answers[fullKey] = value);
+        _setAnswer(fullKey, value);
       },
     );
   }
@@ -405,7 +505,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
           index: i,
           question: q,
           answer: _answers[key] as int?,
-          onSelect: (v) => setState(() => _answers[key] = v),
+          onSelect: (v) => _setAnswer(key, v),
         );
 
       case QuestionType.imageChoice:
@@ -413,7 +513,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
           index: i,
           question: q,
           answer: _answers[key] as int?,
-          onSelect: (v) => setState(() => _answers[key] = v),
+          onSelect: (v) => _setAnswer(key, v),
         );
 
       case QuestionType.spelling:
@@ -421,7 +521,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
           index: i,
           question: q,
           controller: _ctrl(key),
-          onChanged: (v) => setState(() => _answers[key] = v),
+          onChanged: (v) => _setAnswer(key, v),
         );
 
       case QuestionType.sentenceOrder:
@@ -429,7 +529,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
           index: i,
           question: q,
           controller: _ctrl(key),
-          onChanged: (v) => setState(() => _answers[key] = v),
+          onChanged: (v) => _setAnswer(key, v),
         );
 
       case QuestionType.yesNo:
@@ -437,7 +537,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
           index: i,
           question: q,
           answer: _answers[key] as String?,
-          onSelect: (v) => setState(() => _answers[key] = v),
+          onSelect: (v) => _setAnswer(key, v),
         );
 
       case QuestionType.fillBlank:
@@ -448,7 +548,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
               _answers[key] is String ? _answers[key] as String : '',
           onChanged: (v) {
             _ctrl(key).text = v;
-            setState(() => _answers[key] = v);
+            _setAnswer(key, v);
           },
         );
 

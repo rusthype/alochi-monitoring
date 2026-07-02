@@ -17,6 +17,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/db/attempt_store.dart';
 import '../../core/db/history_db.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/engine/test_engine.dart';
@@ -98,6 +99,10 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
 
   Duration _effectiveDuration(TestSpec spec) {
     if (widget.duration != null) return widget.duration!;
+    if (spec.durationMinutes != null && spec.durationMinutes! > 0) {
+      final mins = spec.durationMinutes!.clamp(1, 180);
+      return Duration(minutes: mins);
+    }
     final variantKey = widget.variant.toString();
     final sections = spec.sectionsForVariant(variantKey);
     final totalQs = sections.fold(0, (sum, s) => sum + s.questionCount);
@@ -218,7 +223,15 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       return Future<void>.value();
     });
 
-    // 4. Navigate to result display.
+    // 4. Submit succeeded — drop the crash-recovery attempt record so a
+    // relaunch of this test starts fresh instead of "resuming" a finished one.
+    try {
+      await AttemptStore.clear(result.testKey);
+    } catch (e) {
+      debugPrint('EngineHostScreen: AttemptStore.clear error: $e');
+    }
+
+    // 5. Navigate to result display.
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
@@ -254,6 +267,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       lastName: widget.lastName,
       school: widget.school,
       group: widget.group,
+      studentId: widget.studentId,
       duration: _effectiveDuration(_spec!),
       onComplete: _handleComplete,
     );

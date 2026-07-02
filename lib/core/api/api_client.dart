@@ -327,11 +327,14 @@ class MonitoringApi {
   /// Idempotency-Key header orqali token yuboradi — duplikat oldini olish uchun.
   /// Server DB ga saqlaydi VA Telegram ni server tomonda jo'natadi.
   /// HTTP 200 = durabl muvaffaqiyat (telegram_sent=false bo'lsa ham qayta yubormaymiz — dublikat oldini olish).
-  /// Katalogni yuklaydi — faqat published testlar ro'yxati.
+  /// Katalogni yuklaydi — published testlar ro'yxati.
+  /// `client=2` — bu app locked (vaqt-qulflangan) testlarni ham
+  /// `locked_until` maydoni bilan qabul qiladi (pre-download uchun); eski
+  /// parametrsiz javob xulqiga hech narsa qo'shilmaydi (backend kontrakti).
   /// Xato holatida [] qaytaradi, crash qilmaydi.
   Future<List<Map<String, dynamic>>> fetchTestCatalog() async {
     try {
-      final data = await _get('/tests/catalog/');
+      final data = await _get('/tests/catalog/?client=2');
       if (data is! List) return [];
       if (data.isEmpty) return [];
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -341,11 +344,12 @@ class MonitoringApi {
     }
   }
 
-  /// Bitta test JSON'ini yuklaydi.
+  /// Bitta test JSON'ini yuklaydi. `client=2` — locked testni ham
+  /// pre-download qilish uchun ruxsat beradi (UI darajasida qulflangan).
   /// Xato holatida null qaytaradi, crash qilmaydi.
   Future<Map<String, dynamic>?> fetchTest(String testKey) async {
     try {
-      final data = await _get('/tests/$testKey/');
+      final data = await _get('/tests/$testKey/?client=2');
       if (data is! Map) return null;
       return Map<String, dynamic>.from(data);
     } catch (e) {

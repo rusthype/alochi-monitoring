@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
 import '../../core/services/test_catalog_service.dart';
@@ -190,8 +191,31 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final entries = await testCatalogService.refresh();
       if (mounted) setState(() => _catalogEntries = entries);
+      // Fire-and-forget background pre-download so locked tests are already
+      // cached on-device by the time their lock lifts.
+      _autoPrefetchLocked(entries);
     } catch (e) {
       debugPrint('LoginScreen._loadCatalog error: $e');
+    }
+  }
+
+  /// Background pre-download for locked-but-not-yet-downloaded tests, so the
+  /// device already has the package cached once the lock lifts. Randomized
+  /// 5-35s delay between each download avoids a thundering herd against the
+  /// backend when many devices refresh their catalog around the same time.
+  Future<void> _autoPrefetchLocked(List<CatalogEntry> entries) async {
+    final targets = entries.where(
+      (e) => e.lockedUntil != null && e.status == CatalogStatus.notDownloaded,
+    );
+    for (final entry in targets) {
+      await Future.delayed(Duration(seconds: 5 + math.Random().nextInt(30)));
+      if (!mounted) return;
+      try {
+        await testCatalogService.download(entry.testKey);
+      } catch (e) {
+        debugPrint(
+            'LoginScreen._autoPrefetchLocked(${entry.testKey}) error: $e');
+      }
     }
   }
 
@@ -1476,6 +1500,30 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
     final isDone = entry.status == CatalogStatus.cached ||
         entry.status == CatalogStatus.cachedOnly;
     final isUpdatable = entry.status == CatalogStatus.updatable;
+    final isLocked =
+        entry.lockedUntil != null && entry.lockedUntil!.isAfter(DateTime.now());
+
+    void openSession() {
+      Navigator.of(context).pop();
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SessionSetupScreen(entry: entry),
+        ),
+      );
+    }
+
+    void handleStartTap() {
+      if (isLocked) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              '🔒 ${DateFormat('dd.MM.yyyy HH:mm').format(entry.lockedUntil!.toLocal())} da ochiladi'),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+        ));
+        return;
+      }
+      openSession();
+    }
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -1496,17 +1544,25 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
         entry.title,
         style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700),
       ),
-      subtitle: isUpdatable && !isDownloading
-          ? Text('Yangi versiya mavjud',
+      subtitle: isLocked
+          ? Text(
+              '🔒 ${DateFormat('dd.MM.yyyy HH:mm').format(entry.lockedUntil!.toLocal())} da ochiladi',
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w600,
-              ))
-          : isDone
-              ? Text('Yuklab olingan',
-                  style:
-                      AppTextStyles.caption.copyWith(color: AppColors.ink3))
-              : null,
+              ),
+            )
+          : isUpdatable && !isDownloading
+              ? Text('Yangi versiya mavjud',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ))
+              : isDone
+                  ? Text('Yuklab olingan',
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.ink3))
+                  : null,
       trailing: isDownloading
           ? const SizedBox(
               width: 24,
@@ -1518,14 +1574,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
             )
           : isDone && !isUpdatable
               ? GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => SessionSetupScreen(entry: entry),
-                      ),
-                    );
-                  },
+                  onTap: handleStartTap,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 8),
@@ -1536,8 +1585,13 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.play_arrow_rounded,
-                            size: 14, color: Colors.white),
+                        Icon(
+                          isLocked
+                              ? Icons.lock_clock_rounded
+                              : Icons.play_arrow_rounded,
+                          size: 14,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Boshlash',
@@ -1574,15 +1628,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                         ),
                         const SizedBox(width: 6),
                         GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    SessionSetupScreen(entry: entry),
-                              ),
-                            );
-                          },
+                          onTap: handleStartTap,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 8),
@@ -1593,8 +1639,13 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.play_arrow_rounded,
-                                    size: 14, color: Colors.white),
+                                Icon(
+                                  isLocked
+                                      ? Icons.lock_clock_rounded
+                                      : Icons.play_arrow_rounded,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   'Boshlash',
@@ -1610,6 +1661,8 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                       ],
                     )
                   : GestureDetector(
+                      // Downloading works even while locked — that's the
+                      // whole point of pre-download (TASK 08d).
                       onTap: () => _download(entry),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
