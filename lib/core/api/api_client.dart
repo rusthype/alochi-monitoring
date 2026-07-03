@@ -365,12 +365,15 @@ class MonitoringApi {
     required int grade,
     required int totalPct,
     required List<Map<String, dynamic>> topics,
+    String? studentFirstName,
   }) async {
     try {
       return await _post('/result/ai-summary/', {
         'grade': grade,
         'total_pct': totalPct,
         'topics': topics,
+        if (studentFirstName != null && studentFirstName.isNotEmpty)
+          'student_first_name': studentFirstName,
       });
     } catch (e) {
       debugPrint('fetchAiSummary error: $e');
