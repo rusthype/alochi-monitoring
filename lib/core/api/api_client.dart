@@ -381,6 +381,24 @@ class MonitoringApi {
     }
   }
 
+  /// Uploads the app's own generated result PDF (per-topic breakdown, SVG
+  /// diagrams, real AI summary) so the parent/teacher Telegram report can
+  /// forward this exact file instead of an older-format one built server-side.
+  /// Best-effort: silently no-ops if the /result/ submission for this
+  /// [clientToken] hasn't synced yet (offline) or the upload otherwise fails —
+  /// the server falls back to its own PDF in that case.
+  Future<void> uploadResultPdf(String clientToken, Uint8List pdfBytes) async {
+    try {
+      final req = http.MultipartRequest(
+        'POST', Uri.parse('$_base/result/pdf/$clientToken/'),
+      )..files.add(http.MultipartFile.fromBytes('file', pdfBytes,
+          filename: 'result.pdf'));
+      await req.send().timeout(_timeout);
+    } catch (e) {
+      debugPrint('uploadResultPdf error: $e');
+    }
+  }
+
   /// Xato holatida `permanent:true` (4xx, retry qilma) yoki `retryable:true`
   /// (5xx/network) qaytaradi — submitResultFull bilan bir xil klassifikatsiya.
   ///

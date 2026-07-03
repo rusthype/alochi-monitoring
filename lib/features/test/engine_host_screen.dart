@@ -12,6 +12,7 @@
 // Duration default: 60 seconds per answerable question, clamped to [60s, 90min].
 
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -244,6 +245,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
           grade: widget.grade ?? _spec?.grade ?? 0,
           variant: widget.variant,
           result: result,
+          clientToken: token,
         ),
       ),
     );
@@ -341,6 +343,7 @@ class _EngineResultScreen extends StatefulWidget {
   final int grade;
   final int variant;
   final ScoredResult result;
+  final String clientToken;
 
   const _EngineResultScreen({
     required this.firstName,
@@ -350,6 +353,7 @@ class _EngineResultScreen extends StatefulWidget {
     required this.grade,
     required this.variant,
     required this.result,
+    required this.clientToken,
   });
 
   @override
@@ -377,7 +381,21 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       duration: const Duration(milliseconds: 350),
     )..forward();
     _fade = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
-    _loadAiSummary();
+    _loadAiSummary().then((_) => _autoUploadPdfForBot());
+  }
+
+  /// Generates the same PDF the "PDF hisobot" button would (now that the AI
+  /// summary has had a chance to load) and uploads it silently so the
+  /// parent/teacher Telegram report forwards this exact file. Best-effort —
+  /// any failure (offline, upload error) is swallowed; the server falls back
+  /// to its own older-format PDF in that case.
+  Future<void> _autoUploadPdfForBot() async {
+    try {
+      final bytes = await _buildPdfBytes();
+      await api.uploadResultPdf(widget.clientToken, bytes);
+    } catch (e) {
+      debugPrint('_EngineResultScreen._autoUploadPdfForBot error: $e');
+    }
   }
 
   /// Fetches the AI analysis (TZ §10.4) for the per-topic breakdown.
@@ -438,49 +456,54 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     return "Qo'shimcha mashq kerak";
   }
 
+  /// Builds the result PDF bytes — shared by the "PDF hisobot" button and
+  /// the silent bot-upload so both ever produce exactly the same file.
+  Future<Uint8List> _buildPdfBytes() async {
+    final mathTopics = <MapEntry<String, ({int ok, int tot})>>[];
+    final engTopics = <MapEntry<String, ({int ok, int tot})>>[];
+    int mathOk = 0, mathTot = 0, engOk = 0, engTot = 0;
+
+    for (final s in widget.result.sectionScores) {
+      final entry = MapEntry(s.name, (ok: s.correct, tot: s.total));
+      if (_EngineHostScreenState.isMathSection(s.name)) {
+        mathTopics.add(entry);
+        mathOk += s.correct;
+        mathTot += s.total;
+      } else {
+        engTopics.add(entry);
+        engOk += s.correct;
+        engTot += s.total;
+      }
+    }
+
+    // Per-§ / per-topic breakdown + AI summary for the TZ §11 passport.
+    final topicScores = widget.result.topicScores
+        .map((t) => MapEntry(t.topic, (ok: t.correct, tot: t.total)))
+        .toList();
+
+    return PdfService.generateResultPdf(
+      firstName: widget.firstName,
+      lastName: widget.lastName,
+      group: widget.group ?? '',
+      grade: widget.grade,
+      variant: widget.variant,
+      mathOk: mathOk,
+      mathTotal: mathTot,
+      engOk: engOk,
+      engTotal: engTot,
+      pct: widget.result.totalPct.round(),
+      mathTopics: mathTopics,
+      engTopics: engTopics,
+      topicScores: topicScores,
+      aiSummary: _aiSummary,
+    );
+  }
+
   Future<void> _generatePdf() async {
     if (_pdfGenerating) return;
     setState(() => _pdfGenerating = true);
     try {
-      final mathTopics = <MapEntry<String, ({int ok, int tot})>>[];
-      final engTopics = <MapEntry<String, ({int ok, int tot})>>[];
-      int mathOk = 0, mathTot = 0, engOk = 0, engTot = 0;
-
-      for (final s in widget.result.sectionScores) {
-        final entry = MapEntry(s.name, (ok: s.correct, tot: s.total));
-        if (_EngineHostScreenState.isMathSection(s.name)) {
-          mathTopics.add(entry);
-          mathOk += s.correct;
-          mathTot += s.total;
-        } else {
-          engTopics.add(entry);
-          engOk += s.correct;
-          engTot += s.total;
-        }
-      }
-
-      // Per-§ / per-topic breakdown + AI summary for the TZ §11 passport.
-      final topicScores = widget.result.topicScores
-          .map((t) => MapEntry(t.topic, (ok: t.correct, tot: t.total)))
-          .toList();
-
-      final bytes = await PdfService.generateResultPdf(
-        firstName: widget.firstName,
-        lastName: widget.lastName,
-        group: widget.group ?? '',
-        grade: widget.grade,
-        variant: widget.variant,
-        mathOk: mathOk,
-        mathTotal: mathTot,
-        engOk: engOk,
-        engTotal: engTot,
-        pct: widget.result.totalPct.round(),
-        mathTopics: mathTopics,
-        engTopics: engTopics,
-        topicScores: topicScores,
-        aiSummary: _aiSummary,
-      );
-
+      final bytes = await _buildPdfBytes();
       final dir = await getApplicationSupportDirectory();
       final path =
           '${dir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
