@@ -8,9 +8,12 @@
 // means a hand-tampered row fails to decrypt instead of being silently
 // accepted (it just retries/purges like any other corrupt row).
 import 'dart:convert';
+import 'dart:io';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 class QueueCrypto {
   static const _storage = FlutterSecureStorage(
@@ -18,6 +21,7 @@ class QueueCrypto {
   );
   static const _keyStorageKey = 'queue_aes_key_v1';
   static const _prefix = 'ENC1:';
+  static const _fallbackKeyFileName = '.queue_aes_key_v1_fallback';
 
   static Future<enc.Key>? _keyFuture;
 
@@ -25,14 +29,34 @@ class QueueCrypto {
     return _keyFuture ??= _loadOrCreateKey();
   }
 
+  /// OS keychain/DPAPI first. If that throws — e.g. an ad-hoc-signed macOS
+  /// build whose Keychain ACL stops matching after a rebuild — fall back to
+  /// a key file in the app's own data dir. Losing exam results to a flaky
+  /// OS credential store is worse than a slightly weaker key store.
   static Future<enc.Key> _loadOrCreateKey() async {
-    var stored = await _storage.read(key: _keyStorageKey);
-    if (stored == null) {
-      final generated = enc.Key.fromSecureRandom(32);
-      stored = base64Encode(generated.bytes);
-      await _storage.write(key: _keyStorageKey, value: stored);
+    try {
+      var stored = await _storage.read(key: _keyStorageKey);
+      if (stored == null) {
+        final generated = enc.Key.fromSecureRandom(32);
+        stored = base64Encode(generated.bytes);
+        await _storage.write(key: _keyStorageKey, value: stored);
+      }
+      return enc.Key(base64Decode(stored));
+    } catch (e) {
+      debugPrint('QueueCrypto: secure storage unavailable ($e), using fallback key file');
+      return _loadOrCreateFallbackKey();
     }
-    return enc.Key(base64Decode(stored));
+  }
+
+  static Future<enc.Key> _loadOrCreateFallbackKey() async {
+    final dir = await getApplicationSupportDirectory();
+    final file = File(p.join(dir.path, _fallbackKeyFileName));
+    if (await file.exists()) {
+      return enc.Key(base64Decode(await file.readAsString()));
+    }
+    final generated = enc.Key.fromSecureRandom(32);
+    await file.writeAsString(base64Encode(generated.bytes));
+    return generated;
   }
 
   /// Pure encrypt given an explicit key — split out from [encryptPayload]

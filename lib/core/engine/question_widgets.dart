@@ -498,7 +498,7 @@ class ReadingPassageWidget extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (reading.img != null && reading.img!.isNotEmpty)
-          _buildQuestionImage(reading.img!, height: 200),
+          _buildQuestionImage(reading.img!, height: 260),
         if (reading.img != null && reading.img!.isNotEmpty)
           const SizedBox(height: 12),
         Text(
