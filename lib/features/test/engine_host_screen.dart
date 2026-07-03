@@ -401,6 +401,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         grade: widget.grade,
         totalPct: widget.result.totalPct.round(),
         topics: payload,
+        studentFirstName: widget.firstName,
       );
       if (!mounted) return;
       setState(() {
