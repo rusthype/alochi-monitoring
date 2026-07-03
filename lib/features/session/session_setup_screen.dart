@@ -230,7 +230,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
                         border: Border.all(
                           color: (active || filled)
                               ? AppColors.secondary
-                              : AppColors.border,
+                              : AppColors.ink3,
                           width: 1.5,
                         ),
                       ),
