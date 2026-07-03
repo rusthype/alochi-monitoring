@@ -358,6 +358,26 @@ class MonitoringApi {
     }
   }
 
+  /// AI xulosa (TZ §10.4): per-topic natijani yuboradi, tahlil qaytaradi.
+  /// {summary, strengths[], weaknesses[], recommendations[], focus_14day[]}.
+  /// Offline yoki AI mavjud bo'lmasa null (UI kartani ko'rsatmaydi).
+  Future<Map<String, dynamic>?> fetchAiSummary({
+    required int grade,
+    required int totalPct,
+    required List<Map<String, dynamic>> topics,
+  }) async {
+    try {
+      return await _post('/result/ai-summary/', {
+        'grade': grade,
+        'total_pct': totalPct,
+        'topics': topics,
+      });
+    } catch (e) {
+      debugPrint('fetchAiSummary error: $e');
+      return null;
+    }
+  }
+
   /// Xato holatida `permanent:true` (4xx, retry qilma) yoki `retryable:true`
   /// (5xx/network) qaytaradi — submitResultFull bilan bir xil klassifikatsiya.
   ///

@@ -17,8 +17,22 @@ class PdfService {
     required int pct,
     required List<MapEntry<String, ({int ok, int tot})>> mathTopics,
     required List<MapEntry<String, ({int ok, int tot})>> engTopics,
+    // TZ §11 passport extras (optional — legacy callers omit them).
+    List<MapEntry<String, ({int ok, int tot})>> topicScores = const [],
+    Map<String, dynamic>? aiSummary,
   }) async {
     final pdf = pw.Document();
+
+    // Weakest topics (pct < 55), weakest-first — feeds the 14-day plan.
+    final weakTopics = topicScores.where((e) {
+      final p = e.value.tot > 0 ? e.value.ok * 100.0 / e.value.tot : 0.0;
+      return p < 55;
+    }).toList()
+      ..sort((a, b) {
+        final pa = a.value.tot > 0 ? a.value.ok / a.value.tot : 0.0;
+        final pb = b.value.tot > 0 ? b.value.ok / b.value.tot : 0.0;
+        return pa.compareTo(pb);
+      });
 
     // Load fonts for correct Uzbek/Cyrillic rendering
     final fontData = await rootBundle.load('assets/fonts/Inter-Regular.ttf');
@@ -150,6 +164,24 @@ class PdfService {
               ],
             ],
           ),
+
+          // § BO'YICHA BATAFSIL TAHLIL (TZ §10.1 / §11)
+          if (topicScores.isNotEmpty) ...[
+            pw.SizedBox(height: 24),
+            _buildTopicAnalysis(topicScores, ttf, ttfBold),
+          ],
+
+          // 14 KUNLIK REJA (TZ §10.3 / §11)
+          if (weakTopics.isNotEmpty) ...[
+            pw.SizedBox(height: 24),
+            _build14DayPlan(weakTopics, ttf, ttfBold),
+          ],
+
+          // AI TAHLIL (TZ §10.4 / §11)
+          if (aiSummary != null) ...[
+            pw.SizedBox(height: 24),
+            _buildAiSummary(aiSummary, ttf, ttfBold),
+          ],
 
           // RECOMMENDATIONS — "Qanday yaxshilash mumkin?"
           pw.SizedBox(height: 24),
@@ -285,6 +317,196 @@ class PdfService {
                                   color: PdfColor.fromHex('#52525B'),
                                   lineSpacing: 3))),
                     ]))),
+          ]),
+    );
+  }
+
+  // ── TZ §11 passport sections ──────────────────────────────────────────────
+
+  /// Per-§ / per-topic breakdown table (finer than the chapter tables above).
+  static pw.Widget _buildTopicAnalysis(
+      List<MapEntry<String, ({int ok, int tot})>> topics,
+      pw.Font ttf,
+      pw.Font ttfBold) {
+    final textColor = PdfColor.fromHex('#1A1A1A');
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(18),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.white,
+        border: pw.Border.all(color: PdfColors.grey300, width: 1.5),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
+      ),
+      child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('Mavzu (§) bo\'yicha batafsil tahlil',
+                style:
+                    pw.TextStyle(font: ttfBold, fontSize: 15, color: textColor)),
+            pw.SizedBox(height: 12),
+            pw.TableHelper.fromTextArray(
+              context: null,
+              border: pw.TableBorder.all(color: PdfColors.grey300),
+              headerStyle: pw.TextStyle(
+                  font: ttfBold, fontSize: 11, color: PdfColors.white),
+              headerDecoration:
+                  const pw.BoxDecoration(color: PdfColors.grey700),
+              cellStyle:
+                  pw.TextStyle(font: ttf, fontSize: 10, color: textColor),
+              cellAlignment: pw.Alignment.centerLeft,
+              columnWidths: {
+                0: const pw.FlexColumnWidth(3),
+                1: const pw.FlexColumnWidth(1),
+                2: const pw.FlexColumnWidth(1),
+              },
+              headers: ['Mavzu', 'To\'g\'ri', 'Foiz'],
+              data: topics.map((e) {
+                final p =
+                    e.value.tot > 0 ? (e.value.ok * 100 ~/ e.value.tot) : 0;
+                return [e.key, '${e.value.ok} / ${e.value.tot}', '$p%'];
+              }).toList(),
+            ),
+          ]),
+    );
+  }
+
+  /// 14-day study plan derived from the two weakest topics (TZ §10.3).
+  static pw.Widget _build14DayPlan(
+      List<MapEntry<String, ({int ok, int tot})>> weak,
+      pw.Font ttf,
+      pw.Font ttfBold) {
+    final textColor = PdfColor.fromHex('#1A1A1A');
+    final primaryColor = PdfColor.fromHex('#F97316');
+    final f1 = weak.isNotEmpty ? weak[0].key : 'zaif mavzu';
+    final f2 = weak.length > 1 ? weak[1].key : f1;
+    final rows = <List<String>>[
+      ['1–3 kun', 'Eng zaif mavzu: $f1 (15 daqiqa/kun)'],
+      ['4–7 kun', 'Ikkinchi mavzu: $f2 (5 ta misol/kun)'],
+      ['8–11 kun', 'Aralash mashqlar — barcha mavzularni takrorlash'],
+      ['12–14 kun', 'Nazorat testi — natijani solishtirish'],
+    ];
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(18),
+      decoration: pw.BoxDecoration(
+        color: PdfColors.white,
+        border: pw.Border.all(color: PdfColors.grey300, width: 1.5),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
+      ),
+      child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('14 kunlik reja',
+                style:
+                    pw.TextStyle(font: ttfBold, fontSize: 15, color: textColor)),
+            pw.SizedBox(height: 12),
+            ...rows.map((r) => pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 8),
+                  child: pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Container(
+                          width: 72,
+                          padding: const pw.EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 6),
+                          decoration: pw.BoxDecoration(
+                            color: PdfColor.fromHex('#FFEDD5'),
+                            borderRadius: const pw.BorderRadius.all(
+                                pw.Radius.circular(8)),
+                          ),
+                          child: pw.Text(r[0],
+                              style: pw.TextStyle(
+                                  font: ttfBold,
+                                  fontSize: 10,
+                                  color: primaryColor)),
+                        ),
+                        pw.SizedBox(width: 10),
+                        pw.Expanded(
+                            child: pw.Text(r[1],
+                                style: pw.TextStyle(
+                                    font: ttf,
+                                    fontSize: 11,
+                                    color: textColor,
+                                    lineSpacing: 2))),
+                      ]),
+                )),
+          ]),
+    );
+  }
+
+  /// AI analysis card (TZ §10.4): summary + strengths/weaknesses/recs/focus.
+  static pw.Widget _buildAiSummary(
+      Map<String, dynamic> ai, pw.Font ttf, pw.Font ttfBold) {
+    final textColor = PdfColor.fromHex('#1A1A1A');
+    final primaryColor = PdfColor.fromHex('#F97316');
+
+    List<String> strList(dynamic raw) {
+      if (raw is! List) return const [];
+      return raw
+          .map((e) => e?.toString().trim() ?? '')
+          .where((s) => s.isNotEmpty)
+          .toList();
+    }
+
+    final summary = ai['summary']?.toString().trim() ?? '';
+    final strengths = strList(ai['strengths']);
+    final weaknesses = strList(ai['weaknesses']);
+    final recs = strList(ai['recommendations']);
+    final focus = strList(ai['focus_14day']);
+
+    pw.Widget block(String title, List<String> items, PdfColor color) {
+      if (items.isEmpty) return pw.SizedBox();
+      return pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.SizedBox(height: 10),
+            pw.Text(title,
+                style: pw.TextStyle(font: ttfBold, fontSize: 12, color: color)),
+            pw.SizedBox(height: 4),
+            ...items.map((t) => pw.Padding(
+                  padding: const pw.EdgeInsets.only(bottom: 3, left: 4),
+                  child: pw.Row(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('• ',
+                            style: pw.TextStyle(
+                                font: ttfBold, fontSize: 10, color: color)),
+                        pw.Expanded(
+                            child: pw.Text(t,
+                                style: pw.TextStyle(
+                                    font: ttf,
+                                    fontSize: 10,
+                                    color: PdfColor.fromHex('#52525B'),
+                                    lineSpacing: 2))),
+                      ]),
+                )),
+          ]);
+    }
+
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(18),
+      decoration: pw.BoxDecoration(
+        color: PdfColor.fromHex('#FFF7ED'),
+        border: pw.Border.all(color: primaryColor, width: 1.5),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
+      ),
+      child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text('AI tahlil',
+                style: pw.TextStyle(
+                    font: ttfBold, fontSize: 15, color: primaryColor)),
+            if (summary.isNotEmpty) ...[
+              pw.SizedBox(height: 8),
+              pw.Text(summary,
+                  style: pw.TextStyle(
+                      font: ttf,
+                      fontSize: 11,
+                      color: textColor,
+                      lineSpacing: 3)),
+            ],
+            block('Kuchli tomonlar', strengths, PdfColor.fromHex('#10B981')),
+            block('Zaif tomonlar', weaknesses, PdfColor.fromHex('#EF4444')),
+            block('Tavsiyalar', recs, PdfColor.fromHex('#D97706')),
+            block('14 kunlik e\'tibor', focus, primaryColor),
           ]),
     );
   }
