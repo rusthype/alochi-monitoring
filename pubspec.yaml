@@ -37,6 +37,7 @@ dependencies:
   google_fonts: ^6.2.0
   flutter_animate: ^4.5.0
   gap: ^3.0.1
+  flutter_svg: ^2.0.10  # render inline SVG diagrams (math geometry questions)
 
   # Windows MSIX installer
   msix: ^3.16.7

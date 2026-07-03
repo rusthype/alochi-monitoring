@@ -68,6 +68,11 @@ class Question {
   // topic (optional metadata — carried through for reporting)
   final String? topic;
 
+  // geometry diagram (inline SVG string) + TZ reporting metadata
+  final String? svg;
+  final int? bob;
+  final String? category;
+
   const Question({
     required this.type,
     this.q,
@@ -80,11 +85,20 @@ class Question {
     this.strAns,
     this.reading,
     this.topic,
+    this.svg,
+    this.bob,
+    this.category,
   });
 
   factory Question.fromJson(Map<String, dynamic> json) {
     final rawType = json['type']?.toString();
     final type = _parseType(rawType);
+
+    // Metadata carried on every question type (TZ per-§ reporting + geometry SVG).
+    final topic = json['topic']?.toString();
+    final svg = json['svg']?.toString();
+    final bob = (json['bob'] as num?)?.toInt();
+    final category = json['category']?.toString();
 
     if (type == null) {
       debugPrint('[TestEngine] Unknown question type "$rawType", falling back to text_choice');
@@ -94,7 +108,7 @@ class Question {
         q: json['q']?.toString(),
         opts: _parseOpts(json['opts']),
         ans: (json['ans'] as num?)?.toInt() ?? 0,
-        topic: json['topic']?.toString(),
+        topic: topic, svg: svg, bob: bob, category: category,
       );
     }
 
@@ -105,7 +119,7 @@ class Question {
           q: json['q']?.toString(),
           opts: _parseOpts(json['opts']),
           ans: (json['ans'] as num?)?.toInt() ?? 0,
-          topic: json['topic']?.toString(),
+          topic: topic, svg: svg, bob: bob, category: category,
         );
 
       case QuestionType.imageChoice:
@@ -115,7 +129,7 @@ class Question {
           q: json['q']?.toString(),
           opts: _parseOpts(json['opts']),
           ans: (json['ans'] as num?)?.toInt() ?? 0,
-          topic: json['topic']?.toString(),
+          topic: topic, svg: svg, bob: bob, category: category,
         );
 
       case QuestionType.spelling:
@@ -123,7 +137,7 @@ class Question {
           type: type,
           scramble: json['scramble']?.toString(),
           strAns: json['ans']?.toString(),
-          topic: json['topic']?.toString(),
+          topic: topic, svg: svg, bob: bob, category: category,
         );
 
       case QuestionType.sentenceOrder:
@@ -131,14 +145,14 @@ class Question {
           type: type,
           words: json['words']?.toString(),
           strAns: json['ans']?.toString(),
-          topic: json['topic']?.toString(),
+          topic: topic, svg: svg, bob: bob, category: category,
         );
 
       case QuestionType.reading:
         return Question(
           type: type,
           reading: ReadingSection.fromJson(json),
-          topic: json['topic']?.toString(),
+          topic: topic, svg: svg, bob: bob, category: category,
         );
 
       case QuestionType.yesNo:
@@ -146,7 +160,7 @@ class Question {
           type: type,
           q: json['q']?.toString(),
           yesNoAns: json['ans']?.toString().toUpperCase(),
-          topic: json['topic']?.toString(),
+          topic: topic, svg: svg, bob: bob, category: category,
         );
 
       case QuestionType.fillBlank:
@@ -154,7 +168,7 @@ class Question {
           type: type,
           q: json['q']?.toString(),
           strAns: json['ans']?.toString(),
-          topic: json['topic']?.toString(),
+          topic: topic, svg: svg, bob: bob, category: category,
         );
     }
   }

@@ -364,6 +364,11 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
   bool _pdfGenerating = false;
   String? _pdfPath;
 
+  // AI summary (TZ §10.4) — null until loaded; stays null if offline/unavailable
+  // (in which case the card is not shown at all).
+  Map<String, dynamic>? _aiSummary;
+  bool _aiLoading = false;
+
   @override
   void initState() {
     super.initState();
@@ -372,6 +377,40 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       duration: const Duration(milliseconds: 350),
     )..forward();
     _fade = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
+    _loadAiSummary();
+  }
+
+  /// Fetches the AI analysis (TZ §10.4) for the per-topic breakdown.
+  /// Silent on failure — `api.fetchAiSummary` returns null offline / when the
+  /// AI service is unavailable, and the card simply stays hidden.
+  Future<void> _loadAiSummary() async {
+    final topics = widget.result.topicScores;
+    if (topics.isEmpty) return; // nothing to analyze — card stays hidden
+
+    setState(() => _aiLoading = true);
+    try {
+      final payload = topics
+          .map((t) => <String, dynamic>{
+                'topic': t.topic,
+                'correct': t.correct,
+                'total': t.total,
+                'pct': t.pct.round(),
+              })
+          .toList();
+      final data = await api.fetchAiSummary(
+        grade: widget.grade,
+        totalPct: widget.result.totalPct.round(),
+        topics: payload,
+      );
+      if (!mounted) return;
+      setState(() {
+        _aiSummary = data;
+        _aiLoading = false;
+      });
+    } catch (e) {
+      debugPrint('_EngineResultScreen._loadAiSummary error: $e');
+      if (mounted) setState(() => _aiLoading = false);
+    }
   }
 
   @override
@@ -398,29 +437,6 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     return "Qo'shimcha mashq kerak";
   }
 
-  List<SectionScore> _weakSections() {
-    final list = widget.result.sectionScores
-        .where((s) => _secPct(s) < 75)
-        .toList()
-      ..sort((a, b) => _secPct(a).compareTo(_secPct(b)));
-    return list;
-  }
-
-  List<SectionScore> _strongSections() =>
-      widget.result.sectionScores.where((s) => _secPct(s) >= 75).toList();
-
-  String _aiSummary(int pct, List<SectionScore> weak) {
-    if (pct >= 80) {
-      return "${widget.firstName} yaxshi natija ($pct%) ko'rsatdi. "
-          "Zaif bo'limlarni mustahkamlasa, keyingi testda 90%+ ga erishishi mumkin! 🎯";
-    }
-    final weakNames = weak.take(2).map((w) => w.name).join(', ');
-    final weakPart =
-        weak.isNotEmpty ? " $weakNames bo'limlarida qiynalmoqda." : '';
-    return "${widget.firstName} $pct% natija ko'rsatdi.$weakPart "
-        "14 kunlik reja bajarilsa, 2–3 haftada sezilarli o'zgarish bo'ladi! 📚";
-  }
-
   Future<void> _generatePdf() async {
     if (_pdfGenerating) return;
     setState(() => _pdfGenerating = true);
@@ -442,6 +458,11 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         }
       }
 
+      // Per-§ / per-topic breakdown + AI summary for the TZ §11 passport.
+      final topicScores = widget.result.topicScores
+          .map((t) => MapEntry(t.topic, (ok: t.correct, tot: t.total)))
+          .toList();
+
       final bytes = await PdfService.generateResultPdf(
         firstName: widget.firstName,
         lastName: widget.lastName,
@@ -455,6 +476,8 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         pct: widget.result.totalPct.round(),
         mathTopics: mathTopics,
         engTopics: engTopics,
+        topicScores: topicScores,
+        aiSummary: _aiSummary,
       );
 
       final dir = await getApplicationSupportDirectory();
@@ -488,8 +511,6 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     final wrong = result.totalQuestions - result.totalCorrect;
     final heroColor = _secColor(pct);
     final gradeLabel = _gradeLabel(pct);
-    final weak = _weakSections();
-    final strong = _strongSections();
     final studentName = '${widget.firstName} ${widget.lastName}';
     final subLine =
         '${widget.group?.isNotEmpty == true ? widget.group! : widget.school} · Variant ${widget.variant}';
@@ -664,205 +685,14 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+              _TzAnalysis(result: widget.result),
 
-              // ── 4. Tahlil ─────────────────────────────────────────────────
-              _ReportCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _SectionHead(
-                      icon: Icons.insights_rounded,
-                      label: 'TAHLIL',
-                    ),
-                    const SizedBox(height: 8),
-                    if (strong.isNotEmpty) ...[
-                      Row(
-                        children: [
-                          const Icon(Icons.check_circle_outline_rounded,
-                              size: 16, color: AppColors.success),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Kuchli tomonlar',
-                            style: AppTextStyles.labelLarge
-                                .copyWith(color: AppColors.success),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ...strong.take(4).map((s) {
-                        final p = _secPct(s);
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                margin:
-                                    const EdgeInsets.only(right: 8, top: 4),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.success,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  "${s.name} — $p% · yaxshi o'zlashtirilgan",
-                                  style: AppTextStyles.bodyMedium,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
-                    if (strong.isNotEmpty && weak.isNotEmpty)
-                      const SizedBox(height: 12),
-                    if (weak.isNotEmpty) ...[
-                      Row(
-                        children: [
-                          const Icon(Icons.warning_amber_rounded,
-                              size: 16, color: Color(0xFFEF4444)),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Mustahkamlash kerak',
-                            style: AppTextStyles.labelLarge.copyWith(
-                              color: const Color(0xFFEF4444),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ...weak.take(5).map((s) {
-                        final p = _secPct(s);
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                margin:
-                                    const EdgeInsets.only(right: 8, top: 4),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFEF4444),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  "${s.name} — $p% · qo'shimcha mashq",
-                                  style: AppTextStyles.bodyMedium,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
-                    if (weak.isEmpty)
-                      Row(
-                        children: [
-                          const Icon(Icons.celebration_rounded,
-                              size: 18, color: AppColors.success),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              "Barcha bo'limlar yaxshi o'zlashtirilgan!",
-                              style: AppTextStyles.bodyMedium
-                                  .copyWith(color: AppColors.success),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── 5. 14 kunlik reja ─────────────────────────────────────────
-              _ReportCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _SectionHead(
-                      icon: Icons.calendar_month_rounded,
-                      label: '14 KUNLIK REJA',
-                    ),
-                    const SizedBox(height: 8),
-                    _PlanRow(
-                      days: '1–3 KUN',
-                      title: weak.isNotEmpty
-                          ? '${weak[0].name} takrorlash'
-                          : "Barcha bo'limlar takrorlash",
-                      desc: 'Har kuni 15 daqiqa mashq',
-                    ),
-                    _PlanRow(
-                      days: '4–7 KUN',
-                      title: weak.length > 1
-                          ? '${weak[1].name} mashqlari'
-                          : 'Mustahkamlash mashqlari',
-                      desc: 'Har kuni 5 ta misol yechish',
-                    ),
-                    const _PlanRow(
-                      days: '8–11 KUN',
-                      title: 'Aralash mashqlar',
-                      desc: "Barcha bo'limlarni takrorlash",
-                    ),
-                    const _PlanRow(
-                      days: '12–14 KUN',
-                      title: 'Nazorat testi',
-                      desc: 'Natijalarni solishtirish',
-                      isLast: true,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── 6. AI xulosa ──────────────────────────────────────────────
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.secondaryMuted,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: AppColors.secondary.withValues(alpha: .25)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.auto_awesome_rounded,
-                            size: 18, color: AppColors.secondary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'AI XULOSA',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.secondary,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _aiSummary(pct, weak),
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.ink1,
-                        height: 1.6,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // ── AI summary (TZ §10.4) — hidden when offline/unavailable ────
+              if (_aiLoading || _aiSummary != null) ...[
+                const SizedBox(height: 16),
+                _AiSummaryCard(loading: _aiLoading, data: _aiSummary),
+              ],
 
               const SizedBox(height: 16),
 
@@ -939,6 +769,327 @@ class _BadgeChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── AI summary card (TZ §10.4) ──────────────────────────────────────────────────
+
+class _AiSummaryCard extends StatelessWidget {
+  final bool loading;
+  final Map<String, dynamic>? data;
+  const _AiSummaryCard({required this.loading, this.data});
+
+  static List<String> _strList(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .map((e) => e?.toString().trim() ?? '')
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = data?['summary']?.toString().trim() ?? '';
+    final strengths = _strList(data?['strengths']);
+    final weaknesses = _strList(data?['weaknesses']);
+    final recs = _strList(data?['recommendations']);
+    final focus = _strList(data?['focus_14day']);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(children: [
+            Icon(Icons.auto_awesome_rounded, size: 18, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('AI tahlil', style: AppTextStyles.labelLarge),
+          ]),
+          const SizedBox(height: 12),
+          if (loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Row(children: [
+                SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2)),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text('Tahlil tayyorlanmoqda…',
+                      style: AppTextStyles.bodyMedium),
+                ),
+              ]),
+            )
+          else ...[
+            if (summary.isNotEmpty)
+              Text(summary, style: AppTextStyles.bodyLarge.copyWith(height: 1.4)),
+            if (strengths.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _block('Kuchli tomonlar', strengths,
+                  Icons.check_circle_rounded, AppColors.ok),
+            ],
+            if (weaknesses.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _block('Zaif tomonlar', weaknesses, Icons.error_rounded,
+                  AppColors.err),
+            ],
+            if (recs.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _block('Tavsiyalar', recs, Icons.lightbulb_rounded,
+                  const Color(0xFFD97706)),
+            ],
+            if (focus.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              _block('14 kunlik e\'tibor', focus,
+                  Icons.calendar_today_rounded, AppColors.primary),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _block(String title, List<String> items, IconData icon, Color color) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title,
+            style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: color)),
+        const SizedBox(height: 6),
+        ...items.map((t) => Padding(
+              padding: const EdgeInsets.only(bottom: 5),
+              child:
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Icon(icon, size: 14, color: color),
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: Text(t, style: AppTextStyles.bodyMedium)),
+              ]),
+            )),
+      ]);
+}
+
+// ── TZ per-§ analysis: accordion + strong/weak + 14-day plan (TZ §10) ───────────
+
+class _TzAnalysis extends StatelessWidget {
+  final ScoredResult result;
+  const _TzAnalysis({required this.result});
+
+  Color _c(double pct) {
+    if (pct >= 80) return AppColors.ok;
+    if (pct >= 55) return const Color(0xFFD97706);
+    return AppColors.err;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final qrs = result.questionResults;
+    if (qrs.isEmpty) return const SizedBox.shrink();
+
+    final Map<String, List<QuestionResult>> bySection = {};
+    for (final r in qrs) {
+      (bySection[r.section] ??= []).add(r);
+    }
+    final strong = result.topicScores.where((t) => t.pct >= 80).toList();
+    final weak = result.topicScores.where((t) => t.pct < 55).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Mavzu bo'yicha tahlil (accordion) — TZ §10.1
+        Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 14, 16, 10),
+              child: Row(children: [
+                Icon(Icons.checklist_rounded, size: 18, color: AppColors.primary),
+                SizedBox(width: 8),
+                Text('Mavzu bo\'yicha tahlil', style: AppTextStyles.labelLarge),
+              ]),
+            ),
+            const Divider(height: 1),
+            ...bySection.entries.map((e) {
+              final correct = e.value.where((r) => r.correct).length;
+              final total = e.value.length;
+              final pct = total > 0 ? correct * 100.0 / total : 0.0;
+              return Theme(
+                data: Theme.of(context)
+                    .copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+                  title: Text(e.key,
+                      style: AppTextStyles.bodyLarge
+                          .copyWith(fontWeight: FontWeight.w700)),
+                  trailing: Text('$correct/$total — ${pct.round()}%',
+                      style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontWeight: FontWeight.w800,
+                          color: _c(pct))),
+                  childrenPadding: const EdgeInsets.only(bottom: 8),
+                  children: e.value.map(_qRow).toList(),
+                ),
+              );
+            }),
+          ]),
+        ),
+
+        // Kuchli / zaif — TZ §10.2
+        if (strong.isNotEmpty || weak.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Kuchli va zaif tomonlar',
+                  style: AppTextStyles.labelLarge),
+              const SizedBox(height: 10),
+              if (strong.isNotEmpty) ...[
+                _chipRow('Kuchli', strong.map((t) => t.topic).toList(), AppColors.ok),
+                const SizedBox(height: 8),
+              ],
+              if (weak.isNotEmpty)
+                _chipRow('Mustahkamlash kerak',
+                    weak.map((t) => t.topic).toList(), AppColors.err),
+            ]),
+          ),
+        ],
+
+        // 14 kunlik reja — TZ §10.3
+        if (weak.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _plan14(weak),
+        ],
+      ],
+    );
+  }
+
+  Widget _qRow(QuestionResult r) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(r.correct ? Icons.check_circle_rounded : Icons.cancel_rounded,
+              size: 16, color: r.correct ? AppColors.ok : AppColors.err),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(r.questionText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodyMedium),
+          ),
+          if (r.topic != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.border)),
+              child: Text(r.topic!,
+                  style: const TextStyle(
+                      fontFamily: 'Inter', fontSize: 10, color: AppColors.ink3)),
+            ),
+          ],
+        ]),
+      );
+
+  Widget _chipRow(String label, List<String> items, Color color) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color)),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: items
+                .map((t) => Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                          color: color.withValues(alpha: .08),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: color.withValues(alpha: .25))),
+                      child: Text(t,
+                          style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 11,
+                              color: color,
+                              fontWeight: FontWeight.w600)),
+                    ))
+                .toList(),
+          ),
+        ],
+      );
+
+  Widget _plan14(List<TopicScore> weak) {
+    final f1 = weak.isNotEmpty ? weak[0].topic : 'zaif mavzu';
+    final f2 = weak.length > 1 ? weak[1].topic : f1;
+    final rows = <(String, String)>[
+      ('1–3 kun', 'Eng zaif mavzu: $f1 (15 daqiqa/kun)'),
+      ('4–7 kun', 'Ikkinchi mavzu: $f2 (5 ta misol/kun)'),
+      ('8–11 kun', 'Aralash mashqlar — barcha mavzularni takrorlash'),
+      ('12–14 kun', 'Nazorat testi — natijani solishtirish'),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [
+          Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.primary),
+          SizedBox(width: 8),
+          Text('14 kunlik reja', style: AppTextStyles.labelLarge),
+        ]),
+        const SizedBox(height: 12),
+        ...rows.map((r) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(
+                  width: 68,
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: .1),
+                      borderRadius: BorderRadius.circular(8)),
+                  child: Text(r.$1,
+                      style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Text(r.$2, style: AppTextStyles.bodyMedium)),
+              ]),
+            )),
+      ]),
     );
   }
 }
@@ -1038,63 +1189,6 @@ class _SectionRowV2 extends StatelessWidget {
               backgroundColor: AppColors.gray100,
               color: color,
               minHeight: 6,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Plan row ──────────────────────────────────────────────────────────────────
-
-class _PlanRow extends StatelessWidget {
-  final String days;
-  final String title;
-  final String desc;
-  final bool isLast;
-
-  const _PlanRow({
-    required this.days,
-    required this.title,
-    required this.desc,
-    this.isLast = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.secondaryMuted,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                  color: AppColors.secondary.withValues(alpha: .3)),
-            ),
-            child: Text(
-              days,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: AppColors.secondary,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppTextStyles.labelLarge),
-                const SizedBox(height: 2),
-                Text(desc, style: AppTextStyles.bodyMedium),
-              ],
             ),
           ),
         ],
