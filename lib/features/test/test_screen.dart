@@ -29,6 +29,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
   bool _showSectionBanner = false;
   late int _timerSecs;
   Timer? _timerTimer;
+  DateTime? _testStartedAt;
 
   late final AnimationController _fadeCtrl;
   final ScrollController _scrollCtrl = ScrollController();
@@ -61,6 +62,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _testStartedAt = DateTime.now();
     // Math: 30 min, then English: 40 min. Start with 30 min.
     _timerSecs = 30 * 60;
     _startTimer();
@@ -197,6 +199,9 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
       totalPct: 0,
       answers: answersMap,
       deviceId: 'flutter-win',
+      durationSeconds: _testStartedAt != null
+          ? DateTime.now().difference(_testStartedAt!).inSeconds
+          : null,
     );
     final resp = await api.submitResultFull(result);
     final synced = resp['synced'] as bool? ?? false;
@@ -213,6 +218,9 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
         totalPct: resp['total_pct'] as int? ?? 0,
         answers: answersMap,
         deviceId: 'flutter-win',
+        durationSeconds: _testStartedAt != null
+            ? DateTime.now().difference(_testStartedAt!).inSeconds
+            : null,
       );
     }
 
