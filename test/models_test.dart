@@ -27,4 +27,33 @@ void main() {
       expect(wa.correctAnswer, '');
     });
   });
+
+  group('TestResult.toJson', () {
+    test('includes duration_seconds when set', () {
+      const result = TestResult(
+        packageId: 'pkg-1',
+        variant: 1,
+        mathScore: 0,
+        engScore: 0,
+        totalPct: 0,
+        answers: {},
+        deviceId: 'test-device',
+        durationSeconds: 754,
+      );
+      expect(result.toJson()['duration_seconds'], 754);
+    });
+
+    test('omits duration_seconds when null', () {
+      const result = TestResult(
+        packageId: 'pkg-1',
+        variant: 1,
+        mathScore: 0,
+        engScore: 0,
+        totalPct: 0,
+        answers: {},
+        deviceId: 'test-device',
+      );
+      expect(result.toJson().containsKey('duration_seconds'), false);
+    });
+  });
 }
