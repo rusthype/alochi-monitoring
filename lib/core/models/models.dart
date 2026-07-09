@@ -104,6 +104,7 @@ class TestResult {
   final int totalPct;
   final Map<String, String> answers;
   final String deviceId;
+  final int? durationSeconds;
 
   const TestResult({
     required this.packageId,
@@ -113,6 +114,7 @@ class TestResult {
     required this.totalPct,
     required this.answers,
     required this.deviceId,
+    this.durationSeconds,
   });
 
   bool get passed => totalPct >= 60;
@@ -126,6 +128,7 @@ class TestResult {
         'answers': answers,
         'device_id': deviceId,
         if (detail != null) 'detail': detail,
+        if (durationSeconds != null) 'duration_seconds': durationSeconds,
       };
 }
 
