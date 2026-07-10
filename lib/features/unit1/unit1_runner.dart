@@ -12,6 +12,7 @@ import '../../core/services/pdf_service.dart';
 import 'package:printing/printing.dart';
 import 'unit1_data.dart';
 import '../../shared/widgets/app_network_image.dart';
+import '../../core/utils/topic_format.dart';
 
 // ── Unit1 blue accent (distinct from brand orange) ────────────────────────────
 const Color _kBlue = Color(0xFF3B82F6);
@@ -373,13 +374,13 @@ class _Unit1RunnerState extends State<Unit1Runner>
     // Build detail map
     final detail = {
       'test_key': 'unit1_eng',
-      'sections': [
+      'topics': topicsFromSections([
         {'name': 'Vocabulary', 'cor': vocabOk, 'tot': 25},
         {'name': 'Grammar', 'cor': grammarOk, 'tot': 6},
         {'name': 'Spelling', 'cor': spellingOk, 'tot': 6},
         {'name': 'Sentences', 'cor': sentenceOk, 'tot': 6},
         {'name': 'Reading', 'cor': readingOk, 'tot': 6},
-      ],
+      ]),
     };
 
     // Save to history
