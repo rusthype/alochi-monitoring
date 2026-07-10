@@ -12,6 +12,7 @@ import 'package:printing/printing.dart';
 import '../local_test/local_grade_screen.dart';
 import 'interhouse_data.dart';
 import 'interhouse_scorer.dart';
+import '../../core/utils/topic_format.dart';
 
 class InterhouseResultScreen extends StatefulWidget {
   final IhResult result;
@@ -84,9 +85,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
   Map<String, dynamic> _buildDetail() => {
         'test_key': 'interhouse_g2',
         'variant': widget.variant,
-        'parts': {
-          for (final p in widget.result.parts) p.partName: p.score,
-        },
+        'topics': topicsFromEngEntries(_engTopics),
         'shields': widget.result.parts.map((p) => p.shields).toList(),
         'total': widget.result.total,
         'total_shields': widget.result.totalShields,
