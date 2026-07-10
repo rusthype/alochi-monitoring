@@ -13,6 +13,7 @@ import '../../features/local_test/local_data.dart';
 import '../../features/unit1/unit1_data.dart';
 import '../../shared/widgets/app_network_image.dart';
 import 'package:printing/printing.dart';
+import '../../core/utils/topic_format.dart';
 
 // ── Color accents ──────────────────────────────────────────────────────────────
 const Color _kPurple = Color(0xFF7C3AED);
@@ -424,14 +425,14 @@ class _CombinedRunnerState extends State<CombinedRunner>
     // Build detail map
     final detail = {
       'test_key': 'monitoring_unit1',
-      'sections': [
+      'topics': topicsFromSections([
         {'name': 'Matematika', 'cor': mathOk, 'tot': 30},
         {'name': 'Vocabulary', 'cor': vocabOk, 'tot': 25},
         {'name': 'Grammar', 'cor': grammarOk, 'tot': 6},
         {'name': 'Spelling', 'cor': spellingOk, 'tot': 6},
         {'name': 'Sentences', 'cor': sentenceOk, 'tot': 6},
         {'name': 'Reading', 'cor': readingOk, 'tot': 6},
-      ],
+      ]),
     };
 
     // Time string
