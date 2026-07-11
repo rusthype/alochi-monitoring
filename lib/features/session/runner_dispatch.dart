@@ -15,6 +15,7 @@ Future<void> launchRunner(
   required String lastName,
   required int studentGrade,
   String groupName = '',
+  String groupId = '',
   String studentId = '',
 }) async {
   // Time-lock safety net: the catalog UI (login_screen.dart) already blocks
@@ -75,6 +76,7 @@ Future<void> launchRunner(
         lastName: lastName,
         school: session.schoolCode,
         group: groupName.isEmpty ? null : groupName,
+        groupId: groupId.isEmpty ? null : groupId,
         grade: studentGrade,
         studentId: studentId,
       ),

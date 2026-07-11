@@ -332,9 +332,17 @@ class MonitoringApi {
   /// `locked_until` maydoni bilan qabul qiladi (pre-download uchun); eski
   /// parametrsiz javob xulqiga hech narsa qo'shilmaydi (backend kontrakti).
   /// Xato holatida [] qaytaradi, crash qilmaydi.
-  Future<List<Map<String, dynamic>>> fetchTestCatalog() async {
+  ///
+  /// `groupId` — berilsa, backend faqat shu guruhga bog'langan (yoki
+  /// guruhsiz, ya'ni hammaga ochiq) testlarni qaytaradi (test↔guruh
+  /// bog'lanishi, 2026-07-11). Berilmasa — hozirgidek maktab bo'yicha
+  /// (orqaga moslik, eski app versiyalari uchun).
+  Future<List<Map<String, dynamic>>> fetchTestCatalog({String? groupId}) async {
     try {
-      final data = await _get('/tests/catalog/?client=2');
+      final gid = (groupId != null && groupId.isNotEmpty)
+          ? '&group_id=${Uri.encodeComponent(groupId)}'
+          : '';
+      final data = await _get('/tests/catalog/?client=2$gid');
       if (data is! List) return [];
       if (data.isEmpty) return [];
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
+import 'group_select_screen.dart';
 import 'student_entry_screen.dart';
 import 'test_session.dart';
 
@@ -70,16 +71,19 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
       return;
     }
     setState(() => _err = null);
+    // Yangi oqim: maktab+PIN → guruh tanlash → o'sha guruh test katalogi →
+    // o'quvchi → boshlash. GroupSelectScreen o'zi guruhlarni yuklaydi;
+    // maktabda guruh bo'lmasa (guruhsiz maktab), avtomatik ravishda
+    // to'g'ridan StudentEntryScreen'ga (group_id yuborilmasdan,
+    // widget.entry — foydalanuvchi dastlab tanlagan test — bilan) o'tadi.
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        settings: const RouteSettings(name: 'student_entry'),
-        builder: (_) => StudentEntryScreen(
-          session: TestSession.fromEntry(
-            widget.entry,
-            schoolCode: _selected!.schoolCode,
-            schoolLabel: _selected!.label,
-          ),
+        settings: const RouteSettings(name: 'group_select'),
+        builder: (_) => GroupSelectScreen(
+          schoolCode: _selected!.schoolCode,
+          schoolLabel: _selected!.label,
+          fallbackEntry: widget.entry,
         ),
       ),
     );

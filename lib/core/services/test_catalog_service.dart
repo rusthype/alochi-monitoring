@@ -87,7 +87,13 @@ class TestCatalogService {
   ///
   /// Online bo'lsa: backend'dan katalog olinadi, kesh bilan solishtiriladi.
   /// Offline bo'lsa: faqat keshdan cachedOnly holati bilan qaytaradi — crash yo'q.
-  Future<List<CatalogEntry>> refresh() async {
+  ///
+  /// `groupId` — berilsa, faqat shu guruhga bog'langan (yoki guruhsiz)
+  /// testlar qaytadi (guruh oqimi, GroupSelectScreen). Guruh o'zgarganda
+  /// chaqiruvchi shu metodni YANGI groupId bilan qayta chaqirishi kerak —
+  /// bu yerda natija keshlanmaydi, har chaqiriq tarmoqdan yangi olinadi
+  /// (kesh invalidatsiyasi shu tarzda ta'minlanadi).
+  Future<List<CatalogEntry>> refresh({String? groupId}) async {
     // Keshdan metadata olish (har todo holda kerak)
     final cachedRows = await TestCache.all();
     final cachedVersions = <String, int>{};
@@ -100,7 +106,7 @@ class TestCatalogService {
     // Online urinish
     List<Map<String, dynamic>> catalog;
     try {
-      catalog = await _api.fetchTestCatalog();
+      catalog = await _api.fetchTestCatalog(groupId: groupId);
     } catch (e) {
       debugPrint('TestCatalogService.refresh: network error: $e');
       catalog = [];
