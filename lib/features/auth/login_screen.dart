@@ -16,6 +16,7 @@ import '../local_test/history_screen.dart';
 import '../combined/combined_screen.dart';
 import '../session/session_setup_screen.dart';
 import '../downloads/downloads_sheet.dart';
+import '../../core/services/update_service.dart';
 
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
@@ -185,6 +186,9 @@ class _LoginScreenState extends State<LoginScreen> {
     super.initState();
     _tryAutoLogin();
     _loadCatalog();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) UpdateService.instance.checkForUpdate(context);
+    });
   }
 
   Future<void> _loadCatalog() async {
