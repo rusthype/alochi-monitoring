@@ -75,6 +75,14 @@ jobs:
           Write-Host "OK: EXE signature valid" -ForegroundColor Green
 
       # ── 2. MSIX build ────────────────────────────────────────
+      - name: Sync msix_version from pubspec version
+        shell: pwsh
+        run: |
+          $v = (Get-Content pubspec.yaml | Select-String "^version:" | ForEach-Object { $_ -replace "version:\s*", "" -replace "\+.*", "" }).Trim()
+          $msixVersion = "$v.0"
+          (Get-Content pubspec.yaml) -replace 'msix_version:\s*[\d\.]+', "msix_version: $msixVersion" | Set-Content pubspec.yaml
+          Write-Host "Synced msix_version to $msixVersion"
+
       - name: Build MSIX
         shell: pwsh
         run: |
