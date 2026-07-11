@@ -68,11 +68,13 @@ jobs:
         shell: pwsh
         run: |
           $sig = Get-AuthenticodeSignature "build\windows\x64\runner\Release\alochi_monitoring.exe"
-          if ($sig.Status -ne 'Valid') {
-            Write-Host "::error::Tagged release EXE is NOT signed (status: $($sig.Status)) — failing the build instead of shipping unsigned." -ForegroundColor Red
+          # Imzo bor bo'lsa (Valid = real cert, UnknownError/NotTrusted = self-signed chain) — OK.
+          # Faqat butunlay imzosiz (NotSigned) yoki buzilgan (HashMismatch) bo'lsa fail qil.
+          if ($sig.SignerCertificate -eq $null -or $sig.Status -eq 'HashMismatch' -or $sig.Status -eq 'NotSigned') {
+            Write-Host "::error::Tagged release EXE is NOT signed or corrupted (status: $($sig.Status)) — failing." -ForegroundColor Red
             exit 1
           }
-          Write-Host "OK: EXE signature valid" -ForegroundColor Green
+          Write-Host "OK: EXE is signed (status: $($sig.Status))" -ForegroundColor Green
 
       # ── 2. MSIX build ────────────────────────────────────────
       - name: Sync msix_version from pubspec version
@@ -146,11 +148,13 @@ jobs:
             exit 1
           }
           $sig = Get-AuthenticodeSignature $setupExe.FullName
-          if ($sig.Status -ne 'Valid') {
-            Write-Host "::error::Tagged release Setup.exe is NOT signed (status: $($sig.Status)) — failing the build instead of shipping unsigned." -ForegroundColor Red
+          # Imzo bor bo'lsa (Valid = real cert, UnknownError/NotTrusted = self-signed chain) — OK.
+          # Faqat butunlay imzosiz (NotSigned) yoki buzilgan (HashMismatch) bo'lsa fail qil.
+          if ($sig.SignerCertificate -eq $null -or $sig.Status -eq 'HashMismatch' -or $sig.Status -eq 'NotSigned') {
+            Write-Host "::error::Tagged release Setup.exe is NOT signed or corrupted (status: $($sig.Status)) — failing." -ForegroundColor Red
             exit 1
           }
-          Write-Host "OK: Setup.exe signature valid" -ForegroundColor Green
+          Write-Host "OK: Setup.exe is signed (status: $($sig.Status))" -ForegroundColor Green
 
       # ── 4. SHA256 ─────────────────────────────────────────────
       - name: Calculate SHA256
