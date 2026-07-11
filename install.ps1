@@ -29,7 +29,7 @@ if (-not $isAdmin) {
 
 # Eng so'nggi versiyani GitHub'dan topish
 Write-Host "  [1/4] Versiya tekshirilmoqda..." -ForegroundColor Yellow
-$ApiUrl = "https://api.github.com/repos/$Repo/releases/latest"
+$ApiUrl = "https://api.github.com/repos/$Repo/releases/tags/latest"
 try {
     $Release = Invoke-RestMethod -Uri $ApiUrl -Headers @{Accept="application/vnd.github.v3+json"} -UseBasicParsing
     $Asset = $Release.assets | Where-Object { $_.name -like "*latest*" -or $_.name -like "*windows*" } | Select-Object -First 1
@@ -37,8 +37,9 @@ try {
     $DownloadUrl = $Asset.browser_download_url
     $Version = $Release.tag_name
 } catch {
-    # Fallback: to'g'ridan release URL
-    $DownloadUrl = "https://github.com/$Repo/releases/latest/download/alochi-monitoring-windows.zip"
+    # Fallback: to'g'ridan release URL (tag-based, /latest/download/ EMAS — u ham
+    # prerelease'ni chiqarib tashlaydi, xuddi /releases/latest kabi)
+    $DownloadUrl = "https://github.com/$Repo/releases/download/latest/alochi-monitoring-windows.zip"
     $Version = "latest"
 }
 
