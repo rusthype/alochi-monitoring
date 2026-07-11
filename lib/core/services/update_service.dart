@@ -4,6 +4,14 @@
 // See docs/superpowers/specs/2026-07-11-monitoring-flutter-update-mechanism-design.md
 // (in the alochi monorepo) for the full design rationale.
 
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../shared/theme/app_theme.dart';
+
 final RegExp _setupExePattern =
     RegExp(r'^AlochiMonitoring-(\d+)\.(\d+)\.(\d+)-Setup\.exe$');
 
@@ -64,4 +72,78 @@ int _compareParts(List<int> a, List<int> b) {
     if (a[i] != b[i]) return a[i] - b[i];
   }
   return 0;
+}
+
+class UpdateService {
+  UpdateService._();
+  static final UpdateService instance = UpdateService._();
+
+  static const String _releaseApiUrl =
+      'https://api.github.com/repos/rusthype/alochi-monitoring/releases/tags/latest';
+  static const String _releasePageUrl =
+      'https://github.com/rusthype/alochi-monitoring/releases/tag/latest';
+
+  /// Checks for a newer release once and shows a dialog if found. Fire-and-
+  /// forget — any failure (offline, GitHub API rate limit, malformed JSON)
+  /// is swallowed silently, matching HeartbeatService's error-handling
+  /// pattern (lib/core/services/heartbeat_service.dart:62-71). Never blocks
+  /// or crashes app startup.
+  Future<void> checkForUpdate(BuildContext context) async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final currentVersion = packageInfo.version;
+
+      final resp = await http
+          .get(Uri.parse(_releaseApiUrl))
+          .timeout(const Duration(seconds: 5));
+      if (resp.statusCode != 200) return;
+
+      final decoded = jsonDecode(resp.body);
+      if (decoded is! Map<String, dynamic>) return;
+      final assets = decoded['assets'];
+      if (assets is! List) return;
+
+      final latestVersion = maxSetupExeVersion(assets);
+      if (latestVersion == null) return;
+      if (!isNewerVersion(latestVersion, currentVersion)) return;
+      if (!context.mounted) return;
+
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Yangi versiya mavjud',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          content: Text(
+            'Alochi Monitoring v$latestVersion chiqdi. '
+            'Joriy versiyangiz: v$currentVersion.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Yopish'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                unawaited(launchUrl(
+                  Uri.parse(_releasePageUrl),
+                  mode: LaunchMode.externalApplication,
+                ));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.brand,
+                minimumSize: const Size(100, 40),
+              ),
+              child: const Text('Yuklab olish'),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {}
+  }
 }
