@@ -1,17 +1,24 @@
 # Alochi Monitoring
 
-O'zbekistondagi maktablar uchun test tizimi monitoringi dasturi (Windows).
+O'zbekistondagi maktablar uchun test tizimi monitoringi dasturi (Windows va macOS).
 
 ## O'rnatish
 
-### Tavsiya qilingan usul: Setup.exe
+### Windows: Setup.exe
 
-1. [Eng so'nggi versiyani yuklab oling](https://github.com/rusthype/alochi-monitoring/releases/latest) — `AlochiMonitoring-*.exe` faylni izlang
+1. [Eng so'nggi versiyani yuklab oling](https://github.com/rusthype/alochi-monitoring/releases/tag/latest) — `AlochiMonitoring-*.exe` faylni izlang
 2. Faylni ikki marta bosib o'rnatishni boshlang
 3. Kerakli papkani tanlang va **Install** bosing
 4. Desktop'dagi yorlig'i orqali dasturni ishga tushiring
 
 **Batafsil yo'riqnoma:** [O'rnatish qo'llanmasi](docs/INSTALL.md)
+
+### macOS: DMG
+
+1. [Eng so'nggi versiyani yuklab oling](https://github.com/rusthype/alochi-monitoring/releases/tag/latest) — `alochi-monitoring.dmg` faylni izlang
+2. DMG'ni oching, ilovani Applications'ga torting
+
+**Batafsil yo'riqnoma (Gatekeeper bypass qadami bilan):** [macOS o'rnatish qo'llanmasi](docs/INSTALL_MACOS.md)
 
 ### Portable o'rnatish
 
