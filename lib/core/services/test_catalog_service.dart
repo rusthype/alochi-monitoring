@@ -181,9 +181,14 @@ class TestCatalogService {
   ///
   /// Bittasi xato bo'lsa ham davom etadi (best-effort).
   /// Muvaffaqiyatli kesh'ga yozilsa — true, aks holda false qaytaradi.
-  Future<bool> download(String testKey) async {
+  ///
+  /// `groupId` — tanlangan guruh ma'lum bo'lganda (yangi maktab→guruh→test
+  /// oqimi, GroupSelectScreen) uzatiladi, detail fetch'ga qo'shiladi
+  /// (S-001: guruh scoping xavfsizlik chegarasi). Guruhsiz maktab yoki
+  /// eski (guruhdan tashqari) yuklash oqimlarida berilmaydi — orqaga moslik.
+  Future<bool> download(String testKey, {String? groupId}) async {
     try {
-      final data = await _api.fetchTest(testKey);
+      final data = await _api.fetchTest(testKey, groupId: groupId);
       if (data == null) {
         debugPrint('TestCatalogService.download($testKey): null response');
         return false;

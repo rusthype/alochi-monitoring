@@ -354,10 +354,18 @@ class MonitoringApi {
 
   /// Bitta test JSON'ini yuklaydi. `client=2` — locked testni ham
   /// pre-download qilish uchun ruxsat beradi (UI darajasida qulflangan).
+  ///
+  /// `groupId` — berilsa, backend guruhga scoped test uchun shu guruhga
+  /// tegishli javobni qaytaradi; boshqa guruh test_key bilan urinsa 403/404
+  /// (S-001 xavfsizlik chegarasi, 2026-07-11). Guruhsiz maktab holatida
+  /// berilmaydi — orqaga moslik saqlanadi.
   /// Xato holatida null qaytaradi, crash qilmaydi.
-  Future<Map<String, dynamic>?> fetchTest(String testKey) async {
+  Future<Map<String, dynamic>?> fetchTest(String testKey, {String? groupId}) async {
     try {
-      final data = await _get('/tests/$testKey/?client=2');
+      final gid = (groupId != null && groupId.isNotEmpty)
+          ? '&group_id=${Uri.encodeComponent(groupId)}'
+          : '';
+      final data = await _get('/tests/$testKey/?client=2$gid');
       if (data is! Map) return null;
       return Map<String, dynamic>.from(data);
     } catch (e) {

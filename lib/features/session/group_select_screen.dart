@@ -48,6 +48,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
   bool _loadingCatalog = false;
   List<CatalogEntry> _catalog = [];
   String? _err;
+  final Set<String> _downloadingKeys = {};
 
   @override
   void initState() {
@@ -104,6 +105,31 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
         _loadingCatalog = false;
         _err = "Testlar ro'yxatini yuklab bo'lmadi";
       });
+    }
+  }
+
+  /// Guruh kontekstida (group_id ma'lum bo'lganda) testni yuklab, keshga
+  /// saqlaydi — S-001: detail fetch guruh scoping bilan bog'lanishi kerak,
+  /// shuning uchun bu yerdagi yuklash har doim `_selectedGroup`ning id'sini
+  /// uzatadi (guruhsiz maktab bu ekranga umuman kirmaydi — _loadGroups() da
+  /// to'g'ridan StudentEntryScreen'ga o'tkaziladi).
+  Future<void> _downloadEntry(CatalogEntry entry) async {
+    final groupId = (_selectedGroup?['id'] ?? '').toString();
+    setState(() => _downloadingKeys.add(entry.testKey));
+    try {
+      await testCatalogService.download(
+        entry.testKey,
+        groupId: groupId.isEmpty ? null : groupId,
+      );
+    } catch (e) {
+      debugPrint('GroupSelectScreen: download(${entry.testKey}) error: $e');
+    }
+    if (!mounted) return;
+    setState(() => _downloadingKeys.remove(entry.testKey));
+    // Holatni yangilash uchun shu guruh katalogini qayta yuklaymiz —
+    // muvaffaqiyatli yuklangan test "Boshlash"ga aylanadi.
+    if (_selectedGroup != null) {
+      await _selectGroup(_selectedGroup!);
     }
   }
 
@@ -246,7 +272,34 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
         entry.status == CatalogStatus.updatable;
     final isLocked = entry.lockedUntil != null &&
         entry.lockedUntil!.isAfter(DateTime.now());
-    final disabled = !downloaded || isLocked;
+    final isDownloading = _downloadingKeys.contains(entry.testKey);
+
+    // Yuklanmagan test — shu yerdayoq (guruh ma'lum bo'lgan holatda)
+    // yuklab olish imkonini beramiz, group_id bilan (S-001).
+    if (!downloaded) {
+      return Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ListTile(
+          title: Text(
+            entry.title,
+            style:
+                AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700),
+          ),
+          subtitle: const Text("Yuklab olinmagan",
+              style: TextStyle(color: AppColors.ink3, fontSize: 12)),
+          trailing: isDownloading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : TextButton(
+                  onPressed: () => _downloadEntry(entry),
+                  child: const Text('Yuklash'),
+                ),
+        ),
+      );
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -255,16 +308,13 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
           entry.title,
           style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700),
         ),
-        subtitle: !downloaded
-            ? const Text("Avval yuklab oling",
-                style: TextStyle(color: AppColors.err, fontSize: 12))
-            : isLocked
-                ? const Text('Hali qulflangan',
-                    style: TextStyle(color: AppColors.primary, fontSize: 12))
-                : null,
+        subtitle: isLocked
+            ? const Text('Hali qulflangan',
+                style: TextStyle(color: AppColors.primary, fontSize: 12))
+            : null,
         trailing: const Icon(Icons.chevron_right_rounded),
-        enabled: !disabled,
-        onTap: disabled ? null : () => _goToStudentEntry(entry, _selectedGroup),
+        enabled: !isLocked,
+        onTap: isLocked ? null : () => _goToStudentEntry(entry, _selectedGroup),
       ),
     );
   }
