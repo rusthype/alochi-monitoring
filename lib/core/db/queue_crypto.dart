@@ -41,7 +41,7 @@ class QueueCrypto {
         stored = base64Encode(generated.bytes);
         await _storage.write(key: _keyStorageKey, value: stored);
       }
-      return enc.Key(base64Decode(stored));
+      return enc.Key(base64Decode(base64.normalize(stored)));
     } catch (e) {
       debugPrint('QueueCrypto: secure storage unavailable ($e), using fallback key file');
       return _loadOrCreateFallbackKey();
@@ -52,7 +52,7 @@ class QueueCrypto {
     final dir = await getApplicationSupportDirectory();
     final file = File(p.join(dir.path, _fallbackKeyFileName));
     if (await file.exists()) {
-      return enc.Key(base64Decode(await file.readAsString()));
+      return enc.Key(base64Decode(base64.normalize(await file.readAsString())));
     }
     final generated = enc.Key.fromSecureRandom(32);
     await file.writeAsString(base64Encode(generated.bytes));
@@ -78,7 +78,7 @@ class QueueCrypto {
     final body = stored.substring(_prefix.length);
     final parts = body.split(':');
     if (parts.length != 2) return stored;
-    final iv = enc.IV(base64Decode(parts[0]));
+    final iv = enc.IV(base64Decode(base64.normalize(parts[0])));
     final encrypter = enc.Encrypter(enc.AES(key, mode: enc.AESMode.gcm));
     return encrypter.decrypt64(parts[1], iv: iv);
   }
