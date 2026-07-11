@@ -6,7 +6,19 @@ import 'test_session.dart';
 
 class StudentEntryScreen extends StatefulWidget {
   final TestSession session;
-  const StudentEntryScreen({super.key, required this.session});
+
+  /// Set by GroupSelectScreen when the user already picked their group
+  /// (the new maktab→guruh→test→o'quvchi flow) — the group list/loader
+  /// below is skipped entirely and the roster loads straight away.
+  /// Null for the legacy/guruhsiz-maktab path, which still loads groups
+  /// itself (unchanged behavior).
+  final Map<String, dynamic>? preselectedGroup;
+
+  const StudentEntryScreen({
+    super.key,
+    required this.session,
+    this.preselectedGroup,
+  });
 
   @override
   State<StudentEntryScreen> createState() => _StudentEntryScreenState();
@@ -53,6 +65,17 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
   }
 
   Future<void> _loadGroups() async {
+    if (widget.preselectedGroup != null) {
+      // Guruh avvalgi qadamda (GroupSelectScreen) allaqachon tanlangan —
+      // qayta guruh ro'yxatini yuklamaymiz, to'g'ridan roster'ga o'tamiz.
+      setState(() {
+        _groups = [widget.preselectedGroup!];
+        _selectedGroup = widget.preselectedGroup;
+        _loadingGroups = false;
+      });
+      await _loadStudents();
+      return;
+    }
     try {
       final g = await api.fetchGroups(widget.session.schoolCode);
       if (!mounted) return;
@@ -129,6 +152,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
 
     int grade;
     String groupName;
+    String groupId;
     if (_groups.isNotEmpty) {
       if (_selectedGroup == null) {
         setState(() => _err = 'Guruhni tanlang');
@@ -136,6 +160,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       }
       grade = widget.session.testGrade;
       groupName = (_selectedGroup!['name'] ?? '').toString();
+      groupId = (_selectedGroup!['id'] ?? '').toString();
     } else {
       if (_grade == null) {
         setState(() => _err = 'Sinfni tanlang');
@@ -143,6 +168,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       }
       grade = _grade!;
       groupName = '';
+      groupId = '';
     }
     setState(() {
       _err = null;
@@ -155,6 +181,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       lastName: lastName,
       studentGrade: grade,
       groupName: groupName,
+      groupId: groupId,
       studentId: studentId,
     );
     if (!mounted) return;
@@ -246,48 +273,86 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                     ),
                   )
                 else if (_groups.isNotEmpty) ...[
-                  const Text('Guruhni tanlang', style: AppTextStyles.labelLarge),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: _groups.map((group) {
-                      final selected = _selectedGroup == group;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedGroup = group;
-                            _selectedStudent = null;
-                            _students = [];
-                          });
-                          _loadStudents();
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 160),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? AppColors.secondary
-                                : AppColors.surface,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
+                  // Guruh tanlash chiplari faqat guruh HALI tanlanmagan
+                  // bo'lsa ko'rsatiladi — GroupSelectScreen'dan kelganda
+                  // (preselectedGroup != null) guruh allaqachon fiksirlangan,
+                  // qayta tanlashning hojati yo'q.
+                  if (widget.preselectedGroup == null) ...[
+                    const Text('Guruhni tanlang',
+                        style: AppTextStyles.labelLarge),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: _groups.map((group) {
+                        final selected = _selectedGroup == group;
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedGroup = group;
+                              _selectedStudent = null;
+                              _students = [];
+                            });
+                            _loadStudents();
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 160),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 12),
+                            decoration: BoxDecoration(
                               color: selected
                                   ? AppColors.secondary
-                                  : AppColors.border,
+                                  : AppColors.surface,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: selected
+                                    ? AppColors.secondary
+                                    : AppColors.border,
+                              ),
+                            ),
+                            child: Text(
+                              (group['display'] ?? group['name'] ?? '')
+                                  .toString(),
+                              style: AppTextStyles.labelLarge.copyWith(
+                                color:
+                                    selected ? Colors.white : AppColors.ink1,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                          child: Text(
-                            (group['display'] ?? group['name'] ?? '').toString(),
+                        );
+                      }).toList(),
+                    ),
+                  ] else ...[
+                    // Guruh allaqachon tanlangan (oldingi qadamda) — nom
+                    // sifatida ko'rsatamiz, chip qayta tanlash uchun emas.
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondaryMuted,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.groups_rounded,
+                              size: 16, color: AppColors.secondary),
+                          const SizedBox(width: 8),
+                          Text(
+                            (widget.preselectedGroup!['display'] ??
+                                    widget.preselectedGroup!['name'] ??
+                                    '')
+                                .toString(),
                             style: AppTextStyles.labelLarge.copyWith(
-                              color: selected ? Colors.white : AppColors.ink1,
+                              color: AppColors.secondary,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                        ],
+                      ),
+                    ),
+                  ],
                   // ── Student roster section (shown only when a group is selected) ──
                   if (_selectedGroup != null) ...[
                     const SizedBox(height: 20),

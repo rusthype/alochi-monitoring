@@ -45,6 +45,11 @@ class EngineHostScreen extends StatefulWidget {
   final String lastName;
   final String school;
   final String? group;
+
+  /// Group id (test↔guruh bog'lanishi, 2026-07-11) — included in the
+  /// result payload alongside [group] (name) so the backend can attribute
+  /// the result to a specific group unambiguously.
+  final String? groupId;
   final int? grade;
   final String studentId;
 
@@ -59,6 +64,7 @@ class EngineHostScreen extends StatefulWidget {
     required this.lastName,
     required this.school,
     this.group,
+    this.groupId,
     this.grade,
     this.studentId = '',
     this.duration,
@@ -163,6 +169,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       'pct': result.totalPct.round(),
       'school_code': widget.school,
       'group_name': widget.group ?? '',
+      'group_id': widget.groupId ?? '',
       'student_id': widget.studentId,
       'detail': <String, dynamic>{
         'sections': result.sectionScores
