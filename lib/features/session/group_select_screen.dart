@@ -93,6 +93,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       // guruh bo'yicha invalidatsiya avtomatik ta'minlanadi.
       final entries = await testCatalogService.refresh(
         groupId: groupId.isEmpty ? null : groupId,
+        schoolCode: widget.schoolCode,
       );
       if (!mounted) return;
       setState(() {
@@ -120,6 +121,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       await testCatalogService.download(
         entry.testKey,
         groupId: groupId.isEmpty ? null : groupId,
+        schoolCode: widget.schoolCode,
       );
     } catch (e) {
       debugPrint('GroupSelectScreen: download(${entry.testKey}) error: $e');

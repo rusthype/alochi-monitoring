@@ -93,7 +93,11 @@ class TestCatalogService {
   /// chaqiruvchi shu metodni YANGI groupId bilan qayta chaqirishi kerak —
   /// bu yerda natija keshlanmaydi, har chaqiriq tarmoqdan yangi olinadi
   /// (kesh invalidatsiyasi shu tarzda ta'minlanadi).
-  Future<List<CatalogEntry>> refresh({String? groupId}) async {
+  ///
+  /// `schoolCode` — berilsa, so'rovchi maktabni backendga bildiradi;
+  /// maktabga bog'langan (school FK bor) testlarni ko'rish uchun SHART
+  /// (groupId bilan birga, GroupSelectScreen).
+  Future<List<CatalogEntry>> refresh({String? groupId, String? schoolCode}) async {
     // Keshdan metadata olish (har todo holda kerak)
     final cachedRows = await TestCache.all();
     final cachedVersions = <String, int>{};
@@ -106,7 +110,7 @@ class TestCatalogService {
     // Online urinish
     List<Map<String, dynamic>> catalog;
     try {
-      catalog = await _api.fetchTestCatalog(groupId: groupId);
+      catalog = await _api.fetchTestCatalog(groupId: groupId, schoolCode: schoolCode);
     } catch (e) {
       debugPrint('TestCatalogService.refresh: network error: $e');
       catalog = [];
@@ -186,9 +190,12 @@ class TestCatalogService {
   /// oqimi, GroupSelectScreen) uzatiladi, detail fetch'ga qo'shiladi
   /// (S-001: guruh scoping xavfsizlik chegarasi). Guruhsiz maktab yoki
   /// eski (guruhdan tashqari) yuklash oqimlarida berilmaydi — orqaga moslik.
-  Future<bool> download(String testKey, {String? groupId}) async {
+  ///
+  /// `schoolCode` — tanlangan maktab kodi ma'lum bo'lganda uzatiladi;
+  /// maktabga bog'langan testni yuklash uchun SHART (groupId bilan birga).
+  Future<bool> download(String testKey, {String? groupId, String? schoolCode}) async {
     try {
-      final data = await _api.fetchTest(testKey, groupId: groupId);
+      final data = await _api.fetchTest(testKey, groupId: groupId, schoolCode: schoolCode);
       if (data == null) {
         debugPrint('TestCatalogService.download($testKey): null response');
         return false;

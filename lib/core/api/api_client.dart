@@ -351,12 +351,19 @@ class MonitoringApi {
   /// guruhsiz, ya'ni hammaga ochiq) testlarni qaytaradi (test↔guruh
   /// bog'lanishi, 2026-07-11). Berilmasa — hozirgidek maktab bo'yicha
   /// (orqaga moslik, eski app versiyalari uchun).
-  Future<List<Map<String, dynamic>>> fetchTestCatalog({String? groupId}) async {
+  ///
+  /// `schoolCode` — berilsa, backend so'rovchi maktabni shu koddan aniqlaydi
+  /// (anonim/token-siz oqimda auth token orqali aniqlanmaydi); maktabga
+  /// bog'langan (school FK bor) testlar buni bermasa butunlay ko'rinmaydi.
+  Future<List<Map<String, dynamic>>> fetchTestCatalog({String? groupId, String? schoolCode}) async {
     try {
       final gid = (groupId != null && groupId.isNotEmpty)
           ? '&group_id=${Uri.encodeComponent(groupId)}'
           : '';
-      final data = await _get('/tests/catalog/?client=2$gid');
+      final sc = (schoolCode != null && schoolCode.isNotEmpty)
+          ? '&school_code=${Uri.encodeComponent(schoolCode)}'
+          : '';
+      final data = await _get('/tests/catalog/?client=2$gid$sc');
       if (data is! List) return [];
       if (data.isEmpty) return [];
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -373,13 +380,19 @@ class MonitoringApi {
   /// tegishli javobni qaytaradi; boshqa guruh test_key bilan urinsa 403/404
   /// (S-001 xavfsizlik chegarasi, 2026-07-11). Guruhsiz maktab holatida
   /// berilmaydi — orqaga moslik saqlanadi.
+  ///
+  /// `schoolCode` — berilsa, backend so'rovchi maktabni shu koddan aniqlaydi;
+  /// maktabga bog'langan (school FK bor) test bermasa 404 qaytaradi.
   /// Xato holatida null qaytaradi, crash qilmaydi.
-  Future<Map<String, dynamic>?> fetchTest(String testKey, {String? groupId}) async {
+  Future<Map<String, dynamic>?> fetchTest(String testKey, {String? groupId, String? schoolCode}) async {
     try {
       final gid = (groupId != null && groupId.isNotEmpty)
           ? '&group_id=${Uri.encodeComponent(groupId)}'
           : '';
-      final data = await _get('/tests/$testKey/?client=2$gid');
+      final sc = (schoolCode != null && schoolCode.isNotEmpty)
+          ? '&school_code=${Uri.encodeComponent(schoolCode)}'
+          : '';
+      final data = await _get('/tests/$testKey/?client=2$gid$sc');
       if (data is! Map) return null;
       return Map<String, dynamic>.from(data);
     } catch (e) {
