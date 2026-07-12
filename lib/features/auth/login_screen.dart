@@ -504,12 +504,6 @@ class _LoginScreenState extends State<LoginScreen> {
             e.status == CatalogStatus.notDownloaded ||
             e.status == CatalogStatus.updatable)
         .length;
-    final cached = _catalogEntries
-        .where((e) =>
-            e.status == CatalogStatus.cached ||
-            e.status == CatalogStatus.cachedOnly)
-        .length;
-    final total = _catalogEntries.length;
     final hasNew = downloadable > 0;
 
     return GestureDetector(
@@ -546,26 +540,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            if (total > 0) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: hasNew
-                      ? Colors.white.withValues(alpha: .25)
-                      : AppColors.primaryMuted,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '$cached/$total',
-                  style: AppTextStyles.caption.copyWith(
-                    color: hasNew ? Colors.white : AppColors.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
           ],
         ),
       ),
