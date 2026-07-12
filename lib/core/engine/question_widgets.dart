@@ -383,7 +383,11 @@ class SpellingWidget extends StatelessWidget {
             ),
           ),
         ]),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
+        if (question.img != null && question.img!.isNotEmpty)
+          _buildQuestionImage(question.img!, height: 160),
+        if (question.img != null && question.img!.isNotEmpty)
+          const SizedBox(height: 10),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
