@@ -223,6 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  @override
   void dispose() {
     _userCtrl.dispose();
     _passCtrl.dispose();
@@ -533,13 +534,13 @@ class _LoginScreenState extends State<LoginScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.download_rounded,
+              Icons.school_rounded,
               size: 16,
               color: hasNew ? Colors.white : AppColors.ink2,
             ),
             const SizedBox(width: 6),
             Text(
-              _getDynamicCatalogTitle(_catalogEntries),
+              'Maktablar',
               style: AppTextStyles.labelMedium.copyWith(
                 color: hasNew ? Colors.white : AppColors.ink1,
                 fontWeight: FontWeight.w700,
@@ -607,9 +608,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
-        child: Row(
+        child: const Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             Icon(Icons.folder_rounded, size: 16, color: Color(0xFF00d68f)),
             SizedBox(width: 6),
             Text(
@@ -1368,7 +1369,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_getDynamicCatalogTitle(_entries),
+                      Text('Maktablar',
                           style: AppTextStyles.titleMedium
                               .copyWith(fontWeight: FontWeight.w800)),
                       Text('$cached / $total ta yuklab olindi',
@@ -1460,25 +1461,86 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       ..sort((a, b) {
         if (a == umumiy) return 1;
         if (b == umumiy) return -1;
+        final aNum = int.tryParse(a);
+        final bNum = int.tryParse(b);
+        if (aNum != null && bNum != null) {
+          return aNum.compareTo(bNum);
+        }
         return a.compareTo(b);
       });
 
     final widgets = <Widget>[];
-    for (final code in codes) {
-      // Yangi testlar ro'yxat boshida chiqishi uchun yangi-birinchi tartib
-      // (backend updated_at bo'yicha; null bo'lsa oxiriga tushadi).
-      final groupEntries = groups[code]!
+    final schoolCodes = codes.where((c) => c != umumiy).toList();
+    if (schoolCodes.isNotEmpty) {
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: schoolCodes.map((code) {
+              final label = codeToLabel[code] ?? '$code-maktab';
+              return Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: .03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {},
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryMuted,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.school_rounded, size: 20, color: AppColors.primary),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            label,
+                            style: AppTextStyles.labelLarge.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      );
+    }
+
+    if (codes.contains(umumiy)) {
+      final groupEntries = groups[umumiy]!
         ..sort((a, b) =>
             (b.updatedAt ?? DateTime(0)).compareTo(a.updatedAt ?? DateTime(0)));
-      final label = code == umumiy
-          ? 'Umumiy testlar'
-          : (codeToLabel[code] ?? '$code-maktab');
       final groupCached = groupEntries
           .where((e) =>
               e.status == CatalogStatus.cached ||
               e.status == CatalogStatus.cachedOnly)
           .length;
-      widgets.add(_buildSectionHeader(label, groupCached, groupEntries.length));
+      widgets.add(_buildSectionHeader('Umumiy testlar', groupCached, groupEntries.length));
       for (var i = 0; i < groupEntries.length; i++) {
         widgets.add(_buildItem(groupEntries[i]));
         if (i < groupEntries.length - 1) {
