@@ -511,13 +511,35 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     setState(() => _pdfGenerating = true);
     try {
       final bytes = await _buildPdfBytes();
-      final dir = await getApplicationSupportDirectory();
+      // Prefer a real, user-visible Downloads folder on desktop platforms
+      // (Windows/macOS/Linux) so "PDF hisobot" actually lands somewhere the
+      // user can find it. getDownloadsDirectory() returns null on
+      // mobile (Android/iOS), so fall back to the app-private directory
+      // there — mobile behavior is unchanged.
+      Directory dir;
+      final downloadsDir = await getDownloadsDirectory();
+      dir = downloadsDir ?? await getApplicationSupportDirectory();
       final path =
           '${dir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
       await File(path).writeAsBytes(bytes);
 
       if (mounted) setState(() => _pdfPath = path);
-      await OpenFilex.open(path);
+      final openResult = await OpenFilex.open(path);
+      if (openResult.type != ResultType.done) {
+        debugPrint(
+          '_EngineResultScreen._generatePdf open failed: '
+          '${openResult.type} — ${openResult.message}',
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PDF saqlandi, lekin ochib bo\'lmadi'),
+              backgroundColor: AppColors.err,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
     } catch (e) {
       debugPrint('_EngineResultScreen._generatePdf error: $e');
       if (mounted) {
