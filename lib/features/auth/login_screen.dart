@@ -540,7 +540,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(width: 6),
             Text(
-              'Maktablar',
+              _getDynamicCatalogTitle(_catalogEntries),
               style: AppTextStyles.labelMedium.copyWith(
                 color: hasNew ? Colors.white : AppColors.ink1,
                 fontWeight: FontWeight.w700,
@@ -1369,7 +1369,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Maktablar',
+                      Text(_getDynamicCatalogTitle(_entries),
                           style: AppTextStyles.titleMedium
                               .copyWith(fontWeight: FontWeight.w800)),
                       Text('$cached / $total ta yuklab olindi',
@@ -1496,7 +1496,15 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              SessionSetupScreen(entry: groups[code]!.first),
+                        ),
+                      );
+                    },
                     borderRadius: BorderRadius.circular(16),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
