@@ -12,6 +12,7 @@ import '../db/attempt_store.dart';
 import 'test_models.dart';
 import 'test_scorer.dart';
 import 'question_widgets.dart';
+import '../services/heartbeat_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TestEngine
@@ -61,6 +62,9 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   late int _secs;
   Timer? _timer;
 
+  final Stopwatch _questionStopwatch = Stopwatch()..start();
+  final List<int> _questionTimes = [];
+
   /// Crash-recovery attempt bookkeeping (attempt_store.dart).
   int? _startedAtMs;
   int? _deadlineMs;
@@ -85,6 +89,15 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
 
   int get _totalQuestions =>
       _sections.fold(0, (sum, s) => sum + s.questionCount);
+
+  int get _currentQuestionIndex {
+    int count = 0;
+    for (int i = 0; i < _sectionIdx; i++) {
+      count += _sections[i].questionCount;
+    }
+    count += _answeredInSection(_sectionIdx);
+    return count;
+  }
 
   int get _answeredCount {
     int count = 0;
@@ -200,12 +213,39 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
 
     setState(() => _secs = (remainingMs / 1000).ceil());
     _startTimer();
+
+    // Crash-recovery resume restores _answers directly (bypassing
+    // _setAnswer), so the heartbeat wouldn't otherwise see this session's
+    // progress until the student answers another question. Report it now.
+    _reportProgress();
   }
 
   /// Wraps a single answer mutation with a debounced attempt_store save.
   void _setAnswer(String key, dynamic value) {
+    // Record time spent on this question (index-aligned to question order,
+    // matching the backend's question_times contract) BEFORE _answers is
+    // mutated, since _currentQuestionIndex derives from _answers' answered
+    // count and would otherwise already reflect the post-answer position.
+    final idx = _currentQuestionIndex;
+    if (idx < 500) {
+      while (_questionTimes.length <= idx) {
+        _questionTimes.add(0);
+      }
+      _questionTimes[idx] = _questionStopwatch.elapsed.inSeconds;
+    }
+    _questionStopwatch.reset();
+
     setState(() => _answers[key] = value);
     _scheduleSave();
+    _reportProgress();
+  }
+
+  void _reportProgress() {
+    HeartbeatService.instance.updateProgress(
+      _currentQuestionIndex,
+      _totalQuestions,
+      List<int>.from(_questionTimes),
+    );
   }
 
   void _scheduleSave() {
@@ -273,9 +313,15 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
 
   void _goSection(int idx) {
     if (idx < 0 || idx >= _sections.length) return;
+
+    // Per-question timing is recorded in _setAnswer (index-aligned to
+    // question order), not here — a section can contain many questions,
+    // so resetting/appending to _questionTimes on section change would
+    // measure per-section time, not per-question time.
     _syncTextAnswers(); // flush typed values before switching
     _fadeCtrl.forward(from: 0);
     setState(() => _sectionIdx = idx);
+    _reportProgress();
   }
 
   /// Sync controller text into _answers so scorer sees latest input.
@@ -336,6 +382,10 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     if (_finishing) return;
     _finishing = true;
     _timer?.cancel();
+
+    _questionStopwatch.stop();
+    _reportProgress();
+
     for (final entry in _controllers.entries) {
       _answers[entry.key] = entry.value.text;
     }

@@ -160,6 +160,9 @@ class MonitoringApi {
     String status = 'active',
     String? studentCode,
     int tabSwitchCount = 0,
+    int? currentQuestionIndex,
+    int? totalQuestions,
+    List<int>? questionTimes,
   }) async {
     await _post('/session/ping/', {
       'session_id': sessionId,
@@ -170,6 +173,9 @@ class MonitoringApi {
       'status': status,
       if (studentCode != null && studentCode.isNotEmpty) 'student_code': studentCode,
       'tab_switch_count': tabSwitchCount,
+      if (currentQuestionIndex != null) 'current_question_index': currentQuestionIndex,
+      if (totalQuestions != null) 'total_questions': totalQuestions,
+      if (questionTimes != null) 'question_times': questionTimes,
     });
   }
 
