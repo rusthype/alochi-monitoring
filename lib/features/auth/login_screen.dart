@@ -1243,11 +1243,18 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
   late List<CatalogEntry> _entries;
   final Set<String> _downloadingKeys = {};
 
+  /// Nashr qilingan testi bor barcha maktablar (kod+nom) — hatto o'sha
+  /// maktabning barcha testlari guruhga bog'langani uchun yuqoridagi
+  /// `_entries`da (anonim, school_code'siz katalog) umuman ko'rinmasa ham.
+  /// "Boshqa maktablar" bo'limi uchun (2026-07-12).
+  List<Map<String, String>> _schools = [];
+
   @override
   void initState() {
     super.initState();
     _entries = List.from(widget.initialEntries);
     _refresh();
+    _loadSchools();
   }
 
   Future<void> _refresh() async {
@@ -1256,6 +1263,15 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       if (mounted) setState(() => _entries = fresh);
     } catch (e) {
       debugPrint('CatalogSheet refresh error: $e');
+    }
+  }
+
+  Future<void> _loadSchools() async {
+    try {
+      final schools = await api.fetchCatalogSchools();
+      if (mounted) setState(() => _schools = schools);
+    } catch (e) {
+      debugPrint('CatalogSheet loadSchools error: $e');
     }
   }
 
@@ -1446,6 +1462,26 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       for (var i = 0; i < groupEntries.length; i++) {
         widgets.add(_buildItem(groupEntries[i]));
         if (i < groupEntries.length - 1) {
+          widgets.add(const Divider(height: 1, indent: 60));
+        }
+      }
+    }
+
+    // Katalogda hech qanday holatda (guruhsiz "Umumiy testlar" sifatida
+    // ham) ko'rinmaydigan, lekin nashr qilingan testi bor maktablar —
+    // ularning barcha testlari guruhga bog'langan bo'lishi mumkin
+    // (2026-07-12). Shunday maktablarni PIN oqimiga kirish nuqtasi
+    // sifatida alohida ko'rsatamiz.
+    final coveredCodes = codes.where((c) => c != umumiy).toSet();
+    final otherSchools = _schools
+        .where((s) => !coveredCodes.contains(s['school_code']))
+        .toList();
+    if (otherSchools.isNotEmpty) {
+      widgets.add(
+          _buildSectionHeader('Boshqa maktablar', 0, otherSchools.length));
+      for (var i = 0; i < otherSchools.length; i++) {
+        widgets.add(_buildSchoolPickerRow(otherSchools[i]));
+        if (i < otherSchools.length - 1) {
           widgets.add(const Divider(height: 1, indent: 60));
         }
       }
@@ -1684,6 +1720,63 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                         ),
                       ),
                     ),
+    );
+  }
+
+  /// "Boshqa maktablar" bo'limidagi bitta qator — bu maktabning barcha
+  /// testlari guruhga bog'langan bo'lishi mumkin, shu sabab yuqoridagi
+  /// katalogda umuman ko'rinmaydi. Bosilganda to'g'ridan test
+  /// boshlanmaydi — faqat maktab+PIN oqimini ochadi (SessionSetupScreen),
+  /// u yerdan GroupSelectScreen o'zi haqiqiy katalogni yuklaydi.
+  Widget _buildSchoolPickerRow(Map<String, String> school) {
+    final schoolCode = school['school_code'] ?? '';
+    final rawLabel = school['label'] ?? '';
+    final label = rawLabel.isNotEmpty ? rawLabel : '$schoolCode-maktab';
+
+    void openSchoolPicker() {
+      Navigator.of(context).pop();
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SessionSetupScreen(
+            entry: CatalogEntry(
+              testKey: '', // sintetik — hech qachon yuklab/ishga tushirilmaydi
+              title: label,
+              grade: 0,
+              version: 0,
+              status: CatalogStatus.notDownloaded,
+              schoolButtons: [
+                SchoolButton(
+                  pin: '',
+                  label: label,
+                  schoolCode: schoolCode,
+                  randomVariant: false,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: AppColors.muted,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Icon(Icons.school_rounded,
+            size: 18, color: AppColors.ink2),
+      ),
+      title: Text(
+        label,
+        style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700),
+      ),
+      trailing: const Icon(Icons.chevron_right_rounded,
+          color: AppColors.ink3),
+      onTap: openSchoolPicker,
     );
   }
 }

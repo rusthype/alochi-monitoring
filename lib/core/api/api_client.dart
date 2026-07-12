@@ -401,6 +401,30 @@ class MonitoringApi {
     }
   }
 
+  /// Nashr qilingan testi bor barcha maktablar ro'yxati (kod+nom, kontentsiz).
+  /// Anonim katalog (`fetchTestCatalog`, school_code'siz) faqat guruhsiz
+  /// global testlarni ko'rsatadi — bu endpoint esa maktabni PIN oqimiga
+  /// kirish nuqtasi sifatida ko'rsatish uchun, hatto o'sha maktabning barcha
+  /// testlari guruhga bog'langan bo'lsa ham (2026-07-12).
+  /// Xato holatida [] qaytaradi, crash qilmaydi.
+  Future<List<Map<String, String>>> fetchCatalogSchools() async {
+    try {
+      final data = await _get('/tests/catalog/schools/');
+      if (data is! List) return [];
+      return data
+          .whereType<Map>()
+          .map((e) => {
+                'school_code': e['school_code']?.toString() ?? '',
+                'label': e['label']?.toString() ?? '',
+              })
+          .where((e) => e['school_code']!.isNotEmpty)
+          .toList();
+    } catch (e) {
+      debugPrint('fetchCatalogSchools error: $e');
+      return [];
+    }
+  }
+
   /// AI xulosa (TZ §10.4): per-topic natijani yuboradi, tahlil qaytaradi.
   /// {summary, strengths[], weaknesses[], recommendations[], focus_14day[]}.
   /// Offline yoki AI mavjud bo'lmasa null (UI kartani ko'rsatmaydi).
