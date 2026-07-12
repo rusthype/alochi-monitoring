@@ -27,13 +27,19 @@ class GroupSelectScreen extends StatefulWidget {
   /// The test the user originally tapped to start this flow. Used as a
   /// fallback when the school has no groups (nothing to filter by) and
   /// kept as the initial pick if it's still relevant after group scoping.
-  final CatalogEntry fallbackEntry;
+  ///
+  /// Nullable: entry points that only know the school (e.g. the
+  /// "Boshqa maktablar" picker in the pre-login bottom sheet, 2026-07-12)
+  /// have no pre-selected test to fall back to. In that case a guruhsiz
+  /// school (no groups) is shown as an error instead of being routed
+  /// straight to StudentEntryScreen.
+  final CatalogEntry? fallbackEntry;
 
   const GroupSelectScreen({
     super.key,
     required this.schoolCode,
     required this.schoolLabel,
-    required this.fallbackEntry,
+    this.fallbackEntry,
   });
 
   @override
@@ -61,9 +67,22 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       final g = await api.fetchGroups(widget.schoolCode);
       if (!mounted) return;
       if (g.isEmpty) {
+        final fallback = widget.fallbackEntry;
+        // testKey bo'sh bo'lsa — bu login_screen'dagi "Boshqa maktablar"
+        // school-picker'idan kelgan sintetik CatalogEntry (2026-07-12),
+        // haqiqiy test emas, hech qachon yuklab/ishga tushirib bo'lmaydi.
+        if (fallback == null || fallback.testKey.isEmpty) {
+          // Pre-known test yo'q (masalan school-picker orqali kirilgan) —
+          // bora oladigan joy yo'q, xato holatini ko'rsatamiz.
+          setState(() {
+            _loadingGroups = false;
+            _err = "Bu maktab uchun testlar topilmadi";
+          });
+          return;
+        }
         // Guruhsiz maktab — filtrlash uchun hech narsa yo'q, hozirgidek
         // to'g'ridan o'quvchi ekraniga o'tamiz (group_id yuborilmaydi).
-        _goToStudentEntry(widget.fallbackEntry, null);
+        _goToStudentEntry(fallback, null);
         return;
       }
       setState(() {
@@ -194,12 +213,18 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                       const SizedBox(height: 12),
                     ],
                     if (_groups.isEmpty)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Text('Guruhlar topilmadi'),
-                        ),
-                      )
+                      // _err != null bo'lsa, yuqoridagi xato bandida
+                      // sabab allaqachon ko'rsatilgan — ikkinchi marta
+                      // umumiy "Guruhlar topilmadi" matnini takrorlamaymiz.
+                      if (_err == null)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Text('Guruhlar topilmadi'),
+                          ),
+                        )
+                      else
+                        const SizedBox.shrink()
                     else ...[
                       const Text('Guruhni tanlang',
                           style: AppTextStyles.labelLarge),
