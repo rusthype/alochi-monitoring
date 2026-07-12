@@ -539,7 +539,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(width: 6),
             Text(
-              'Yangi testlar',
+              _getDynamicCatalogTitle(_catalogEntries),
               style: AppTextStyles.labelMedium.copyWith(
                 color: hasNew ? Colors.white : AppColors.ink1,
                 fontWeight: FontWeight.w700,
@@ -1368,7 +1368,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Yangi testlar',
+                      Text(_getDynamicCatalogTitle(_entries),
                           style: AppTextStyles.titleMedium
                               .copyWith(fontWeight: FontWeight.w800)),
                       Text('$cached / $total ta yuklab olindi',
@@ -1806,4 +1806,21 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       onTap: openSchoolPicker,
     );
   }
+}
+
+String _getDynamicCatalogTitle(List<CatalogEntry> entries) {
+  final codes = <String>{};
+  for (final e in entries) {
+    for (final sb in e.schoolButtons) {
+      if (sb.schoolCode.isNotEmpty) {
+        codes.add(sb.schoolCode);
+      }
+    }
+  }
+  if (codes.isEmpty) {
+    return 'Maktablar';
+  }
+  final sorted = codes.toList()
+    ..sort((a, b) => (int.tryParse(a) ?? 0).compareTo(int.tryParse(b) ?? 0));
+  return '${sorted.join(', ')} maktablar';
 }
