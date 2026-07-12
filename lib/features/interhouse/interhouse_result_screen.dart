@@ -1,6 +1,7 @@
 // lib/features/interhouse/interhouse_result_screen.dart
 // Interhouse Grade 2 result display + submission
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../core/models/models.dart';
 import '../../core/api/api_client.dart';
@@ -9,6 +10,7 @@ import '../../core/db/history_db.dart';
 import '../../core/sync/sync_service.dart';
 import '../../core/services/pdf_service.dart';
 import 'package:printing/printing.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../local_test/local_grade_screen.dart';
 import 'interhouse_data.dart';
 import 'interhouse_scorer.dart';
@@ -155,7 +157,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
       engScore: widget.result.total,
       totalPct: widget.result.totalPct,
       answers: const {},
-      deviceId: 'flutter_interhouse',
+      deviceId: 'flutter_interhouse-${defaultTargetPlatform.name}',
     );
 
     final resp =
@@ -190,8 +192,20 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
     }
   }
 
+  String _getSendStatusText(AppLocalizations l10n) {
+    switch (_sendStatus) {
+      case 'Yuborilmoqda...': return l10n.sending;
+      case 'Xatolik. Keyinroq yuboriladi.': return l10n.errorLater;
+      case 'Saqlandi!': return l10n.savedSuccess;
+      case 'Saqlandi (offline — keyinroq yuboriladi)': return l10n.savedOfflineLater;
+      case 'Saqlandi, yuborilmoqda...': return l10n.savedSending;
+      default: return _sendStatus;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final result = widget.result;
     final level = result.level;
 
@@ -234,8 +248,8 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                               fit: BoxFit.contain)),
                     ),
                     const SizedBox(height: 8),
-                    const Text('Interhouse Grade 2',
-                        style: TextStyle(
+                    Text(l10n.interhouseGrade2,
+                        style: const TextStyle(
                             fontSize: 13,
                             color: Colors.white70,
                             fontWeight: FontWeight.w600)),
@@ -347,8 +361,8 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("Bo'limlar bo'yicha",
-                            style: TextStyle(
+                        Text(l10n.sectionsBreakdown,
+                            style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.ink1)),
@@ -394,7 +408,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                        child: Text(_sendStatus,
+                        child: Text(_getSendStatusText(l10n),
                             style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -435,7 +449,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                             name: '${last}_${first}_Natija.pdf');
                       },
                       icon: const Icon(Icons.print_rounded, size: 18),
-                      label: const Text('Chop etish'),
+                      label: Text(l10n.printPdf),
                       style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.ink1,
                           side: const BorderSide(color: AppColors.border),
@@ -469,7 +483,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                             filename: '${last}_${first}_Natija.pdf');
                       },
                       icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
-                      label: const Text('PDF Saqlash'),
+                      label: Text(l10n.savePdf),
                       style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.brand,
                           side: const BorderSide(color: AppColors.brand),
@@ -493,8 +507,8 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                       (_) => false,
                     ),
                     icon: const Icon(Icons.person_add_rounded),
-                    label: const Text("Keyingi o'quvchi",
-                        style: TextStyle(
+                    label: Text(l10n.nextStudentBtn,
+                        style: const TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w700)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.brand,
@@ -509,7 +523,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                   onPressed: () =>
                       Navigator.popUntil(context, (r) => r.isFirst),
                   icon: const Icon(Icons.home_rounded, size: 16),
-                  label: const Text('Bosh sahifa'),
+                  label: Text(l10n.homePage),
                   style: TextButton.styleFrom(
                       foregroundColor: AppColors.ink2),
                 ),

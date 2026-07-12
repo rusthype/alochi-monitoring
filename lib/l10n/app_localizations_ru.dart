@@ -584,4 +584,296 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get offlineTestResult => 'Офлайн тест';
+
+  @override
+  String get clearHistoryTitle => 'Tozalash';
+
+  @override
+  String get clearHistoryConfirm =>
+      'Barcha natijalar tarixi o\'chirib yuborilsinmi?';
+
+  @override
+  String get noWord => 'Yo\'q';
+
+  @override
+  String get yesDelete => 'Ha, o\'chirish';
+
+  @override
+  String get offlineHistoryTitle => 'Oflayn Natijalar Tarixi';
+
+  @override
+  String get noHistoryYet => 'Hozircha tarix yo\'q';
+
+  @override
+  String get schoolLabel => 'Maktab';
+
+  @override
+  String get dateLabel => 'Sana';
+
+  @override
+  String get mathShort => 'Mat';
+
+  @override
+  String get engShort => 'Ing';
+
+  @override
+  String syncCompleteMsg(String done) {
+    return 'Sinxronizatsiya yakunlandi! $done ta rasm oflayn saqlandi.';
+  }
+
+  @override
+  String get errorOccurred => 'Xato yuz berdi: ';
+
+  @override
+  String get offlineImagesLoading => 'Oflayn rasmlar yuklanmoqda...';
+
+  @override
+  String savedOutOfTotal(String done, String total) {
+    return '$done / $total ta saqlandi';
+  }
+
+  @override
+  String get syncImagesOfflineButton => 'Oflayn rasmlarni tayyorlash (Sync)';
+
+  @override
+  String get localResSending => '📤 Yuborilmoqda...';
+
+  @override
+  String get localResSavedSending => '✅ Saqlandi, yuborilmoqda...';
+
+  @override
+  String get localResSaveError => '❌ Saqlashda xato. Qayta urinib ko\'ring.';
+
+  @override
+  String get localResBarakalla => 'Barakalla!';
+
+  @override
+  String get localResYaxshi => 'Yaxshi!';
+
+  @override
+  String get nextStudentButton => 'Keyingi o\'quvchi';
+
+  @override
+  String get questionsUnansweredPrompt =>
+      'ta savol javobsiz. Tugatmoqchimisiz?';
+
+  @override
+  String get finishButtonText => 'Tugatish';
+
+  @override
+  String get gradeWord => '-sinf';
+
+  @override
+  String get mathSectionTimeUp => 'Matematika bo\'limi vaqti tugagan!';
+
+  @override
+  String get engSectionTimeUp => 'Ingliz tili bo\'limi vaqti tugagan!';
+
+  @override
+  String get finishTest => 'Tugatish';
+
+  @override
+  String get uploadTest => 'Yuklash';
+
+  @override
+  String get resultNotSavedError =>
+      'Natija saqlanmadi — internet yoki xotira muammosi. Qayta urinib ko\'ring.';
+
+  @override
+  String get testLoadFailed => 'Test yuklanmadi';
+
+  @override
+  String get testTitle => 'Test';
+
+  @override
+  String get gradeExcellent => 'A\'lo';
+
+  @override
+  String get gradeGood => 'Yaxshi';
+
+  @override
+  String get gradeSatisfactory => 'Qoniqarli';
+
+  @override
+  String get gradeNeedsPractice => 'Qo\'shimcha mashq kerak';
+
+  @override
+  String get pdfGenerationError => 'PDF yaratishda xato';
+
+  @override
+  String get resultTitle => 'Natija';
+
+  @override
+  String correctAnswersWithCount(String count) {
+    return 'To\'g\'ri $count';
+  }
+
+  @override
+  String wrongAnswersWithCount(String count) {
+    return 'Xato $count';
+  }
+
+  @override
+  String shieldsCount(String count) {
+    return '$count qalqon';
+  }
+
+  @override
+  String get sectionsByTitle => 'BO\'LIMLAR BO\'YICHA';
+
+  @override
+  String get noDataAvailable => 'Ma\'lumot yo\'q';
+
+  @override
+  String get reopenPdf => 'PDF qayta ochish';
+
+  @override
+  String get pdfReportButton => 'PDF hisobot';
+
+  @override
+  String get aiAnalysisTitle => 'AI tahlil';
+
+  @override
+  String get analysisPreparing => 'Tahlil tayyorlanmoqda…';
+
+  @override
+  String get strongSidesTitle => 'Kuchli tomonlar';
+
+  @override
+  String get weakSidesTitle => 'Zaif tomonlar';
+
+  @override
+  String get recommendationsTitle => 'Tavsiyalar';
+
+  @override
+  String get focus14DaysTitle => '14 kunlik e\'tibor';
+
+  @override
+  String get subjectAnalysisByTopic => 'Mavzu bo\'yicha tahlil';
+
+  @override
+  String get strongAndWeakSides => 'Kuchli va zaif tomonlar';
+
+  @override
+  String get strongLabel => 'Kuchli';
+
+  @override
+  String get needsReinforcement => 'Mustahkamlash kerak';
+
+  @override
+  String get weakTopicFallback => 'zaif mavzu';
+
+  @override
+  String get days1to3 => '1–3 kun';
+
+  @override
+  String weakestTopicPlan(String topic) {
+    return 'Eng zaif mavzu: $topic (15 daqiqa/kun)';
+  }
+
+  @override
+  String get days4to7 => '4–7 kun';
+
+  @override
+  String secondTopicPlan(String topic) {
+    return 'Ikkinchi mavzu: $topic (5 ta misol/kun)';
+  }
+
+  @override
+  String get days8to11 => '8–11 kun';
+
+  @override
+  String get mixedExercisesPlan =>
+      'Aralash mashqlar — barcha mavzularni takrorlash';
+
+  @override
+  String get days12to14 => '12–14 kun';
+
+  @override
+  String get controlTestPlan => 'Nazorat testi — natijani solishtirish';
+
+  @override
+  String get plan14DaysTitle => '14 kunlik reja';
+
+  @override
+  String get sending => 'Yuborilmoqda...';
+
+  @override
+  String get savedSuccess => 'Saqlandi!';
+
+  @override
+  String get savedOfflineLater => 'Saqlandi (offline — keyinroq yuboriladi)';
+
+  @override
+  String get savedSending => 'Saqlandi, yuborilmoqda...';
+
+  @override
+  String get interhouseGrade2 => 'Interhouse Grade 2';
+
+  @override
+  String get sectionsBreakdown => 'Bo\'limlar bo\'yicha';
+
+  @override
+  String get nextStudentBtn => 'Keyingi o\'quvchi';
+
+  @override
+  String get finishBtn => 'Tugatish';
+
+  @override
+  String get mathQuestionsNotFound => 'Matematika savollari topilmadi.';
+
+  @override
+  String get generalTests => 'Umumiy testlar';
+
+  @override
+  String get loadingGroups => 'Guruhlar yuklanmoqda...';
+
+  @override
+  String get selectGroup => 'Guruhni tanlang';
+
+  @override
+  String get selectStudent => 'O\'quvchini tanlang';
+
+  @override
+  String get selectGrade => 'Sinfni tanlang';
+
+  @override
+  String get selectSchool => 'Maktabni tanlang';
+
+  @override
+  String get incorrectPin => 'PIN noto\'g\'ri';
+
+  @override
+  String get enterFourDigitPin => 'To\'rt xonali PIN kodni kiriting';
+
+  @override
+  String get showPassword => 'Ko\'rsatish';
+
+  @override
+  String get hidePassword => 'Yashirish';
+
+  @override
+  String get confirmBtn => 'Tasdiqlash';
+
+  @override
+  String get nextStepStudentName => 'Keyingi qadam: o\'quvchi ismini kiritish';
+
+  @override
+  String get testSession => 'Sinov sessiyasi';
+
+  @override
+  String get testSessionInstruction =>
+      'Sinov sessiyasini boshlash uchun maktabni tanlang va PIN kodni kiriting.';
+
+  @override
+  String get sessionSettings => 'Sessiya sozlamalari';
+
+  @override
+  String get studentNameStep => 'O\'quvchi ismi';
+
+  @override
+  String get testLocked => 'Bu test hali qulflangan.';
+
+  @override
+  String get testNotInCache => 'Test keshda topilmadi. Qayta yuklab oling.';
 }

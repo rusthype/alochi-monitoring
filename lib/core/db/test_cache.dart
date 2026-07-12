@@ -77,7 +77,7 @@ class TestCache {
     final jsonStr = row['json'] as String?;
     if (jsonStr == null || jsonStr.isEmpty) return null;
     try {
-      final decoded = jsonDecode(jsonStr);
+      final decoded = await compute(jsonDecode, jsonStr);
       if (decoded is! Map) return null;
       return Map<String, dynamic>.from(decoded);
     } catch (e) {

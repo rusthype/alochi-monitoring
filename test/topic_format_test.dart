@@ -22,7 +22,7 @@ void main() {
 
   group('topicsFromEngEntries', () {
     test('maps MapEntry<String, ({int ok, int tot})> to name/correct/total', () {
-      final entries = [
+      const entries = [
         MapEntry('vocab', (ok: 5, tot: 6)),
         MapEntry('grammar', (ok: 6, tot: 6)),
       ];

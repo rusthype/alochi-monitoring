@@ -1,5 +1,6 @@
 // lib/features/test/package_screen.dart
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../auth/login_screen.dart';
 import '../../core/models/models.dart';
@@ -44,13 +45,13 @@ class _PackageScreenState extends State<PackageScreen>
       context: ctx,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('Chiqish',
-            style: TextStyle(fontWeight: FontWeight.w800)),
-        content: const Text("Hisobdan chiqmoqchimisiz?"),
+        title: Text(AppLocalizations.of(context)!.logout,
+            style: const TextStyle(fontWeight: FontWeight.w800)),
+        content: Text(AppLocalizations.of(context)!.confirmLogout),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Bekor qilish'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -58,7 +59,7 @@ class _PackageScreenState extends State<PackageScreen>
               backgroundColor: AppColors.err,
               minimumSize: const Size(100, 40),
             ),
-            child: const Text('Chiqish'),
+            child: Text(AppLocalizations.of(context)!.logout),
           ),
         ],
       ),
@@ -92,13 +93,13 @@ class _PackageScreenState extends State<PackageScreen>
     } on ApiException catch (e) {
       setState(() {
         _error = e.statusCode == 403
-            ? 'Faol imtihon topilmadi yoki muddati tugagan'
+            ? AppLocalizations.of(context)!.noActiveExamOrExpired
             : e.message;
         _loading = false;
       });
     } catch (e) {
       setState(() {
-        _error = 'Yuklanmadi. Qayta urinib ko\'ring.';
+        _error = AppLocalizations.of(context)!.loadFailed;
         _loading = false;
       });
     }
@@ -113,10 +114,10 @@ class _PackageScreenState extends State<PackageScreen>
   }
 
   // ── meta string (sinf · Variant · guruh) ───────────────────────────────
-  String _metaLine(StudentSession s) {
+  String _metaLine(BuildContext context, StudentSession s) {
     final parts = <String>[];
-    if (s.grade != null) parts.add('${s.grade}-sinf');
-    if (s.variant != null) parts.add('Variant ${s.variant}');
+    if (s.grade != null) parts.add(AppLocalizations.of(context)!.gradeN(s.grade!));
+    if (s.variant != null) parts.add(AppLocalizations.of(context)!.variantBadge(s.variant!));
     if (s.groupName != null) parts.add(s.groupName!);
     return parts.join(' · ');
   }
@@ -139,21 +140,21 @@ class _PackageScreenState extends State<PackageScreen>
                   _HeaderCard(
                     initials: _initials(s.studentName),
                     name: s.studentName,
-                    meta: _metaLine(s),
+                    meta: _metaLine(context, s),
                     onLogout: () => _confirmLogout(context),
                   ),
                   const SizedBox(height: 24),
 
                   // ── Section title ─────────────────────────────────────
-                  const Text('Test tanlang',
-                      style: TextStyle(
+                  Text(AppLocalizations.of(context)!.selectTest,
+                      style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
                           color: AppColors.ink1,
                           letterSpacing: -0.4)),
                   const SizedBox(height: 4),
-                  const Text('Mavjud monitoring testlaridan birini tanlang',
-                      style: TextStyle(color: AppColors.ink2, fontSize: 13)),
+                  Text(AppLocalizations.of(context)!.selectMonitoringTest,
+                      style: const TextStyle(color: AppColors.ink2, fontSize: 13)),
                   const SizedBox(height: 20),
 
                   // ── Content ───────────────────────────────────────────
@@ -219,8 +220,8 @@ class _PackageScreenState extends State<PackageScreen>
                 color: AppColors.err, size: 34),
           ),
           const SizedBox(height: 16),
-          const Text('Ulanishda xatolik',
-              style: TextStyle(
+          Text(AppLocalizations.of(context)!.connectionError,
+              style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
                   color: AppColors.ink1)),
@@ -234,7 +235,7 @@ class _PackageScreenState extends State<PackageScreen>
             child: _TealButton(
               onTap: _load,
               icon: Icons.refresh_rounded,
-              label: 'Qayta urinish',
+              label: AppLocalizations.of(context)!.retry,
             ),
           ),
         ]),
@@ -249,21 +250,21 @@ class _PackageScreenState extends State<PackageScreen>
           boxShadow: _softShadow,
         ),
         child: Column(children: [
-          _IconBox(
+          const _IconBox(
             icon: Icons.event_busy_outlined,
             bg: AppColors.warnMuted,
             color: AppColors.ink2,
           ),
           const SizedBox(height: 16),
-          const Text('Aktiv imtihon yo\'q',
-              style: TextStyle(
+          Text(AppLocalizations.of(context)!.noActiveExam,
+              style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
                   color: AppColors.ink1)),
           const SizedBox(height: 6),
-          const Text(
-              'Sizga hali imtihon biriktirilmagan\nyoki muddati tugagan',
-              style: TextStyle(fontSize: 13, color: AppColors.ink2),
+          Text(
+              AppLocalizations.of(context)!.noExamAssignedOrExpired,
+              style: const TextStyle(fontSize: 13, color: AppColors.ink2),
               textAlign: TextAlign.center),
         ]),
       );
@@ -277,21 +278,21 @@ class _PackageScreenState extends State<PackageScreen>
           boxShadow: _softShadow,
         ),
         child: Column(children: [
-          _IconBox(
+          const _IconBox(
             icon: Icons.assignment_outlined,
             bg: AppColors.brandLight,
             color: AppColors.brand,
           ),
           const SizedBox(height: 16),
-          const Text('Testlar hali yuklanmagan',
-              style: TextStyle(
+          Text(AppLocalizations.of(context)!.testsNotLoadedYet,
+              style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
                   color: AppColors.ink1)),
           const SizedBox(height: 6),
-          const Text(
-              'O\'qituvchingiz test yuklagandan so\'ng\nqayta urinib ko\'ring',
-              style: TextStyle(fontSize: 13, color: AppColors.ink2),
+          Text(
+              AppLocalizations.of(context)!.tryAgainAfterTeacherUploads,
+              style: const TextStyle(fontSize: 13, color: AppColors.ink2),
               textAlign: TextAlign.center),
           const SizedBox(height: 24),
           SizedBox(
@@ -299,7 +300,7 @@ class _PackageScreenState extends State<PackageScreen>
             child: _TealButton(
               onTap: _load,
               icon: Icons.refresh_rounded,
-              label: 'Yangilash',
+              label: AppLocalizations.of(context)!.refresh,
             ),
           ),
         ]),
@@ -341,13 +342,13 @@ class _PackageScreenState extends State<PackageScreen>
                         color: AppColors.ink1)),
                 const SizedBox(height: 8),
                 Row(children: [
-                  _StatChip(val: '${pkg.mathCount}', label: 'Math',
+                  _StatChip(val: '${pkg.mathCount}', label: AppLocalizations.of(context)!.mathSubject,
                       color: AppColors.math),
                   const SizedBox(width: 6),
-                  _StatChip(val: '${pkg.engCount}', label: 'Ingliz',
+                  _StatChip(val: '${pkg.engCount}', label: AppLocalizations.of(context)!.englishSubject,
                       color: AppColors.eng),
                   const SizedBox(width: 6),
-                  _StatChip(val: '${pkg.totalCount}', label: 'Jami',
+                  _StatChip(val: '${pkg.totalCount}', label: AppLocalizations.of(context)!.totalLabel,
                       color: AppColors.ink2),
                 ]),
               ])),
@@ -477,7 +478,7 @@ class _HeaderCard extends StatelessWidget {
         const SizedBox(width: 8),
         // Logout
         Tooltip(
-          message: 'Chiqish',
+          message: AppLocalizations.of(context)!.logout,
           child: GestureDetector(
             onTap: onLogout,
             child: Container(

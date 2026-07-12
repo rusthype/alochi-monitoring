@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/db/history_db.dart';
 import '../../shared/theme/app_theme.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -34,11 +35,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder: (c) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Tozalash', style: TextStyle(color: AppColors.ink1)),
-        content: const Text("Barcha natijalar tarixi o'chirib yuborilsinmi?", style: TextStyle(color: AppColors.ink2)),
+        title: Text(AppLocalizations.of(context)!.clearHistoryTitle, style: const TextStyle(color: AppColors.ink1)),
+        content: Text(AppLocalizations.of(context)!.clearHistoryConfirm, style: const TextStyle(color: AppColors.ink2)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text("Yo'q", style: TextStyle(color: AppColors.ink3))),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text("Ha, o'chirish", style: TextStyle(color: AppColors.err))),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(AppLocalizations.of(context)!.noWord, style: const TextStyle(color: AppColors.ink3))),
+          TextButton(onPressed: () => Navigator.pop(c, true), child: Text(AppLocalizations.of(context)!.yesDelete, style: const TextStyle(color: AppColors.err))),
         ],
       ),
     );
@@ -56,13 +57,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 1,
-        title: const Text('Oflayn Natijalar Tarixi', style: TextStyle(color: AppColors.ink1, fontSize: 16, fontWeight: FontWeight.bold)),
+        title: Text(AppLocalizations.of(context)!.offlineHistoryTitle, style: const TextStyle(color: AppColors.ink1, fontSize: 16, fontWeight: FontWeight.bold)),
         iconTheme: const IconThemeData(color: AppColors.ink1),
         actions: [
           if (_records.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_outline, color: AppColors.err),
-              tooltip: 'Tozalash',
+              tooltip: AppLocalizations.of(context)!.clearHistoryTitle,
               onPressed: _clear,
             )
         ],
@@ -76,7 +77,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     children: [
                       Icon(Icons.history_toggle_off_rounded, size: 64, color: AppColors.ink3.withValues(alpha: .5)),
                       const SizedBox(height: 16),
-                      const Text("Hozircha tarix yo'q", style: TextStyle(color: AppColors.ink2, fontSize: 16)),
+                      Text(AppLocalizations.of(context)!.noHistoryYet, style: const TextStyle(color: AppColors.ink2, fontSize: 16)),
                     ],
                   ),
                 )
@@ -125,17 +126,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               children: [
                                 Text('${r['first_name']} ${r['last_name']}', style: const TextStyle(color: AppColors.ink1, fontSize: 15, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
-                                Text('Maktab: ${r['school']} | Sinf/Guruh: ${r['grade_group']}', style: const TextStyle(color: AppColors.ink2, fontSize: 12)),
+                                Text('${AppLocalizations.of(context)!.schoolLabel}: ${r['school']} | ${AppLocalizations.of(context)!.groupGradeLabel}: ${r['grade_group']}', style: const TextStyle(color: AppColors.ink2, fontSize: 12)),
                                 const SizedBox(height: 2),
-                                Text('Sana: $dateStr', style: const TextStyle(color: AppColors.ink3, fontSize: 11)),
+                                Text('${AppLocalizations.of(context)!.dateLabel}: $dateStr', style: const TextStyle(color: AppColors.ink3, fontSize: 11)),
                               ],
                             ),
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text('Mat: ${r['math_score']}', style: const TextStyle(color: AppColors.brand, fontSize: 12, fontWeight: FontWeight.w600)),
-                              Text('Ing: ${r['eng_score']}', style: const TextStyle(color: AppColors.ok, fontSize: 12, fontWeight: FontWeight.w600)),
+                              Text('${AppLocalizations.of(context)!.mathShort}: ${r['math_score']}', style: const TextStyle(color: AppColors.brand, fontSize: 12, fontWeight: FontWeight.w600)),
+                              Text('${AppLocalizations.of(context)!.engShort}: ${r['eng_score']}', style: const TextStyle(color: AppColors.ok, fontSize: 12, fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ],

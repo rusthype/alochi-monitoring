@@ -5,7 +5,7 @@
   "languageUzbek": "O'zbek",
   "languageRussian": "Русский",
   "bossCreateTitle": "Создание теста из книги",
-  "logout": "Выход",
+  "logout": "Выйти",
   "serverChecking": "Проверка сервера...",
   "serverConnected": "Подключено к серверу",
   "offlineMode": "Оффлайн режим",
@@ -13,7 +13,7 @@
   "tooManyAttempts": "Слишком много попыток. Подождите немного.",
   "serverErrorRetry": "Ошибка сервера. Попробуйте еще раз.",
   "offlineNoSavedLogin": "Нет интернета и логин не сохранен.",
-  "connectionError": "Ошибка подключения. Попробуйте еще раз.",
+  "connectionError": "Ошибка подключения",
   "loggingIn": "Вход...",
   "appSubtitle": "Платформа образовательного мониторинга",
   "testsRoute": "Тесты",
@@ -37,20 +37,26 @@
   "saveAndPublish": "Сохранить и опубликовать ({grade}-класс, {variantCount} вариантов)",
   "@saveAndPublish": {
     "placeholders": {
-      "grade": {"type": "int"},
-      "variants": {"type": "int"}
+      "grade": {
+        "type": "int"
+      },
+      "variants": {
+        "type": "int"
+      }
     }
   },
   "questionTextLabel": "Текст вопроса",
   "variantLetterLabel": "Вариант {letter}",
   "@variantLetterLabel": {
     "placeholders": {
-      "letter": {"type": "String"}
+      "letter": {
+        "type": "String"
+      }
     }
   },
   "aiImagePromptHint": "Подсказка ИИ (не сохраняется):",
-  "mathSubject": "Математика",
-  "englishSubject": "Английский язык",
+  "mathSubject": "Мат.",
+  "englishSubject": "Англ.",
   "selectPdfBook": "Выберите PDF книгу",
   "pdfFileHint": ".pdf файл, макс 10МБ, 50 страниц",
   "subjectLabel": "Предмет",
@@ -60,25 +66,45 @@
   "generateWithAi": "Создать вопросы с помощью ИИ",
   "gradeN": "{n}-класс",
   "@gradeN": {
-    "placeholders": {"n": {"type": "int"}}
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   },
   "nQuestions": "{n} вопросов",
   "@nQuestions": {
-    "placeholders": {"n": {"type": "int"}}
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   },
   "nVariants": "{n} вариантов",
   "@nVariants": {
-    "placeholders": {"n": {"type": "int"}}
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
   },
   "questionIndex": "Вопрос {index}",
   "@questionIndex": {
-    "placeholders": {"index": {"type": "int"}}
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
   },
   "enterFirstAndLastName": "Введите имя и фамилию",
   "incorrectSecretPassword": "Неверный секретный пароль (Подсказка: 1234)",
   "errorPrefix": "Ошибка: {error}",
   "@errorPrefix": {
-    "placeholders": {"error": {"type": "String"}}
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "selectVariant": "Выберите вариант",
   "studentInfoTitle": "Данные ученика",
@@ -97,7 +123,6 @@
   "combinedTestInfo": "79 вопросов · 75 минут · Оффлайн режим",
   "combinedTestSubjects": "30 математика + 49 английский язык",
   "incorrectPassword": "Неверный секретный пароль",
-  "logout": "Выйти",
   "confirmLogout": "Вы хотите выйти из аккаунта?",
   "cancel": "Отмена",
   "noActiveExamOrExpired": "Активный экзамен не найден или срок его действия истек",
@@ -105,26 +130,27 @@
   "gradeClass": "{grade}-класс",
   "@gradeClass": {
     "placeholders": {
-      "grade": {"type": "int"}
+      "grade": {
+        "type": "int"
+      }
     }
   },
   "variantBadge": "Вариант {variant}",
   "@variantBadge": {
     "placeholders": {
-      "variant": {"type": "int"}
+      "variant": {
+        "type": "int"
+      }
     }
   },
   "selectTest": "Выберите тест",
   "selectMonitoringTest": "Выберите один из доступных тестов мониторинга",
-  "connectionError": "Ошибка подключения",
   "retry": "Повторить",
   "noActiveExam": "Нет активного экзамена",
   "noExamAssignedOrExpired": "Экзамен еще не назначен\nили срок его действия истек",
   "testsNotLoadedYet": "Тесты еще не загружены",
   "tryAgainAfterTeacherUploads": "Пожалуйста, повторите попытку после того,\nкак ваш учитель загрузит тесты",
   "refresh": "Обновить",
-  "mathSubject": "Мат.",
-  "englishSubject": "Англ.",
   "totalLabel": "Всего",
   "helloGreeting": "Привет!",
   "mathSubjectFull": "Математика",
@@ -162,7 +188,6 @@
   "statusAverage": "Средне",
   "statusWeak": "Слабо — нужна практика",
   "subjectAnalysisTitle": "Анализ предметов",
-
   "mathTipLow1": "Повторите базовые операции (сложение, вычитание, умножение, деление).",
   "mathTipLow2": "Решайте примеры по 20 минут каждый день.",
   "mathTipLow3": "Начните с программы 2-го класса.",
@@ -175,7 +200,6 @@
   "mathTipExc1": "Отлично!",
   "mathTipExc2": "Переходите к решению сложных олимпиадных задач.",
   "mathTipExc3": "Регулярно тренируйтесь, чтобы поддерживать результат.",
-
   "engTipLow1": "Учите по 10 новых слов каждый день (метод карточек).",
   "engTipLow2": "Базовая грамматика: to be, present simple, множественное число.",
   "engTipLow3": "Используйте BBC Learning English, Duolingo.",
@@ -188,12 +212,10 @@
   "engTipExc1": "Отлично!",
   "engTipExc2": "Готовьтесь к сертификату IELTS/Cambridge.",
   "engTipExc3": "Продолжайте читать и слушать сложные тексты.",
-
   "statusGold": "Уровень золотой медали! Так держать!",
   "statusGoodMsg": "Хороший результат! Нужно еще немного усилий.",
   "statusSatisfactory": "Удовлетворительно. Следуйте рекомендациям и попробуйте снова.",
   "statusKeepTrying": "Не расстраивайтесь! Каждая неудача — это новое начало.",
-
   "pdfTitle": "Результат - {name}",
   "subjectsResultTitle": "Результаты по предметам",
   "totalCorrectAnswers": "Всего правильных ответов:",
@@ -220,5 +242,148 @@
   "topicName": "Название темы",
   "correctAnswersCount": "Правильные ответы",
   "percentage": "Процент",
-  "offlineTestResult": "Офлайн тест"
+  "offlineTestResult": "Офлайн тест",
+  "clearHistoryTitle": "Tozalash",
+  "clearHistoryConfirm": "Barcha natijalar tarixi o'chirib yuborilsinmi?",
+  "noWord": "Yo'q",
+  "yesDelete": "Ha, o'chirish",
+  "offlineHistoryTitle": "Oflayn Natijalar Tarixi",
+  "noHistoryYet": "Hozircha tarix yo'q",
+  "schoolLabel": "Maktab",
+  "dateLabel": "Sana",
+  "mathShort": "Mat",
+  "engShort": "Ing",
+  "syncCompleteMsg": "Sinxronizatsiya yakunlandi! {done} ta rasm oflayn saqlandi.",
+  "@syncCompleteMsg": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      }
+    }
+  },
+  "errorOccurred": "Xato yuz berdi: ",
+  "offlineImagesLoading": "Oflayn rasmlar yuklanmoqda...",
+  "savedOutOfTotal": "{done} / {total} ta saqlandi",
+  "@savedOutOfTotal": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "syncImagesOfflineButton": "Oflayn rasmlarni tayyorlash (Sync)",
+  "localResSending": "📤 Yuborilmoqda...",
+  "localResSavedSending": "✅ Saqlandi, yuborilmoqda...",
+  "localResSaveError": "❌ Saqlashda xato. Qayta urinib ko'ring.",
+  "localResBarakalla": "Barakalla!",
+  "localResYaxshi": "Yaxshi!",
+  "nextStudentButton": "Keyingi o'quvchi",
+  "questionsUnansweredPrompt": "ta savol javobsiz. Tugatmoqchimisiz?",
+  "finishButtonText": "Tugatish",
+  "gradeWord": "-sinf",
+  "mathSectionTimeUp": "Matematika bo'limi vaqti tugagan!",
+  "engSectionTimeUp": "Ingliz tili bo'limi vaqti tugagan!",
+  "finishTest": "Tugatish",
+  "uploadTest": "Yuklash",
+  "resultNotSavedError": "Natija saqlanmadi — internet yoki xotira muammosi. Qayta urinib ko'ring.",
+  "testLoadFailed": "Test yuklanmadi",
+  "testTitle": "Test",
+  "gradeExcellent": "A'lo",
+  "gradeGood": "Yaxshi",
+  "gradeSatisfactory": "Qoniqarli",
+  "gradeNeedsPractice": "Qo'shimcha mashq kerak",
+  "pdfGenerationError": "PDF yaratishda xato",
+  "resultTitle": "Natija",
+  "correctAnswersWithCount": "To'g'ri {count}",
+  "@correctAnswersWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "wrongAnswersWithCount": "Xato {count}",
+  "@wrongAnswersWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "shieldsCount": "{count} qalqon",
+  "@shieldsCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "sectionsByTitle": "BO'LIMLAR BO'YICHA",
+  "noDataAvailable": "Ma'lumot yo'q",
+  "reopenPdf": "PDF qayta ochish",
+  "pdfReportButton": "PDF hisobot",
+  "aiAnalysisTitle": "AI tahlil",
+  "analysisPreparing": "Tahlil tayyorlanmoqda…",
+  "strongSidesTitle": "Kuchli tomonlar",
+  "weakSidesTitle": "Zaif tomonlar",
+  "recommendationsTitle": "Tavsiyalar",
+  "focus14DaysTitle": "14 kunlik e'tibor",
+  "subjectAnalysisByTopic": "Mavzu bo'yicha tahlil",
+  "strongAndWeakSides": "Kuchli va zaif tomonlar",
+  "strongLabel": "Kuchli",
+  "needsReinforcement": "Mustahkamlash kerak",
+  "weakTopicFallback": "zaif mavzu",
+  "days1to3": "1–3 kun",
+  "weakestTopicPlan": "Eng zaif mavzu: {topic} (15 daqiqa/kun)",
+  "@weakestTopicPlan": {
+    "placeholders": {
+      "topic": {
+        "type": "String"
+      }
+    }
+  },
+  "days4to7": "4–7 kun",
+  "secondTopicPlan": "Ikkinchi mavzu: {topic} (5 ta misol/kun)",
+  "@secondTopicPlan": {
+    "placeholders": {
+      "topic": {
+        "type": "String"
+      }
+    }
+  },
+  "days8to11": "8–11 kun",
+  "mixedExercisesPlan": "Aralash mashqlar — barcha mavzularni takrorlash",
+  "days12to14": "12–14 kun",
+  "controlTestPlan": "Nazorat testi — natijani solishtirish",
+  "plan14DaysTitle": "14 kunlik reja",
+  "sending": "Yuborilmoqda...",
+  "savedSuccess": "Saqlandi!",
+  "savedOfflineLater": "Saqlandi (offline — keyinroq yuboriladi)",
+  "savedSending": "Saqlandi, yuborilmoqda...",
+  "interhouseGrade2": "Interhouse Grade 2",
+  "sectionsBreakdown": "Bo'limlar bo'yicha",
+  "nextStudentBtn": "Keyingi o'quvchi",
+  "finishBtn": "Tugatish",
+  "mathQuestionsNotFound": "Matematika savollari topilmadi.",
+  "generalTests": "Umumiy testlar",
+  "loadingGroups": "Guruhlar yuklanmoqda...",
+  "selectGroup": "Guruhni tanlang",
+  "selectStudent": "O'quvchini tanlang",
+  "selectGrade": "Sinfni tanlang",
+  "selectSchool": "Maktabni tanlang",
+  "incorrectPin": "PIN noto'g'ri",
+  "enterFourDigitPin": "To'rt xonali PIN kodni kiriting",
+  "showPassword": "Ko'rsatish",
+  "hidePassword": "Yashirish",
+  "confirmBtn": "Tasdiqlash",
+  "nextStepStudentName": "Keyingi qadam: o'quvchi ismini kiritish",
+  "testSession": "Sinov sessiyasi",
+  "testSessionInstruction": "Sinov sessiyasini boshlash uchun maktabni tanlang va PIN kodni kiriting.",
+  "sessionSettings": "Sessiya sozlamalari",
+  "studentNameStep": "O'quvchi ismi",
+  "testLocked": "Bu test hali qulflangan.",
+  "testNotInCache": "Test keshda topilmadi. Qayta yuklab oling."
 }

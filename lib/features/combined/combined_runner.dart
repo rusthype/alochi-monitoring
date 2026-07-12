@@ -208,6 +208,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
   Future<void> _finish() async {
     _timer?.cancel();
 
+    final l10n = AppLocalizations.of(context)!;
     final unanswered = _kTotalQs - _totalAnswered;
     if (unanswered > 0) {
       final ok = await showDialog<bool>(
@@ -216,9 +217,9 @@ class _CombinedRunnerState extends State<CombinedRunner>
         builder: (_) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Tugatish?',
-              style: TextStyle(fontWeight: FontWeight.w800)),
-          content: Text('$unanswered ta savol javobsiz. Tugatmoqchimisiz?'),
+          title: Text(l10n.finishConfirmTitle,
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          content: Text(l10n.unansweredWarning(unanswered)),
           actions: [
             TextButton(
               onPressed: () {
@@ -236,7 +237,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
                 });
                 Navigator.pop(context, false);
               },
-              child: const Text('Orqaga'),
+              child: Text(l10n.backButton),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
@@ -244,7 +245,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
                   backgroundColor: _kPurple,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(100, 40)),
-              child: const Text('Tugatish'),
+              child: Text(l10n.finishBtn),
             ),
           ],
         ),
@@ -486,6 +487,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final progress = _kTotalQs > 0 ? _totalAnswered / _kTotalQs : 0.0;
     final isLast = _sectionIdx == _kTotalSections - 1;
 
@@ -558,8 +560,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink1)),
-                const Text('javoblandi',
-                    style: TextStyle(fontSize: 9, color: AppColors.ink3)),
+                Text(l10n.answeredLabel,
+                    style: const TextStyle(fontSize: 9, color: AppColors.ink3)),
               ]),
             ),
             // Timer
@@ -587,7 +589,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
                         color: _timerHot
                             ? const Color(0xFFDC2626)
                             : _kPurple)),
-                Text('qoldi',
+                Text(l10n.timeLeftLabel,
                     style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
@@ -703,8 +705,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
                       ? null
                       : () => _goSection(_sectionIdx - 1),
                   icon: const Icon(Icons.arrow_back_rounded, size: 15),
-                  label: const Text('Oldingi',
-                      style: TextStyle(
+                  label: Text(l10n.previousButton,
+                      style: const TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w700)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.ink2,
@@ -723,8 +725,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
                   ? ElevatedButton.icon(
                       onPressed: _finish,
                       icon: const Icon(Icons.check_rounded, size: 15),
-                      label: const Text('Tugatish',
-                          style: TextStyle(
+                      label: Text(l10n.finishBtn,
+                          style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700)),
                       style: ElevatedButton.styleFrom(
@@ -737,8 +739,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
                     )
                   : ElevatedButton.icon(
                       onPressed: () => _goSection(_sectionIdx + 1),
-                      icon: const Text('Keyingi',
-                          style: TextStyle(
+                      icon: Text(l10n.nextButton,
+                          style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700)),
                       label: const Icon(
@@ -783,10 +785,10 @@ class _CombinedRunnerState extends State<CombinedRunner>
   Widget _buildMathSection() {
     final mathQs = widget.mathQuestions;
     if (mathQs.isEmpty) {
-      return const _CSectionScroll(
+      return _CSectionScroll(
           child: Center(
-              child: Text('Matematika savollari topilmadi.',
-                  style: TextStyle(color: AppColors.ink2))));
+              child: Text(AppLocalizations.of(context)!.mathQuestionsNotFound,
+                  style: const TextStyle(color: AppColors.ink2))));
     }
     return _CSectionScroll(
       child: Column(

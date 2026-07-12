@@ -7,6 +7,7 @@ import '../../shared/theme/app_theme.dart';
 import 'local_data.dart';
 import '../../shared/widgets/app_network_image.dart';
 import 'local_result_screen.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 class LocalTestScreen extends StatefulWidget {
   final String firstName, lastName, group, school;
@@ -112,6 +113,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
   }
 
   Future<void> _finish() async {
+    final localizations = AppLocalizations.of(context)!;
     _timer?.cancel();
     final unanswered = _total - _answers.length;
     if (unanswered > 0) {
@@ -120,9 +122,9 @@ class _LocalTestScreenState extends State<LocalTestScreen>
         builder: (_) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Tugatish?',
-              style: TextStyle(fontWeight: FontWeight.w800)),
-          content: Text('$unanswered ta savol javobsiz. Tugatmoqchimisiz?'),
+          title: Text(localizations.finishConfirmTitle,
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          content: Text('$unanswered ${localizations.questionsUnansweredPrompt}'),
           actions: [
             TextButton(
                 onPressed: () {
@@ -139,13 +141,13 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                   });
                   Navigator.pop(context, false);
                 },
-                child: const Text('Orqaga')),
+                child: Text(localizations.backButton)),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.brand,
                   minimumSize: const Size(100, 40)),
-              child: const Text('Tugatish'),
+              child: Text(localizations.finishButtonText),
             ),
           ],
         ),
@@ -167,7 +169,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
       }
 
       final t =
-          q.topic.isEmpty ? (q.isMath ? 'Matematika' : 'Ingliz tili') : q.topic;
+          q.topic.isEmpty ? (q.isMath ? localizations.mathSubjectFull : localizations.englishSubjectFull) : q.topic;
       final prev = topicScores[t] ?? (ok: 0, tot: 0);
       topicScores[t] = (ok: prev.ok + (correct ? 1 : 0), tot: prev.tot + 1);
     }
@@ -256,12 +258,12 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                       const SizedBox(height: 2),
                       Row(children: [
                         _Pill(
-                            '${widget.grade}-sinf',
+                            '${widget.grade}${AppLocalizations.of(context)!.gradeWord}',
                             _isMath
                                 ? const Color(0xFF1E40AF)
                                 : const Color(0xFF0F766E)),
                         const SizedBox(width: 6),
-                        Text(_isMath ? 'Matematika' : 'Ingliz tili',
+                        Text(_isMath ? AppLocalizations.of(context)!.mathSubjectFull : AppLocalizations.of(context)!.englishSubjectFull,
                             style: const TextStyle(
                                 fontSize: 11, color: AppColors.ink3)),
                       ]),
@@ -290,7 +292,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                             color: _timerHot
                                 ? const Color(0xFFDC2626)
                                 : const Color(0xFF7C2D12))),
-                    Text('qoldi',
+                    Text(AppLocalizations.of(context)!.timeLeftLabel,
                         style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
@@ -422,8 +424,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                                               .border)),
                                                   child: Text(
                                                       _isMath
-                                                          ? 'Matematika'
-                                                          : 'Ingliz tili',
+                                                          ? AppLocalizations.of(context)!.mathSubjectFull
+                                                          : AppLocalizations.of(context)!.englishSubjectFull,
                                                       style: const TextStyle(
                                                           fontSize: 11,
                                                           color: AppColors.ink2,
@@ -519,8 +521,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                   _isFirst ? null : () => _navigate(_cur - 1),
                               icon: const Icon(Icons.arrow_back_rounded,
                                   size: 15),
-                              label: const Text('Oldingi',
-                                  style: TextStyle(
+                              label: Text(AppLocalizations.of(context)!.previousButton,
+                                  style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700)),
                               style: OutlinedButton.styleFrom(
@@ -541,8 +543,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
                                       color: AppColors.ink1)),
-                              const Text('javoblandi',
-                                  style: TextStyle(
+                              Text(AppLocalizations.of(context)!.answeredLabel,
+                                  style: const TextStyle(
                                       fontSize: 11, color: AppColors.ink3)),
                             ])),
                         SizedBox(
@@ -553,8 +555,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                   onPressed: _finish,
                                   icon:
                                       const Icon(Icons.check_rounded, size: 15),
-                                  label: const Text('Tugatish',
-                                      style: TextStyle(
+                                  label: Text(AppLocalizations.of(context)!.finishButtonText,
+                                      style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700)),
                                   style: ElevatedButton.styleFrom(
@@ -567,8 +569,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                 )
                               : ElevatedButton.icon(
                                   onPressed: () => _navigate(_cur + 1),
-                                  icon: const Text('Keyingi',
-                                      style: TextStyle(
+                                  icon: Text(AppLocalizations.of(context)!.nextButton,
+                                      style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700)),
                                   label: const Icon(Icons.arrow_forward_rounded,

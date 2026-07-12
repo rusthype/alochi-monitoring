@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../shared/theme/app_theme.dart';
 import 'runner_dispatch.dart';
@@ -124,6 +125,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
   }
 
   Future<void> _startTest() async {
+    final l10n = AppLocalizations.of(context)!;
     String firstName;
     String lastName;
     String studentId;
@@ -142,7 +144,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       final first = _firstCtrl.text.trim();
       final last = _lastCtrl.text.trim();
       if (first.isEmpty || last.isEmpty) {
-        setState(() => _err = 'Ism va familiyani kiriting');
+        setState(() => _err = l10n.enterFirstAndLastName);
         return;
       }
       firstName = first;
@@ -155,7 +157,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     String groupId;
     if (_groups.isNotEmpty) {
       if (_selectedGroup == null) {
-        setState(() => _err = 'Guruhni tanlang');
+        setState(() => _err = l10n.selectGroup);
         return;
       }
       grade = widget.session.testGrade;
@@ -163,7 +165,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       groupId = (_selectedGroup!['id'] ?? '').toString();
     } else {
       if (_grade == null) {
-        setState(() => _err = 'Sinfni tanlang');
+        setState(() => _err = l10n.selectGrade);
         return;
       }
       grade = _grade!;
@@ -198,6 +200,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     // Text inputs are shown when no roster is active (no group selected, or
     // group selected but roster came back empty).
     final showTextInputs = !_rosterActive;
@@ -235,7 +238,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                         const SizedBox(width: 6),
                         Text(
                           widget.session.schoolLabel.isEmpty
-                              ? 'Umumiy testlar'
+                              ? l10n.generalTests
                               : widget.session.schoolLabel,
                           style: AppTextStyles.caption.copyWith(
                             color: AppColors.secondary,
@@ -249,24 +252,24 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                 const SizedBox(height: 20),
                 // Ism/Familiya — hidden when a roster is active
                 if (showTextInputs) ...[
-                  _Field(label: 'Ism', controller: _firstCtrl),
+                  _Field(label: l10n.firstNameLabel, controller: _firstCtrl),
                   const SizedBox(height: 12),
-                  _Field(label: 'Familiya', controller: _lastCtrl),
+                  _Field(label: l10n.lastNameLabel, controller: _lastCtrl),
                   const SizedBox(height: 20),
                 ],
                 // Group / grade selector
                 if (_loadingGroups)
-                  const Center(
+                  Center(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircularProgressIndicator(strokeWidth: 2),
-                          SizedBox(height: 8),
+                          const CircularProgressIndicator(strokeWidth: 2),
+                          const SizedBox(height: 8),
                           Text(
-                            'Guruhlar yuklanmoqda...',
-                            style: TextStyle(fontSize: 13),
+                            l10n.loadingGroups,
+                            style: const TextStyle(fontSize: 13),
                           ),
                         ],
                       ),
@@ -278,7 +281,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                   // (preselectedGroup != null) guruh allaqachon fiksirlangan,
                   // qayta tanlashning hojati yo'q.
                   if (widget.preselectedGroup == null) ...[
-                    const Text('Guruhni tanlang',
+                    Text(l10n.selectGroup,
                         style: AppTextStyles.labelLarge),
                     const SizedBox(height: 10),
                     Wrap(
@@ -367,7 +370,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                         ),
                       )
                     else if (_students.isNotEmpty) ...[
-                      const Text("O'quvchini tanlang",
+                      Text(l10n.selectStudent,
                           style: AppTextStyles.labelLarge),
                       const SizedBox(height: 10),
                       Wrap(
@@ -411,7 +414,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                     // so showTextInputs = true and Ism/Familiya are visible at top.
                   ],
                 ] else ...[
-                  const Text('Sinfni tanlang', style: AppTextStyles.labelLarge),
+                  Text(l10n.selectGrade, style: AppTextStyles.labelLarge),
                   const SizedBox(height: 10),
                   Row(
                     children: [1, 2, 3, 4].map((n) {
@@ -494,7 +497,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                           )
                         : const Icon(Icons.play_arrow_rounded),
                     label: Text(
-                        _launching ? 'Yuklanmoqda...' : 'Testni boshlash'),
+                        _launching ? l10n.loadingLabelDots : l10n.startTest),
                   ),
                 ),
               ],

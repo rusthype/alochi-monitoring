@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/db/attempt_store.dart';
 import '../../core/db/test_cache.dart';
 import '../../core/services/heartbeat_service.dart';
@@ -25,8 +26,8 @@ Future<void> launchRunner(
   if (lockedUntil != null && lockedUntil.isAfter(DateTime.now())) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bu test hali qulflangan.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.testLocked),
           backgroundColor: AppColors.err,
           behavior: SnackBarBehavior.floating,
         ),
@@ -39,8 +40,8 @@ Future<void> launchRunner(
   if (cached == null) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Test keshda topilmadi. Qayta yuklab oling.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.testNotInCache),
           backgroundColor: AppColors.err,
           behavior: SnackBarBehavior.floating,
         ),
