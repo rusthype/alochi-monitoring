@@ -40,8 +40,8 @@ IhVariant buildFixtureVariant() {
   final readingQs = [
     _ynQ('YES', 'Is it?'),
     _ynQ('NO', 'Not?'),
-    IhQuestion(type: 'mc', ans: 0, opts: ['A', 'B', 'C'], q: 'mc?'),
-    IhQuestion(type: 'mc', ans: 2, opts: ['A', 'B', 'C'], q: 'mc2?'),
+    const IhQuestion(type: 'mc', ans: 0, opts: ['A', 'B', 'C'], q: 'mc?'),
+    const IhQuestion(type: 'mc', ans: 2, opts: ['A', 'B', 'C'], q: 'mc2?'),
     _fillQ('cat'),
     _fillQ('Dog'), // upper-case answer — matching must be case-insensitive
   ];
@@ -61,7 +61,7 @@ IhVariant buildFixtureVariant() {
   );
 }
 
-List<IhLevel> buildLevels() => [
+List<IhLevel> buildLevels() => const [
       IhLevel(min: 23, label: 'Outstanding', cambridge: 'A2 Flyers', cefr: 'A1 to A2', bg: '#E6F4EA', col: '#1E6B3A'),
       IhLevel(min: 18, label: 'Very Good', cambridge: 'A1 Movers', cefr: 'A1', bg: '#D6E4F0', col: '#0C447C'),
       IhLevel(min: 13, label: 'Good', cambridge: 'A1 Movers', cefr: 'A1', bg: '#FFF3CD', col: '#856404'),

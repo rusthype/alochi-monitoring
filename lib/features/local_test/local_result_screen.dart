@@ -10,6 +10,7 @@ import '../../core/api/api_client.dart';
 import '../../core/sync/sync_service.dart';
 import '../../core/services/pdf_service.dart';
 import 'package:printing/printing.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 class LocalResultScreen extends StatefulWidget {
   final String firstName, lastName, group, school;
@@ -42,7 +43,7 @@ class _LocalResultScreenState extends State<LocalResultScreen>
     with TickerProviderStateMixin {
   late final AnimationController _scoreAnim;
   late final Animation<double> _scoreVal;
-  String _sendStatus = '📤 Yuborilmoqda...';
+  String _sendStatus = '';
   bool _sent = false;
 
   @override
@@ -54,6 +55,7 @@ class _LocalResultScreenState extends State<LocalResultScreen>
         .animate(CurvedAnimation(parent: _scoreAnim, curve: Curves.easeOut));
     _scoreAnim.forward();
 
+    _sendStatus = AppLocalizations.of(context)!.localResSending;
     _submitLocal();
   }
 
@@ -101,14 +103,14 @@ class _LocalResultScreenState extends State<LocalResultScreen>
       if (!mounted) return;
       setState(() {
         _sent = true;
-        _sendStatus = '✅ Saqlandi, yuborilmoqda...';
+        _sendStatus = AppLocalizations.of(context)!.localResSavedSending;
       });
     } catch (e) {
       debugPrint('Navbatga yozishda xato: $e');
       if (!mounted) return;
       setState(() {
         _sent = false;
-        _sendStatus = '❌ Saqlashda xato. Qayta urinib ko\'ring.';
+        _sendStatus = AppLocalizations.of(context)!.localResSaveError;
       });
     }
   }
@@ -187,10 +189,10 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                 const SizedBox(height: 8),
                 Text(
                     widget.pct >= 80
-                        ? 'Barakalla!'
+                        ? AppLocalizations.of(context)!.localResBarakalla
                         : widget.pct >= 60
-                            ? 'Yaxshi!'
-                            : 'Harakat qiling!',
+                            ? AppLocalizations.of(context)!.localResYaxshi
+                            : AppLocalizations.of(context)!.keepTrying,
                     style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
@@ -234,17 +236,17 @@ class _LocalResultScreenState extends State<LocalResultScreen>
             Row(children: [
               Expanded(
                   child: _ScoreCard(
-                      'Matematika', widget.mathOk, _mathTotal, AppColors.math)),
+                      AppLocalizations.of(context)!.mathSubjectFull, widget.mathOk, _mathTotal, AppColors.math)),
               const SizedBox(width: 10),
               Expanded(
                   child: _ScoreCard(
-                      'Ingliz tili', widget.engOk, _engTotal, AppColors.eng)),
+                      AppLocalizations.of(context)!.englishSubjectFull, widget.engOk, _engTotal, AppColors.eng)),
             ]),
             const SizedBox(height: 16),
             // Topics
             if (widget.topicScores.isNotEmpty) ...[
               _TopicsCard(
-                  title: 'Matematika',
+                  title: AppLocalizations.of(context)!.mathSubjectFull,
                   icon: Icons.calculate_rounded,
                   color: AppColors.math,
                   isMath: true,
@@ -252,7 +254,7 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                   questions: widget.questions),
               const SizedBox(height: 10),
               _TopicsCard(
-                  title: 'Ingliz tili',
+                  title: AppLocalizations.of(context)!.englishSubjectFull,
                   icon: Icons.language_rounded,
                   color: AppColors.eng,
                   isMath: false,
@@ -274,7 +276,7 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                     await Printing.layoutPdf(onLayout: (_) => pdfBytes, name: '${widget.lastName}_${widget.firstName}_Natija.pdf');
                   },
                   icon: const Icon(Icons.print_rounded, size: 18),
-                  label: const Text('Chop etish'),
+                  label: Text(AppLocalizations.of(context)!.printPdf),
                   style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink1, side: const BorderSide(color: AppColors.border), padding: const EdgeInsets.symmetric(vertical: 14)),
                 ),
               ),
@@ -288,7 +290,7 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                     await Printing.sharePdf(bytes: pdfBytes, filename: '${widget.lastName}_${widget.firstName}_Natija.pdf');
                   },
                   icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
-                  label: const Text('PDF Saqlash'),
+                  label: Text(AppLocalizations.of(context)!.savePdf),
                   style: OutlinedButton.styleFrom(foregroundColor: AppColors.brand, side: const BorderSide(color: AppColors.brand), padding: const EdgeInsets.symmetric(vertical: 14)),
                 ),
               ),
@@ -304,9 +306,9 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                     MaterialPageRoute(builder: (_) => const LocalGradeScreen()),
                     (_) => false),
                 icon: const Icon(Icons.person_add_rounded),
-                label: const Text("Keyingi o'quvchi",
+                label: Text(AppLocalizations.of(context)!.nextStudentButton,
                     style:
-                        TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                        const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.brand,
                     foregroundColor: Colors.white,
@@ -318,7 +320,7 @@ class _LocalResultScreenState extends State<LocalResultScreen>
             TextButton.icon(
               onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
               icon: const Icon(Icons.home_rounded, size: 16),
-              label: const Text('Bosh sahifa'),
+              label: Text(AppLocalizations.of(context)!.homePage),
               style: TextButton.styleFrom(foregroundColor: AppColors.ink2),
             ),
           ]),

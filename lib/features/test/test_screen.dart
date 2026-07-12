@@ -1,7 +1,9 @@
 // lib/features/test/test_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/models/models.dart';
@@ -27,7 +29,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
   final Map<int, String> _answers = {};
   bool _submitting = false;
   bool _showSectionBanner = false;
-  late int _timerSecs;
+  int _mathSecs = 30 * 60;
+  int _engSecs = 40 * 60;
   Timer? _timerTimer;
   DateTime? _testStartedAt;
 
@@ -51,20 +54,21 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
   int get _sectionIdx => _isMath ? _current : _current - _mathCount;
   int get _sectionTotal => _isMath ? _mathCount : _engCount;
 
+  int get _activeSecs => _isMath ? _mathSecs : _engSecs;
+
   String get _timerDisplay {
-    final m = (_timerSecs ~/ 60).toString().padLeft(2, '0');
-    final s = (_timerSecs % 60).toString().padLeft(2, '0');
-    return '$m:$s';
+    final s = _activeSecs;
+    final m = (s ~/ 60).toString().padLeft(2, '0');
+    final sec = (s % 60).toString().padLeft(2, '0');
+    return '$m:$sec';
   }
 
-  bool get _timerHot => _timerSecs < 120;
+  bool get _timerHot => _activeSecs < 120;
 
   @override
   void initState() {
     super.initState();
     _testStartedAt = DateTime.now();
-    // Math: 30 min, then English: 40 min. Start with 30 min.
-    _timerSecs = 30 * 60;
     _startTimer();
 
     _fadeCtrl = AnimationController(
@@ -94,17 +98,33 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _startTimer([int? secs]) {
+  void _startTimer() {
     _timerTimer?.cancel();
-    if (secs != null) setState(() => _timerSecs = secs);
     _timerTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() {
-        if (_timerSecs > 0) {
-          _timerSecs--;
+        if (_isMath) {
+          if (_mathSecs > 0) {
+            _mathSecs--;
+          } else {
+            if (_engCount > 0 && _engSecs > 0) {
+              _navigate(_mathCount);
+            } else {
+              _timerTimer?.cancel();
+              _finish();
+            }
+          }
         } else {
-          _timerTimer?.cancel();
-          _finish();
+          if (_engSecs > 0) {
+            _engSecs--;
+          } else {
+            if (_mathCount > 0 && _mathSecs > 0) {
+              _navigate(0);
+            } else {
+              _timerTimer?.cancel();
+              _finish();
+            }
+          }
         }
       });
     });
@@ -112,6 +132,19 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
 
   void _navigate(int idx) {
     if (idx < 0 || idx >= _total) return;
+    
+    final targetIsMath = idx < _mathCount;
+    if (targetIsMath && _mathSecs <= 0) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.mathSectionTimeUp)));
+      return;
+    }
+    if (!targetIsMath && _engSecs <= 0) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.engSectionTimeUp)));
+      return;
+    }
+
     _autoAdv?.cancel();
     
     if (_scrollCtrl.hasClients) {
@@ -131,7 +164,6 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
     _scrollDotsTo(idx);
 
     if (switchToEng) {
-      _startTimer(40 * 60); // English: 40 min
       // Hide banner after 3s
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) setState(() => _showSectionBanner = false);
@@ -160,23 +192,23 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
         builder: (_) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Tugatish?',
-              style: TextStyle(fontWeight: FontWeight.w800)),
+          title: Text(AppLocalizations.of(context)!.finishConfirmTitle,
+              style: const TextStyle(fontWeight: FontWeight.w800)),
           content: Text(
-              '$unanswered ta savol javobsiz qoldi. Shunga qaramay tugatmoqchimisiz?'),
+              AppLocalizations.of(context)!.unansweredWarning(unanswered)),
           actions: [
             TextButton(
                 onPressed: () {
                   _startTimer();
                   Navigator.pop(context, false);
                 },
-                child: const Text('Orqaga')),
+                child: Text(AppLocalizations.of(context)!.backButton)),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.brand,
                   minimumSize: const Size(100, 40)),
-              child: const Text('Tugatish'),
+              child: Text(AppLocalizations.of(context)!.finishTest),
             ),
           ],
         ),
@@ -198,7 +230,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
       engScore: 0,
       totalPct: 0,
       answers: answersMap,
-      deviceId: 'flutter-win',
+      deviceId: 'flutter-${defaultTargetPlatform.name}',
       durationSeconds: _testStartedAt != null
           ? DateTime.now().difference(_testStartedAt!).inSeconds
           : null,
@@ -217,7 +249,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
         engScore: resp['eng_score'] as int? ?? 0,
         totalPct: resp['total_pct'] as int? ?? 0,
         answers: answersMap,
-        deviceId: 'flutter-win',
+        deviceId: 'flutter-${defaultTargetPlatform.name}',
         durationSeconds: _testStartedAt != null
             ? DateTime.now().difference(_testStartedAt!).inSeconds
             : null,
@@ -312,8 +344,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                       const SizedBox(height: 2),
                       Text(
                           _isMath
-                              ? 'Matematika bo\'limi'
-                              : 'Ingliz tili bo\'limi',
+                              ? AppLocalizations.of(context)!.mathSectionLabel
+                              : AppLocalizations.of(context)!.engSectionLabel,
                           style: const TextStyle(
                               fontSize: 11,
                               color: AppColors.ink3,
@@ -467,8 +499,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                                                               .border)),
                                                   child: Text(
                                                       _isMath
-                                                          ? 'Matematika'
-                                                          : 'Ingliz tili',
+                                                          ? AppLocalizations.of(context)!.mathSubjectFull
+                                                          : AppLocalizations.of(context)!.englishSubjectFull,
                                                       style: const TextStyle(
                                                           fontSize: 11,
                                                           color: AppColors.ink2,
@@ -492,8 +524,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                                                               width: 3),
                                                       ],
                                                       const SizedBox(width: 5),
-                                                      const Text('tugmalar',
-                                                          style: TextStyle(
+                                                      Text(AppLocalizations.of(context)!.keyboardButtons,
+                                                          style: const TextStyle(
                                                               fontSize: 10,
                                                               color: AppColors
                                                                   .ink3)),
@@ -572,8 +604,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                                   : () => _navigate(_current - 1),
                               icon: const Icon(Icons.arrow_back_rounded,
                                   size: 15),
-                              label: const Text('Oldingi',
-                                  style: TextStyle(
+                              label: Text(AppLocalizations.of(context)!.previousButton,
+                                  style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700)),
                               style: OutlinedButton.styleFrom(
@@ -596,8 +628,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                                       fontSize: 16,
                                       fontWeight: FontWeight.w800,
                                       color: AppColors.ink1)),
-                              const Text('javoblandi',
-                                  style: TextStyle(
+                              Text(AppLocalizations.of(context)!.answeredLabel,
+                                  style: const TextStyle(
                                       fontSize: 11, color: AppColors.ink3)),
                             ])),
                         SizedBox(
@@ -616,7 +648,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                                       : const Icon(Icons.check_rounded,
                                           size: 15),
                                   label: Text(
-                                      _submitting ? 'Yuklash' : 'Tugatish',
+                                      _submitting ? AppLocalizations.of(context)!.uploadTest : AppLocalizations.of(context)!.finishTest,
                                       style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700)),
@@ -633,8 +665,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                                 )
                               : ElevatedButton.icon(
                                   onPressed: () => _navigate(_current + 1),
-                                  icon: const Text('Keyingi',
-                                      style: TextStyle(
+                                  icon: Text(AppLocalizations.of(context)!.nextButton,
+                                      style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700)),
                                   label: const Icon(Icons.arrow_forward_rounded,
@@ -716,7 +748,7 @@ class _SubjectPill extends StatelessWidget {
           color: isMath ? const Color(0xFFEFF6FF) : const Color(0xFFF0FDFA),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(isMath ? 'Matematika' : 'Ingliz tili',
+        child: Text(isMath ? AppLocalizations.of(context)!.mathSubjectFull : AppLocalizations.of(context)!.englishSubjectFull,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -752,7 +784,7 @@ class _TimerWidget extends StatelessWidget {
             child: Text(display),
           ),
           const SizedBox(height: 2),
-          Text('qoldi',
+          Text(AppLocalizations.of(context)!.timeLeftLabel,
               style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
@@ -856,18 +888,18 @@ class _SectionBanner extends StatelessWidget {
         child: Row(children: [
           const Icon(Icons.language_rounded, color: AppColors.brand, size: 26),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                Text("Ingliz tili bo'limiga o'tildi",
-                    style: TextStyle(
+                Text(AppLocalizations.of(context)!.engSectionTransitionTitle,
+                    style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF7C2D12))),
-                SizedBox(height: 2),
-                Text("40 daqiqa · Keyingi savollar ingliz tilida",
-                    style: TextStyle(fontSize: 11, color: AppColors.ink3)),
+                const SizedBox(height: 2),
+                Text(AppLocalizations.of(context)!.engSectionTransitionDesc,
+                    style: const TextStyle(fontSize: 11, color: AppColors.ink3)),
               ])),
           IconButton(
               onPressed: onDismiss,
@@ -1114,8 +1146,8 @@ class _QuestionImage extends StatelessWidget {
                   Icon(Icons.broken_image_outlined,
                       color: AppColors.err.withValues(alpha: .5), size: 16),
                   const SizedBox(width: 6),
-                  const Text('Rasm yuklanmadi',
-                      style: TextStyle(fontSize: 11, color: AppColors.ink3)),
+                  Text(AppLocalizations.of(context)!.imageLoadFailed,
+                      style: const TextStyle(fontSize: 11, color: AppColors.ink3)),
                 ])),
               );
             },

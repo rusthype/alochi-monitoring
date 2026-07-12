@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/attempt_store.dart';
 import '../../core/db/history_db.dart';
@@ -217,8 +218,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       debugPrint('EngineHostScreen: enqueueLocal error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text(
-              "Natija saqlanmadi — internet yoki xotira muammosi. Qayta urinib ko'ring."),
+          content: Text(AppLocalizations.of(context)!.resultNotSavedError),
           backgroundColor: AppColors.err,
           duration: const Duration(seconds: 6),
         ));
@@ -266,7 +266,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       return _ErrorScaffold(message: _parseError!);
     }
     if (_spec == null) {
-      return const _ErrorScaffold(message: 'Test yuklanmadi');
+      return _ErrorScaffold(message: AppLocalizations.of(context)!.testLoadFailed);
     }
 
     return TestEngine(
@@ -305,7 +305,7 @@ class _ErrorScaffold extends StatelessWidget {
         backgroundColor: AppColors.surface,
         elevation: 0,
         leading: const BackButton(color: AppColors.ink1),
-        title: const Text('Test', style: AppTextStyles.titleMedium),
+        title: Text(AppLocalizations.of(context)!.testTitle, style: AppTextStyles.titleMedium),
       ),
       body: Center(
         child: Padding(
@@ -324,7 +324,7 @@ class _ErrorScaffold extends StatelessWidget {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Orqaga'),
+                child: Text(AppLocalizations.of(context)!.backButton),
               ),
             ],
           ),
@@ -456,11 +456,11 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     return const Color(0xFFEF4444);
   }
 
-  String _gradeLabel(int pct) {
-    if (pct >= 90) return "A'lo";
-    if (pct >= 75) return 'Yaxshi';
-    if (pct >= 55) return 'Qoniqarli';
-    return "Qo'shimcha mashq kerak";
+  String _gradeLabel(BuildContext context, int pct) {
+    if (pct >= 90) return AppLocalizations.of(context)!.gradeExcellent;
+    if (pct >= 75) return AppLocalizations.of(context)!.gradeGood;
+    if (pct >= 55) return AppLocalizations.of(context)!.gradeSatisfactory;
+    return AppLocalizations.of(context)!.gradeNeedsPractice;
   }
 
   /// Builds the result PDF bytes — shared by the "PDF hisobot" button and
@@ -563,7 +563,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     final correct = result.totalCorrect;
     final wrong = result.totalQuestions - result.totalCorrect;
     final heroColor = _secColor(pct);
-    final gradeLabel = _gradeLabel(pct);
+    final gradeLabel = _gradeLabel(context, pct);
     final studentName = '${widget.firstName} ${widget.lastName}';
     final subLine =
         '${widget.group?.isNotEmpty == true ? widget.group! : widget.school} · Variant ${widget.variant}';
@@ -574,19 +574,19 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         backgroundColor: AppColors.surface,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: const Text('Natija', style: AppTextStyles.titleMedium),
+        title: Text(AppLocalizations.of(context)!.resultTitle, style: AppTextStyles.titleMedium),
         actions: [
           TextButton.icon(
             onPressed: () => Navigator.of(context)
                 .popUntil((route) => route.settings.name == 'student_entry'),
             icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-            label: const Text("Keyingi o'quvchi"),
+            label: Text(AppLocalizations.of(context)!.nextStudent),
           ),
           TextButton.icon(
             onPressed: () =>
                 Navigator.of(context).popUntil((route) => route.isFirst),
             icon: const Icon(Icons.home_rounded, size: 18),
-            label: const Text('Bosh sahifa'),
+            label: Text(AppLocalizations.of(context)!.homePage),
           ),
         ],
       ),
@@ -675,13 +675,13 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                       children: [
                         _StatChip(
                           icon: Icons.check_circle_rounded,
-                          label: "To'g'ri $correct",
+                          label: AppLocalizations.of(context)!.correctAnswersWithCount(correct.toString()),
                           color: AppColors.success,
                         ),
                         const SizedBox(width: 8),
                         _StatChip(
                           icon: Icons.cancel_rounded,
-                          label: 'Xato $wrong',
+                          label: AppLocalizations.of(context)!.wrongAnswersWithCount(wrong.toString()),
                           color: const Color(0xFFEF4444),
                         ),
                       ],
@@ -696,7 +696,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                           if (result.shields != null)
                             _BadgeChip(
                               icon: Icons.shield_rounded,
-                              label: '${result.shields} qalqon',
+                              label: AppLocalizations.of(context)!.shieldsCount(result.shields.toString()),
                               color: AppColors.primary,
                             ),
                           if (result.levelLabel != null)
@@ -719,13 +719,13 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const _SectionHead(
+                    _SectionHead(
                       icon: Icons.bar_chart_rounded,
-                      label: "BO'LIMLAR BO'YICHA",
+                      label: AppLocalizations.of(context)!.sectionsByTitle,
                     ),
                     const SizedBox(height: 8),
                     if (result.sectionScores.isEmpty)
-                      const Text("Ma'lumot yo'q", style: AppTextStyles.bodyMedium)
+                      Text(AppLocalizations.of(context)!.noDataAvailable, style: AppTextStyles.bodyMedium)
                     else
                       ...result.sectionScores.map(
                         (s) => _SectionRowV2(
@@ -771,7 +771,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                       )
                     : const Icon(Icons.picture_as_pdf_rounded, size: 20),
                 label: Text(
-                  _pdfPath != null ? 'PDF qayta ochish' : 'PDF hisobot',
+                  _pdfPath != null ? AppLocalizations.of(context)!.reopenPdf : AppLocalizations.of(context)!.pdfReportButton,
                 ),
               ),
 
@@ -859,23 +859,23 @@ class _AiSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(children: [
-            Icon(Icons.auto_awesome_rounded, size: 18, color: AppColors.primary),
-            SizedBox(width: 8),
-            Text('AI tahlil', style: AppTextStyles.labelLarge),
+          Row(children: [
+            const Icon(Icons.auto_awesome_rounded, size: 18, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text(AppLocalizations.of(context)!.aiAnalysisTitle, style: AppTextStyles.labelLarge),
           ]),
           const SizedBox(height: 12),
           if (loading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(children: [
-                SizedBox(
+                const SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2)),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text('Tahlil tayyorlanmoqda…',
+                  child: Text(AppLocalizations.of(context)!.analysisPreparing,
                       style: AppTextStyles.bodyMedium),
                 ),
               ]),
@@ -885,22 +885,22 @@ class _AiSummaryCard extends StatelessWidget {
               Text(summary, style: AppTextStyles.bodyLarge.copyWith(height: 1.4)),
             if (strengths.isNotEmpty) ...[
               const SizedBox(height: 14),
-              _block('Kuchli tomonlar', strengths,
+              _block(AppLocalizations.of(context)!.strongSidesTitle, strengths,
                   Icons.check_circle_rounded, AppColors.ok),
             ],
             if (weaknesses.isNotEmpty) ...[
               const SizedBox(height: 14),
-              _block('Zaif tomonlar', weaknesses, Icons.error_rounded,
+              _block(AppLocalizations.of(context)!.weakSidesTitle, weaknesses, Icons.error_rounded,
                   AppColors.err),
             ],
             if (recs.isNotEmpty) ...[
               const SizedBox(height: 14),
-              _block('Tavsiyalar', recs, Icons.lightbulb_rounded,
+              _block(AppLocalizations.of(context)!.recommendationsTitle, recs, Icons.lightbulb_rounded,
                   const Color(0xFFD97706)),
             ],
             if (focus.isNotEmpty) ...[
               const SizedBox(height: 14),
-              _block('14 kunlik e\'tibor', focus,
+              _block(AppLocalizations.of(context)!.focus14DaysTitle, focus,
                   Icons.calendar_today_rounded, AppColors.primary),
             ],
           ],
@@ -969,12 +969,12 @@ class _TzAnalysis extends StatelessWidget {
             border: Border.all(color: AppColors.border),
           ),
           child: Column(children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 14, 16, 10),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
               child: Row(children: [
-                Icon(Icons.checklist_rounded, size: 18, color: AppColors.primary),
-                SizedBox(width: 8),
-                Text('Mavzu bo\'yicha tahlil', style: AppTextStyles.labelLarge),
+                const Icon(Icons.checklist_rounded, size: 18, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Text(AppLocalizations.of(context)!.subjectAnalysisByTopic, style: AppTextStyles.labelLarge),
               ]),
             ),
             const Divider(height: 1),
@@ -1014,15 +1014,15 @@ class _TzAnalysis extends StatelessWidget {
               border: Border.all(color: AppColors.border),
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Kuchli va zaif tomonlar',
+              Text(AppLocalizations.of(context)!.strongAndWeakSides,
                   style: AppTextStyles.labelLarge),
               const SizedBox(height: 10),
               if (strong.isNotEmpty) ...[
-                _chipRow('Kuchli', strong.map((t) => t.topic).toList(), AppColors.ok),
+                _chipRow(AppLocalizations.of(context)!.strongLabel, strong.map((t) => t.topic).toList(), AppColors.ok),
                 const SizedBox(height: 8),
               ],
               if (weak.isNotEmpty)
-                _chipRow('Mustahkamlash kerak',
+                _chipRow(AppLocalizations.of(context)!.needsReinforcement,
                     weak.map((t) => t.topic).toList(), AppColors.err),
             ]),
           ),
@@ -1031,7 +1031,7 @@ class _TzAnalysis extends StatelessWidget {
         // 14 kunlik reja — TZ §10.3
         if (weak.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _plan14(weak),
+          _plan14(context, weak),
         ],
       ],
     );
@@ -1098,14 +1098,14 @@ class _TzAnalysis extends StatelessWidget {
         ],
       );
 
-  Widget _plan14(List<TopicScore> weak) {
-    final f1 = weak.isNotEmpty ? weak[0].topic : 'zaif mavzu';
+  Widget _plan14(BuildContext context, List<TopicScore> weak) {
+    final f1 = weak.isNotEmpty ? weak[0].topic : AppLocalizations.of(context)!.weakTopicFallback;
     final f2 = weak.length > 1 ? weak[1].topic : f1;
     final rows = <(String, String)>[
-      ('1–3 kun', 'Eng zaif mavzu: $f1 (15 daqiqa/kun)'),
-      ('4–7 kun', 'Ikkinchi mavzu: $f2 (5 ta misol/kun)'),
-      ('8–11 kun', 'Aralash mashqlar — barcha mavzularni takrorlash'),
-      ('12–14 kun', 'Nazorat testi — natijani solishtirish'),
+      (AppLocalizations.of(context)!.days1to3, AppLocalizations.of(context)!.weakestTopicPlan(f1)),
+      (AppLocalizations.of(context)!.days4to7, AppLocalizations.of(context)!.secondTopicPlan(f2)),
+      (AppLocalizations.of(context)!.days8to11, AppLocalizations.of(context)!.mixedExercisesPlan),
+      (AppLocalizations.of(context)!.days12to14, AppLocalizations.of(context)!.controlTestPlan),
     ];
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1115,10 +1115,10 @@ class _TzAnalysis extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Row(children: [
-          Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.primary),
-          SizedBox(width: 8),
-          Text('14 kunlik reja', style: AppTextStyles.labelLarge),
+        Row(children: [
+          const Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Text(AppLocalizations.of(context)!.plan14DaysTitle, style: AppTextStyles.labelLarge),
         ]),
         const SizedBox(height: 12),
         ...rows.map((r) => Padding(

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/api/api_client.dart';
 import '../../core/cache/image_cache_manager.dart';
 import '../../shared/theme/app_theme.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 class SyncImagesButton extends StatefulWidget {
   const SyncImagesButton({super.key});
@@ -70,7 +71,7 @@ class _SyncImagesButtonState extends State<SyncImagesButton> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Sinxronizatsiya yakunlandi! $_done ta rasm oflayn saqlandi.'), 
+            content: Text(AppLocalizations.of(context)!.syncCompleteMsg('$_done')), 
             backgroundColor: AppColors.ok
           ),
         );
@@ -78,7 +79,7 @@ class _SyncImagesButtonState extends State<SyncImagesButton> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Xato yuz berdi: $e'), backgroundColor: AppColors.err),
+          SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred + e.toString()), backgroundColor: AppColors.err),
         );
       }
     } finally {
@@ -94,9 +95,9 @@ class _SyncImagesButtonState extends State<SyncImagesButton> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SizedBox(height: 8),
-          const Text("Oflayn rasmlar yuklanmoqda...", 
+          Text(AppLocalizations.of(context)!.offlineImagesLoading, 
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.ink2, fontSize: 13, fontWeight: FontWeight.w600)),
+              style: const TextStyle(color: AppColors.ink2, fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
@@ -108,7 +109,7 @@ class _SyncImagesButtonState extends State<SyncImagesButton> {
             ),
           ),
           const SizedBox(height: 6),
-          Text('$_done / $_total ta saqlandi', 
+          Text(AppLocalizations.of(context)!.savedOutOfTotal('$_done', '$_total'), 
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.ink3, fontSize: 11)),
         ],
@@ -120,7 +121,7 @@ class _SyncImagesButtonState extends State<SyncImagesButton> {
       child: TextButton.icon(
         onPressed: _startSync,
         icon: const Icon(Icons.cloud_download_rounded, size: 16),
-        label: const Text('Oflayn rasmlarni tayyorlash (Sync)'),
+        label: Text(AppLocalizations.of(context)!.syncImagesOfflineButton),
         style: TextButton.styleFrom(
           foregroundColor: AppColors.brand,
           textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),

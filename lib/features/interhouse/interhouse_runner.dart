@@ -2,6 +2,7 @@
 // Section-based test runner for Interhouse Grade 2
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../core/models/models.dart';
 import 'interhouse_data.dart';
@@ -153,6 +154,7 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
 
   Future<void> _finish() async {
     _timer?.cancel();
+    final l10n = AppLocalizations.of(context)!;
     final unanswered = _total - _totalAnswered;
     if (unanswered > 0) {
       final ok = await showDialog<bool>(
@@ -161,9 +163,9 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
         builder: (_) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('Tugatish?',
-              style: TextStyle(fontWeight: FontWeight.w800)),
-          content: Text('$unanswered ta savol javobsiz. Tugatmoqchimisiz?'),
+          title: Text(l10n.finishConfirmTitle,
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          content: Text(l10n.unansweredWarning(unanswered)),
           actions: [
             TextButton(
               onPressed: () {
@@ -181,14 +183,14 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                 });
                 Navigator.pop(context, false);
               },
-              child: const Text('Orqaga'),
+              child: Text(l10n.backButton),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.brand,
                   minimumSize: const Size(100, 40)),
-              child: const Text('Tugatish'),
+              child: Text(l10n.finishBtn),
             ),
           ],
         ),
@@ -237,6 +239,7 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final progress = _total > 0 ? _totalAnswered / _total : 0.0;
     final isLast = _sectionIdx == 4;
 
@@ -304,9 +307,9 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink1)),
-                const Text('javoblandi',
+                Text(l10n.answeredLabel,
                     style:
-                        TextStyle(fontSize: 9, color: AppColors.ink3)),
+                        const TextStyle(fontSize: 9, color: AppColors.ink3)),
               ]),
             ),
             // Timer
@@ -334,7 +337,7 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                         color: _timerHot
                             ? const Color(0xFFDC2626)
                             : const Color(0xFF7C2D12))),
-                Text('qoldi',
+                Text(l10n.timeLeftLabel,
                     style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
@@ -448,8 +451,8 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                       ? null
                       : () => _goSection(_sectionIdx - 1),
                   icon: const Icon(Icons.arrow_back_rounded, size: 15),
-                  label: const Text('Oldingi',
-                      style: TextStyle(
+                  label: Text(l10n.previousButton,
+                      style: const TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w700)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.ink2,
@@ -468,8 +471,8 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                   ? ElevatedButton.icon(
                       onPressed: _finish,
                       icon: const Icon(Icons.check_rounded, size: 15),
-                      label: const Text('Tugatish',
-                          style: TextStyle(
+                      label: Text(l10n.finishBtn,
+                          style: const TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w700)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.ok,
@@ -481,8 +484,8 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                     )
                   : ElevatedButton.icon(
                       onPressed: () => _goSection(_sectionIdx + 1),
-                      icon: const Text('Keyingi',
-                          style: TextStyle(
+                      icon: Text(l10n.nextButton,
+                          style: const TextStyle(
                               fontSize: 13, fontWeight: FontWeight.w700)),
                       label: const Icon(Icons.arrow_forward_rounded, size: 15),
                       style: ElevatedButton.styleFrom(

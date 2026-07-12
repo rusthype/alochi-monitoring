@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:http/http.dart' as http;
 import '../models/models.dart';
 import '../api/api_client.dart';
 import 'queue_crypto.dart';
@@ -223,40 +222,5 @@ class OfflineQueue {
     return removed;
   }
 
-  // ── Telegram Offline Queue ──────────────────────────────────────────────────
-  // LEGACY: faqat eski yig'ilib qolgan TG xabarlarini drenajlash uchun. Yangi kod ishlatmaydi — keyingi relizda olib tashlanadi.
-  static Future<void> enqueueTg(String msg) async {
-    final d = await db;
-    await d.insert('tg_queue', {
-      'msg': msg,
-      'created': DateTime.now().millisecondsSinceEpoch,
-    });
-  }
 
-  static Future<int> flushTg(String botToken, List<int> adminIds) async {
-    final d = await db;
-    final rows = await d.query('tg_queue', orderBy: 'created ASC');
-    int synced = 0;
-    for (final row in rows) {
-      try {
-        final msg = row['msg'] as String;
-        bool allSent = true;
-        for (final id in adminIds) {
-          final r = await http.post(
-            Uri.parse('https://api.telegram.org/bot$botToken/sendMessage'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'chat_id': id, 'text': msg, 'parse_mode': 'HTML'}),
-          );
-          if (r.statusCode != 200) allSent = false;
-        }
-        if (allSent) {
-          await d.delete('tg_queue', where: 'id = ?', whereArgs: [row['id']]);
-          synced++;
-        }
-      } catch (e) {
-        debugPrint('OfflineQueue.flushTg error (id=${row['id']}): $e');
-      }
-    }
-    return synced;
-  }
 }

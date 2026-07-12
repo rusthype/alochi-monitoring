@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
 import '../interhouse/interhouse_data.dart';
 import '../interhouse/interhouse_runner.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 class LocalGradeScreen extends StatefulWidget {
   const LocalGradeScreen({super.key});
@@ -63,11 +64,11 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
     final first = _firstCtrl.text.trim();
     final last = _lastCtrl.text.trim();
     if (first.isEmpty || last.isEmpty) {
-      setState(() => _err = 'Ism va familiyani kiriting');
+      setState(() => _err = AppLocalizations.of(context)!.enterFirstAndLastName);
       return;
     }
     if (_passCtrl.text.trim() != '1234') {
-      setState(() => _err = "Maxfiy parol noto'g'ri (Maslahat: 1234)");
+      setState(() => _err = AppLocalizations.of(context)!.incorrectSecretPassword);
       return;
     }
     setState(() {
@@ -114,7 +115,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
                 icon: const Icon(Icons.close_rounded, color: AppColors.ink2),
                 onPressed: () => Navigator.pop(context)),
         title: Text(
-            _step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
+            _step == 0 ? AppLocalizations.of(context)!.selectVariant : AppLocalizations.of(context)!.studentInfoTitle,
             style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
@@ -151,14 +152,14 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
               border: Border.all(
                   color: const Color(0xFF10B981).withValues(alpha: .3)),
             ),
-            child: const Row(children: [
-              Icon(Icons.info_outline_rounded,
+            child: Row(children: [
+              const Icon(Icons.info_outline_rounded,
                   color: Color(0xFF10B981), size: 18),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '2-sinf Ingliz tili — Interhouse testi\n10 variant · 30 savol · Offline rejim',
-                  style: TextStyle(
+                  AppLocalizations.of(context)!.localTestInfo,
+                  style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF10B981),
@@ -168,8 +169,8 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
             ]),
           ),
           const SizedBox(height: 20),
-          const Text('Variantni tanlang',
-              style: TextStyle(
+          Text(AppLocalizations.of(context)!.selectVariant,
+              style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.ink2)),
@@ -219,8 +220,8 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
             child: ElevatedButton.icon(
               onPressed: _variant == null ? null : () => _goStep(1),
               icon: const Icon(Icons.arrow_forward_rounded),
-              label: const Text('Davom etish',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              label: Text(AppLocalizations.of(context)!.continueButton,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.brand,
                 foregroundColor: Colors.white,
@@ -264,8 +265,8 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
             ),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text("O'quvchi ma'lumotlari",
-                  style: TextStyle(
+              Text(AppLocalizations.of(context)!.studentInfoTitle,
+                  style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: AppColors.ink1)),
@@ -273,30 +274,30 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
               Row(children: [
                 Expanded(
                     child: _Field(
-                        label: 'Ism', ctrl: _firstCtrl, hint: 'Alisher')),
+                        label: AppLocalizations.of(context)!.firstNameLabel, ctrl: _firstCtrl, hint: AppLocalizations.of(context)!.firstNameHint)),
                 const SizedBox(width: 12),
                 Expanded(
                     child: _Field(
-                        label: 'Familiya', ctrl: _lastCtrl, hint: 'Karimov')),
+                        label: AppLocalizations.of(context)!.lastNameLabel, ctrl: _lastCtrl, hint: AppLocalizations.of(context)!.lastNameHint)),
               ]),
               Row(children: [
                 Expanded(
                     child: _Field(
-                        label: 'Guruh / Sinf',
+                        label: AppLocalizations.of(context)!.groupGradeLabel,
                         ctrl: _groupCtrl,
-                        hint: '3-A',
+                        hint: AppLocalizations.of(context)!.groupGradeHint,
                         required: false)),
                 const SizedBox(width: 12),
                 Expanded(
                     child: _Field(
-                        label: 'Maktab nomi',
+                        label: AppLocalizations.of(context)!.schoolNameLabel,
                         ctrl: _schoolCtrl,
-                        hint: '12-maktab',
+                        hint: AppLocalizations.of(context)!.schoolNameHint,
                         required: false)),
               ]),
               const SizedBox(height: 14),
               _Field(
-                  label: 'Parol (PIN kod)',
+                  label: AppLocalizations.of(context)!.pinCodeLabel,
                   ctrl: _passCtrl,
                   hint: '****',
                   obscure: true,
@@ -332,7 +333,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.play_arrow_rounded),
-                  label: Text(_loading ? 'Yuklanmoqda...' : 'Testni boshlash',
+                  label: Text(_loading ? AppLocalizations.of(context)!.loadingLabelDots : AppLocalizations.of(context)!.startTest,
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.w700)),
                   style: ElevatedButton.styleFrom(
@@ -375,7 +376,7 @@ class _GradeBadge extends StatelessWidget {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.school_rounded, size: 14, color: c),
         const SizedBox(width: 6),
-        Text('$grade-sinf',
+        Text(AppLocalizations.of(context)!.gradeClass(grade),
             style:
                 TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c)),
       ]),
@@ -396,7 +397,7 @@ class _VariantBadge extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           const Icon(Icons.tag_rounded, size: 14, color: AppColors.brand),
           const SizedBox(width: 6),
-          Text('Variant $variant',
+          Text(AppLocalizations.of(context)!.variantBadge(variant),
               style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,

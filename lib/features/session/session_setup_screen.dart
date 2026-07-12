@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
@@ -61,13 +62,14 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
   }
 
   void _confirm() {
+    final l10n = AppLocalizations.of(context)!;
     if (_selected == null) {
-      setState(() => _err = 'Maktabni tanlang');
+      setState(() => _err = l10n.selectSchool);
       return;
     }
     final expected = _expectedPin(_selected!);
     if (expected.isNotEmpty && _pinCtrl.text.trim() != expected) {
-      setState(() => _err = "PIN noto'g'ri");
+      setState(() => _err = l10n.incorrectPin);
       return;
     }
     setState(() => _err = null);
@@ -201,14 +203,15 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
   }
 
   Widget _buildPinInput() {
+    final l10n = AppLocalizations.of(context)!;
     final len = _expectedPin(_selected!).length.clamp(4, 8);
     const double boxW = 52;
     const double gap = 10;
     final double boxesW = len * boxW + (len - 1) * gap;
     return Semantics(
       textField: true,
-      label: 'PIN kod',
-      hint: "To'rt xonali PIN kodni kiriting",
+      label: l10n.pinCodeLabel,
+      hint: l10n.enterFourDigitPin,
       child: Row(
       children: [
         SizedBox(
@@ -299,7 +302,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
         ),
         const SizedBox(width: 10),
         Tooltip(
-          message: _obscure ? "Ko'rsatish" : 'Yashirish',
+          message: _obscure ? l10n.showPassword : l10n.hidePassword,
           child: InkWell(
             onTap: () => setState(() => _obscure = !_obscure),
             child: Container(
@@ -325,12 +328,13 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
   }
 
   Widget _buildForm() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'Maktabni tanlang',
-          style: TextStyle(
+        Text(
+          l10n.selectSchool,
+          style: const TextStyle(
             color: AppColors.ink2,
             fontWeight: FontWeight.w600,
             fontSize: 13.5,
@@ -344,9 +348,9 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
         ),
         if (_selected != null && _expectedPin(_selected!).isNotEmpty) ...[
           const SizedBox(height: 24),
-          const Text(
-            'PIN kod',
-            style: TextStyle(
+          Text(
+            l10n.pinCodeLabel,
+            style: const TextStyle(
               color: AppColors.ink2,
               fontWeight: FontWeight.w600,
               fontSize: 13.5,
@@ -387,14 +391,14 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
               backgroundColor: AppColors.secondary,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Tasdiqlash'),
+            child: Text(l10n.confirmBtn),
           ),
         ),
         const SizedBox(height: 14),
-        const Center(
+        Center(
           child: Text(
-            "Keyingi qadam: o'quvchi ismini kiritish",
-            style: TextStyle(color: AppColors.ink3, fontSize: 12.5),
+            l10n.nextStepStudentName,
+            style: const TextStyle(color: AppColors.ink3, fontSize: 12.5),
           ),
         ),
       ],
@@ -402,6 +406,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
   }
 
   Widget _buildLeftPanel() {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -444,14 +449,14 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
               color: Colors.white.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.menu_book_outlined, size: 14, color: Colors.white),
-                SizedBox(width: 6),
+                const Icon(Icons.menu_book_outlined, size: 14, color: Colors.white),
+                const SizedBox(width: 6),
                 Text(
-                  'Sinov sessiyasi',
-                  style: TextStyle(
+                  l10n.testSession,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                     fontSize: 12.5,
@@ -472,7 +477,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
           ),
           const SizedBox(height: 14),
           Text(
-            'Sinov sessiyasini boshlash uchun maktabni tanlang va PIN kodni kiriting.',
+            l10n.testSessionInstruction,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.82),
               fontSize: 14,
@@ -483,11 +488,11 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _step(1, 'Sessiya sozlamalari', true),
+              _step(1, l10n.sessionSettings, true),
               const SizedBox(height: 10),
-              _step(2, "O'quvchi ismi", false),
+              _step(2, l10n.studentNameStep, false),
               const SizedBox(height: 10),
-              _step(3, 'Testni boshlash', false),
+              _step(3, l10n.startTest, false),
             ],
           ),
         ],
@@ -496,6 +501,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
   }
 
   Widget _buildNarrowHeader() {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.all(24),
       padding: const EdgeInsets.all(24),
@@ -546,14 +552,14 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
                     color: Colors.white.withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(999),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.menu_book_outlined, size: 14, color: Colors.white),
-                      SizedBox(width: 6),
+                      const Icon(Icons.menu_book_outlined, size: 14, color: Colors.white),
+                      const SizedBox(width: 6),
                       Text(
-                        'Sinov sessiyasi',
-                        style: TextStyle(
+                        l10n.testSession,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                           fontSize: 12.5,

@@ -1,5 +1,6 @@
 // lib/features/test/confirm_screen.dart
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
@@ -21,7 +22,7 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
   Future<void> _start() async {
     final variant = widget.session.variant;
     if (variant == null) {
-      setState(() => _error = 'Faol imtihon topilmadi yoki muddati tugagan');
+      setState(() => _error = AppLocalizations.of(context)!.noActiveExamOrExpired);
       return;
     }
     setState(() {
@@ -41,13 +42,13 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
     } on ApiException catch (e) {
       setState(() {
         _error = e.statusCode == 403
-            ? 'Faol imtihon topilmadi yoki muddati tugagan'
+            ? AppLocalizations.of(context)!.noActiveExamOrExpired
             : e.message;
         _loading = false;
       });
     } catch (_) {
       setState(() {
-        _error = 'Yuklanmadi. Qayta urinib ko\'ring.';
+        _error = AppLocalizations.of(context)!.loadFailed;
         _loading = false;
       });
     }
@@ -78,7 +79,7 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
                             color: AppColors.brand)),
                   ),
                   const SizedBox(height: 16),
-                  const Text("Salom!", style: TextStyle(color: AppColors.ink2)),
+                  Text(AppLocalizations.of(context)!.helloGreeting, style: const TextStyle(color: AppColors.ink2)),
                   const SizedBox(height: 4),
                   Text(s.studentName,
                       style: Theme.of(context)
@@ -92,9 +93,9 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
                       alignment: WrapAlignment.center,
                       children: [
                         if (s.grade != null)
-                          _chip('${s.grade}-sinf', Icons.school_outlined),
+                          _chip(AppLocalizations.of(context)!.gradeN(s.grade!), Icons.school_outlined),
                         if (s.variant != null)
-                          _chip('Variant ${s.variant}', Icons.numbers_outlined),
+                          _chip(AppLocalizations.of(context)!.variantBadge(s.variant!), Icons.numbers_outlined),
                         if (s.groupName != null)
                           _chip(s.groupName!, Icons.group_outlined),
                       ]),
@@ -115,14 +116,14 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
                             _stat(
-                                '${p.mathCount}', 'Matematika', AppColors.math),
+                                '${p.mathCount}', AppLocalizations.of(context)!.mathSubjectFull, AppColors.math),
                             Container(
                                 width: 1, height: 36, color: AppColors.border),
                             _stat(
-                                '${p.engCount}', 'Ingliz tili', AppColors.eng),
+                                '${p.engCount}', AppLocalizations.of(context)!.englishSubjectFull, AppColors.eng),
                             Container(
                                 width: 1, height: 36, color: AppColors.border),
-                            _stat('${p.totalCount}', 'Jami', AppColors.brand),
+                            _stat('${p.totalCount}', AppLocalizations.of(context)!.totalLabel, AppColors.brand),
                           ]),
                     ]),
                   ),
@@ -143,13 +144,13 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.play_arrow),
-                    label: const Text('Testni boshlash'),
+                    label: Text(AppLocalizations.of(context)!.startTest),
                   ),
                   const SizedBox(height: 10),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Orqaga',
-                        style: TextStyle(color: AppColors.ink2)),
+                    child: Text(AppLocalizations.of(context)!.backButton,
+                        style: const TextStyle(color: AppColors.ink2)),
                   ),
                 ]),
               ),

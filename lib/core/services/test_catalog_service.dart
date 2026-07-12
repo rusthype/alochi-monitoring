@@ -104,7 +104,7 @@ class TestCatalogService {
   /// maktabga bog'langan (school FK bor) testlarni ko'rish uchun SHART
   /// (groupId bilan birga, GroupSelectScreen).
   Future<List<CatalogEntry>> refresh({String? groupId, String? schoolCode}) async {
-    // Keshdan metadata olish (har todo holda kerak)
+    // Keshdan metadata olish (har doim holda kerak)
     final cachedRows = await TestCache.all();
     final cachedVersions = <String, int>{};
     for (final row in cachedRows) {
@@ -246,6 +246,13 @@ class TestCatalogService {
     if (node is String) {
       if (node.startsWith('http://') || node.startsWith('https://')) {
         return [node];
+      }
+      final lower = node.toLowerCase();
+      if (node.startsWith('/') && 
+          (lower.endsWith('.png') || lower.endsWith('.jpg') || 
+           lower.endsWith('.jpeg') || lower.endsWith('.gif') || 
+           lower.endsWith('.webp') || lower.endsWith('.svg'))) {
+        return [MonitoringApi.fixImageUrl(node)];
       }
       return [];
     }
