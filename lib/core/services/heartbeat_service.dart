@@ -1,6 +1,8 @@
 // lib/core/services/heartbeat_service.dart
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/widgets.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../api/api_client.dart';
@@ -24,6 +26,32 @@ class HeartbeatService with WidgetsBindingObserver {
   int? _currentQuestionIndex;
   int? _totalQuestions;
   List<int>? _questionTimes;
+
+  String? _cachedPlatform;
+  String? _cachedAppVersion;
+
+  Future<void> _resolveDeviceInfoOnce() async {
+    if (_cachedPlatform != null) return; // resolved once per process lifetime
+    _cachedPlatform = Platform.isWindows
+        ? 'windows'
+        : Platform.isMacOS
+            ? 'macos'
+            : Platform.isLinux
+                ? 'linux'
+                : Platform.isAndroid
+                    ? 'android'
+                    : Platform.isIOS
+                        ? 'ios'
+                        : '';
+    try {
+      final info = await PackageInfo.fromPlatform();
+      _cachedAppVersion = info.buildNumber.isNotEmpty
+          ? '${info.version}+${info.buildNumber}'
+          : info.version;
+    } catch (_) {
+      _cachedAppVersion = '';
+    }
+  }
 
   Future<void> start() async {
     if (_started) return;
@@ -79,6 +107,7 @@ class HeartbeatService with WidgetsBindingObserver {
   Future<void> _ping(String status) async {
     final id = _sessionId;
     if (id == null) return;
+    await _resolveDeviceInfoOnce();
     try {
       await api.sessionPing(
         sessionId: id,
@@ -92,6 +121,8 @@ class HeartbeatService with WidgetsBindingObserver {
         currentQuestionIndex: _currentQuestionIndex,
         totalQuestions: _totalQuestions,
         questionTimes: _questionTimes,
+        platform: _cachedPlatform,
+        appVersion: _cachedAppVersion,
       );
     } catch (_) {}
   }
