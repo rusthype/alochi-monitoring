@@ -65,6 +65,7 @@ Future<void> launchRunner(
     name: '$firstName $lastName'.trim(),
     variant: variant.toString(),
     testKey: session.testKey,
+    studentCode: studentId,
   );
 
   await Navigator.of(context).push(

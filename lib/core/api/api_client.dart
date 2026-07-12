@@ -158,6 +158,8 @@ class MonitoringApi {
     String variant = '',
     String testKey = '',
     String status = 'active',
+    String? studentCode,
+    int tabSwitchCount = 0,
   }) async {
     await _post('/session/ping/', {
       'session_id': sessionId,
@@ -166,6 +168,8 @@ class MonitoringApi {
       'variant': variant,
       'test_key': testKey,
       'status': status,
+      if (studentCode != null && studentCode.isNotEmpty) 'student_code': studentCode,
+      'tab_switch_count': tabSwitchCount,
     });
   }
 
