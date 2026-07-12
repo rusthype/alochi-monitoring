@@ -1378,26 +1378,6 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                     ],
                   ),
                   const Spacer(),
-                  if (total > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: cached == total
-                            ? AppColors.okMuted
-                            : AppColors.primaryMuted,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '$cached/$total',
-                        style: AppTextStyles.labelMedium.copyWith(
-                          color: cached == total
-                              ? AppColors.ok
-                              : AppColors.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
