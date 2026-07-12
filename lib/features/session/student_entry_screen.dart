@@ -137,7 +137,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
         lastName = parts.isNotEmpty ? parts.first : '';
         firstName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
       }
-      studentId = (_selectedStudent!['id'] ?? '').toString();
+      studentId = (_selectedStudent!['student_code'] ?? _selectedStudent!['id'] ?? '').toString();
     } else {
       final first = _firstCtrl.text.trim();
       final last = _lastCtrl.text.trim();

@@ -19,6 +19,11 @@ class HeartbeatService with WidgetsBindingObserver {
   String _name = '';
   String _variant = '';
   String _testKey = '';
+  String? _studentCode;
+  int _tabSwitchCount = 0;
+  int? _currentQuestionIndex;
+  int? _totalQuestions;
+  List<int>? _questionTimes;
 
   Future<void> start() async {
     if (_started) return;
@@ -40,11 +45,14 @@ class HeartbeatService with WidgetsBindingObserver {
     required String name,
     required String variant,
     required String testKey,
+    String? studentCode,
   }) {
     _schoolCode = schoolCode;
     _name = name;
     _variant = variant;
     _testKey = testKey;
+    _studentCode = studentCode;
+    _tabSwitchCount = 0;
     unawaited(_ping('active'));
   }
 
@@ -53,7 +61,19 @@ class HeartbeatService with WidgetsBindingObserver {
     _name = '';
     _variant = '';
     _testKey = '';
+    _studentCode = null;
+    _tabSwitchCount = 0;
+    _currentQuestionIndex = null;
+    _totalQuestions = null;
+    _questionTimes = null;
     unawaited(_ping('active'));
+  }
+
+  void updateProgress(
+      int currentQuestionIndex, int totalQuestions, List<int> questionTimes) {
+    _currentQuestionIndex = currentQuestionIndex;
+    _totalQuestions = totalQuestions;
+    _questionTimes = questionTimes;
   }
 
   Future<void> _ping(String status) async {
@@ -67,6 +87,11 @@ class HeartbeatService with WidgetsBindingObserver {
         variant: _variant,
         testKey: _testKey,
         status: status,
+        studentCode: _studentCode,
+        tabSwitchCount: _tabSwitchCount,
+        currentQuestionIndex: _currentQuestionIndex,
+        totalQuestions: _totalQuestions,
+        questionTimes: _questionTimes,
       );
     } catch (_) {}
   }
@@ -77,6 +102,9 @@ class HeartbeatService with WidgetsBindingObserver {
         state == AppLifecycleState.paused) {
       unawaited(_ping('finished'));
     } else if (state == AppLifecycleState.resumed) {
+      if (_testKey.isNotEmpty) {
+        _tabSwitchCount++;
+      }
       unawaited(_ping('active'));
     }
   }
