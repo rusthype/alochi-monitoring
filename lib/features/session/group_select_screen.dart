@@ -178,126 +178,268 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        title: const Text('Guruhni tanlang', style: AppTextStyles.titleMedium),
-      ),
-      body: _loadingGroups
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_err != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.err.withValues(alpha: .08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
+      body: Stack(
+        children: [
+          // Background noise could be added here if we had an asset, but we'll stick to AppColors.bg
+          
+          // Main Content
+          Positioned.fill(
+            child: _loadingGroups
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    padding: EdgeInsets.only(
+                      top: MediaQuery.of(context).padding.top + 100,
+                      bottom: 80,
+                      left: 16,
+                      right: 16,
+                    ),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 768), // Max width from mockup 3xl approx 768
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const Icon(Icons.warning_rounded,
-                                color: AppColors.err, size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _err!,
-                                style: const TextStyle(
-                                    color: AppColors.err, fontSize: 13),
+                            if (_err != null) ...[
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.errorMuted,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.warning_rounded, color: AppColors.error, size: 20),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        _err!,
+                                        style: const TextStyle(color: AppColors.error, fontSize: 14, fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 24),
+                            ],
+                            
+                            if (_groups.isEmpty)
+                              // _err != null bo'lsa, yuqoridagi xato bandida
+                              // sabab allaqachon ko'rsatilgan — ikkinchi marta
+                              // umumiy "Guruhlar topilmadi" matnini takrorlamaymiz.
+                              if (_err == null)
+                                const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 40),
+                                    child: Text('Guruhlar topilmadi', style: TextStyle(fontSize: 16, color: AppColors.ink3)),
+                                  ),
+                                )
+                              else
+                                const SizedBox.shrink()
+                            else ...[
+                              // Section 1: Guruhni tanlang
+                              _buildStepIndicator('Qadam 1', active: true),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Guruhni tanlang',
+                                style: TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.5,
+                                  color: AppColors.ink1,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                children: _groups.map(_buildGroupPill).toList(),
+                              ),
+                            ],
+                            
+                            if (_selectedGroup != null) ...[
+                              const SizedBox(height: 48),
+                              // Section 2: Testni tanlang
+                              _buildStepIndicator('Qadam 2', active: false),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Testni tanlang',
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.5,
+                                  color: AppColors.ink1,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              
+                              if (_loadingCatalog)
+                                const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 32),
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  ),
+                                )
+                              else if (_catalog.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 32),
+                                  child: Text(
+                                    'Bu guruh uchun test topilmadi',
+                                    style: TextStyle(fontSize: 15, color: AppColors.ink3),
+                                  ),
+                                )
+                              else
+                                ..._catalog.map(_buildTestCard),
+                            ],
                           ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                    ],
-                    if (_groups.isEmpty)
-                      // _err != null bo'lsa, yuqoridagi xato bandida
-                      // sabab allaqachon ko'rsatilgan — ikkinchi marta
-                      // umumiy "Guruhlar topilmadi" matnini takrorlamaymiz.
-                      if (_err == null)
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24),
-                            child: Text('Guruhlar topilmadi'),
-                          ),
-                        )
-                      else
-                        const SizedBox.shrink()
-                    else ...[
-                      const Text('Guruhni tanlang',
-                          style: AppTextStyles.labelLarge),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: _groups.map((group) {
-                          final selected = _selectedGroup == group;
-                          return GestureDetector(
-                            onTap: () => _selectGroup(group),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 160),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: selected
-                                    ? AppColors.secondary
-                                    : AppColors.surface,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: selected
-                                      ? AppColors.secondary
-                                      : AppColors.border,
+                    ),
+                  ),
+          ),
+
+          // Floating Navbar
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: _DoubleBezel(
+                padding: const EdgeInsets.all(6),
+                borderRadius: 100,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Back Button
+                      MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: Container(
+                            color: Colors.transparent, // expand tap area
+                            child: Row(
+                              children: [
+                                _HoverableBackButtonIcon(),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Ortga',
+                                  style: TextStyle(
+                                    color: AppColors.brand,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                (group['display'] ?? group['name'] ?? '')
-                                    .toString(),
-                                style: AppTextStyles.labelLarge.copyWith(
-                                  color:
-                                      selected ? Colors.white : AppColors.ink1,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
+                              ],
                             ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                    if (_selectedGroup != null) ...[
-                      const SizedBox(height: 24),
-                      const Text('Testni tanlang',
-                          style: AppTextStyles.labelLarge),
-                      const SizedBox(height: 10),
-                      if (_loadingCatalog)
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 16),
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2),
                           ),
-                        )
-                      else if (_catalog.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Text('Bu guruh uchun test topilmadi'),
-                        )
-                      else
-                        ..._catalog.map(_testTile),
+                        ),
+                      ),
+                      const SizedBox(width: 48),
+                      const Text(
+                        'A\'lochi Monitoring',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppColors.ink1,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(width: 48),
+                      const SizedBox(width: 40), // spacer to balance "Ortga"
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _testTile(CatalogEntry entry) {
+  Widget _buildStepIndicator(String text, {bool active = true}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: active ? AppColors.brand : AppColors.gray200,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          text.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 2.0,
+            color: AppColors.ink3,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGroupPill(Map<String, dynamic> group) {
+    final isSelected = _selectedGroup == group;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _selectGroup(group),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.brand : AppColors.surface,
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(
+              color: isSelected ? AppColors.brand : AppColors.border,
+            ),
+            boxShadow: [
+              if (isSelected)
+                BoxShadow(
+                  color: AppColors.brand.withValues(alpha: 0.25),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                )
+              else
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
+                )
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                (group['display'] ?? group['name'] ?? '').toString(),
+                style: TextStyle(
+                  color: isSelected ? Colors.white : AppColors.ink1,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 14,
+                  letterSpacing: 0.3,
+                ),
+              ),
+              if (isSelected) ...[
+                const SizedBox(width: 8),
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+              ]
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTestCard(CatalogEntry entry) {
     final downloaded = entry.status == CatalogStatus.cached ||
         entry.status == CatalogStatus.cachedOnly ||
         entry.status == CatalogStatus.updatable;
@@ -305,48 +447,356 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
         entry.lockedUntil!.isAfter(DateTime.now());
     final isDownloading = _downloadingKeys.contains(entry.testKey);
 
-    // Yuklanmagan test — shu yerdayoq (guruh ma'lum bo'lgan holatda)
-    // yuklab olish imkonini beramiz, group_id bilan (S-001).
     if (!downloaded) {
-      return Card(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: ListTile(
-          title: Text(
-            entry.title,
-            style:
-                AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700),
-          ),
-          subtitle: const Text("Yuklab olinmagan",
-              style: TextStyle(color: AppColors.ink3, fontSize: 12)),
-          trailing: isDownloading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : TextButton(
-                  onPressed: () => _downloadEntry(entry),
-                  child: const Text('Yuklash'),
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _DoubleBezel(
+          child: Container(
+            color: AppColors.gray50.withValues(alpha: 0.5),
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entry.title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.gray700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.brand),
+                        SizedBox(width: 6),
+                        Text(
+                          'Yuklab olinmagan',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brand),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
+                isDownloading
+                    ? const SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brand)),
+                      )
+                    : _HoverableDownloadButton(
+                        onPressed: () => _downloadEntry(entry),
+                      ),
+              ],
+            ),
+          ),
         ),
       );
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        title: Text(
-          entry.title,
-          style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700),
+    if (isLocked) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Opacity(
+          opacity: 0.6,
+          child: ColorFiltered(
+            colorFilter: const ColorFilter.matrix([
+              0.5, 0.5, 0.5, 0, 0,
+              0.5, 0.5, 0.5, 0, 0,
+              0.5, 0.5, 0.5, 0, 0,
+              0,   0,   0,   1, 0,
+            ]),
+            child: _DoubleBezel(
+              child: Container(
+                color: AppColors.gray50,
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.gray700,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Row(
+                          children: [
+                            Icon(Icons.lock_rounded, size: 16, color: AppColors.error),
+                            SizedBox(width: 6),
+                            Text(
+                              'Hali qulflangan',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.error),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.gray100,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Icon(Icons.lock_rounded, color: AppColors.ink3, size: 20),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
-        subtitle: isLocked
-            ? const Text('Hali qulflangan',
-                style: TextStyle(color: AppColors.primary, fontSize: 12))
-            : null,
-        trailing: const Icon(Icons.chevron_right_rounded),
-        enabled: !isLocked,
-        onTap: isLocked ? null : () => _goToStudentEntry(entry, _selectedGroup),
+      );
+    }
+
+    return _HoverableTestCard(
+      entry: entry,
+      onTap: () => _goToStudentEntry(entry, _selectedGroup),
+    );
+  }
+}
+
+class _HoverableBackButtonIcon extends StatefulWidget {
+  @override
+  State<_HoverableBackButtonIcon> createState() => _HoverableBackButtonIconState();
+}
+
+class _HoverableBackButtonIconState extends State<_HoverableBackButtonIcon> {
+  bool _isHovered = false;
+  
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: _isHovered ? AppColors.brand : AppColors.brandLight,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          Icons.arrow_back_rounded,
+          color: _isHovered ? Colors.white : AppColors.brand,
+          size: 18,
+        ),
       ),
     );
   }
 }
+
+class _HoverableDownloadButton extends StatefulWidget {
+  final VoidCallback onPressed;
+
+  const _HoverableDownloadButton({required this.onPressed});
+
+  @override
+  State<_HoverableDownloadButton> createState() => _HoverableDownloadButtonState();
+}
+
+class _HoverableDownloadButtonState extends State<_HoverableDownloadButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          transform: _isHovered ? Matrix4.translationValues(0, -2, 0) : Matrix4.identity(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            color: _isHovered ? AppColors.brand : Colors.white,
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(color: _isHovered ? AppColors.brand : AppColors.border),
+            boxShadow: [
+              if (_isHovered)
+                BoxShadow(
+                  color: AppColors.brand.withValues(alpha: 0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                )
+              else
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 2,
+                  offset: const Offset(0, 1),
+                ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.download_rounded, size: 18, color: _isHovered ? Colors.white : AppColors.ink1),
+              const SizedBox(width: 8),
+              Text(
+                'Yuklash',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: _isHovered ? Colors.white : AppColors.ink1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HoverableTestCard extends StatefulWidget {
+  final CatalogEntry entry;
+  final VoidCallback onTap;
+
+  const _HoverableTestCard({required this.entry, required this.onTap});
+
+  @override
+  State<_HoverableTestCard> createState() => _HoverableTestCardState();
+}
+
+class _HoverableTestCardState extends State<_HoverableTestCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: _DoubleBezel(
+            isHovered: _isHovered,
+            child: Container(
+              color: Colors.transparent,
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.entry.title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.ink1,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Tayyor',
+                        style: TextStyle(fontSize: 13, color: AppColors.ink3, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    width: 40,
+                    height: 40,
+                    transform: _isHovered ? Matrix4.translationValues(4, 0, 0) : Matrix4.identity(),
+                    decoration: BoxDecoration(
+                      color: _isHovered ? AppColors.brand : AppColors.brandLight,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.arrow_forward_rounded,
+                      color: _isHovered ? Colors.white : AppColors.brand,
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DoubleBezel extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double borderRadius;
+  final bool isHovered;
+
+  const _DoubleBezel({
+    required this.child,
+    this.padding = const EdgeInsets.all(6),
+    this.borderRadius = 32,
+    this.isHovered = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+      transform: isHovered ? Matrix4.translationValues(0, -4, 0) : Matrix4.identity(),
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: [
+          if (isHovered)
+            BoxShadow(
+              color: AppColors.brand.withValues(alpha: 0.12),
+              blurRadius: 32,
+              offset: const Offset(0, 12),
+              spreadRadius: -8,
+            )
+          else
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 24,
+              offset: const Offset(0, 4),
+              spreadRadius: -4,
+            ),
+        ],
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(borderRadius - 6),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: child,
+      ),
+    );
+  }
+}
+
