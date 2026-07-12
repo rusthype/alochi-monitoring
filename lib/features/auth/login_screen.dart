@@ -1253,8 +1253,33 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
   void initState() {
     super.initState();
     _entries = List.from(widget.initialEntries);
-    _refresh();
-    _loadSchools();
+    _initialLoad();
+  }
+
+  /// `_entries` (katalog testlari, guruh/maktab bo'yicha guruhlanadi) va
+  /// `_schools` (barcha nashr qilingan test'i bor maktablar) ikkalasi ham
+  /// `_buildGroupedList()`dagi "Boshqa maktablar" bo'limini hisoblash
+  /// uchun kerak: shu bo'lim `_entries`dan chiqarilgan `codes` to'plamiga
+  /// kirmagan maktablarni `_schools`dan chiqarib tashlaydi. Ikkalasini
+  /// mustaqil (unawaited) `setState()` bilan yangilasak, bittasi tayyor
+  /// bo'lib ikkinchisi hali eskicha bo'lgan oraliq render kadri paydo
+  /// bo'lishi mumkin — natijada test'i bor maktab vaqtincha "Boshqa
+  /// maktablar"ga tushib qolishi mumkin edi. Shu sabab ikkalasini birga
+  /// kutib, bitta setState() bilan yangilaymiz.
+  Future<void> _initialLoad() async {
+    try {
+      final results = await Future.wait([
+        testCatalogService.refresh(),
+        api.fetchCatalogSchools(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _entries = results[0] as List<CatalogEntry>;
+        _schools = results[1] as List<Map<String, String>>;
+      });
+    } catch (e) {
+      debugPrint('CatalogSheet initialLoad error: $e');
+    }
   }
 
   Future<void> _refresh() async {
@@ -1263,15 +1288,6 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       if (mounted) setState(() => _entries = fresh);
     } catch (e) {
       debugPrint('CatalogSheet refresh error: $e');
-    }
-  }
-
-  Future<void> _loadSchools() async {
-    try {
-      final schools = await api.fetchCatalogSchools();
-      if (mounted) setState(() => _schools = schools);
-    } catch (e) {
-      debugPrint('CatalogSheet loadSchools error: $e');
     }
   }
 
@@ -1449,7 +1465,11 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
 
     final widgets = <Widget>[];
     for (final code in codes) {
-      final groupEntries = groups[code]!;
+      // Yangi testlar ro'yxat boshida chiqishi uchun yangi-birinchi tartib
+      // (backend updated_at bo'yicha; null bo'lsa oxiriga tushadi).
+      final groupEntries = groups[code]!
+        ..sort((a, b) =>
+            (b.updatedAt ?? DateTime(0)).compareTo(a.updatedAt ?? DateTime(0)));
       final label = code == umumiy
           ? 'Umumiy testlar'
           : (codeToLabel[code] ?? '$code-maktab');
@@ -1731,7 +1751,14 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
   Widget _buildSchoolPickerRow(Map<String, String> school) {
     final schoolCode = school['school_code'] ?? '';
     final rawLabel = school['label'] ?? '';
-    final label = rawLabel.isNotEmpty ? rawLabel : '$schoolCode-maktab';
+    // Backend (TestCatalogSchoolsView) label'ni School.number bo'lmasa
+    // School.name'ga tushiradi — agar shu nom xato ravishda faqat kod
+    // ("39") sifatida kiritilgan bo'lsa, qatorda hech qanday kontekstsiz
+    // yalang'och raqam chiqib qoladi (bu qatorda subtitle umuman yo'q).
+    // Shu holatni ham bo'sh label kabi "<kod>-maktab" formatiga tushiramiz.
+    final label = (rawLabel.isNotEmpty && rawLabel != schoolCode)
+        ? rawLabel
+        : '$schoolCode-maktab';
 
     void openSchoolPicker() {
       Navigator.of(context).pop();
