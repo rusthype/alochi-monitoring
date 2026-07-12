@@ -114,6 +114,10 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
         groupId: groupId.isEmpty ? null : groupId,
         schoolCode: widget.schoolCode,
       );
+      // Yangi testlar ro'yxat boshida chiqishi uchun yangi-birinchi tartib
+      // (backend updated_at bo'yicha; null bo'lsa oxiriga tushadi).
+      entries.sort((a, b) =>
+          (b.updatedAt ?? DateTime(0)).compareTo(a.updatedAt ?? DateTime(0)));
       if (!mounted) return;
       setState(() {
         _catalog = entries;

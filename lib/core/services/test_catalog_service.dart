@@ -56,6 +56,11 @@ class CatalogEntry {
   /// oldindan yuklab olinishi mumkin, lekin ochilmaydi (TASK 08d).
   final DateTime? lockedUntil;
 
+  /// Backend'dagi so'nggi yangilanish vaqti — katalog ro'yxatlarini
+  /// yangi-birinchi tartiblash uchun (null bo'lsa eskirgan/noma'lum deb
+  /// hisoblanadi va oxiriga tushadi).
+  final DateTime? updatedAt;
+
   const CatalogEntry({
     required this.testKey,
     required this.title,
@@ -65,6 +70,7 @@ class CatalogEntry {
     this.schoolButtons = const [],
     this.runnerType = 'engine',
     this.lockedUntil,
+    this.updatedAt,
   });
 }
 
@@ -176,6 +182,7 @@ class TestCatalogService {
         schoolButtons: schoolButtons,
         runnerType: item['runner_type']?.toString() ?? 'engine',
         lockedUntil: lockedUntil,
+        updatedAt: DateTime.tryParse(item['updated_at']?.toString() ?? ''),
       ));
     }
     return entries;
