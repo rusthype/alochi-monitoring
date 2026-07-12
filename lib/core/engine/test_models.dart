@@ -135,6 +135,7 @@ class Question {
       case QuestionType.spelling:
         return Question(
           type: type,
+          img: json['img']?.toString(),
           scramble: json['scramble']?.toString(),
           strAns: json['ans']?.toString(),
           topic: topic, svg: svg, bob: bob, category: category,
