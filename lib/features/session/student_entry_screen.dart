@@ -7,12 +7,6 @@ import 'test_session.dart';
 
 class StudentEntryScreen extends StatefulWidget {
   final TestSession session;
-
-  /// Set by GroupSelectScreen when the user already picked their group
-  /// (the new maktab→guruh→test→o'quvchi flow) — the group list/loader
-  /// below is skipped entirely and the roster loads straight away.
-  /// Null for the legacy/guruhsiz-maktab path, which still loads groups
-  /// itself (unchanged behavior).
   final Map<String, dynamic>? preselectedGroup;
 
   const StudentEntryScreen({
@@ -38,19 +32,15 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
   Map<String, dynamic>? _selectedStudent;
   bool _loadingStudents = false;
 
-  /// True when a group is selected and the roster is either loading or has entries.
-  /// When true the Ism/Familiya text inputs are hidden and the roster is shown instead.
   bool get _rosterActive =>
       _selectedGroup != null && (_loadingStudents || _students.isNotEmpty);
 
   bool get _canStart {
     if (_launching) return false;
     if (_selectedStudent != null) return true;
-    // Roster is loading or has students but none tapped yet
     if (_selectedGroup != null && (_loadingStudents || _students.isNotEmpty)) {
       return false;
     }
-    // No roster — require a typed name
     return _firstCtrl.text.trim().isNotEmpty &&
         _lastCtrl.text.trim().isNotEmpty;
   }
@@ -67,8 +57,6 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
 
   Future<void> _loadGroups() async {
     if (widget.preselectedGroup != null) {
-      // Guruh avvalgi qadamda (GroupSelectScreen) allaqachon tanlangan —
-      // qayta guruh ro'yxatini yuklamaymiz, to'g'ridan roster'ga o'tamiz.
       setState(() {
         _groups = [widget.preselectedGroup!];
         _selectedGroup = widget.preselectedGroup;
@@ -134,7 +122,6 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       firstName = (_selectedStudent!['first_name'] ?? '').toString();
       lastName = (_selectedStudent!['last_name'] ?? '').toString();
       if (firstName.isEmpty && lastName.isEmpty) {
-        // Fallback: split the composite name field (last first, Uzbek convention)
         final parts = (_selectedStudent!['name'] ?? '').toString().split(' ');
         lastName = parts.isNotEmpty ? parts.first : '';
         firstName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
@@ -144,7 +131,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       final first = _firstCtrl.text.trim();
       final last = _lastCtrl.text.trim();
       if (first.isEmpty || last.isEmpty) {
-        setState(() => _err = l10n.enterFirstAndLastName);
+        setState(() => _err = l10n.enterNameError);
         return;
       }
       firstName = first;
@@ -190,9 +177,6 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     setState(() {
       _firstCtrl.clear();
       _lastCtrl.clear();
-      _grade = null;
-      _selectedGroup = null;
-      _students = [];
       _selectedStudent = null;
       _launching = false;
     });
@@ -200,310 +184,342 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    // Text inputs are shown when no roster is active (no group selected, or
-    // group selected but roster came back empty).
     final showTextInputs = !_rosterActive;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        title: Text(widget.session.title, style: AppTextStyles.titleMedium),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // School chip
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondaryMuted,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.school_rounded,
-                            size: 14, color: AppColors.secondary),
-                        const SizedBox(width: 6),
-                        Text(
-                          widget.session.schoolLabel.isEmpty
-                              ? l10n.generalTests
-                              : widget.session.schoolLabel,
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.secondary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // Ism/Familiya — hidden when a roster is active
-                if (showTextInputs) ...[
-                  _Field(label: l10n.firstNameLabel, controller: _firstCtrl),
-                  const SizedBox(height: 12),
-                  _Field(label: l10n.lastNameLabel, controller: _lastCtrl),
-                  const SizedBox(height: 20),
-                ],
-                // Group / grade selector
-                if (_loadingGroups)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const CircularProgressIndicator(strokeWidth: 2),
-                          const SizedBox(height: 8),
-                          Text(
-                            l10n.loadingGroups,
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else if (_groups.isNotEmpty) ...[
-                  // Guruh tanlash chiplari faqat guruh HALI tanlanmagan
-                  // bo'lsa ko'rsatiladi — GroupSelectScreen'dan kelganda
-                  // (preselectedGroup != null) guruh allaqachon fiksirlangan,
-                  // qayta tanlashning hojati yo'q.
-                  if (widget.preselectedGroup == null) ...[
-                    Text(l10n.selectGroup,
-                        style: AppTextStyles.labelLarge),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: _groups.map((group) {
-                        final selected = _selectedGroup == group;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedGroup = group;
-                              _selectedStudent = null;
-                              _students = [];
-                            });
-                            _loadStudents();
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 160),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? AppColors.secondary
-                                  : AppColors.surface,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: selected
-                                    ? AppColors.secondary
-                                    : AppColors.border,
-                              ),
-                            ),
-                            child: Text(
-                              (group['display'] ?? group['name'] ?? '')
-                                  .toString(),
-                              style: AppTextStyles.labelLarge.copyWith(
-                                color:
-                                    selected ? Colors.white : AppColors.ink1,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ] else ...[
-                    // Guruh allaqachon tanlangan (oldingi qadamda) — nom
-                    // sifatida ko'rsatamiz, chip qayta tanlash uchun emas.
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondaryMuted,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.groups_rounded,
-                              size: 16, color: AppColors.secondary),
-                          const SizedBox(width: 8),
-                          Text(
-                            (widget.preselectedGroup!['display'] ??
-                                    widget.preselectedGroup!['name'] ??
-                                    '')
-                                .toString(),
-                            style: AppTextStyles.labelLarge.copyWith(
-                              color: AppColors.secondary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  // ── Student roster section (shown only when a group is selected) ──
-                  if (_selectedGroup != null) ...[
-                    const SizedBox(height: 20),
-                    if (_loadingStudents)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: AppColors.secondary,
-                          ),
-                        ),
-                      )
-                    else if (_students.isNotEmpty) ...[
-                      Text(l10n.selectStudent,
-                          style: AppTextStyles.labelLarge),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: _students.map((student) {
-                          final selected = _selectedStudent == student;
-                          return GestureDetector(
-                            onTap: () =>
-                                setState(() => _selectedStudent = student),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 160),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: selected
-                                    ? AppColors.secondary
-                                    : AppColors.surface,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: selected
-                                      ? AppColors.secondary
-                                      : AppColors.border,
-                                ),
-                              ),
-                              child: Text(
-                                (student['name'] ?? '').toString(),
-                                style: AppTextStyles.labelLarge.copyWith(
-                                  color: selected
-                                      ? Colors.white
-                                      : AppColors.ink1,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                    // When _students is empty after load, _rosterActive = false
-                    // so showTextInputs = true and Ism/Familiya are visible at top.
-                  ],
-                ] else ...[
-                  Text(l10n.selectGrade, style: AppTextStyles.labelLarge),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [1, 2, 3, 4].map((n) {
-                      final selected = _grade == n;
-                      return Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: GestureDetector(
-                            onTap: () => setState(() => _grade = n),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 160),
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: selected
-                                    ? AppColors.secondary
-                                    : AppColors.surface,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: selected
-                                      ? AppColors.secondary
-                                      : AppColors.border,
-                                ),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                '$n',
-                                style: AppTextStyles.labelLarge.copyWith(
-                                  color: selected
-                                      ? Colors.white
-                                      : AppColors.ink1,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-                if (_err != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.err.withValues(alpha: .08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.warning_rounded,
-                            color: AppColors.err, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _err!,
-                            style: const TextStyle(
-                                color: AppColors.err, fontSize: 13),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                SizedBox(
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    onPressed: _canStart ? _startTest : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.secondary,
-                      foregroundColor: Colors.white,
-                    ),
-                    icon: _launching
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Icon(Icons.play_arrow_rounded),
-                    label: Text(
-                        _launching ? l10n.loadingLabelDots : l10n.startTest),
-                  ),
-                ),
-              ],
+      backgroundColor: const Color(0xFFFAFAFA),
+      body: Stack(
+        children: [
+          // Background noise
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.03,
+              child: Image.asset(
+                'assets/noise.png', // Fallback, doesn't matter if absent
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox(),
+              ),
             ),
           ),
-        ),
+          
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(top: 80, bottom: 140, left: 20, right: 20),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Eyebrow tag removed per user request
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Testni kim\ntopshiradi?',
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          height: 1.1,
+                          letterSpacing: -1,
+                          color: AppColors.ink1,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (_rosterActive && _students.isNotEmpty)
+                        Text(
+                          '${_students.length} o\'quvchi ro\'yxatda mavjud',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.ink2,
+                          ),
+                        ),
+                      const SizedBox(height: 24),
+
+                      // Outer Shell Form / Grid
+                      _OuterShell(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (showTextInputs) ...[
+                              _Field(label: l10n.firstName, controller: _firstCtrl),
+                              const SizedBox(height: 12),
+                              _Field(label: l10n.lastName, controller: _lastCtrl),
+                              const SizedBox(height: 20),
+                            ],
+
+                            if (_loadingGroups)
+                              const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                            else if (_groups.isNotEmpty && widget.preselectedGroup == null) ...[
+                              Text(l10n.selectGroup, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: _groups.map((group) {
+                                  final selected = _selectedGroup == group;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedGroup = group;
+                                        _selectedStudent = null;
+                                        _students = [];
+                                      });
+                                      _loadStudents();
+                                    },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 160),
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: selected ? AppColors.brand.withOpacity(0.1) : Colors.white,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: selected ? AppColors.brand : AppColors.border,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        (group['display'] ?? group['name'] ?? '').toString(),
+                                        style: TextStyle(
+                                          color: selected ? AppColors.brand : AppColors.ink1,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+
+                            if (_selectedGroup != null) ...[
+                              if (widget.preselectedGroup == null) const SizedBox(height: 20),
+                              if (_loadingStudents)
+                                const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brand))
+                              else if (_students.isNotEmpty) ...[
+                                LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final crossAxisCount = constraints.maxWidth > 400 ? 2 : 1;
+                                    return GridView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: crossAxisCount,
+                                        mainAxisSpacing: 8,
+                                        crossAxisSpacing: 8,
+                                        mainAxisExtent: 56,
+                                      ),
+                                      itemCount: _students.length,
+                                      itemBuilder: (context, index) {
+                                        final student = _students[index];
+                                        final name = (student['name'] ?? '').toString();
+                                        final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+                                        return _StudentCard(
+                                          name: name,
+                                          avatarLetter: initial,
+                                          isSelected: _selectedStudent == student,
+                                          onTap: () => setState(() => _selectedStudent = student),
+                                        );
+                                      },
+                                    );
+                                  },
+                                )
+                              ],
+                            ] else if (_groups.isEmpty) ...[
+                              Text(l10n.selectGrade, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [1, 2, 3, 4].map((n) {
+                                  final selected = _grade == n;
+                                  return Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: GestureDetector(
+                                        onTap: () => setState(() => _grade = n),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 160),
+                                          height: 48,
+                                          decoration: BoxDecoration(
+                                            color: selected ? AppColors.brand.withOpacity(0.1) : Colors.white,
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(
+                                              color: selected ? AppColors.brand : AppColors.border,
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            '$n',
+                                            style: TextStyle(
+                                              color: selected ? AppColors.brand : AppColors.ink1,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+
+                            if (_err != null) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.err.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.warning_rounded, color: AppColors.err, size: 16),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        _err!,
+                                        style: const TextStyle(color: AppColors.err, fontSize: 13),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          
+          // Floating Navbar
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 16,
+            right: 16,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: _DoubleBezel(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFAFAFA),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.arrow_back_rounded, size: 18, color: AppColors.brand),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppColors.brand, shape: BoxShape.circle)),
+                          const SizedBox(width: 6),
+                          Text(
+                            widget.session.schoolLabel.isEmpty ? l10n.generalTests.toUpperCase() : widget.session.schoolLabel.toUpperCase(),
+                            style: const TextStyle(color: AppColors.brand, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 40), // Spacer for centering
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Bottom Fade
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 140,
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color(0xFFFAFAFA).withOpacity(0),
+                      const Color(0xFFFAFAFA),
+                    ],
+                    stops: const [0.0, 0.4],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Bottom Action Bar
+          Positioned(
+            bottom: MediaQuery.of(context).padding.bottom + 20,
+            left: 20,
+            right: 20,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: GestureDetector(
+                  onTap: _canStart ? _startTest : null,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: _canStart ? AppColors.ink1 : AppColors.border,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: _canStart
+                          ? [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 32,
+                                offset: const Offset(0, 16),
+                              )
+                            ]
+                          : [],
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16),
+                          child: Text(
+                            l10n.startTest,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: _canStart ? AppColors.brand : Colors.grey.shade400,
+                            shape: BoxShape.circle,
+                          ),
+                          child: _launching
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Icon(Icons.arrow_forward_rounded, size: 16, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -520,13 +536,193 @@ class _Field extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTextStyles.labelLarge),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.ink1)),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
-          decoration: InputDecoration(hintText: label),
+          decoration: InputDecoration(
+            hintText: label,
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.brand),
+            ),
+          ),
         ),
       ],
+    );
+  }
+}
+
+class _DoubleBezel extends StatelessWidget {
+  final Widget child;
+  const _DoubleBezel({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: Colors.black.withOpacity(0.03)),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: Colors.black.withOpacity(0.04)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _OuterShell extends StatelessWidget {
+  final Widget child;
+  const _OuterShell({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.black.withOpacity(0.03)),
+      ),
+      padding: const EdgeInsets.all(6),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: Colors.black.withOpacity(0.04)),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _StudentCard extends StatelessWidget {
+  final String name;
+  final String avatarLetter;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _StudentCard({
+    required this.name,
+    required this.avatarLetter,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.brand.withOpacity(0.05) : const Color(0xFFFAFAFA),
+          border: Border.all(
+            color: isSelected ? AppColors.brand.withOpacity(0.4) : AppColors.border,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.brand : Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? AppColors.brand : AppColors.border,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: AppColors.brand.withOpacity(0.4),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        )
+                      ]
+                    : [],
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                avatarLetter,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : AppColors.ink2,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                name,
+                style: TextStyle(
+                  color: isSelected ? AppColors.brand : AppColors.ink1,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.brand : Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? AppColors.brand : Colors.grey.shade300,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: isSelected
+                  ? const Icon(Icons.check_rounded, color: Colors.white, size: 10)
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
