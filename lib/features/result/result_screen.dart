@@ -7,8 +7,6 @@ import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/app_network_image.dart';
 import '../../core/sync/sync_service.dart';
-import '../../core/db/credential_cache.dart';
-import '../auth/login_screen.dart';
 import 'pdf_report.dart';
 
 /// Returns a threshold-based color for subject score bars:
@@ -560,13 +558,8 @@ class _ResultScreenState extends State<ResultScreen>
                       child: SizedBox(
                     height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final navigator = Navigator.of(context);
-                        await CredentialCache.clear();
-                        navigator.pushAndRemoveUntil(
-                            MaterialPageRoute(
-                                builder: (_) => const LoginScreen()),
-                            (_) => false);
+                      onPressed: () {
+                        Navigator.of(context).pop();
                       },
                       icon: const Icon(Icons.person_outline_rounded, size: 18),
                       label: const Text("Keyingi talaba"),

@@ -577,8 +577,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         title: Text(AppLocalizations.of(context)!.resultTitle, style: AppTextStyles.titleMedium),
         actions: [
           TextButton.icon(
-            onPressed: () => Navigator.of(context)
-                .popUntil((route) => route.settings.name == 'student_entry'),
+            onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(Icons.arrow_forward_rounded, size: 18),
             label: Text(AppLocalizations.of(context)!.nextStudent),
           ),

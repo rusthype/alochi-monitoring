@@ -876,4 +876,60 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get testNotInCache => 'Test keshda topilmadi. Qayta yuklab oling.';
+
+  @override
+  String get schools => 'Школы';
+
+  @override
+  String get otherSchools => 'Другие школы';
+
+  @override
+  String get schoolCodeOrName => 'Код / название школы';
+
+  @override
+  String get downloaded => 'Скачано';
+
+  @override
+  String get enterSchoolError => 'Введите школу';
+
+  @override
+  String schoolPrefix(String code) {
+    return 'Школа №$code';
+  }
+
+  @override
+  String get enterNameError => 'Введите имя и фамилию';
+
+  @override
+  String get lastName => 'Фамилия';
+
+  @override
+  String get firstName => 'Имя';
+
+  @override
+  String get groupOptional => 'Группа (необязательно)';
+
+  @override
+  String get variant => 'Вариант';
+
+  @override
+  String get start => 'Начать';
+
+  @override
+  String get downloadError => 'Ошибка загрузки. Попробуйте снова.';
+
+  @override
+  String get testsNotFound => 'Тесты не найдены';
+
+  @override
+  String get opensAt => 'откроется в';
+
+  @override
+  String get newVersionAvailable => 'Доступна новая версия';
+
+  @override
+  String get update => 'Обновить';
+
+  @override
+  String get download => 'Скачать';
 }

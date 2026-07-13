@@ -1705,6 +1705,114 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Test keshda topilmadi. Qayta yuklab oling.'**
   String get testNotInCache;
+
+  /// No description provided for @schools.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maktablar'**
+  String get schools;
+
+  /// No description provided for @otherSchools.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqa maktablar'**
+  String get otherSchools;
+
+  /// No description provided for @schoolCodeOrName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maktab kodi / nomi'**
+  String get schoolCodeOrName;
+
+  /// No description provided for @downloaded.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuklab olingan'**
+  String get downloaded;
+
+  /// No description provided for @enterSchoolError.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maktabni kiriting'**
+  String get enterSchoolError;
+
+  /// No description provided for @schoolPrefix.
+  ///
+  /// In uz, this message translates to:
+  /// **'{code}-maktab'**
+  String schoolPrefix(String code);
+
+  /// No description provided for @enterNameError.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ism va familiyani kiriting'**
+  String get enterNameError;
+
+  /// No description provided for @lastName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Familiya'**
+  String get lastName;
+
+  /// No description provided for @firstName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ism'**
+  String get firstName;
+
+  /// No description provided for @groupOptional.
+  ///
+  /// In uz, this message translates to:
+  /// **'Guruh (ixtiyoriy)'**
+  String get groupOptional;
+
+  /// No description provided for @variant.
+  ///
+  /// In uz, this message translates to:
+  /// **'Variant'**
+  String get variant;
+
+  /// No description provided for @start.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshlash'**
+  String get start;
+
+  /// No description provided for @downloadError.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuklashda xato. Qayta urinib ko\'ring.'**
+  String get downloadError;
+
+  /// No description provided for @testsNotFound.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testlar topilmadi'**
+  String get testsNotFound;
+
+  /// No description provided for @opensAt.
+  ///
+  /// In uz, this message translates to:
+  /// **'da ochiladi'**
+  String get opensAt;
+
+  /// No description provided for @newVersionAvailable.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi versiya mavjud'**
+  String get newVersionAvailable;
+
+  /// No description provided for @update.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangilash'**
+  String get update;
+
+  /// No description provided for @download.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuklash'**
+  String get download;
 }
 
 class _AppLocalizationsDelegate

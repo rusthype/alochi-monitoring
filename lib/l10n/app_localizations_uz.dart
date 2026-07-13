@@ -880,4 +880,60 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get testNotInCache => 'Test keshda topilmadi. Qayta yuklab oling.';
+
+  @override
+  String get schools => 'Maktablar';
+
+  @override
+  String get otherSchools => 'Boshqa maktablar';
+
+  @override
+  String get schoolCodeOrName => 'Maktab kodi / nomi';
+
+  @override
+  String get downloaded => 'Yuklab olingan';
+
+  @override
+  String get enterSchoolError => 'Maktabni kiriting';
+
+  @override
+  String schoolPrefix(String code) {
+    return '$code-maktab';
+  }
+
+  @override
+  String get enterNameError => 'Ism va familiyani kiriting';
+
+  @override
+  String get lastName => 'Familiya';
+
+  @override
+  String get firstName => 'Ism';
+
+  @override
+  String get groupOptional => 'Guruh (ixtiyoriy)';
+
+  @override
+  String get variant => 'Variant';
+
+  @override
+  String get start => 'Boshlash';
+
+  @override
+  String get downloadError => 'Yuklashda xato. Qayta urinib ko\'ring.';
+
+  @override
+  String get testsNotFound => 'Testlar topilmadi';
+
+  @override
+  String get opensAt => 'da ochiladi';
+
+  @override
+  String get newVersionAvailable => 'Yangi versiya mavjud';
+
+  @override
+  String get update => 'Yangilash';
+
+  @override
+  String get download => 'Yuklash';
 }

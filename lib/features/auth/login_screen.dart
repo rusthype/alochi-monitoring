@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
 import '../../core/services/test_catalog_service.dart';
@@ -499,6 +500,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _newTestsButton() {
+    final l10n = AppLocalizations.of(context)!;
     final downloadable = _catalogEntries
         .where((e) =>
             e.status == CatalogStatus.notDownloaded ||
@@ -534,7 +536,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(width: 6),
             Text(
-              _getDynamicCatalogTitle(_catalogEntries),
+              l10n.schools,
               style: AppTextStyles.labelMedium.copyWith(
                 color: hasNew ? Colors.white : AppColors.ink1,
                 fontWeight: FontWeight.w700,
@@ -1030,12 +1032,13 @@ class _LaunchDialogState extends State<_LaunchDialog> {
     final first = _firstCtrl.text.trim();
     final last = _lastCtrl.text.trim();
     final school = _schoolCtrl.text.trim();
+    final l10n = AppLocalizations.of(context)!;
     if (first.isEmpty || last.isEmpty) {
-      setState(() => _err = 'Ism va familiyani kiriting');
+      setState(() => _err = l10n.enterNameError);
       return;
     }
     if (school.isEmpty) {
-      setState(() => _err = 'Maktabni kiriting');
+      setState(() => _err = l10n.enterSchoolError);
       return;
     }
     Navigator.pop(
@@ -1149,6 +1152,7 @@ class _LaunchDialogState extends State<_LaunchDialog> {
   }
 
   Widget _buildStudentStep() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1169,29 +1173,29 @@ class _LaunchDialogState extends State<_LaunchDialog> {
         ],
         TextField(
           controller: _lastCtrl,
-          decoration: const InputDecoration(labelText: 'Familiya'),
+          decoration: InputDecoration(labelText: l10n.lastName),
           textCapitalization: TextCapitalization.words,
         ),
         const SizedBox(height: 10),
         TextField(
           controller: _firstCtrl,
-          decoration: const InputDecoration(labelText: 'Ism'),
+          decoration: InputDecoration(labelText: l10n.firstName),
           textCapitalization: TextCapitalization.words,
         ),
         const SizedBox(height: 10),
         TextField(
           controller: _schoolCtrl,
-          decoration: const InputDecoration(labelText: 'Maktab kodi / nomi'),
+          decoration: InputDecoration(labelText: l10n.schoolCodeOrName),
         ),
         const SizedBox(height: 10),
         TextField(
           controller: _groupCtrl,
-          decoration: const InputDecoration(labelText: 'Guruh (ixtiyoriy)'),
+          decoration: InputDecoration(labelText: l10n.groupOptional),
         ),
         const SizedBox(height: 16),
         ElevatedButton(
           onPressed: _start,
-          child: Text('Variant $_variant · Boshlash'),
+          child: Text('${l10n.variant} $_variant · ${l10n.start}'),
         ),
       ],
     );
@@ -1218,10 +1222,6 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
   late List<CatalogEntry> _entries;
   final Set<String> _downloadingKeys = {};
 
-  /// Nashr qilingan testi bor barcha maktablar (kod+nom) — hatto o'sha
-  /// maktabning barcha testlari guruhga bog'langani uchun yuqoridagi
-  /// `_entries`da (anonim, school_code'siz katalog) umuman ko'rinmasa ham.
-  /// "Boshqa maktablar" bo'limi uchun (2026-07-12).
   List<Map<String, String>> _schools = [];
 
   @override
@@ -1231,16 +1231,6 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
     _initialLoad();
   }
 
-  /// `_entries` (katalog testlari, guruh/maktab bo'yicha guruhlanadi) va
-  /// `_schools` (barcha nashr qilingan test'i bor maktablar) ikkalasi ham
-  /// `_buildGroupedList()`dagi "Boshqa maktablar" bo'limini hisoblash
-  /// uchun kerak: shu bo'lim `_entries`dan chiqarilgan `codes` to'plamiga
-  /// kirmagan maktablarni `_schools`dan chiqarib tashlaydi. Ikkalasini
-  /// mustaqil (unawaited) `setState()` bilan yangilasak, bittasi tayyor
-  /// bo'lib ikkinchisi hali eskicha bo'lgan oraliq render kadri paydo
-  /// bo'lishi mumkin — natijada test'i bor maktab vaqtincha "Boshqa
-  /// maktablar"ga tushib qolishi mumkin edi. Shu sabab ikkalasini birga
-  /// kutib, bitta setState() bilan yangilaymiz.
   Future<void> _initialLoad() async {
     try {
       final results = await Future.wait([
@@ -1276,8 +1266,9 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
         widget.onRefreshed();
         await _refresh();
         if (mounted) {
+          final l10n = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('${entry.title} yuklandi'),
+            content: Text('${entry.title} ${l10n.downloaded}'),
             backgroundColor: AppColors.ok,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 2),
@@ -1285,8 +1276,9 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("Yuklashda xato. Qayta urinib ko'ring."),
+          final l10n = AppLocalizations.of(context)!;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(l10n.downloadError),
             backgroundColor: AppColors.err,
             behavior: SnackBarBehavior.floating,
           ));
@@ -1299,13 +1291,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final cached = _entries
-        .where((e) =>
-            e.status == CatalogStatus.cached ||
-            e.status == CatalogStatus.cachedOnly)
-        .length;
-    final total = _entries.length;
-
+    final l10n = AppLocalizations.of(context)!;
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       maxChildSize: 0.92,
@@ -1340,37 +1326,13 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                         size: 18, color: AppColors.primary),
                   ),
                   const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_getDynamicCatalogTitle(_entries),
-                          style: AppTextStyles.titleMedium
-                              .copyWith(fontWeight: FontWeight.w800)),
-                      Text('$cached / $total ta yuklab olindi',
-                          style: AppTextStyles.caption
-                              .copyWith(color: AppColors.ink2)),
-                    ],
-                  ),
+                  Text(l10n.schools,
+                      style: AppTextStyles.titleMedium
+                          .copyWith(fontWeight: FontWeight.w800)),
                   const Spacer(),
                 ],
               ),
             ),
-            if (total > 0)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: total > 0 ? cached / total : 0,
-                    minHeight: 6,
-                    backgroundColor: AppColors.border,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      cached == total ? AppColors.ok : AppColors.primary,
-                    ),
-                  ),
-                ),
-              ),
             const Divider(height: 1),
             Expanded(
               child: _entries.isEmpty
@@ -1381,7 +1343,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                           const Icon(Icons.cloud_off_rounded,
                               size: 36, color: AppColors.ink3),
                           const SizedBox(height: 8),
-                          Text('Testlar topilmadi',
+                          Text(l10n.testsNotFound,
                               style: AppTextStyles.bodyMedium
                                   .copyWith(color: AppColors.ink2)),
                         ],
@@ -1425,75 +1387,44 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
 
     final widgets = <Widget>[];
     final schoolCodes = codes.where((c) => c != umumiy).toList();
-    if (schoolCodes.isNotEmpty) {
+    final coveredCodes = codes.where((c) => c != umumiy).toSet();
+    final otherSchools = _schools
+        .where((s) => !coveredCodes.contains(s['school_code']))
+        .toList();
+
+    final List<Widget> schoolWidgets = [];
+
+    // 1. Add schools that have catalog entries
+    for (final code in schoolCodes) {
+      final l10n = AppLocalizations.of(context)!;
+      final label = codeToLabel[code] ?? l10n.schoolPrefix(code);
+      schoolWidgets.add(_buildSchoolCard(code, label, groups[code]!.first));
+    }
+
+    // 2. Add other schools from the global list
+    for (final school in otherSchools) {
+      final l10n = AppLocalizations.of(context)!;
+      final schoolCode = school['school_code'] ?? '';
+      final schoolLabel = school['label'] ?? '';
+      final label = schoolLabel.isNotEmpty ? schoolLabel : l10n.schoolPrefix(schoolCode);
+      schoolWidgets.add(_buildSchoolCard(schoolCode, label, null));
+    }
+
+    if (schoolWidgets.isNotEmpty) {
       widgets.add(
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
           child: Wrap(
             spacing: 12,
             runSpacing: 12,
-            children: schoolCodes.map((code) {
-              final label = codeToLabel[code] ?? '$code-maktab';
-              return Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: .03),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              SessionSetupScreen(entry: groups[code]!.first),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryMuted,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.school_rounded, size: 20, color: AppColors.primary),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            label,
-                            style: AppTextStyles.labelLarge.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.ink1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
+            children: schoolWidgets,
           ),
         ),
       );
     }
 
     if (codes.contains(umumiy)) {
+      final l10n = AppLocalizations.of(context)!;
       final groupEntries = groups[umumiy]!
         ..sort((a, b) =>
             (b.updatedAt ?? DateTime(0)).compareTo(a.updatedAt ?? DateTime(0)));
@@ -1502,30 +1433,10 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
               e.status == CatalogStatus.cached ||
               e.status == CatalogStatus.cachedOnly)
           .length;
-      widgets.add(_buildSectionHeader('Umumiy testlar', groupCached, groupEntries.length));
+      widgets.add(_buildSectionHeader(l10n.generalTests, groupCached, groupEntries.length));
       for (var i = 0; i < groupEntries.length; i++) {
         widgets.add(_buildItem(groupEntries[i]));
         if (i < groupEntries.length - 1) {
-          widgets.add(const Divider(height: 1, indent: 60));
-        }
-      }
-    }
-
-    // Katalogda hech qanday holatda (guruhsiz "Umumiy testlar" sifatida
-    // ham) ko'rinmaydigan, lekin nashr qilingan testi bor maktablar —
-    // ularning barcha testlari guruhga bog'langan bo'lishi mumkin
-    // (2026-07-12). Shunday maktablarni PIN oqimiga kirish nuqtasi
-    // sifatida alohida ko'rsatamiz.
-    final coveredCodes = codes.where((c) => c != umumiy).toSet();
-    final otherSchools = _schools
-        .where((s) => !coveredCodes.contains(s['school_code']))
-        .toList();
-    if (otherSchools.isNotEmpty) {
-      widgets.add(
-          _buildSectionHeader('Boshqa maktablar', 0, otherSchools.length));
-      for (var i = 0; i < otherSchools.length; i++) {
-        widgets.add(_buildSchoolPickerRow(otherSchools[i]));
-        if (i < otherSchools.length - 1) {
           widgets.add(const Divider(height: 1, indent: 60));
         }
       }
@@ -1569,17 +1480,13 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            '$cached/$total',
-            style: AppTextStyles.caption.copyWith(color: AppColors.ink3),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildItem(CatalogEntry entry) {
+    final l10n = AppLocalizations.of(context)!;
     final isDownloading = _downloadingKeys.contains(entry.testKey);
     final isDone = entry.status == CatalogStatus.cached ||
         entry.status == CatalogStatus.cachedOnly;
@@ -1600,7 +1507,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       if (isLocked) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(
-              '🔒 ${DateFormat('dd.MM.yyyy HH:mm').format(entry.lockedUntil!.toLocal())} da ochiladi'),
+              '🔒 ${DateFormat('dd.MM.yyyy HH:mm').format(entry.lockedUntil!.toLocal())} ${l10n.opensAt}'),
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ));
@@ -1630,20 +1537,20 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       ),
       subtitle: isLocked
           ? Text(
-              '🔒 ${DateFormat('dd.MM.yyyy HH:mm').format(entry.lockedUntil!.toLocal())} da ochiladi',
+              '🔒 ${DateFormat('dd.MM.yyyy HH:mm').format(entry.lockedUntil!.toLocal())} ${l10n.opensAt}',
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w600,
               ),
             )
           : isUpdatable && !isDownloading
-              ? Text('Yangi versiya mavjud',
+              ? Text(l10n.newVersionAvailable,
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w600,
                   ))
               : isDone
-                  ? Text('Yuklab olingan',
+                  ? Text(l10n.downloaded,
                       style: AppTextStyles.caption
                           .copyWith(color: AppColors.ink3))
                   : null,
@@ -1678,7 +1585,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Boshlash',
+                          l10n.start,
                           style: AppTextStyles.caption.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
@@ -1702,7 +1609,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
-                              'Yangilash',
+                              l10n.update,
                               style: AppTextStyles.caption.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
@@ -1732,7 +1639,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'Boshlash',
+                                  l10n.start,
                                   style: AppTextStyles.caption.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w700,
@@ -1745,8 +1652,6 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                       ],
                     )
                   : GestureDetector(
-                      // Downloading works even while locked — that's the
-                      // whole point of pre-download (TASK 08d).
                       onTap: () => _download(entry),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -1756,7 +1661,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          'Yuklash',
+                          l10n.download,
                           style: AppTextStyles.caption.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
@@ -1767,84 +1672,77 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
     );
   }
 
-  /// "Boshqa maktablar" bo'limidagi bitta qator — bu maktabning barcha
-  /// testlari guruhga bog'langan bo'lishi mumkin, shu sabab yuqoridagi
-  /// katalogda umuman ko'rinmaydi. Bosilganda to'g'ridan test
-  /// boshlanmaydi — faqat maktab+PIN oqimini ochadi (SessionSetupScreen),
-  /// u yerdan GroupSelectScreen o'zi haqiqiy katalogni yuklaydi.
-  Widget _buildSchoolPickerRow(Map<String, String> school) {
-    final schoolCode = school['school_code'] ?? '';
-    final rawLabel = school['label'] ?? '';
-    // Backend (TestCatalogSchoolsView) label'ni School.number bo'lmasa
-    // School.name'ga tushiradi — agar shu nom xato ravishda faqat kod
-    // ("39") sifatida kiritilgan bo'lsa, qatorda hech qanday kontekstsiz
-    // yalang'och raqam chiqib qoladi (bu qatorda subtitle umuman yo'q).
-    // Shu holatni ham bo'sh label kabi "<kod>-maktab" formatiga tushiramiz.
-    final label = (rawLabel.isNotEmpty && rawLabel != schoolCode)
-        ? rawLabel
-        : '$schoolCode-maktab';
-
-    void openSchoolPicker() {
-      Navigator.of(context).pop();
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => SessionSetupScreen(
-            entry: CatalogEntry(
-              testKey: '', // sintetik — hech qachon yuklab/ishga tushirilmaydi
-              title: label,
-              grade: 0,
-              version: 0,
-              status: CatalogStatus.notDownloaded,
-              schoolButtons: [
-                SchoolButton(
-                  pin: '',
-                  label: label,
-                  schoolCode: schoolCode,
-                  randomVariant: false,
+  Widget _buildSchoolCard(String schoolCode, String label, CatalogEntry? entry) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .03),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).pop();
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) {
+                  final targetEntry = entry ?? CatalogEntry(
+                    testKey: '',
+                    title: label,
+                    grade: 0,
+                    version: 0,
+                    status: CatalogStatus.notDownloaded,
+                    schoolButtons: [
+                      SchoolButton(
+                        pin: '',
+                        label: label,
+                        schoolCode: schoolCode,
+                        randomVariant: false,
+                      ),
+                    ],
+                  );
+                  return SessionSetupScreen(entry: targetEntry);
+                },
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryMuted,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.school_rounded, size: 20, color: AppColors.primary),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: AppTextStyles.labelLarge.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink1,
+                  ),
                 ),
               ],
             ),
           ),
         ),
-      );
-    }
-
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      leading: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: AppColors.muted,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Icon(Icons.school_rounded,
-            size: 18, color: AppColors.ink2),
       ),
-      title: Text(
-        label,
-        style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700),
-      ),
-      trailing: const Icon(Icons.chevron_right_rounded,
-          color: AppColors.ink3),
-      onTap: openSchoolPicker,
     );
   }
 }
 
-String _getDynamicCatalogTitle(List<CatalogEntry> entries) {
-  final codes = <String>{};
-  for (final e in entries) {
-    for (final sb in e.schoolButtons) {
-      if (sb.schoolCode.isNotEmpty) {
-        codes.add(sb.schoolCode);
-      }
-    }
-  }
-  if (codes.isEmpty) {
-    return 'Maktablar';
-  }
-  final sorted = codes.toList()
-    ..sort((a, b) => (int.tryParse(a) ?? 0).compareTo(int.tryParse(b) ?? 0));
-  return '${sorted.join(', ')} maktablar';
-}
+

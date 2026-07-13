@@ -423,5 +423,30 @@
   "sessionSettings": "Sessiya sozlamalari",
   "studentNameStep": "O'quvchi ismi",
   "testLocked": "Bu test hali qulflangan.",
-  "testNotInCache": "Test keshda topilmadi. Qayta yuklab oling."
+  "testNotInCache": "Test keshda topilmadi. Qayta yuklab oling.",
+  "schools": "Maktablar",
+  "otherSchools": "Boshqa maktablar",
+  "schoolCodeOrName": "Maktab kodi / nomi",
+  "downloaded": "Yuklab olingan",
+  "enterSchoolError": "Maktabni kiriting",
+  "schoolPrefix": "{code}-maktab",
+  "@schoolPrefix": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "enterNameError": "Ism va familiyani kiriting",
+  "lastName": "Familiya",
+  "firstName": "Ism",
+  "groupOptional": "Guruh (ixtiyoriy)",
+  "variant": "Variant",
+  "start": "Boshlash",
+  "downloadError": "Yuklashda xato. Qayta urinib ko'ring.",
+  "testsNotFound": "Testlar topilmadi",
+  "opensAt": "da ochiladi",
+  "newVersionAvailable": "Yangi versiya mavjud",
+  "update": "Yangilash",
+  "download": "Yuklash"
 }

@@ -11,7 +11,6 @@ import '../../core/sync/sync_service.dart';
 import '../../core/services/pdf_service.dart';
 import 'package:printing/printing.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
-import '../local_test/local_grade_screen.dart';
 import 'interhouse_data.dart';
 import 'interhouse_scorer.dart';
 import '../../core/utils/topic_format.dart';
@@ -500,12 +499,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const LocalGradeScreen()),
-                      (_) => false,
-                    ),
+                    onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.person_add_rounded),
                     label: Text(l10n.nextStudentBtn,
                         style: const TextStyle(

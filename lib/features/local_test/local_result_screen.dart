@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
 import 'local_data.dart';
-import 'local_grade_screen.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/db/history_db.dart';
 import '../../core/api/api_client.dart';
@@ -301,10 +300,7 @@ class _LocalResultScreenState extends State<LocalResultScreen>
               width: double.infinity,
               height: 52,
               child: ElevatedButton.icon(
-                onPressed: () => Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LocalGradeScreen()),
-                    (_) => false),
+                onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.person_add_rounded),
                 label: Text(AppLocalizations.of(context)!.nextStudentButton,
                     style:
