@@ -1,9 +1,18 @@
 // lib/features/test/engine_host_screen.dart
 // Faza 4b — wires JSON-driven TestEngine into the catalog flow.
 //
-// Section → math/english payload mapping rules (applied in _isMathSection):
-//   "Math" | starts-with "Matema"  → math field (correct + total)
-//   Everything else                → english accumulator (yig'indi)
+// Section → math/english payload mapping rules (_buildPayload):
+//   TestSpec.subject == "math"     → whole-test totals go to the math field
+//   TestSpec.subject == "english"  → whole-test totals go to the english field
+//   TestSpec.subject == anything else (e.g. "tarix", "onatili") → both
+//     {cor:0, tot:0} — that subject has no top-level bucket of its own, so it
+//     doesn't silently pollute the math/english KPIs. Its real score lives
+//     only in detail.sections.
+//   TestSpec.subject == null (legacy tests authored before this field
+//     existed) → the old per-section heuristic (isMathSection):
+//       "Math" | starts-with "Matema"  → math field (correct + total)
+//       Everything else                → english accumulator (yig'indi)
+//     Keeps every pre-existing test's payload byte-identical.
 //
 // The canonical source of truth is detail.sections (full per-section scores).
 // The top-level math/english/vocab fields exist only for legacy panel display.
@@ -126,28 +135,6 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
     return n == 'math' || n.startsWith('matema');
   }
 
-  _Agg _mathAgg(ScoredResult result) {
-    int cor = 0, tot = 0;
-    for (final s in result.sectionScores) {
-      if (isMathSection(s.name)) {
-        cor += s.correct;
-        tot += s.total;
-      }
-    }
-    return _Agg(cor, tot);
-  }
-
-  _Agg _engAgg(ScoredResult result) {
-    int cor = 0, tot = 0;
-    for (final s in result.sectionScores) {
-      if (!isMathSection(s.name)) {
-        cor += s.correct;
-        tot += s.total;
-      }
-    }
-    return _Agg(cor, tot);
-  }
-
   // ── Payload builder ─────────────────────────────────────────────────────────
   //
   // Maps ScoredResult → the Map<String, dynamic> shape consumed by
@@ -156,8 +143,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   // detail.sections is the canonical per-section breakdown.
 
   Map<String, dynamic> _buildPayload(ScoredResult result) {
-    final math = _mathAgg(result);
-    final eng = _engAgg(result);
+    final (math, eng) = _resolveMathEngBuckets(result, _spec?.subject);
 
     return <String, dynamic>{
       'name': '${widget.lastName} ${widget.firstName}',
@@ -196,8 +182,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
 
     // 1. Save to local history DB.
     try {
-      final math = _mathAgg(result);
-      final eng = _engAgg(result);
+      final (math, eng) = _resolveMathEngBuckets(result, _spec?.subject);
       await HistoryDb.insertResult(
         firstName: widget.firstName,
         lastName: widget.lastName,
@@ -253,6 +238,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
           variant: widget.variant,
           result: result,
           clientToken: token,
+          subject: _spec?.subject,
         ),
       ),
     );
@@ -289,6 +275,68 @@ class _Agg {
   final int correct;
   final int total;
   const _Agg(this.correct, this.total);
+}
+
+// ── Subject-aware math/english bucketing (Task 1.6 rule) ────────────────────
+//
+// Single source of truth for "which section(s) count toward the legacy
+// top-level math/english fields", shared by _EngineHostScreenState
+// (_buildPayload → backend payload, _handleComplete → local HistoryDb write)
+// and _EngineResultScreenState (_buildPdfBytes → PDF report + silent
+// bot-upload). All three used to re-derive this independently — two of them
+// (_handleComplete, _buildPdfBytes) never picked up the subject-aware rule
+// when Task 1.6 introduced it, so a Tarix/Ona tili result still showed up as
+// "Ingliz tili" in the on-device Offline History screen and in the PDF
+// parents/schools actually see. Top-level (not a State method) because both
+// State classes need it and neither can call the other's instance methods.
+//
+//   subject == null      → legacy per-section-name heuristic
+//                           (_EngineHostScreenState.isMathSection)
+//   subject == 'math'    → every section → math bucket, english stays empty
+//   subject == 'english' → every section → english bucket, math stays empty
+//   subject == anything else (e.g. "tarix", "onatili") → both buckets stay
+//     empty — that subject has no top-level math/english bucket of its own;
+//     its real score lives only in detail.sections / topicScores.
+
+/// Splits [result]'s sections into the (math, english) lists per the rule
+/// above. List-shaped so _buildPdfBytes can build its per-§ "Matematika"/
+/// "Ingliz tili" topic tables from exactly the same decision that produces
+/// the header totals below — the two can never contradict each other.
+(List<SectionScore> math, List<SectionScore> eng) _resolveMathEngSections(
+  ScoredResult result,
+  String? subject,
+) {
+  if (subject == null) {
+    // Legacy path — no subject field on the test JSON. Byte-identical to
+    // pre-Task-1.6 behaviour.
+    final math = <SectionScore>[];
+    final eng = <SectionScore>[];
+    for (final s in result.sectionScores) {
+      (_EngineHostScreenState.isMathSection(s.name) ? math : eng).add(s);
+    }
+    return (math, eng);
+  }
+  if (subject == 'math') return (result.sectionScores, const []);
+  if (subject == 'english') return (const [], result.sectionScores);
+  return (const [], const []);
+}
+
+/// Sums a section list into a single {correct,total} aggregate.
+_Agg _sumSections(List<SectionScore> sections) {
+  int cor = 0, tot = 0;
+  for (final s in sections) {
+    cor += s.correct;
+    tot += s.total;
+  }
+  return _Agg(cor, tot);
+}
+
+/// Scalar convenience over [_resolveMathEngSections] — what _buildPayload
+/// and _handleComplete need (a single {correct,total} pair each), without
+/// caring about which individual sections went into it.
+(_Agg math, _Agg eng) _resolveMathEngBuckets(ScoredResult result, String? subject) {
+  final (mathSections, engSections) = _resolveMathEngSections(result, subject);
+  return (_sumSections(mathSections), _sumSections(engSections));
 }
 
 // ── Error scaffold ────────────────────────────────────────────────────────────
@@ -352,6 +400,13 @@ class _EngineResultScreen extends StatefulWidget {
   final ScoredResult result;
   final String clientToken;
 
+  /// TestSpec.subject (Task 1.6), threaded through from _EngineHostScreenState
+  /// so _buildPdfBytes can apply the same subject-aware math/eng bucketing
+  /// rule as _buildPayload/_handleComplete instead of silently falling back
+  /// to the legacy per-section-name heuristic for every test. Null for
+  /// legacy tests without a subject field — see _resolveMathEngSections.
+  final String? subject;
+
   const _EngineResultScreen({
     required this.firstName,
     required this.lastName,
@@ -361,6 +416,7 @@ class _EngineResultScreen extends StatefulWidget {
     required this.variant,
     required this.result,
     required this.clientToken,
+    this.subject,
   });
 
   @override
@@ -466,22 +522,21 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
   /// Builds the result PDF bytes — shared by the "PDF hisobot" button and
   /// the silent bot-upload so both ever produce exactly the same file.
   Future<Uint8List> _buildPdfBytes() async {
-    final mathTopics = <MapEntry<String, ({int ok, int tot})>>[];
-    final engTopics = <MapEntry<String, ({int ok, int tot})>>[];
-    int mathOk = 0, mathTot = 0, engOk = 0, engTot = 0;
-
-    for (final s in widget.result.sectionScores) {
-      final entry = MapEntry(s.name, (ok: s.correct, tot: s.total));
-      if (_EngineHostScreenState.isMathSection(s.name)) {
-        mathTopics.add(entry);
-        mathOk += s.correct;
-        mathTot += s.total;
-      } else {
-        engTopics.add(entry);
-        engOk += s.correct;
-        engTot += s.total;
-      }
-    }
+    // Same subject-aware decision _buildPayload/_handleComplete use (Task
+    // 1.6) — list-shaped here so the per-§ "Matematika"/"Ingliz tili" topic
+    // tables below can never disagree with their own header totals (e.g. a
+    // Tarix test showing "Ingliz tili: 0/0" as the header but still listing
+    // its real sections underneath, contradicting itself).
+    final (mathSections, engSections) =
+        _resolveMathEngSections(widget.result, widget.subject);
+    final mathTopics = mathSections
+        .map((s) => MapEntry(s.name, (ok: s.correct, tot: s.total)))
+        .toList();
+    final engTopics = engSections
+        .map((s) => MapEntry(s.name, (ok: s.correct, tot: s.total)))
+        .toList();
+    final math = _sumSections(mathSections);
+    final eng = _sumSections(engSections);
 
     // Per-§ / per-topic breakdown + AI summary for the TZ §11 passport.
     final topicScores = widget.result.topicScores
@@ -494,10 +549,10 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       group: widget.group ?? '',
       grade: widget.grade,
       variant: widget.variant,
-      mathOk: mathOk,
-      mathTotal: mathTot,
-      engOk: engOk,
-      engTotal: engTot,
+      mathOk: math.correct,
+      mathTotal: math.total,
+      engOk: eng.correct,
+      engTotal: eng.total,
       pct: widget.result.totalPct.round(),
       mathTopics: mathTopics,
       engTopics: engTopics,

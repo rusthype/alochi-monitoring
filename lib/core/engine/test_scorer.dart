@@ -109,13 +109,19 @@ class TestScorer {
   static final _multiSpaceRe = RegExp(r'\s+');
 
   /// Normalizes a typed/expected string before comparison: trims, lowercases,
-  /// maps curly apostrophe (’) to straight ('), and collapses multiple
-  /// whitespace to one. Applies to spelling, sentence_order and fill_blank.
+  /// maps curly apostrophe (’) and the Uzbek modifier-letter apostrophes
+  /// ʻ (U+02BB, turned comma — used in "oʻ"/"gʻ") and ʼ (U+02BC, apostrophe
+  /// letter) to straight ('), and collapses multiple whitespace to one.
+  /// Applies to spelling, sentence_order and fill_blank. Without this, an
+  /// AI-authored "oʻqituvchi" and a student-typed "o'qituvchi" compare as
+  /// different strings even though they're the same word (Ona tili §2/§3).
   static String _normalize(String s) {
     return s
         .trim()
         .toLowerCase()
         .replaceAll('’', "'")
+        .replaceAll('ʻ', "'")
+        .replaceAll('ʼ', "'")
         .replaceAll(_multiSpaceRe, ' ');
   }
 
@@ -142,17 +148,10 @@ class TestScorer {
     int totalQuestions = 0;
 
     for (final section in sections) {
-      if (section.isReading) {
-        final sc = _scoreReading(section, answers);
-        sectionScores.add(sc);
-        totalCorrect += sc.correct;
-        totalQuestions += sc.total;
-      } else {
-        final sc = _scoreQuestionList(section, answers);
-        sectionScores.add(sc);
-        totalCorrect += sc.correct;
-        totalQuestions += sc.total;
-      }
+      final sc = _scoreSection(section, answers);
+      sectionScores.add(sc);
+      totalCorrect += sc.correct;
+      totalQuestions += sc.total;
     }
 
     final totalPct = totalQuestions > 0
@@ -219,29 +218,18 @@ class TestScorer {
 
   // ── Per-section scoring ─────────────────────────────────────────────────────
 
-  static SectionScore _scoreQuestionList(
+  /// Scores one section over its [SectionData.answerSlots] — the single
+  /// definition of the key scheme, covering whole-section (Map-shaped)
+  /// reading containers, plain question lists, AND list items that are
+  /// themselves inline reading passages (Task 1.1).
+  static SectionScore _scoreSection(
       SectionData section, Map<String, dynamic> answers) {
     int correct = 0;
-    final qs = section.questions;
-    for (int i = 0; i < qs.length; i++) {
-      final key = '${section.name}/$i';
-      final given = answers[key];
-      if (_isCorrect(qs[i], given)) correct++;
+    final slots = section.answerSlots;
+    for (final slot in slots) {
+      if (_isCorrect(slot.question, answers[slot.key])) correct++;
     }
-    return SectionScore(name: section.name, correct: correct, total: qs.length);
-  }
-
-  static SectionScore _scoreReading(
-      SectionData section, Map<String, dynamic> answers) {
-    final container = section.readingContainer!;
-    int correct = 0;
-    final qs = container.qs;
-    for (int i = 0; i < qs.length; i++) {
-      final key = '${section.name}/$i';
-      final given = answers[key];
-      if (_isCorrect(qs[i], given)) correct++;
-    }
-    return SectionScore(name: section.name, correct: correct, total: qs.length);
+    return SectionScore(name: section.name, correct: correct, total: slots.length);
   }
 
   // ── Answer correctness ──────────────────────────────────────────────────────
@@ -270,7 +258,10 @@ class TestScorer {
         return typed == expected;
 
       case QuestionType.reading:
-        // reading is a container — should not appear directly in scoring
+        // reading is a container, never an answerable slot itself —
+        // SectionData.answerSlots (Task 1.1) expands its inner questions
+        // into their own slots before scoring ever sees them, so this case
+        // is unreachable in practice. Kept as a defensive fallback.
         return false;
     }
   }
@@ -294,17 +285,14 @@ class TestScorer {
       List<SectionData> sections, Map<String, dynamic> answers) {
     final List<QuestionResult> results = [];
     for (final section in sections) {
-      final qs =
-          section.isReading ? section.readingContainer!.qs : section.questions;
-      for (int i = 0; i < qs.length; i++) {
-        final q = qs[i];
+      for (final slot in section.answerSlots) {
         results.add(QuestionResult(
           section: section.name,
-          index: i,
-          questionText: q.q ?? q.strAns ?? '',
-          topic: q.topic,
-          category: q.category,
-          correct: _isCorrect(q, answers['${section.name}/$i']),
+          index: slot.displayIndex, // unique within the section
+          questionText: slot.question.q ?? slot.question.strAns ?? '',
+          topic: slot.question.topic,
+          category: slot.question.category,
+          correct: _isCorrect(slot.question, answers[slot.key]),
         ));
       }
     }
