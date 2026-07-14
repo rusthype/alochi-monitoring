@@ -342,9 +342,13 @@ class MonitoringApi {
   /// Server DB ga saqlaydi VA Telegram ni server tomonda jo'natadi.
   /// HTTP 200 = durabl muvaffaqiyat (telegram_sent=false bo'lsa ham qayta yubormaymiz — dublikat oldini olish).
   /// Katalogni yuklaydi — published testlar ro'yxati.
-  /// `client=2` — bu app locked (vaqt-qulflangan) testlarni ham
+  /// `client=3` — bu app locked (vaqt-qulflangan) testlarni ham
   /// `locked_until` maydoni bilan qabul qiladi (pre-download uchun); eski
   /// parametrsiz javob xulqiga hech narsa qo'shilmaydi (backend kontrakti).
+  /// client=3 = engine inline-reading fix bor (2026-07-14 Sprint 1: list
+  /// ichidagi `type:"reading"` render bo'ladi va ball beradi) — min_client=3
+  /// bilan belgilangan testlar (Tarix/Ona tili §5, ikkita matn) shu darajadan
+  /// past clientlarga katalogda ko'rinmaydi (Sprint 3, katalog gating).
   /// Xato holatida [] qaytaradi, crash qilmaydi.
   ///
   /// `groupId` — berilsa, backend faqat shu guruhga bog'langan (yoki
@@ -363,7 +367,7 @@ class MonitoringApi {
       final sc = (schoolCode != null && schoolCode.isNotEmpty)
           ? '&school_code=${Uri.encodeComponent(schoolCode)}'
           : '';
-      final data = await _get('/tests/catalog/?client=2$gid$sc');
+      final data = await _get('/tests/catalog/?client=3$gid$sc');
       if (data is! List) return [];
       if (data.isEmpty) return [];
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -373,8 +377,9 @@ class MonitoringApi {
     }
   }
 
-  /// Bitta test JSON'ini yuklaydi. `client=2` — locked testni ham
+  /// Bitta test JSON'ini yuklaydi. `client=3` — locked testni ham
   /// pre-download qilish uchun ruxsat beradi (UI darajasida qulflangan).
+  /// client=3 = engine inline-reading fix bor — qarang fetchTestCatalog izohi.
   ///
   /// `groupId` — berilsa, backend guruhga scoped test uchun shu guruhga
   /// tegishli javobni qaytaradi; boshqa guruh test_key bilan urinsa 403/404
@@ -392,7 +397,7 @@ class MonitoringApi {
       final sc = (schoolCode != null && schoolCode.isNotEmpty)
           ? '&school_code=${Uri.encodeComponent(schoolCode)}'
           : '';
-      final data = await _get('/tests/$testKey/?client=2$gid$sc');
+      final data = await _get('/tests/$testKey/?client=3$gid$sc');
       if (data is! Map) return null;
       return Map<String, dynamic>.from(data);
     } catch (e) {

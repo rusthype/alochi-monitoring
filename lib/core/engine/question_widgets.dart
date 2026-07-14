@@ -730,13 +730,103 @@ class _FillBlankWidgetState extends State<FillBlankWidget> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ReadingSectionWidget — renders passage + all sub-questions
+// ReadingBlockWidget — passage + sub-questions (whole-section or inline)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Renders a full reading section: passage card + yes_no / text_choice /
-/// fill_blank sub-questions. [answers] and [onAnswer] use keys "0", "1"…
-/// (index within container.qs), NOT the full "SectionName/i" key — the engine
-/// builds the full key before calling this widget.
+/// Renders one reading passage + its yes_no / text_choice / fill_blank
+/// sub-questions. [answers] and [onAnswer] use keys "0", "1"… (index within
+/// [reading].qs), NOT the full engine key ("SectionName/i" or
+/// "SectionName/i/j") — the caller builds the full key.
+///
+/// Reused for both shapes a reading passage can appear in:
+///   - whole-section (Map-shaped) container → [ReadingSectionWidget] below,
+///     [indexOffset] 0 (no sibling questions ahead of it in the section)
+///   - an inline list item alongside sibling questions (Task 1.5,
+///     `_buildInlineReading` in test_engine.dart) → [indexOffset] is the
+///     running question count so far, so EngineQNum continues counting
+///     instead of restarting at 1 for every passage.
+///
+/// Scope note (TZ §3/§10): the sub-question switch below only handles
+/// yes_no, text_choice, fill_blank — spelling/sentence_order/image_choice
+/// (and a nested reading) fall through to the SizedBox.shrink() default.
+/// TZ §3 explicitly excludes image_choice from reading passages and §10
+/// leaves it as an open lead decision, so this is a deliberate scope
+/// boundary carried over unchanged, not something forgotten here.
+class ReadingBlockWidget extends StatelessWidget {
+  final ReadingSection reading;
+
+  /// answers keyed by sub-question index as string: "0", "1", …
+  final Map<String, dynamic> answers;
+
+  /// Called with (subIndex, value) — value is int for mc, String for yn/fill.
+  final void Function(int subIndex, dynamic value) onAnswer;
+
+  /// Added to each sub-question's list index before it reaches EngineQNum —
+  /// lets display numbering run continuously across the parent section.
+  final int indexOffset;
+
+  const ReadingBlockWidget({
+    super.key,
+    required this.reading,
+    required this.answers,
+    required this.onAnswer,
+    this.indexOffset = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ReadingPassageWidget(reading: reading),
+        ...List.generate(reading.qs.length, (i) {
+          final q = reading.qs[i];
+          final ansKey = i.toString();
+          final displayIndex = indexOffset + i;
+
+          switch (q.type) {
+            case QuestionType.yesNo:
+              return YesNoWidget(
+                index: displayIndex,
+                question: q,
+                answer: answers[ansKey] as String?,
+                onSelect: (v) => onAnswer(i, v),
+              );
+
+            case QuestionType.textChoice:
+              return TextChoiceWidget(
+                index: displayIndex,
+                question: q,
+                answer: answers[ansKey] as int?,
+                onSelect: (v) => onAnswer(i, v),
+              );
+
+            case QuestionType.fillBlank:
+              return FillBlankWidget(
+                index: displayIndex,
+                question: q,
+                initialValue:
+                    answers[ansKey] is String ? answers[ansKey] as String : '',
+                onChanged: (v) => onAnswer(i, v),
+              );
+
+            default:
+              // Unexpected sub-question type in reading container
+              return const SizedBox.shrink();
+          }
+        }),
+      ],
+    );
+  }
+}
+
+/// Renders a full reading section: passage card + sub-questions. [answers]
+/// and [onAnswer] use keys "0", "1"… (index within container.qs), NOT the
+/// full "SectionName/i" key — the engine builds the full key before calling
+/// this widget. Thin adapter over [ReadingBlockWidget] for the whole-section
+/// (Map-shaped) case — no index offset, since a whole-section reading has no
+/// sibling questions ahead of it. Public API/assert/"0"/"1" sub-key contract
+/// unchanged; output is identical to before this widget was split.
 class ReadingSectionWidget extends StatelessWidget {
   final SectionData section;
 
@@ -756,48 +846,10 @@ class ReadingSectionWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     assert(section.isReading, 'ReadingSectionWidget requires a reading section');
-    final reading = section.readingContainer!;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ReadingPassageWidget(reading: reading),
-        ...List.generate(reading.qs.length, (i) {
-          final q = reading.qs[i];
-          final ansKey = i.toString();
-
-          switch (q.type) {
-            case QuestionType.yesNo:
-              return YesNoWidget(
-                index: i,
-                question: q,
-                answer: answers[ansKey] as String?,
-                onSelect: (v) => onAnswer(i, v),
-              );
-
-            case QuestionType.textChoice:
-              return TextChoiceWidget(
-                index: i,
-                question: q,
-                answer: answers[ansKey] as int?,
-                onSelect: (v) => onAnswer(i, v),
-              );
-
-            case QuestionType.fillBlank:
-              return FillBlankWidget(
-                index: i,
-                question: q,
-                initialValue:
-                    answers[ansKey] is String ? answers[ansKey] as String : '',
-                onChanged: (v) => onAnswer(i, v),
-              );
-
-            default:
-              // Unexpected sub-question type in reading container
-              return const SizedBox.shrink();
-          }
-        }),
-      ],
+    return ReadingBlockWidget(
+      reading: section.readingContainer!,
+      answers: answers,
+      onAnswer: onAnswer,
     );
   }
 }

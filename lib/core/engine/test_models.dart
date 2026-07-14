@@ -220,6 +220,39 @@ class ReadingSection {
   }
 }
 
+// ── AnswerSlot ────────────────────────────────────────────────────────────────
+
+/// One answerable question within a section, flattened out of whichever
+/// shape it actually lives in (a plain list item, or a question nested
+/// inside an inline `type:"reading"` list item). This is the single
+/// definition of the answers-map key scheme — everything that used to
+/// hand-roll `'${section.name}/$i'` (scorer, engine progress tracking,
+/// section body builders) now reads it from [SectionData.answerSlots]
+/// instead of re-deriving it.
+class AnswerSlot {
+  /// Answers-map key.
+  ///   `'$sectionName/$i'`     — direct list item / whole-section reading qs
+  ///   `'$sectionName/$i/$j'`  — question `j` inside an inline reading
+  ///                             passage that is list item `i`
+  /// The two shapes can never collide: a sibling key always has exactly 2
+  /// segments, an inline-reading key always has exactly 3.
+  final String key;
+
+  final Question question;
+
+  /// Running position of this slot within the section (0-based), independent
+  /// of the underlying list index. Feeds question numbering (EngineQNum) and
+  /// per-§ detail rows so an inline reading passage's inner questions don't
+  /// disrupt the numbering of the questions around it.
+  final int displayIndex;
+
+  const AnswerSlot({
+    required this.key,
+    required this.question,
+    required this.displayIndex,
+  });
+}
+
 // ── ScoringLevel ──────────────────────────────────────────────────────────────
 
 class ScoringLevel {
@@ -291,24 +324,73 @@ class SectionData {
 
   /// Non-reading questions (text_choice, image_choice, spelling, sentence_order,
   /// yes_no, fill_blank). Empty when this section is a reading container.
+  /// May also contain `type:"reading"` items — an inline reading passage
+  /// living alongside sibling questions in the same list (see [answerSlots]).
   final List<Question> questions;
 
   /// Non-null when the whole section is a reading passage container.
   final ReadingSection? readingContainer;
 
-  const SectionData({
+  /// Flat, ordered list of answerable slots for this section — the single
+  /// source of truth for answer-map keys, question counts, and display
+  /// numbering (see [AnswerSlot]).
+  ///
+  /// Built once here, NOT a getter: `_BottomNav` rebuilds one SectionData
+  /// per section on every frame via `List.generate(sections.length, ...)`
+  /// (test_engine.dart) — an allocating getter would reallocate a new List
+  /// every frame for every section instead of once at parse time.
+  late final List<AnswerSlot> answerSlots;
+
+  SectionData({
     required this.name,
     this.questions = const [],
     this.readingContainer,
-  });
+  }) {
+    answerSlots = _buildAnswerSlots();
+  }
+
+  List<AnswerSlot> _buildAnswerSlots() {
+    final slots = <AnswerSlot>[];
+
+    if (readingContainer != null) {
+      // Whole-section (Map-shaped) reading container — unchanged 2-segment
+      // key scheme, one slot per inner question, in order.
+      final qs = readingContainer!.qs;
+      for (var j = 0; j < qs.length; j++) {
+        slots.add(AnswerSlot(key: '$name/$j', question: qs[j], displayIndex: j));
+      }
+      return slots;
+    }
+
+    for (var i = 0; i < questions.length; i++) {
+      final q = questions[i];
+      if (q.type == QuestionType.reading && q.reading != null) {
+        // Inline reading passage — a list item whose own answerable
+        // questions live inside it. 3-segment key so it can never collide
+        // with a sibling's 2-segment key.
+        final inner = q.reading!.qs;
+        for (var j = 0; j < inner.length; j++) {
+          slots.add(AnswerSlot(
+            key: '$name/$i/$j',
+            question: inner[j],
+            displayIndex: slots.length,
+          ));
+        }
+      } else {
+        slots.add(AnswerSlot(
+          key: '$name/$i',
+          question: q,
+          displayIndex: slots.length,
+        ));
+      }
+    }
+    return slots;
+  }
 
   bool get isReading => readingContainer != null;
 
   /// Total answerable question count in this section.
-  int get questionCount {
-    if (isReading) return readingContainer!.qs.length;
-    return questions.length;
-  }
+  int get questionCount => answerSlots.length;
 }
 
 // ── TestSpec ──────────────────────────────────────────────────────────────────
@@ -326,6 +408,12 @@ class TestSpec {
   /// (clamped to [1, 180] minutes) instead of the per-question estimate.
   final int? durationMinutes;
 
+  /// Optional subject tag from the test JSON (`subject`), e.g. "math",
+  /// "english", "tarix", "onatili". Null for legacy tests that predate this
+  /// field — engine_host_screen._buildPayload falls back to the old
+  /// per-section name heuristic in that case.
+  final String? subject;
+
   /// variant key → section name → SectionData
   final Map<String, Map<String, SectionData>> variants;
 
@@ -337,6 +425,7 @@ class TestSpec {
     required this.parts,
     this.scoring,
     this.durationMinutes,
+    this.subject,
     required this.variants,
   });
 
@@ -346,6 +435,7 @@ class TestSpec {
     final grade = (json['grade'] as num?)?.toInt() ?? 0;
     final version = (json['version'] as num?)?.toInt() ?? 1;
     final durationMinutes = (json['duration_minutes'] as num?)?.toInt();
+    final subject = json['subject']?.toString();
 
     // parts
     final rawParts = json['parts'];
@@ -397,6 +487,7 @@ class TestSpec {
       parts: parts,
       scoring: scoring,
       durationMinutes: durationMinutes,
+      subject: subject,
       variants: variants,
     );
   }

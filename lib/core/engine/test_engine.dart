@@ -102,19 +102,8 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   int get _answeredCount {
     int count = 0;
     for (final section in _sections) {
-      if (section.isReading) {
-        final container = section.readingContainer!;
-        for (int i = 0; i < container.qs.length; i++) {
-          final key = '${section.name}/$i';
-          final v = _answers[key];
-          if (_hasValue(v)) count++;
-        }
-      } else {
-        for (int i = 0; i < section.questions.length; i++) {
-          final key = '${section.name}/$i';
-          final v = _answers[key];
-          if (_hasValue(v)) count++;
-        }
+      for (final slot in section.answerSlots) {
+        if (_hasValue(_answers[slot.key])) count++;
       }
     }
     return count;
@@ -124,17 +113,8 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     if (sectionIndex >= _sections.length) return 0;
     final section = _sections[sectionIndex];
     int count = 0;
-    if (section.isReading) {
-      final container = section.readingContainer!;
-      for (int i = 0; i < container.qs.length; i++) {
-        final key = '${section.name}/$i';
-        if (_hasValue(_answers[key])) count++;
-      }
-    } else {
-      for (int i = 0; i < section.questions.length; i++) {
-        final key = '${section.name}/$i';
-        if (_hasValue(_answers[key])) count++;
-      }
+    for (final slot in section.answerSlots) {
+      if (_hasValue(_answers[slot.key])) count++;
     }
     return count;
   }
@@ -515,13 +495,26 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
             style: TextStyle(color: AppColors.ink3)),
       );
     }
-    return Column(
-      children: List.generate(qs.length, (i) {
-        final q = qs[i];
+    // displayIdx runs independently of the list index i: an inline reading
+    // item (Task 1.1) consumes exactly one list slot but contributes
+    // multiple answerable questions, so the EngineQNum shown to the student
+    // must keep counting through its inner questions rather than jumping by
+    // the list index.
+    final children = <Widget>[];
+    int displayIdx = 0;
+    for (int i = 0; i < qs.length; i++) {
+      final q = qs[i];
+      if (q.type == QuestionType.reading && q.reading != null) {
+        final reading = q.reading!;
+        children.add(_buildInlineReading(section, reading, i, displayIdx));
+        displayIdx += reading.qs.length;
+      } else {
         final key = '${section.name}/$i';
-        return _buildQuestionWidget(q, i, key, section.name);
-      }),
-    );
+        children.add(_buildQuestionWidget(q, displayIdx, key, section.name));
+        displayIdx += 1;
+      }
+    }
+    return Column(children: children);
   }
 
   Widget _buildReadingBody(SectionData section) {
@@ -538,6 +531,40 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
       answers: subAnswers,
       onAnswer: (subIdx, value) {
         final fullKey = '${section.name}/$subIdx';
+        // For fill_blank, also sync controller
+        if (value is String) {
+          _ctrl(fullKey).text = value;
+        }
+        _setAnswer(fullKey, value);
+      },
+    );
+  }
+
+  /// Renders an inline reading passage — list item [itemIdx] inside a
+  /// question-list section whose own questions live in the passage (Task
+  /// 1.1's 3-segment key scheme: "$sectionName/$itemIdx/$subIdx"). Mirrors
+  /// [_buildReadingBody] (the whole-section case) but keyed one level
+  /// deeper, and offsets EngineQNum display numbers by [displayStart] so
+  /// numbering continues from the surrounding list instead of restarting
+  /// at 1 for every passage.
+  Widget _buildInlineReading(
+    SectionData section,
+    ReadingSection reading,
+    int itemIdx,
+    int displayStart,
+  ) {
+    final Map<String, dynamic> subAnswers = {};
+    for (int j = 0; j < reading.qs.length; j++) {
+      final fullKey = '${section.name}/$itemIdx/$j';
+      subAnswers[j.toString()] = _answers[fullKey];
+    }
+
+    return ReadingBlockWidget(
+      reading: reading,
+      answers: subAnswers,
+      indexOffset: displayStart,
+      onAnswer: (subIdx, value) {
+        final fullKey = '${section.name}/$itemIdx/$subIdx';
         // For fill_blank, also sync controller
         if (value is String) {
           _ctrl(fullKey).text = value;
@@ -603,7 +630,10 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
         );
 
       case QuestionType.reading:
-        // reading containers are only valid as a whole section — render nothing
+        // Defensive fallback only — _buildQuestionListBody (Task 1.5)
+        // intercepts type:"reading" list items before they reach here and
+        // routes them to _buildInlineReading instead. Rendering it here too
+        // would draw the passage twice.
         return const SizedBox.shrink();
     }
   }
