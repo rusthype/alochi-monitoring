@@ -1,16 +1,15 @@
 // lib/core/services/update_service.dart
-// Checks GitHub Releases for a newer app version at startup and shows a
-// dismissible "update available" dialog — link-out only, no auto-install.
+// Checks GitHub Releases for a newer app version at startup and exposes it
+// as UpdateInfo — the login screen renders a persistent top-right badge
+// when an update is available. Link-out only, no auto-install.
 // See docs/superpowers/specs/2026-07-11-monitoring-flutter-update-mechanism-design.md
+// and docs/superpowers/specs/2026-07-16-monitoring-flutter-update-badge-design.md
 // (in the alochi monorepo) for the full design rationale.
 
-import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../shared/theme/app_theme.dart';
 
 final RegExp _setupExePattern =
     RegExp(r'^AlochiMonitoring-(\d+)\.(\d+)\.(\d+)-Setup\.exe$');
@@ -18,7 +17,7 @@ final RegExp _setupExePattern =
 /// True if [remote] is strictly newer than [local] (both "X.Y.Z" strings).
 /// Numeric comparison, not string comparison — "1.0.9" vs "1.0.10" must
 /// compare correctly. Returns false (not an error) for malformed input,
-/// since this only gates whether to show a UI dialog.
+/// since this only gates whether to show the update badge.
 bool isNewerVersion(String remote, String local) {
   final r = _parseVersionParts(remote);
   final l = _parseVersionParts(local);
@@ -74,6 +73,16 @@ int _compareParts(List<int> a, List<int> b) {
   return 0;
 }
 
+/// Result of a successful update check: a newer version exists.
+class UpdateInfo {
+  final String latestVersion;
+  final String currentVersion;
+  const UpdateInfo({
+    required this.latestVersion,
+    required this.currentVersion,
+  });
+}
+
 class UpdateService {
   UpdateService._();
   static final UpdateService instance = UpdateService._();
@@ -83,12 +92,13 @@ class UpdateService {
   static const String _releasePageUrl =
       'https://github.com/rusthype/alochi-monitoring/releases/tag/latest';
 
-  /// Checks for a newer release once and shows a dialog if found. Fire-and-
-  /// forget — any failure (offline, GitHub API rate limit, malformed JSON)
-  /// is swallowed silently, matching HeartbeatService's error-handling
-  /// pattern (lib/core/services/heartbeat_service.dart:62-71). Never blocks
-  /// or crashes app startup.
-  Future<void> checkForUpdate(BuildContext context) async {
+  /// Checks for a newer release once. Any failure (offline, GitHub API rate
+  /// limit, malformed JSON) is swallowed silently, matching
+  /// HeartbeatService's error-handling pattern
+  /// (lib/core/services/heartbeat_service.dart:62-71) — never throws, never
+  /// blocks app startup. Returns null when no update is available or the
+  /// check failed; callers must treat both cases identically (no badge).
+  Future<UpdateInfo?> fetchUpdateInfo() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
@@ -96,54 +106,42 @@ class UpdateService {
       final resp = await http
           .get(Uri.parse(_releaseApiUrl))
           .timeout(const Duration(seconds: 5));
-      if (resp.statusCode != 200) return;
+      if (resp.statusCode != 200) return null;
 
       final decoded = jsonDecode(resp.body);
-      if (decoded is! Map<String, dynamic>) return;
+      if (decoded is! Map<String, dynamic>) return null;
       final assets = decoded['assets'];
-      if (assets is! List) return;
+      if (assets is! List) return null;
 
       final latestVersion = maxSetupExeVersion(assets);
-      if (latestVersion == null) return;
-      if (!isNewerVersion(latestVersion, currentVersion)) return;
-      if (!context.mounted) return;
+      if (latestVersion == null) return null;
+      if (!isNewerVersion(latestVersion, currentVersion)) return null;
 
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text(
-            'Yangi versiya mavjud',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
-          content: Text(
-            'Alochi Monitoring v$latestVersion chiqdi. '
-            'Joriy versiyangiz: v$currentVersion.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Yopish'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                unawaited(launchUrl(
-                  Uri.parse(_releasePageUrl),
-                  mode: LaunchMode.externalApplication,
-                ));
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.brand,
-                minimumSize: const Size(100, 40),
-              ),
-              child: const Text('Yuklab olish'),
-            ),
-          ],
-        ),
+      return UpdateInfo(
+        latestVersion: latestVersion,
+        currentVersion: currentVersion,
       );
-    } catch (_) {}
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Opens the GitHub release page in the system browser so the user can
+  /// download the new installer/DMG themselves. Link-out only — no
+  /// auto-download or silent install (see design spec).
+  ///
+  /// Any failure (no default browser registered, restricted desktop
+  /// sandbox, etc.) is swallowed silently, matching fetchUpdateInfo()'s
+  /// error-handling pattern above — there is nothing meaningful to do on
+  /// failure for a fire-and-forget browser launch triggered by a button tap.
+  Future<void> openReleasePage() async {
+    try {
+      await launchUrl(
+        Uri.parse(_releasePageUrl),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {
+      // Swallowed — see doc comment above.
+    }
   }
 }
