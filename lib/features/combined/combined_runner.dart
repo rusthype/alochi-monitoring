@@ -1427,7 +1427,7 @@ class _CSectionScroll extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: 1160),
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
             child: child,
@@ -1803,7 +1803,7 @@ class _CVocabImgQuestion extends StatelessWidget {
             child: question.img!.startsWith('http')
               ? AppNetworkImage(
                   url: question.img,
-                  height: 160,
+                  height: 270,
                   fit: BoxFit.contain,
                   borderRadius: BorderRadius.circular(10),
                 )
@@ -1811,7 +1811,7 @@ class _CVocabImgQuestion extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                   child: Image.asset(
                     'assets/unit1/img/${question.img}',
-                    height: 160,
+                    height: 270,
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) => Container(
                       height: 80,

@@ -307,7 +307,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
             Expanded(
                 child: Center(
                     child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
+              constraints: const BoxConstraints(maxWidth: 1160),
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -872,7 +872,7 @@ class _QuestionImage extends StatelessWidget {
         width: double.infinity,
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 260),
+            constraints: const BoxConstraints(maxHeight: 270),
             child: AppNetworkImage(
               url: url,
               alignment: Alignment.center,
