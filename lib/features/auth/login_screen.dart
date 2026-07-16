@@ -18,6 +18,7 @@ import '../combined/combined_screen.dart';
 import '../session/session_setup_screen.dart';
 import '../downloads/downloads_sheet.dart';
 import '../../core/services/update_service.dart';
+import 'package:go_router/go_router.dart';
 
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
@@ -310,10 +311,8 @@ class _LoginScreenState extends State<LoginScreen> {
           await CredentialCache.saveCredentials(username, password);
           await CredentialCache.saveSession(session, username, password);
           if (!mounted) return;
-          Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => PackageScreen(session: session)));
+          context.pushReplacement('/package',
+              extra: PackageScreen(session: session));
           return;
         } on ApiException catch (e) {
           // 400 = login/parol xato — offline ham urinma
@@ -335,11 +334,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (session != null) {
         api.setToken(session.token);
         if (!mounted) return;
-        Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (_) =>
-                    PackageScreen(session: session, offline: !online)));
+        context.pushReplacement('/package',
+            extra: PackageScreen(session: session, offline: !online));
         return;
       }
 
@@ -361,6 +357,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isSmall = MediaQuery.of(context).size.width < 800;
+    
     // Auto-login urinayotganda spinner
     if (_autoLogging) {
       return Scaffold(
@@ -438,21 +436,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: AppTextStyles.bodyMedium
                                     .copyWith(color: AppColors.ink2)),
                             const SizedBox(height: 24),
-                            _routeButtons(),
+                            _routeButtons(isSmall),
                             _accordion(),
                             const SizedBox(height: 16),
                             // Bottom row: sync + history
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 4,
+                              runSpacing: 4,
                               children: [
                                 const SyncImagesButton(),
-                                const SizedBox(width: 4),
                                 TextButton.icon(
-                                  onPressed: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (_) =>
-                                              const HistoryScreen())),
+                                  onPressed: () => context.push('/history',
+                                      extra: const HistoryScreen()),
                                   icon: const Icon(Icons.history_rounded,
                                       size: 16),
                                   label: const Text('Oflayn Tarix'),
@@ -472,26 +468,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-            Positioned(
-              top: 0,
-              left: 0,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: _newTestsButton(),
+              Positioned(
+                top: 0,
+                left: 0,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: _newTestsButton(),
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: _downloadsButton(),
-                ),
-              ),
-            ),
             ],
           ),
         ),
@@ -560,73 +546,39 @@ class _LoginScreenState extends State<LoginScreen> {
     ).whenComplete(_loadCatalog);
   }
 
-  Widget _downloadsButton() {
-    return GestureDetector(
-      onTap: () => showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => DownloadsSheet(
-          schoolCode: _userCtrl.text.trim(),
-        ),
+  Widget _routeButtons(bool isSmall) {
+    final children = [
+      _routeButton(
+        icon: Icons.monitor_rounded,
+        label: 'Alochi Monitoring',
+        active: _expanded,
+        onTap: () => setState(() => _expanded = !_expanded),
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1e293b),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF334155)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: .12),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.folder_rounded, size: 16, color: Color(0xFF00d68f)),
-            SizedBox(width: 6),
-            Text(
-              'Hujjatlar',
-              style: TextStyle(
-                color: Color(0xFFf1f5f9),
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
+      if (isSmall) const SizedBox(height: 12) else const SizedBox(width: 12),
+      _routeButton(
+        icon: Icons.quiz_rounded,
+        label: 'Testlar',
+        active: false,
+        disabled: true,
+        badge: 'Tez kunda',
+        onTap: null,
       ),
-    );
-  }
+    ];
 
-  Widget _routeButtons() {
+    if (isSmall) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      );
+    }
+
     return IntrinsicHeight(
         child: Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: _routeButton(
-            icon: Icons.monitor_rounded,
-            label: 'Alochi Monitoring',
-            active: _expanded,
-            onTap: () => setState(() => _expanded = !_expanded),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _routeButton(
-            icon: Icons.quiz_rounded,
-            label: 'Testlar',
-            active: false,
-            disabled: true,
-            badge: 'Tez kunda',
-            onTap: null,
-          ),
-        ),
+        Expanded(child: children[0]),
+        children[1],
+        Expanded(child: children[2]),
       ],
     ));
   }
@@ -876,10 +828,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           height: 48,
                           child: OutlinedButton.icon(
-                            onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const LocalGradeScreen())),
+                            onPressed: () => context.push('/local_grade',
+                                extra: const LocalGradeScreen()),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.ink2,
                               side: const BorderSide(color: AppColors.border),
@@ -897,10 +847,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           height: 48,
                           child: OutlinedButton.icon(
-                            onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const CombinedScreen())),
+                            onPressed: () => context.push('/combined',
+                                extra: const CombinedScreen()),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFF5B21B6),
                               side: const BorderSide(
@@ -1041,8 +989,8 @@ class _LaunchDialogState extends State<_LaunchDialog> {
       setState(() => _err = l10n.enterSchoolError);
       return;
     }
-    Navigator.pop(
-      context,
+
+    context.pop(
       _LaunchArgs(
         variant: _variant!,
         firstName: first,
@@ -1085,7 +1033,7 @@ class _LaunchDialogState extends State<_LaunchDialog> {
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => Navigator.pop(context),
+                  onTap: () => context.pop(),
                   child: const Icon(Icons.close_rounded,
                       size: 20, color: AppColors.ink2),
                 ),
@@ -1406,7 +1354,8 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       final l10n = AppLocalizations.of(context)!;
       final schoolCode = school['school_code'] ?? '';
       final schoolLabel = school['label'] ?? '';
-      final label = schoolLabel.isNotEmpty ? schoolLabel : l10n.schoolPrefix(schoolCode);
+      final label =
+          schoolLabel.isNotEmpty ? schoolLabel : l10n.schoolPrefix(schoolCode);
       schoolWidgets.add(_buildSchoolCard(schoolCode, label, null));
     }
 
@@ -1433,7 +1382,8 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
               e.status == CatalogStatus.cached ||
               e.status == CatalogStatus.cachedOnly)
           .length;
-      widgets.add(_buildSectionHeader(l10n.generalTests, groupCached, groupEntries.length));
+      widgets.add(_buildSectionHeader(
+          l10n.generalTests, groupCached, groupEntries.length));
       for (var i = 0; i < groupEntries.length; i++) {
         widgets.add(_buildItem(groupEntries[i]));
         if (i < groupEntries.length - 1) {
@@ -1457,8 +1407,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       child: Row(
         children: [
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: allDone ? AppColors.okMuted : AppColors.muted,
               borderRadius: BorderRadius.circular(8),
@@ -1467,8 +1416,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.school_rounded,
-                    size: 14,
-                    color: allDone ? AppColors.ok : AppColors.ink2),
+                    size: 14, color: allDone ? AppColors.ok : AppColors.ink2),
                 const SizedBox(width: 5),
                 Text(
                   label,
@@ -1495,12 +1443,8 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
         entry.lockedUntil != null && entry.lockedUntil!.isAfter(DateTime.now());
 
     void openSession() {
-      Navigator.of(context).pop();
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => SessionSetupScreen(entry: entry),
-        ),
-      );
+      context.pop();
+      context.push('/session_setup', extra: SessionSetupScreen(entry: entry));
     }
 
     void handleStartTap() {
@@ -1551,8 +1495,8 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   ))
               : isDone
                   ? Text(l10n.downloaded,
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.ink3))
+                      style:
+                          AppTextStyles.caption.copyWith(color: AppColors.ink3))
                   : null,
       trailing: isDownloading
           ? const SizedBox(
@@ -1567,8 +1511,8 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
               ? GestureDetector(
                   onTap: handleStartTap,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: AppColors.ok,
                       borderRadius: BorderRadius.circular(10),
@@ -1672,7 +1616,8 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
     );
   }
 
-  Widget _buildSchoolCard(String schoolCode, String label, CatalogEntry? entry) {
+  Widget _buildSchoolCard(
+      String schoolCode, String label, CatalogEntry? entry) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -1690,29 +1635,24 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            Navigator.of(context).pop();
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) {
-                  final targetEntry = entry ?? CatalogEntry(
-                    testKey: '',
-                    title: label,
-                    grade: 0,
-                    version: 0,
-                    status: CatalogStatus.notDownloaded,
-                    schoolButtons: [
-                      SchoolButton(
-                        pin: '',
-                        label: label,
-                        schoolCode: schoolCode,
-                        randomVariant: false,
-                      ),
-                    ],
-                  );
-                  return SessionSetupScreen(entry: targetEntry);
-                },
-              ),
-            );
+            context.pop();
+            final targetEntry = entry ??
+                CatalogEntry(
+                  testKey: '',
+                  title: label,
+                  grade: 0,
+                  version: 0,
+                  status: CatalogStatus.notDownloaded,
+                  schoolButtons: [
+                    SchoolButton(
+                      pin: '',
+                      label: label,
+                      schoolCode: schoolCode,
+                      randomVariant: false,
+                    ),
+                  ],
+                );
+            context.push('/session_setup', extra: SessionSetupScreen(entry: targetEntry));
           },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
@@ -1726,7 +1666,8 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                     color: AppColors.primaryMuted,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.school_rounded, size: 20, color: AppColors.primary),
+                  child: const Icon(Icons.school_rounded,
+                      size: 20, color: AppColors.primary),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -1744,5 +1685,3 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
     );
   }
 }
-
-
