@@ -188,11 +188,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void initState() {
+  // ── Yangilanish badge holati ────────────────────────────────────────────────
+  UpdateInfo? _updateInfo;
+
     super.initState();
     _tryAutoLogin();
     _loadCatalog();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) UpdateService.instance.checkForUpdate(context);
+    UpdateService.instance.fetchUpdateInfo().then((info) {
+      if (mounted && info != null) setState(() => _updateInfo = info);
     });
   }
 
@@ -493,6 +496,16 @@ class _LoginScreenState extends State<LoginScreen> {
     final l10n = AppLocalizations.of(context)!;
     final downloadable = _catalogEntries
         .where((e) =>
+              Positioned(
+                top: 0,
+                right: 0,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: _updateBadge(),
+                  ),
+                ),
+              ),
             e.status == CatalogStatus.notDownloaded ||
             e.status == CatalogStatus.updatable)
         .length;
@@ -565,6 +578,50 @@ class _LoginScreenState extends State<LoginScreen> {
       _routeButton(
         icon: Icons.quiz_rounded,
         label: 'Testlar',
+  Widget _updateBadge() {
+    if (_updateInfo == null) return const SizedBox.shrink();
+    return Semantics(
+      button: true,
+      label: 'Yangilanish mavjud',
+      child: GestureDetector(
+        onTap: () => UpdateService.instance.openReleasePage(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.primary),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: .12),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.system_update_alt_rounded,
+                size: 16,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'Yangilanish mavjud',
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
         active: false,
         disabled: true,
         badge: 'Tez kunda',
