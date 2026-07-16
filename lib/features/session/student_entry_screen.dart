@@ -5,6 +5,7 @@ import '../../core/api/api_client.dart';
 import '../../shared/theme/app_theme.dart';
 import 'runner_dispatch.dart';
 import 'test_session.dart';
+import '../../core/widgets/skeleton.dart';
 
 class StudentEntryScreen extends StatefulWidget {
   final TestSession session;
@@ -271,9 +272,14 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                               const SizedBox(height: 20),
                             ],
                             if (_loadingGroups)
-                              const Center(
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2))
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: List.generate(
+                                  4,
+                                  (_) => const Skeleton(width: 80, height: 40, borderRadius: 10),
+                                ),
+                              )
                             else if (_groups.isNotEmpty &&
                                 widget.preselectedGroup == null) ...[
                               Text(l10n.selectGroup,
@@ -336,9 +342,23 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                               if (widget.preselectedGroup == null)
                                 const SizedBox(height: 20),
                               if (_loadingStudents)
-                                const Center(
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: AppColors.brand))
+                                LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final crossAxisCount = constraints.maxWidth > 400 ? 2 : 1;
+                                    return GridView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: crossAxisCount,
+                                        mainAxisSpacing: 8,
+                                        crossAxisSpacing: 8,
+                                        mainAxisExtent: 56,
+                                      ),
+                                      itemCount: 6,
+                                      itemBuilder: (context, index) => const Skeleton(height: 56, borderRadius: 12),
+                                    );
+                                  },
+                                )
                               else if (_students.isNotEmpty) ...[
                                 LayoutBuilder(
                                   builder: (context, constraints) {
