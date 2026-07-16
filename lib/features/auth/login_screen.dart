@@ -19,6 +19,7 @@ import '../session/session_setup_screen.dart';
 import '../downloads/downloads_sheet.dart';
 import '../../core/services/update_service.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/widgets/skeleton.dart';
 
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
@@ -170,6 +171,8 @@ class _NetworkBgState extends State<_NetworkBg>
 class _LoginScreenState extends State<LoginScreen> {
   final _userCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  final _userFocus = FocusNode();
+  final _passFocus = FocusNode();
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
   bool _showPass = false;
@@ -229,6 +232,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _userCtrl.dispose();
     _passCtrl.dispose();
+    _userFocus.dispose();
+    _passFocus.dispose();
     super.dispose();
   }
 
@@ -312,7 +317,7 @@ class _LoginScreenState extends State<LoginScreen> {
           await CredentialCache.saveSession(session, username, password);
           if (!mounted) return;
           context.pushReplacement('/package',
-              extra: PackageScreen(session: session));
+              extra: session);
           return;
         } on ApiException catch (e) {
           // 400 = login/parol xato — offline ham urinma
@@ -335,7 +340,7 @@ class _LoginScreenState extends State<LoginScreen> {
         api.setToken(session.token);
         if (!mounted) return;
         context.pushReplacement('/package',
-            extra: PackageScreen(session: session, offline: !online));
+            extra: {'session': session, 'offline': !online});
         return;
       }
 
@@ -447,8 +452,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 const SyncImagesButton(),
                                 TextButton.icon(
-                                  onPressed: () => context.push('/history',
-                                      extra: const HistoryScreen()),
+                                  onPressed: () => context.push('/history'),
                                   icon: const Icon(Icons.history_rounded,
                                       size: 16),
                                   label: const Text('Oflayn Tarix'),
@@ -494,9 +498,12 @@ class _LoginScreenState extends State<LoginScreen> {
         .length;
     final hasNew = downloadable > 0;
 
-    return GestureDetector(
-      onTap: _showCatalogSheet,
-      child: Container(
+    return Semantics(
+      button: true,
+      label: l10n.schools,
+      child: GestureDetector(
+        onTap: _showCatalogSheet,
+        child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: hasNew ? AppColors.primary : AppColors.surface,
@@ -657,7 +664,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return disabled
         ? Opacity(opacity: .6, child: content)
-        : GestureDetector(onTap: onTap, child: content);
+        : Semantics(
+            button: true,
+            label: label,
+            child: GestureDetector(onTap: onTap, child: content),
+          );
   }
 
   Widget _accordion() {
@@ -736,16 +747,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 16),
                         _field(
                           controller: _userCtrl,
+                          focusNode: _userFocus,
                           label: 'Login',
                           hint: '',
                           icon: Icons.person_outline_rounded,
                           action: TextInputAction.next,
+                          onSubmit: (_) => _passFocus.requestFocus(),
                           validator: (v) =>
                               v!.isEmpty ? 'Login kiriting' : null,
                         ),
                         const SizedBox(height: 14),
                         _field(
                           controller: _passCtrl,
+                          focusNode: _passFocus,
                           label: 'Parol',
                           hint: '',
                           icon: Icons.lock_outline_rounded,
@@ -828,8 +842,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           height: 48,
                           child: OutlinedButton.icon(
-                            onPressed: () => context.push('/local_grade',
-                                extra: const LocalGradeScreen()),
+                            onPressed: () => context.push('/local_grade'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.ink2,
                               side: const BorderSide(color: AppColors.border),
@@ -847,8 +860,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           height: 48,
                           child: OutlinedButton.icon(
-                            onPressed: () => context.push('/combined',
-                                extra: const CombinedScreen()),
+                            onPressed: () => context.push('/combined'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFF5B21B6),
                               side: const BorderSide(
@@ -874,6 +886,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _field({
     required TextEditingController controller,
+    FocusNode? focusNode,
     required String label,
     required String hint,
     required IconData icon,
@@ -885,6 +898,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }) =>
       TextFormField(
         controller: controller,
+        focusNode: focusNode,
         obscureText: obscure,
         textInputAction: action,
         onFieldSubmitted: onSubmit,
@@ -965,6 +979,12 @@ class _LaunchDialogState extends State<_LaunchDialog> {
   final _lastCtrl = TextEditingController();
   final _schoolCtrl = TextEditingController();
   final _groupCtrl = TextEditingController();
+  
+  final _firstFocus = FocusNode();
+  final _lastFocus = FocusNode();
+  final _schoolFocus = FocusNode();
+  final _groupFocus = FocusNode();
+  
   String? _err;
 
   @override
@@ -973,6 +993,10 @@ class _LaunchDialogState extends State<_LaunchDialog> {
     _lastCtrl.dispose();
     _schoolCtrl.dispose();
     _groupCtrl.dispose();
+    _firstFocus.dispose();
+    _lastFocus.dispose();
+    _schoolFocus.dispose();
+    _groupFocus.dispose();
     super.dispose();
   }
 
@@ -1121,23 +1145,35 @@ class _LaunchDialogState extends State<_LaunchDialog> {
         ],
         TextField(
           controller: _lastCtrl,
+          focusNode: _lastFocus,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _firstFocus.requestFocus(),
           decoration: InputDecoration(labelText: l10n.lastName),
           textCapitalization: TextCapitalization.words,
         ),
         const SizedBox(height: 10),
         TextField(
           controller: _firstCtrl,
+          focusNode: _firstFocus,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _schoolFocus.requestFocus(),
           decoration: InputDecoration(labelText: l10n.firstName),
           textCapitalization: TextCapitalization.words,
         ),
         const SizedBox(height: 10),
         TextField(
           controller: _schoolCtrl,
+          focusNode: _schoolFocus,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _groupFocus.requestFocus(),
           decoration: InputDecoration(labelText: l10n.schoolCodeOrName),
         ),
         const SizedBox(height: 10),
         TextField(
           controller: _groupCtrl,
+          focusNode: _groupFocus,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _start(),
           decoration: InputDecoration(labelText: l10n.groupOptional),
         ),
         const SizedBox(height: 16),
@@ -1169,6 +1205,7 @@ class _CatalogBottomSheet extends StatefulWidget {
 class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
   late List<CatalogEntry> _entries;
   final Set<String> _downloadingKeys = {};
+  bool _loading = true;
 
   List<Map<String, String>> _schools = [];
 
@@ -1176,6 +1213,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
   void initState() {
     super.initState();
     _entries = List.from(widget.initialEntries);
+    _loading = _entries.isEmpty;
     _initialLoad();
   }
 
@@ -1189,18 +1227,27 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       setState(() {
         _entries = results[0] as List<CatalogEntry>;
         _schools = results[1] as List<Map<String, String>>;
+        _loading = false;
       });
     } catch (e) {
       debugPrint('CatalogSheet initialLoad error: $e');
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _refresh() async {
+    setState(() => _loading = true);
     try {
       final fresh = await testCatalogService.refresh();
-      if (mounted) setState(() => _entries = fresh);
+      if (mounted) {
+        setState(() {
+          _entries = fresh;
+          _loading = false;
+        });
+      }
     } catch (e) {
       debugPrint('CatalogSheet refresh error: $e');
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -1283,21 +1330,28 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
             ),
             const Divider(height: 1),
             Expanded(
-              child: _entries.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.cloud_off_rounded,
-                              size: 36, color: AppColors.ink3),
-                          const SizedBox(height: 8),
-                          Text(l10n.testsNotFound,
-                              style: AppTextStyles.bodyMedium
-                                  .copyWith(color: AppColors.ink2)),
-                        ],
-                      ),
+              child: _loading
+                  ? ListView.separated(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: 4,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (_, __) => const Skeleton(height: 72, borderRadius: 16),
                     )
-                  : _buildGroupedList(scrollCtrl),
+                  : _entries.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.cloud_off_rounded,
+                                  size: 36, color: AppColors.ink3),
+                              const SizedBox(height: 8),
+                              Text(l10n.testsNotFound,
+                                  style: AppTextStyles.bodyMedium
+                                      .copyWith(color: AppColors.ink2)),
+                            ],
+                          ),
+                        )
+                      : _buildGroupedList(scrollCtrl),
             ),
           ],
         ),
@@ -1444,7 +1498,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
 
     void openSession() {
       context.pop();
-      context.push('/session_setup', extra: SessionSetupScreen(entry: entry));
+      context.push('/session_setup', extra: entry);
     }
 
     void handleStartTap() {
@@ -1508,11 +1562,14 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
               ),
             )
           : isDone && !isUpdatable
-              ? GestureDetector(
-                  onTap: handleStartTap,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              ? Semantics(
+                  button: true,
+                  label: l10n.start,
+                  child: GestureDetector(
+                    onTap: handleStartTap,
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: AppColors.ok,
                       borderRadius: BorderRadius.circular(10),
@@ -1543,11 +1600,14 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   ? Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        GestureDetector(
-                          onTap: () => _download(entry),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
+                        Semantics(
+                          button: true,
+                          label: l10n.update,
+                          child: GestureDetector(
+                            onTap: () => _download(entry),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
                               color: AppColors.primary,
                               borderRadius: BorderRadius.circular(10),
@@ -1562,11 +1622,14 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        GestureDetector(
-                          onTap: handleStartTap,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
+                        Semantics(
+                          button: true,
+                          label: l10n.start,
+                          child: GestureDetector(
+                            onTap: handleStartTap,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
                               color: AppColors.ok,
                               borderRadius: BorderRadius.circular(10),
@@ -1595,11 +1658,14 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                         ),
                       ],
                     )
-                  : GestureDetector(
-                      onTap: () => _download(entry),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 8),
+                  : Semantics(
+                      button: true,
+                      label: l10n.download,
+                      child: GestureDetector(
+                        onTap: () => _download(entry),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: AppColors.primary,
                           borderRadius: BorderRadius.circular(10),
@@ -1633,9 +1699,12 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       ),
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            context.pop();
+        child: Semantics(
+          button: true,
+          label: label,
+          child: InkWell(
+            onTap: () {
+              context.pop();
             final targetEntry = entry ??
                 CatalogEntry(
                   testKey: '',
@@ -1652,7 +1721,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                     ),
                   ],
                 );
-            context.push('/session_setup', extra: SessionSetupScreen(entry: targetEntry));
+            context.push('/session_setup', extra: targetEntry);
           },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
