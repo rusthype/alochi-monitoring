@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
 import 'group_select_screen.dart';
@@ -21,29 +24,25 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
   String? _err;
   bool _obscure = true;
   final FocusNode _pinFocus = FocusNode();
+  bool _isChecking = false;
 
   @override
   void initState() {
     super.initState();
-    _pinFocus.addListener(() => setState(() {}));
+    _pinCtrl.addListener(() => setState(() {}));
     if (widget.entry.schoolButtons.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            settings: const RouteSettings(name: 'student_entry'),
-            builder: (_) => StudentEntryScreen(
+        context.pushReplacement('/student_entry',
+            extra: StudentEntryScreen(
               session: TestSession.fromEntry(
                 widget.entry,
                 schoolCode: '',
                 schoolLabel: 'Umumiy',
               ),
-            ),
-          ),
-        );
+            ));
       });
-    } else if (widget.entry.schoolButtons.length == 1) {
+    } else {
       _selected = widget.entry.schoolButtons.first;
     }
   }
@@ -61,591 +60,545 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
     return digits.isEmpty ? '' : '$digits$digits';
   }
 
-  void _confirm() {
+  void _confirm() async {
+    if (_selected == null) return;
+    
     final l10n = AppLocalizations.of(context)!;
-    if (_selected == null) {
-      setState(() => _err = l10n.selectSchool);
-      return;
-    }
     final expected = _expectedPin(_selected!);
+    
     if (expected.isNotEmpty && _pinCtrl.text.trim() != expected) {
       setState(() => _err = l10n.incorrectPin);
       return;
     }
-    setState(() => _err = null);
-    // Yangi oqim: maktab+PIN → guruh tanlash → o'sha guruh test katalogi →
-    // o'quvchi → boshlash. GroupSelectScreen o'zi guruhlarni yuklaydi;
-    // maktabda guruh bo'lmasa (guruhsiz maktab), avtomatik ravishda
-    // to'g'ridan StudentEntryScreen'ga (group_id yuborilmasdan,
-    // widget.entry — foydalanuvchi dastlab tanlagan test — bilan) o'tadi.
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        settings: const RouteSettings(name: 'group_select'),
-        builder: (_) => GroupSelectScreen(
+    
+    setState(() {
+      _err = null;
+      _isChecking = true;
+    });
+    
+    // Simulate slight delay for premium feel
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+
+    context.pushReplacement('/group_select',
+        extra: GroupSelectScreen(
           schoolCode: _selected!.schoolCode,
           schoolLabel: _selected!.label,
           fallbackEntry: widget.entry,
+        ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_selected == null) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFFAFAFA),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFFDE8E52))),
+      );
+    }
+
+    final hasPin = _expectedPin(_selected!).isNotEmpty;
+    final canSubmit = !hasPin || _pinCtrl.text.length >= 4;
+    final isSmall = MediaQuery.of(context).size.width < 800;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAFAFA),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Floating Navbar
+            Positioned(
+              top: isSmall ? 16 : 24,
+              left: 16,
+              right: 16,
+              child: _buildFloatingNavbar(isSmall),
+            ),
+
+            // Main Content
+            Positioned.fill(
+              top: isSmall ? 80 : 100,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: isSmall ? 16 : 24, vertical: 24).copyWith(bottom: 140),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 600),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildHeader(isSmall),
+                        SizedBox(height: isSmall ? 16 : 24),
+                        _buildSchoolCore(hasPin),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // Bottom Action Bar
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: _buildBottomAction(canSubmit),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _step(int n, String label, bool active) {
-    return Row(
-      children: [
-        Container(
-          width: 22,
-          height: 22,
+  Widget _buildFloatingNavbar(bool isSmall) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Container(
           decoration: BoxDecoration(
-            color: active ? Colors.white : Colors.white.withValues(alpha: 0.18),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              '$n',
-              style: TextStyle(
-                color: active ? AppColors.secondary : Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
+            color: Colors.white.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
-            ),
+            ],
+          ),
+          padding: const EdgeInsets.all(6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Semantics(
+                button: true,
+                label: 'Ortga',
+                child: InkWell(
+                  onTap: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/');
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(100),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFAFAFA),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                    ),
+                    child: const Icon(Icons.arrow_back_rounded, color: Color(0xFFDE8E52), size: 20),
+                  ),
+                ),
+              ),
+              Text(
+                'MONITORING TEST',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  letterSpacing: 1.2,
+                  color: const Color(0xFF111111),
+                ),
+              ),
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Text(
+                    '1/3',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                      color: const Color(0xFF737373),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 10),
+      ),
+    );
+  }
+
+  Widget _buildHeader(bool isSmall) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFDE8E52).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(color: const Color(0xFFDE8E52).withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.menu_book_rounded, size: 12, color: Color(0xFFDE8E52)),
+              const SizedBox(width: 6),
+              Text(
+                'MONITORING TEST',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                  letterSpacing: 2.0,
+                  color: const Color(0xFFDE8E52),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         Text(
-          label,
-          style: TextStyle(
-            color: active ? Colors.white : Colors.white.withValues(alpha: 0.6),
-            fontSize: 13,
-            fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+          'Sessiyani\ntasdiqlang',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            fontSize: isSmall ? 32 : 40,
+            height: 1.1,
+            letterSpacing: -1.0,
+            color: const Color(0xFF111111),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Monitoring testida qatnashish uchun maktabni tasdiqlang va PIN kodni kiriting.',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w500,
+            fontSize: 15,
+            height: 1.5,
+            color: const Color(0xFF737373),
           ),
         ),
       ],
     );
   }
 
-  Widget _schoolCard(SchoolButton sb) {
-    final sel = _selected?.schoolCode == sb.schoolCode;
-    return GestureDetector(
-      onTap: () => setState(() {
-        _selected = sb;
-        _pinCtrl.clear();
-        _err = null;
-      }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        constraints: const BoxConstraints(minWidth: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+  Widget _buildSchoolCore(bool hasPin) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.02),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: sel ? AppColors.secondaryMuted : AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: sel ? AppColors.secondary : AppColors.border,
-            width: 2,
-          ),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 4, right: 4),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            // Selected School Info
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDE8E52).withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFDE8E52).withValues(alpha: 0.2)),
+              ),
+              child: Row(
                 children: [
                   Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: sel ? AppColors.surface : AppColors.muted,
-                      borderRadius: BorderRadius.circular(11),
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFDE8E52),
+                      shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.school_outlined,
-                      color: AppColors.secondary,
-                      size: 22,
+                    child: const Icon(Icons.school_rounded, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selected!.label,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                            color: const Color(0xFF111111),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.entry.title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                            letterSpacing: 1.0,
+                            color: const Color(0xFF737373),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    sb.label,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14.5,
-                      color: AppColors.ink1,
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
                     ),
+                    child: const Icon(Icons.check_rounded, color: Color(0xFFDE8E52), size: 18),
                   ),
                 ],
               ),
             ),
-            if (sel)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: const BoxDecoration(
-                    color: AppColors.secondary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    color: Colors.white,
-                    size: 13,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildPinInput() {
-    final l10n = AppLocalizations.of(context)!;
-    final len = _expectedPin(_selected!).length.clamp(4, 8);
-    const double boxW = 52;
-    const double gap = 10;
-    final double boxesW = len * boxW + (len - 1) * gap;
-    return Semantics(
-      textField: true,
-      label: l10n.pinCodeLabel,
-      hint: l10n.enterFourDigitPin,
-      child: Row(
-      children: [
-        SizedBox(
-          width: boxesW,
-          height: 56,
-          child: Stack(
-            children: [
-              IgnorePointer(
-                child: Row(
-                  children: List.generate(len, (i) {
-                    final filled = i < _pinCtrl.text.length;
-                    final active = _pinFocus.hasFocus && i == _pinCtrl.text.length;
-                    final ch = filled ? _pinCtrl.text[i] : '';
-                    return Container(
-                      margin: EdgeInsets.only(right: i == len - 1 ? 0 : gap),
-                      width: boxW,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: (active || filled)
-                            ? AppColors.secondaryMuted
-                            : AppColors.muted,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: (active || filled)
-                              ? AppColors.secondary
-                              : AppColors.ink3,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Center(
-                        child: filled
-                            ? (_obscure
-                                ? Container(
-                                    width: 11,
-                                    height: 11,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.ink1,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  )
-                                : Text(
-                                    ch,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 22,
-                                      color: AppColors.ink1,
-                                    ),
-                                  ))
-                            : const SizedBox(),
-                      ),
-                    );
-                  }),
+            if (hasPin) ...[
+              const SizedBox(height: 24),
+              const Divider(color: Color(0x0D000000), height: 1),
+              const SizedBox(height: 20),
+              Text(
+                'PIN KOD (MAJBURIY)',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                  color: const Color(0xFF737373),
                 ),
               ),
-              Positioned.fill(
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFAFAFA),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _pinFocus.hasFocus 
+                        ? const Color(0xFFDE8E52).withValues(alpha: 0.5) 
+                        : Colors.black.withValues(alpha: 0.05),
+                  ),
+                ),
                 child: TextField(
                   controller: _pinCtrl,
                   focusNode: _pinFocus,
-                  autofocus: true,
+                  obscureText: _obscure,
                   keyboardType: TextInputType.number,
-                  maxLength: len,
-                  showCursor: false,
-                  enableInteractiveSelection: false,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.transparent,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    letterSpacing: _obscure ? 4.0 : 2.0,
+                    color: const Color(0xFF111111),
                   ),
-                  cursorColor: Colors.transparent,
+                  decoration: InputDecoration(
+                    hintText: 'PIN kodni kiriting',
+                    hintStyle: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      letterSpacing: 0,
+                      color: const Color(0xFF737373).withValues(alpha: 0.4),
+                    ),
+                    prefixIcon: Icon(
+                      Icons.lock_outline_rounded,
+                      color: _pinFocus.hasFocus ? const Color(0xFFDE8E52) : const Color(0xFF737373).withValues(alpha: 0.6),
+                      size: 20,
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscure ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                        color: const Color(0xFF737373).withValues(alpha: 0.6),
+                        size: 20,
+                      ),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(len),
                   ],
-                  onChanged: (_) => setState(() {}),
                   onSubmitted: (_) => _confirm(),
-                  decoration: const InputDecoration(
-                    counterText: '',
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                    filled: true,
-                    fillColor: Colors.transparent,
-                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        Tooltip(
-          message: _obscure ? l10n.showPassword : l10n.hidePassword,
-          child: InkWell(
-            onTap: () => setState(() => _obscure = !_obscure),
-            child: Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Icon(
-                _obscure
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                color: AppColors.ink2,
-                size: 20,
-              ),
-            ),
-          ),
-        ),
-      ],
-      ),
-    );
-  }
-
-  Widget _buildForm() {
-    final l10n = AppLocalizations.of(context)!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          l10n.selectSchool,
-          style: const TextStyle(
-            color: AppColors.ink2,
-            fontWeight: FontWeight.w600,
-            fontSize: 13.5,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: widget.entry.schoolButtons.map(_schoolCard).toList(),
-        ),
-        if (_selected != null && _expectedPin(_selected!).isNotEmpty) ...[
-          const SizedBox(height: 24),
-          Text(
-            l10n.pinCodeLabel,
-            style: const TextStyle(
-              color: AppColors.ink2,
-              fontWeight: FontWeight.w600,
-              fontSize: 13.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildPinInput(),
-        ],
-        if (_err != null) ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.err.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.warning_rounded, color: AppColors.err, size: 16),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _err!,
-                    style: const TextStyle(color: AppColors.err, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton(
-            onPressed: _confirm,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.secondary,
-              foregroundColor: Colors.white,
-            ),
-            child: Text(l10n.confirmBtn),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Center(
-          child: Text(
-            l10n.nextStepStudentName,
-            style: const TextStyle(color: AppColors.ink3, fontSize: 12.5),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLeftPanel() {
-    final l10n = AppLocalizations.of(context)!;
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFF2A968),
-            AppColors.secondary,
-            Color(0xFFCF7A34),
-          ],
-        ),
-      ),
-      padding: const EdgeInsets.all(40),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-            ),
-            child: const Center(
-              child: Text(
-                'A',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 26,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.menu_book_outlined, size: 14, color: Colors.white),
-                const SizedBox(width: 6),
-                Text(
-                  l10n.testSession,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Spacer(),
-          Text(
-            widget.entry.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 26,
-              height: 1.25,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            l10n.testSessionInstruction,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.82),
-              fontSize: 14,
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 22),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _step(1, l10n.sessionSettings, true),
-              const SizedBox(height: 10),
-              _step(2, l10n.studentNameStep, false),
-              const SizedBox(height: 10),
-              _step(3, l10n.startTest, false),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNarrowHeader() {
-    final l10n = AppLocalizations.of(context)!;
-    return Container(
-      margin: const EdgeInsets.all(24),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFFF2A968),
-            AppColors.secondary,
-            Color(0xFFCF7A34),
-          ],
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-            ),
-            child: const Center(
-              child: Text(
-                'A',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 26,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
+              if (_err != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.menu_book_outlined, size: 14, color: Colors.white),
-                      const SizedBox(width: 6),
+                      const Icon(Icons.error_outline_rounded, color: AppColors.err, size: 14),
+                      const SizedBox(width: 4),
                       Text(
-                        l10n.testSession,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        _err!,
+                        style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w600,
-                          fontSize: 12.5,
+                          fontSize: 12,
+                          color: AppColors.err,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  widget.entry.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20,
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_rounded, color: const Color(0xFFDE8E52).withValues(alpha: 0.7), size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        "O'qituvchi bergan kodni kiriting",
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          color: const Color(0xFF737373),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (widget.entry.schoolButtons.isEmpty) {
-      return const Scaffold(
-        backgroundColor: AppColors.bg,
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth >= 760;
-          if (isWide) {
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: 40,
-                  child: _buildLeftPanel(),
-                ),
-                Expanded(
-                  flex: 60,
-                  child: Container(
-                    color: AppColors.surface,
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 520),
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 52,
-                            vertical: 40,
-                          ),
-                          child: _buildForm(),
+                  Semantics(
+                    button: true,
+                    label: 'Boshqa maktabni tanlash',
+                    child: GestureDetector(
+                      onTap: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/');
+                        }
+                      },
+                      child: Text(
+                        'Boshqa maktab',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: const Color(0xFF111111),
+                          decoration: TextDecoration.underline,
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            );
-          } else {
-            return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildNarrowHeader(),
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: _buildForm(),
-                  ),
                 ],
               ),
-            );
-          }
-        },
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomAction(bool canSubmit) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFFFAFAFA).withValues(alpha: 0.0),
+            const Color(0xFFFAFAFA).withValues(alpha: 0.8),
+            const Color(0xFFFAFAFA),
+          ],
+        ),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: Semantics(
+            button: true,
+            label: 'Sessiyani tasdiqlash',
+            child: GestureDetector(
+              onTap: canSubmit && !_isChecking ? _confirm : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: canSubmit ? const Color(0xFF111111) : const Color(0xFF111111).withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(100),
+                  boxShadow: canSubmit ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 32,
+                      offset: const Offset(0, 16),
+                    )
+                  ] : [],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Tasdiqlash',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              letterSpacing: 0.5,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "Keyingi: O'quvchi ismi",
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 10,
+                              letterSpacing: 1.0,
+                              color: Colors.white.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDE8E52),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: _isChecking
+                          ? const Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

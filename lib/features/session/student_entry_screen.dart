@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../shared/theme/app_theme.dart';
@@ -22,6 +23,8 @@ class StudentEntryScreen extends StatefulWidget {
 class _StudentEntryScreenState extends State<StudentEntryScreen> {
   final _firstCtrl = TextEditingController();
   final _lastCtrl = TextEditingController();
+  final _firstFocus = FocusNode();
+  final _lastFocus = FocusNode();
   int? _grade;
   String? _err;
   bool _launching = false;
@@ -109,6 +112,8 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     _lastCtrl.removeListener(_onTextChanged);
     _firstCtrl.dispose();
     _lastCtrl.dispose();
+    _firstFocus.dispose();
+    _lastFocus.dispose();
     super.dispose();
   }
 
@@ -126,7 +131,9 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
         lastName = parts.isNotEmpty ? parts.first : '';
         firstName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
       }
-      studentId = (_selectedStudent!['student_code'] ?? _selectedStudent!['id'] ?? '').toString();
+      studentId =
+          (_selectedStudent!['student_code'] ?? _selectedStudent!['id'] ?? '')
+              .toString();
     } else {
       final first = _firstCtrl.text.trim();
       final last = _lastCtrl.text.trim();
@@ -186,6 +193,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
   Widget build(BuildContext context) {
     final showTextInputs = !_rosterActive;
     final l10n = AppLocalizations.of(context)!;
+    final isSmall = MediaQuery.of(context).size.width < 800;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
@@ -202,10 +210,11 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
               ),
             ),
           ),
-          
+
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.only(top: 80, bottom: 140, left: 20, right: 20),
+              padding: EdgeInsets.only(
+                  top: isSmall ? 60 : 80, bottom: 140, left: isSmall ? 16 : 20, right: isSmall ? 16 : 20),
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
@@ -214,10 +223,10 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                     children: [
                       // Eyebrow tag removed per user request
                       const SizedBox(height: 12),
-                      const Text(
+                      Text(
                         'Testni kim\ntopshiradi?',
                         style: TextStyle(
-                          fontSize: 36,
+                          fontSize: isSmall ? 28 : 36,
                           fontWeight: FontWeight.w900,
                           height: 1.1,
                           letterSpacing: -1,
@@ -242,46 +251,80 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             if (showTextInputs) ...[
-                              _Field(label: l10n.firstName, controller: _firstCtrl),
+                              _Field(
+                                  label: l10n.firstName,
+                                  controller: _firstCtrl,
+                                  focusNode: _firstFocus,
+                                  textInputAction: TextInputAction.next,
+                                  onSubmitted: (_) => _lastFocus.requestFocus(),
+                              ),
                               const SizedBox(height: 12),
-                              _Field(label: l10n.lastName, controller: _lastCtrl),
+                              _Field(
+                                  label: l10n.lastName, 
+                                  controller: _lastCtrl,
+                                  focusNode: _lastFocus,
+                                  textInputAction: TextInputAction.done,
+                                  onSubmitted: (_) {
+                                    if (_canStart) _startTest();
+                                  },
+                              ),
                               const SizedBox(height: 20),
                             ],
-
                             if (_loadingGroups)
-                              const Center(child: CircularProgressIndicator(strokeWidth: 2))
-                            else if (_groups.isNotEmpty && widget.preselectedGroup == null) ...[
-                              Text(l10n.selectGroup, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              const Center(
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2))
+                            else if (_groups.isNotEmpty &&
+                                widget.preselectedGroup == null) ...[
+                              Text(l10n.selectGroup,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14)),
                               const SizedBox(height: 10),
                               Wrap(
                                 spacing: 10,
                                 runSpacing: 10,
                                 children: _groups.map((group) {
                                   final selected = _selectedGroup == group;
-                                  return GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _selectedGroup = group;
-                                        _selectedStudent = null;
-                                        _students = [];
-                                      });
-                                      _loadStudents();
-                                    },
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 160),
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                      decoration: BoxDecoration(
-                                        color: selected ? AppColors.brand.withOpacity(0.1) : Colors.white,
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(
-                                          color: selected ? AppColors.brand : AppColors.border,
+                                  return Semantics(
+                                    button: true,
+                                    label: (group['display'] ?? group['name'] ?? '').toString(),
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedGroup = group;
+                                          _selectedStudent = null;
+                                          _students = [];
+                                        });
+                                        _loadStudents();
+                                      },
+                                      child: AnimatedContainer(
+                                        duration:
+                                            const Duration(milliseconds: 160),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14, vertical: 10),
+                                        decoration: BoxDecoration(
+                                          color: selected
+                                              ? AppColors.brand.withOpacity(0.1)
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: selected
+                                                ? AppColors.brand
+                                                : AppColors.border,
+                                          ),
                                         ),
-                                      ),
-                                      child: Text(
-                                        (group['display'] ?? group['name'] ?? '').toString(),
-                                        style: TextStyle(
-                                          color: selected ? AppColors.brand : AppColors.ink1,
-                                          fontWeight: FontWeight.bold,
+                                        child: Text(
+                                          (group['display'] ??
+                                                  group['name'] ??
+                                                  '')
+                                              .toString(),
+                                          style: TextStyle(
+                                            color: selected
+                                                ? AppColors.brand
+                                                : AppColors.ink1,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -289,19 +332,24 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                 }).toList(),
                               ),
                             ],
-
                             if (_selectedGroup != null) ...[
-                              if (widget.preselectedGroup == null) const SizedBox(height: 20),
+                              if (widget.preselectedGroup == null)
+                                const SizedBox(height: 20),
                               if (_loadingStudents)
-                                const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brand))
+                                const Center(
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: AppColors.brand))
                               else if (_students.isNotEmpty) ...[
                                 LayoutBuilder(
                                   builder: (context, constraints) {
-                                    final crossAxisCount = constraints.maxWidth > 400 ? 2 : 1;
+                                    final crossAxisCount =
+                                        constraints.maxWidth > 400 ? 2 : 1;
                                     return GridView.builder(
                                       shrinkWrap: true,
-                                      physics: const NeverScrollableScrollPhysics(),
-                                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      gridDelegate:
+                                          SliverGridDelegateWithFixedCrossAxisCount(
                                         crossAxisCount: crossAxisCount,
                                         mainAxisSpacing: 8,
                                         crossAxisSpacing: 8,
@@ -310,13 +358,18 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                       itemCount: _students.length,
                                       itemBuilder: (context, index) {
                                         final student = _students[index];
-                                        final name = (student['name'] ?? '').toString();
-                                        final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
+                                        final name =
+                                            (student['name'] ?? '').toString();
+                                        final initial = name.isNotEmpty
+                                            ? name[0].toUpperCase()
+                                            : '?';
                                         return _StudentCard(
                                           name: name,
                                           avatarLetter: initial,
-                                          isSelected: _selectedStudent == student,
-                                          onTap: () => setState(() => _selectedStudent = student),
+                                          isSelected:
+                                              _selectedStudent == student,
+                                          onTap: () => setState(
+                                              () => _selectedStudent = student),
                                         );
                                       },
                                     );
@@ -324,7 +377,10 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                 )
                               ],
                             ] else if (_groups.isEmpty) ...[
-                              Text(l10n.selectGrade, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              Text(l10n.selectGrade,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14)),
                               const SizedBox(height: 10),
                               Row(
                                 children: [1, 2, 3, 4].map((n) {
@@ -332,24 +388,37 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                   return Expanded(
                                     child: Padding(
                                       padding: const EdgeInsets.only(right: 8),
-                                      child: GestureDetector(
-                                        onTap: () => setState(() => _grade = n),
-                                        child: AnimatedContainer(
-                                          duration: const Duration(milliseconds: 160),
-                                          height: 48,
-                                          decoration: BoxDecoration(
-                                            color: selected ? AppColors.brand.withOpacity(0.1) : Colors.white,
-                                            borderRadius: BorderRadius.circular(10),
-                                            border: Border.all(
-                                              color: selected ? AppColors.brand : AppColors.border,
+                                      child: Semantics(
+                                        button: true,
+                                        label: '$n - sinf',
+                                        child: GestureDetector(
+                                          onTap: () => setState(() => _grade = n),
+                                          child: AnimatedContainer(
+                                            duration:
+                                                const Duration(milliseconds: 160),
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                              color: selected
+                                                  ? AppColors.brand
+                                                      .withOpacity(0.1)
+                                                  : Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              border: Border.all(
+                                                color: selected
+                                                    ? AppColors.brand
+                                                    : AppColors.border,
+                                              ),
                                             ),
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            '$n',
-                                            style: TextStyle(
-                                              color: selected ? AppColors.brand : AppColors.ink1,
-                                              fontWeight: FontWeight.bold,
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              '$n',
+                                              style: TextStyle(
+                                                color: selected
+                                                    ? AppColors.brand
+                                                    : AppColors.ink1,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -359,7 +428,6 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                 }).toList(),
                               ),
                             ],
-
                             if (_err != null) ...[
                               const SizedBox(height: 12),
                               Container(
@@ -370,12 +438,14 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.warning_rounded, color: AppColors.err, size: 16),
+                                    const Icon(Icons.warning_rounded,
+                                        color: AppColors.err, size: 16),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         _err!,
-                                        style: const TextStyle(color: AppColors.err, fontSize: 13),
+                                        style: const TextStyle(
+                                            color: AppColors.err, fontSize: 13),
                                       ),
                                     ),
                                   ],
@@ -391,12 +461,12 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
               ),
             ),
           ),
-          
+
           // Floating Navbar
           Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 16,
-            right: 16,
+            top: MediaQuery.of(context).padding.top + (isSmall ? 8 : 16),
+            left: isSmall ? 8 : 16,
+            right: isSmall ? 8 : 16,
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
@@ -404,27 +474,55 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFAFAFA),
-                            shape: BoxShape.circle,
+                      Semantics(
+                        button: true,
+                        label: 'Ortga',
+                        child: GestureDetector(
+                          onTap: () {
+                            if (context.canPop()) {
+                              context.pop();
+                            } else {
+                              context.go('/');
+                            }
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFAFAFA),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.arrow_back_rounded,
+                                size: 18, color: AppColors.brand),
                           ),
-                          child: const Icon(Icons.arrow_back_rounded, size: 18, color: AppColors.brand),
                         ),
                       ),
-                      Row(
-                        children: [
-                          Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppColors.brand, shape: BoxShape.circle)),
-                          const SizedBox(width: 6),
-                          Text(
-                            widget.session.schoolLabel.isEmpty ? l10n.generalTests.toUpperCase() : widget.session.schoolLabel.toUpperCase(),
-                            style: const TextStyle(color: AppColors.brand, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1),
-                          ),
-                        ],
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                    color: AppColors.brand,
+                                    shape: BoxShape.circle)),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                widget.session.schoolLabel.isEmpty
+                                    ? l10n.generalTests.toUpperCase()
+                                    : widget.session.schoolLabel.toUpperCase(),
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: AppColors.brand,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    letterSpacing: 1),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 40), // Spacer for centering
                     ],
@@ -465,54 +563,63 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 320),
-                child: GestureDetector(
-                  onTap: _canStart ? _startTest : null,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: _canStart ? AppColors.ink1 : AppColors.border,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: _canStart
-                          ? [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 32,
-                                offset: const Offset(0, 16),
-                              )
-                            ]
-                          : [],
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(left: 16),
-                          child: Text(
-                            l10n.startTest,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
+                child: Semantics(
+                  button: true,
+                  label: 'Testni boshlash',
+                  child: GestureDetector(
+                    onTap: _canStart ? _startTest : null,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: _canStart ? AppColors.ink1 : AppColors.border,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: _canStart
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 32,
+                                  offset: const Offset(0, 16),
+                                )
+                              ]
+                            : [],
+                      ),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(left: 16),
+                            child: Text(
+                              l10n.startTest,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
                             ),
                           ),
-                        ),
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: _canStart ? AppColors.brand : Colors.grey.shade400,
-                            shape: BoxShape.circle,
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: _canStart
+                                  ? AppColors.brand
+                                  : Colors.grey.shade400,
+                              shape: BoxShape.circle,
+                            ),
+                            child: _launching
+                                ? const Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white),
+                                  )
+                                : const Icon(Icons.arrow_forward_rounded,
+                                    size: 16, color: Colors.white),
                           ),
-                          child: _launching
-                              ? const Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Icon(Icons.arrow_forward_rounded, size: 16, color: Colors.white),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -528,23 +635,40 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
 class _Field extends StatelessWidget {
   final String label;
   final TextEditingController controller;
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
 
-  const _Field({required this.label, required this.controller});
+  const _Field({
+    required this.label, 
+    required this.controller,
+    this.focusNode,
+    this.textInputAction,
+    this.onSubmitted,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.ink1)),
+        Text(label,
+            style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: AppColors.ink1)),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
+          focusNode: focusNode,
+          textInputAction: textInputAction,
+          onSubmitted: onSubmitted,
           decoration: InputDecoration(
             hintText: label,
             filled: true,
             fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: AppColors.border),
@@ -645,80 +769,88 @@ class _StudentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.brand.withOpacity(0.05) : const Color(0xFFFAFAFA),
-          border: Border.all(
-            color: isSelected ? AppColors.brand.withOpacity(0.4) : AppColors.border,
+    return Semantics(
+      button: true,
+      label: name,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.brand.withOpacity(0.05)
+                : const Color(0xFFFAFAFA),
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.brand.withOpacity(0.4)
+                  : AppColors.border,
+            ),
+            borderRadius: BorderRadius.circular(12),
           ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.brand : Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? AppColors.brand : AppColors.border,
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.brand : Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? AppColors.brand : AppColors.border,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: AppColors.brand.withOpacity(0.4),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          )
+                        ]
+                      : [],
                 ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: AppColors.brand.withOpacity(0.4),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        )
-                      ]
-                    : [],
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                avatarLetter,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.ink2,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                name,
-                style: TextStyle(
-                  color: isSelected ? AppColors.brand : AppColors.ink1,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.brand : Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? AppColors.brand : Colors.grey.shade300,
+                alignment: Alignment.center,
+                child: Text(
+                  avatarLetter,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : AppColors.ink2,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-              alignment: Alignment.center,
-              child: isSelected
-                  ? const Icon(Icons.check_rounded, color: Colors.white, size: 10)
-                  : const SizedBox.shrink(),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  name,
+                  style: TextStyle(
+                    color: isSelected ? AppColors.brand : AppColors.ink1,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.brand : Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? AppColors.brand : Colors.grey.shade300,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: isSelected
+                    ? const Icon(Icons.check_rounded,
+                        color: Colors.white, size: 10)
+                    : const SizedBox.shrink(),
             ),
           ],
         ),
