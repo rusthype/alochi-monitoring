@@ -650,7 +650,7 @@ class _SectionScroll extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
+          constraints: const BoxConstraints(maxWidth: 1160),
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
             child: child,

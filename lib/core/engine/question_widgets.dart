@@ -28,7 +28,7 @@ Widget _buildQuestionSvg(String svg, {double height = 130}) => Container(
 
 Widget _buildQuestionImage(
   String src, {
-  double height = 160,
+  double height = 270,
   BorderRadius? borderRadius,
 }) {
   final br = borderRadius ?? BorderRadius.circular(10);
@@ -324,7 +324,7 @@ class ImageChoiceWidget extends StatelessWidget {
         ]),
         const SizedBox(height: 12),
         if (question.img != null && question.img!.isNotEmpty)
-          _buildQuestionImage(question.img!, height: 160),
+          _buildQuestionImage(question.img!, height: 270),
         const SizedBox(height: 10),
         ...List.generate(question.opts.length, (i) => EngineOptionRow(
               label: String.fromCharCode(65 + i),
@@ -385,7 +385,7 @@ class SpellingWidget extends StatelessWidget {
         ]),
         const SizedBox(height: 12),
         if (question.img != null && question.img!.isNotEmpty)
-          _buildQuestionImage(question.img!, height: 160),
+          _buildQuestionImage(question.img!, height: 270),
         if (question.img != null && question.img!.isNotEmpty)
           const SizedBox(height: 10),
         Container(
@@ -520,7 +520,7 @@ class ReadingPassageWidget extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         if (reading.img != null && reading.img!.isNotEmpty)
-          _buildQuestionImage(reading.img!, height: 260),
+          _buildQuestionImage(reading.img!, height: 270),
         if (reading.img != null && reading.img!.isNotEmpty)
           const SizedBox(height: 12),
         Text(
