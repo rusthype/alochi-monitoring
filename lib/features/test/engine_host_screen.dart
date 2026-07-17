@@ -168,6 +168,22 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
                   'pct': s.pct,
                 })
             .toList(),
+        'topics': result.topicScores
+            .map((t) => <String, dynamic>{
+                  'name': t.topic,
+                  'correct': t.correct,
+                  'total': t.total,
+                  'pct': t.pct,
+                })
+            .toList(),
+        'units': result.unitScores
+            .map((t) => <String, dynamic>{
+                  'name': t.topic,
+                  'correct': t.correct,
+                  'total': t.total,
+                  'pct': t.pct,
+                })
+            .toList(),
         if (result.shields != null) 'shields': result.shields,
         if (result.levelLabel != null) 'level': result.levelLabel,
         'test_key': result.testKey,
