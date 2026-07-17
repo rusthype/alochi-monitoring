@@ -11,7 +11,7 @@ class TestCacheDb {
 
   static Future<Database> get db async {
     if (_db != null) return _db!;
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    if (Platform.isWindows || Platform.isLinux) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
     }

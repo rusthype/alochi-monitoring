@@ -438,15 +438,19 @@ class PdfService {
     final textColor = PdfColor.fromHex('#1A1A1A');
     final primaryColor = PdfColor.fromHex('#F97316');
 
+    String sanitize(String raw) {
+      return raw.replaceAll(RegExp(r'[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}]', unicode: true), '').trim();
+    }
+
     List<String> strList(dynamic raw) {
       if (raw is! List) return const [];
       return raw
-          .map((e) => e?.toString().trim() ?? '')
+          .map((e) => sanitize(e?.toString() ?? ''))
           .where((s) => s.isNotEmpty)
           .toList();
     }
 
-    final summary = ai['summary']?.toString().trim() ?? '';
+    final summary = sanitize(ai['summary']?.toString() ?? '');
     final strengths = strList(ai['strengths']);
     final weaknesses = strList(ai['weaknesses']);
     final recs = strList(ai['recommendations']);

@@ -37,9 +37,14 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
       final url = item['file_url'] as String;
       final filename = url.split('/').last.split('?').first;
       final resp = await http.get(Uri.parse(url));
-      final dir = await getDownloadsDirectory() ??
-          await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}\\$filename');
+      Directory? dir;
+      try {
+        if (!Platform.isIOS && !Platform.isAndroid) {
+          dir = await getDownloadsDirectory();
+        }
+      } catch (_) {}
+      dir ??= await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$filename');
       await file.writeAsBytes(resp.bodyBytes);
       if (mounted) {
         setState(() => _saved[id] = file.path);

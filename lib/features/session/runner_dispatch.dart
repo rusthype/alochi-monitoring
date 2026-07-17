@@ -1,12 +1,13 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/db/attempt_store.dart';
 import '../../core/db/test_cache.dart';
 import '../../core/services/heartbeat_service.dart';
 import '../../core/services/test_catalog_service.dart';
-import '../../shared/theme/app_theme.dart';
-import '../test/engine_host_screen.dart';
+import '../../core/services/toast_service.dart';
+
 import 'test_session.dart';
 
 Future<void> launchRunner(
@@ -25,27 +26,16 @@ Future<void> launchRunner(
   final lockedUntil = TestCatalogService.lockedUntilFor(session.testKey);
   if (lockedUntil != null && lockedUntil.isAfter(DateTime.now())) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.testLocked),
-          backgroundColor: AppColors.err,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      ToastService.showError(context, AppLocalizations.of(context)!.testLocked);
     }
     return;
   }
 
+  // 3) Make sure package is fully downloaded
   final cached = await TestCache.get(session.testKey);
   if (cached == null) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context)!.testNotInCache),
-          backgroundColor: AppColors.err,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      ToastService.showError(context, AppLocalizations.of(context)!.testNotInCache);
     }
     return;
   }
@@ -69,21 +59,18 @@ Future<void> launchRunner(
     studentCode: studentId,
   );
 
-  await Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => EngineHostScreen(
-        testData: cached,
-        variant: variant,
-        firstName: firstName,
-        lastName: lastName,
-        school: session.schoolCode,
-        group: groupName.isEmpty ? null : groupName,
-        groupId: groupId.isEmpty ? null : groupId,
-        grade: studentGrade,
-        studentId: studentId,
-      ),
-    ),
-  );
+  await GoRouter.of(context).push('/engine_host',
+      extra: {
+        'testData': cached,
+        'variant': variant,
+        'firstName': firstName,
+        'lastName': lastName,
+        'school': session.schoolCode,
+        'group': groupName.isEmpty ? null : groupName,
+        'groupId': groupId.isEmpty ? null : groupId,
+        'grade': studentGrade,
+        'studentId': studentId,
+      });
 
   HeartbeatService.instance.finishTest();
 }

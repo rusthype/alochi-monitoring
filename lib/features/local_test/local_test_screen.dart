@@ -8,6 +8,7 @@ import 'local_data.dart';
 import '../../shared/widgets/app_network_image.dart';
 import 'local_result_screen.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import '../../shared/widgets/exit_confirmation_scope.dart';
 
 class LocalTestScreen extends StatefulWidget {
   final String firstName, lastName, group, school;
@@ -200,8 +201,9 @@ class _LocalTestScreenState extends State<LocalTestScreen>
   @override
   Widget build(BuildContext context) {
     final progress = _total > 0 ? _answers.length / _total : 0.0;
-    return Scaffold(
-      backgroundColor: AppColors.bg,
+    return ExitConfirmationScope(
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
       body: CallbackShortcuts(
         bindings: {
           const SingleActivator(LogicalKeyboardKey.keyA): () => _answer('a'),
@@ -591,7 +593,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
           ]),
         ),
       ),
-    );
+    ));
   }
 }
 

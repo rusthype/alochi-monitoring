@@ -932,4 +932,57 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get download => 'Скачать';
+
+  @override
+  String get confirmSessionTitle => 'Подтвердите\nсессию';
+
+  @override
+  String get pinCodeRequired => 'PIN-КОД (ОБЯЗАТЕЛЬНО)';
+
+  @override
+  String get enterPinCode => 'Введите PIN-код';
+
+  @override
+  String get enterTeacherCode => 'Введите код, выданный учителем';
+
+  @override
+  String get otherSchoolBtn => 'Другая школа';
+
+  @override
+  String get groupsNotFound => 'Группы не найдены';
+
+  @override
+  String get testsNotFoundForGroup => 'Для этой группы тесты не найдены';
+
+  @override
+  String get notDownloaded => 'Не скачано';
+
+  @override
+  String get stillLocked => 'Всё ещё закрыто';
+
+  @override
+  String get ready => 'Готово';
+
+  @override
+  String get whoTakesTest => 'Кто сдает\nтест?';
+
+  @override
+  String get studentsInList => 'учеников в списке';
+
+  @override
+  String get gradeShort => 'класс';
+
+  @override
+  String get backBtn => 'Назад';
+
+  @override
+  String get copyName => 'Скопировать';
+
+  @override
+  String nameCopied(String name) {
+    return 'Имя $name скопировано!';
+  }
+
+  @override
+  String get searchStudents => 'Поиск ученика (Ctrl+K)...';
 }

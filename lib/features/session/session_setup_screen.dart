@@ -6,19 +6,21 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
-import 'group_select_screen.dart';
-import 'student_entry_screen.dart';
+import '../../shared/widgets/hover_region.dart';
 import 'test_session.dart';
 
-class SessionSetupScreen extends StatefulWidget {
-  final CatalogEntry entry;
-  const SessionSetupScreen({super.key, required this.entry});
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'session_providers.dart';
+
+class SessionSetupScreen extends ConsumerStatefulWidget {
+  final String testKey;
+  const SessionSetupScreen({super.key, required this.testKey});
 
   @override
-  State<SessionSetupScreen> createState() => _SessionSetupScreenState();
+  ConsumerState<SessionSetupScreen> createState() => _SessionSetupScreenState();
 }
 
-class _SessionSetupScreenState extends State<SessionSetupScreen> {
+class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
   SchoolButton? _selected;
   final _pinCtrl = TextEditingController();
   String? _err;
@@ -30,21 +32,36 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
   void initState() {
     super.initState();
     _pinCtrl.addListener(() => setState(() {}));
-    if (widget.entry.schoolButtons.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        context.pushReplacement('/student_entry',
-            extra: StudentEntryScreen(
-              session: TestSession.fromEntry(
-                widget.entry,
-                schoolCode: '',
-                schoolLabel: 'Umumiy',
-              ),
-            ));
-      });
-    } else {
-      _selected = widget.entry.schoolButtons.first;
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final entry = ref.read(selectedCatalogEntryProvider);
+      if (entry == null || entry.testKey != widget.testKey) {
+        context.go('/');
+        return;
+      }
+      if (entry.schoolButtons.isEmpty) {
+        ref.read(currentSessionProvider.notifier).state = TestSession.fromEntry(
+          entry,
+          schoolCode: '',
+          schoolLabel: 'Umumiy',
+        );
+        context.pushReplacement('/student_entry');
+      } else {
+        final wantedCode = ref.read(selectedSchoolCodeProvider);
+        SchoolButton? matched;
+        if (wantedCode != null) {
+          for (final sb in entry.schoolButtons) {
+            if (sb.schoolCode == wantedCode) {
+              matched = sb;
+              break;
+            }
+          }
+        }
+        setState(() {
+          _selected = matched ?? entry.schoolButtons.first;
+        });
+      }
+    });
   }
 
   @override
@@ -57,7 +74,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
   String _expectedPin(SchoolButton sb) {
     if (sb.pin.isNotEmpty) return sb.pin;
     final digits = sb.schoolCode.replaceAll(RegExp(r'[^0-9]'), '');
-    return digits.isEmpty ? '' : '$digits$digits';
+    return digits.isEmpty ? '1234' : '$digits$digits';
   }
 
   void _confirm() async {
@@ -80,16 +97,13 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
     await Future.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
 
-    context.pushReplacement('/group_select',
-        extra: GroupSelectScreen(
-          schoolCode: _selected!.schoolCode,
-          schoolLabel: _selected!.label,
-          fallbackEntry: widget.entry,
-        ));
+    context.pushReplacement('/group_select/${_selected!.schoolCode}');
   }
 
   @override
   Widget build(BuildContext context) {
+    final entry = ref.watch(selectedCatalogEntryProvider);
+    if (entry == null) return const Scaffold();
     if (_selected == null) {
       return const Scaffold(
         backgroundColor: Color(0xFFFAFAFA),
@@ -127,7 +141,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
                       children: [
                         _buildHeader(isSmall),
                         SizedBox(height: isSmall ? 16 : 24),
-                        _buildSchoolCore(hasPin),
+                        _buildSchoolCore(hasPin, entry),
                       ],
                     ),
                   ),
@@ -171,7 +185,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
             children: [
               Semantics(
                 button: true,
-                label: 'Ortga',
+                label: AppLocalizations.of(context)!.backBtn,
                 child: InkWell(
                   onTap: () {
                     if (context.canPop()) {
@@ -259,7 +273,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
         ),
         const SizedBox(height: 16),
         Text(
-          'Sessiyani\ntasdiqlang',
+          AppLocalizations.of(context)!.confirmSessionTitle,
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w800,
             fontSize: isSmall ? 32 : 40,
@@ -270,7 +284,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Monitoring testida qatnashish uchun maktabni tasdiqlang va PIN kodni kiriting.',
+          AppLocalizations.of(context)!.testSessionInstruction,
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w500,
             fontSize: 15,
@@ -282,7 +296,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
     );
   }
 
-  Widget _buildSchoolCore(bool hasPin) {
+  Widget _buildSchoolCore(bool hasPin, CatalogEntry entry) {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -341,7 +355,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          widget.entry.title,
+                          entry.title,
                           style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.w600,
                             fontSize: 11,
@@ -370,7 +384,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
               const Divider(color: Color(0x0D000000), height: 1),
               const SizedBox(height: 20),
               Text(
-                'PIN KOD (MAJBURIY)',
+                AppLocalizations.of(context)!.pinCodeRequired,
                 style: GoogleFonts.plusJakartaSans(
                   fontWeight: FontWeight.w700,
                   fontSize: 11,
@@ -392,6 +406,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
                 child: TextField(
                   controller: _pinCtrl,
                   focusNode: _pinFocus,
+                  autofocus: true,
                   obscureText: _obscure,
                   keyboardType: TextInputType.number,
                   style: GoogleFonts.plusJakartaSans(
@@ -401,7 +416,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
                     color: const Color(0xFF111111),
                   ),
                   decoration: InputDecoration(
-                    hintText: 'PIN kodni kiriting',
+                    hintText: AppLocalizations.of(context)!.enterPinCode,
                     hintStyle: GoogleFonts.plusJakartaSans(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
@@ -457,7 +472,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
                       Icon(Icons.info_rounded, color: const Color(0xFFDE8E52).withValues(alpha: 0.7), size: 16),
                       const SizedBox(width: 6),
                       Text(
-                        "O'qituvchi bergan kodni kiriting",
+                        AppLocalizations.of(context)!.enterTeacherCode,
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w500,
                           fontSize: 12,
@@ -468,7 +483,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
                   ),
                   Semantics(
                     button: true,
-                    label: 'Boshqa maktabni tanlash',
+                    label: AppLocalizations.of(context)!.otherSchoolBtn,
                     child: GestureDetector(
                       onTap: () {
                         if (context.canPop()) {
@@ -478,7 +493,7 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
                         }
                       },
                       child: Text(
-                        'Boshqa maktab',
+                        AppLocalizations.of(context)!.otherSchoolBtn,
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
@@ -516,84 +531,88 @@ class _SessionSetupScreenState extends State<SessionSetupScreen> {
           constraints: const BoxConstraints(maxWidth: 340),
           child: Semantics(
             button: true,
-            label: 'Sessiyani tasdiqlash',
-            child: GestureDetector(
-              onTap: canSubmit && !_isChecking ? _confirm : null,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: canSubmit ? const Color(0xFF111111) : const Color(0xFF111111).withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(100),
-                  boxShadow: canSubmit ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 32,
-                      offset: const Offset(0, 16),
-                    )
-                  ] : [],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Tasdiqlash',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                              letterSpacing: 0.5,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            "Keyingi: O'quvchi ismi",
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 10,
-                              letterSpacing: 1.0,
-                              color: Colors.white.withValues(alpha: 0.5),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDE8E52),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: _isChecking
-                          ? const Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
+            label: AppLocalizations.of(context)!.confirmBtn,
+            child: HoverRegion(
+              builder: (context, isHovered) => GestureDetector(
+                onTap: canSubmit && !_isChecking ? _confirm : null,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: canSubmit 
+                        ? (isHovered && !_isChecking ? const Color(0xFF333333) : const Color(0xFF111111)) 
+                        : const Color(0xFF111111).withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(100),
+                    boxShadow: canSubmit ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 32,
+                        offset: const Offset(0, 16),
+                      )
+                    ] : [],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              AppLocalizations.of(context)!.confirmBtn,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                letterSpacing: 0.5,
+                                color: Colors.white,
                               ),
-                            )
-                          : const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
-                    ),
-                  ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              AppLocalizations.of(context)!.nextStepStudentName,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 10,
+                                letterSpacing: 1.0,
+                                color: Colors.white.withValues(alpha: 0.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDE8E52),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: _isChecking
+                            ? const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -263,7 +263,7 @@ class AppLocalizationsUz extends AppLocalizations {
   }
 
   @override
-  String get selectTest => 'Test tanlang';
+  String get selectTest => 'Testni tanlang';
 
   @override
   String get selectMonitoringTest =>
@@ -936,4 +936,57 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get download => 'Yuklash';
+
+  @override
+  String get confirmSessionTitle => 'Sessiyani\ntasdiqlang';
+
+  @override
+  String get pinCodeRequired => 'PIN KOD (MAJBURIY)';
+
+  @override
+  String get enterPinCode => 'PIN kodni kiriting';
+
+  @override
+  String get enterTeacherCode => 'O\'qituvchi bergan kodni kiriting';
+
+  @override
+  String get otherSchoolBtn => 'Boshqa maktab';
+
+  @override
+  String get groupsNotFound => 'Guruhlar topilmadi';
+
+  @override
+  String get testsNotFoundForGroup => 'Bu guruh uchun test topilmadi';
+
+  @override
+  String get notDownloaded => 'Yuklab olinmagan';
+
+  @override
+  String get stillLocked => 'Hali qulflangan';
+
+  @override
+  String get ready => 'Tayyor';
+
+  @override
+  String get whoTakesTest => 'Testni kim\ntopshiradi?';
+
+  @override
+  String get studentsInList => 'o\'quvchi ro\'yxatda mavjud';
+
+  @override
+  String get gradeShort => 'sinf';
+
+  @override
+  String get backBtn => 'Ortga';
+
+  @override
+  String get copyName => 'Nusxa olish';
+
+  @override
+  String nameCopied(String name) {
+    return '$name nusxalandi!';
+  }
+
+  @override
+  String get searchStudents => 'O\'quvchini izlash (Ctrl+K)...';
 }

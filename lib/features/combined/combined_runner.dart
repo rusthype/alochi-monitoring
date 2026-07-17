@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/widgets/exit_confirmation_scope.dart';
 import '../../core/db/history_db.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/api/api_client.dart';
@@ -491,8 +492,9 @@ class _CombinedRunnerState extends State<CombinedRunner>
     final progress = _kTotalQs > 0 ? _totalAnswered / _kTotalQs : 0.0;
     final isLast = _sectionIdx == _kTotalSections - 1;
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
+    return ExitConfirmationScope(
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
       body: Column(children: [
         // ── Progress bar
         SizedBox(
@@ -758,7 +760,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
           ]),
         ),
       ]),
-    );
+    ));
   }
 
   Widget _buildSectionBody() {
