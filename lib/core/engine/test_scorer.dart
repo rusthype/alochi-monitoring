@@ -71,12 +71,17 @@ class TopicScore {
 ///   shields        → "shields"  (null if scoring absent)
 ///   levelLabel     → "level"    (null if scoring absent)
 ///   sectionScores  → "sections": [{"name":…,"correct":…,"total":…,"pct":…}]
+///   rawAnswers     → "raw_answers" (TOP-LEVEL, sibling of "detail" — not
+///                    nested — the flat per-question answers map passed
+///                    into TestScorer.score(), used for server-side
+///                    re-verification)
 class ScoredResult {
   final String testKey;
   final List<SectionScore> sectionScores;
   final int totalCorrect;
   final int totalQuestions;
   final double totalPct;
+  final Map<String, dynamic> rawAnswers;
 
   // Per-§ analysis (TZ §10)
   final List<QuestionResult> questionResults;
@@ -96,6 +101,7 @@ class ScoredResult {
     required this.totalCorrect,
     required this.totalQuestions,
     required this.totalPct,
+    required this.rawAnswers,
     this.questionResults = const [],
     this.topicScores = const [],
     this.unitScores = const [],
@@ -214,6 +220,7 @@ class TestScorer {
       totalCorrect: totalCorrect,
       totalQuestions: totalQuestions,
       totalPct: totalPct,
+      rawAnswers: answers,
       questionResults: detail.$1,
       topicScores: detail.$2,
       unitScores: detail.$3,
