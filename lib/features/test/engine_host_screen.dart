@@ -159,6 +159,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       'group_name': widget.group ?? '',
       'group_id': widget.groupId ?? '',
       'student_id': widget.studentId,
+      'raw_answers': result.rawAnswers,
       'detail': <String, dynamic>{
         'sections': result.sectionScores
             .map((s) => <String, dynamic>{

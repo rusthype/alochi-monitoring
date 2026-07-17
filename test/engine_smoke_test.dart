@@ -205,6 +205,9 @@ void main() {
     test(
         'testKey is propagated', () => expect(result.testKey, 'smoke_test_v1'));
 
+    test('rawAnswers carries the exact answers map used to score',
+        () => expect(result.rawAnswers, equals(_allCorrect())));
+
     test('Math section: 2/2 correct', () {
       final s = result.sectionScores.firstWhere((s) => s.name == 'Math');
       expect(s.correct, 2);
