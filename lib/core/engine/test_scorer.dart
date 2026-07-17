@@ -220,7 +220,10 @@ class TestScorer {
       totalCorrect: totalCorrect,
       totalQuestions: totalQuestions,
       totalPct: totalPct,
-      rawAnswers: answers,
+      // Snapshot, not alias — `answers` is the caller's live mutable map
+      // (TestEngine._answers), still writable by the user during the async
+      // gap between scoring and the payload actually being serialized.
+      rawAnswers: Map<String, dynamic>.from(answers),
       questionResults: detail.$1,
       topicScores: detail.$2,
       unitScores: detail.$3,

@@ -208,6 +208,13 @@ void main() {
     test('rawAnswers carries the exact answers map used to score',
         () => expect(result.rawAnswers, equals(_allCorrect())));
 
+    test('rawAnswers is a snapshot, not an alias of the input map', () {
+      final answers = _allCorrect();
+      final scored = TestScorer.score(spec, '1', answers);
+      answers['Math/0'] = 999; // mutate the caller's map after scoring
+      expect(scored.rawAnswers['Math/0'], isNot(999));
+    });
+
     test('Math section: 2/2 correct', () {
       final s = result.sectionScores.firstWhere((s) => s.name == 'Math');
       expect(s.correct, 2);
