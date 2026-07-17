@@ -456,18 +456,28 @@ class MonitoringApi {
   /// Uploads the app's own generated result PDF (per-topic breakdown, SVG
   /// diagrams, real AI summary) so the parent/teacher Telegram report can
   /// forward this exact file instead of an older-format one built server-side.
-  /// Best-effort: silently no-ops if the /result/ submission for this
-  /// [clientToken] hasn't synced yet (offline) or the upload otherwise fails —
-  /// the server falls back to its own PDF in that case.
-  Future<void> uploadResultPdf(String clientToken, Uint8List pdfBytes) async {
+  ///
+  /// Returns:
+  ///   true  — PDF muvaffaqiyatli yuklandi (200 OK)
+  ///   false — natija DB ga hali yetmagan (404) — caller qayta urinishi kerak
+  ///
+  /// Throws [ApiException] / [SocketException] faqat tarmoq xatosida —
+  /// caller retry qilmasligi kerak.
+  Future<bool> uploadResultPdf(String clientToken, Uint8List pdfBytes) async {
+    final req = http.MultipartRequest(
+      'POST', Uri.parse('$_base/result/pdf/$clientToken/'),
+    )..files.add(http.MultipartFile.fromBytes('file', pdfBytes,
+        filename: 'result.pdf'));
     try {
-      final req = http.MultipartRequest(
-        'POST', Uri.parse('$_base/result/pdf/$clientToken/'),
-      )..files.add(http.MultipartFile.fromBytes('file', pdfBytes,
-          filename: 'result.pdf'));
-      await req.send().timeout(_timeout);
-    } catch (e) {
-      debugPrint('uploadResultPdf error: $e');
+      final streamed = await req.send().timeout(_timeout);
+      if (streamed.statusCode == 200) return true;
+      if (streamed.statusCode == 404) return false; // natija hali yo'q — retry
+      debugPrint('uploadResultPdf unexpected status: ${streamed.statusCode}');
+      return false;
+    } on TimeoutException {
+      throw const ApiException(0, "PDF yuklash vaqti tugadi.");
+    } on SocketException {
+      throw const ApiException(0, "Internet aloqasi yo'q.");
     }
   }
 

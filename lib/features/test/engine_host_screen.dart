@@ -452,13 +452,36 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
   /// parent/teacher Telegram report forwards this exact file. Best-effort —
   /// any failure (offline, upload error) is swallowed; the server falls back
   /// to its own older-format PDF in that case.
+  ///
+  /// Race condition tuzatish: /result/ submit va PDF upload parallel ishlaydi.
+  /// Agar natija DB ga hali yetmagan bo'lsa (404), exponential back-off bilan
+  /// qayta uriniladi: 2s → 5s → 10s. Shundan keyin ham bo'lmasa — server-side
+  /// fallback PDF bot ga ketadi.
   Future<void> _autoUploadPdfForBot() async {
+    Uint8List? bytes;
     try {
-      final bytes = await _buildPdfBytes();
-      await api.uploadResultPdf(widget.clientToken, bytes);
+      bytes = await _buildPdfBytes();
     } catch (e) {
-      debugPrint('_EngineResultScreen._autoUploadPdfForBot error: $e');
+      debugPrint('_EngineResultScreen._autoUploadPdfForBot: PDF generate xato: $e');
+      return;
     }
+
+    const delays = [Duration(seconds: 2), Duration(seconds: 5), Duration(seconds: 10)];
+    for (var i = 0; i <= delays.length; i++) {
+      try {
+        final ok = await api.uploadResultPdf(widget.clientToken, bytes);
+        if (ok) return; // muvaffaqiyatli yuklandi
+        // ok==false → 404 (result hali serverda yo'q) — keyingi urinish
+      } catch (e) {
+        debugPrint('_EngineResultScreen._autoUploadPdfForBot attempt $i error: $e');
+        return; // tarmoq xatosi — qayta urinish ma'nosiz
+      }
+      if (i < delays.length) {
+        debugPrint('_EngineResultScreen._autoUploadPdfForBot: 404, ${delays[i].inSeconds}s kutilmoqda...');
+        await Future<void>.delayed(delays[i]);
+      }
+    }
+    debugPrint('_EngineResultScreen._autoUploadPdfForBot: barcha urinishlar tugadi, server fallback ishlaydi.');
   }
 
   /// Fetches the AI analysis (TZ §10.4) for the per-topic breakdown.
