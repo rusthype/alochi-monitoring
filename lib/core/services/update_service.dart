@@ -123,11 +123,22 @@ class UpdateService {
       if (!isNewerVersion(latestVersion, currentVersion)) return null;
 
       String? downloadUrl;
-      final expectedName = 'AlochiMonitoring-$latestVersion-Setup.exe';
+      final expectedExeName = 'AlochiMonitoring-$latestVersion-Setup.exe';
+      final expectedDmgName = 'alochi-monitoring.dmg'; // or we could check for .dmg extension
+      
       for (final asset in assets) {
-        if (asset is Map && asset['name'] == expectedName) {
-          downloadUrl = asset['browser_download_url'] as String?;
-          break;
+        if (asset is! Map) continue;
+        final name = asset['name'].toString();
+        if (Platform.isMacOS) {
+          if (name.endsWith('.dmg')) {
+            downloadUrl = asset['browser_download_url'] as String?;
+            break;
+          }
+        } else {
+          if (name == expectedExeName) {
+            downloadUrl = asset['browser_download_url'] as String?;
+            break;
+          }
         }
       }
 
@@ -147,8 +158,13 @@ class UpdateService {
   /// Falls back to opening the release page on any failure.
   Future<void> downloadAndInstallUpdate(UpdateInfo info, {Function(double)? onProgress}) async {
     try {
+      if (Platform.isMacOS) {
+        await _updateMacOS(info, onProgress);
+        return;
+      }
+      
       if (!Platform.isWindows) {
-        // Auto-install is currently only supported on Windows
+        // Auto-install is currently only supported on Windows and macOS
         await openReleasePage();
         return;
       }
@@ -188,6 +204,51 @@ class UpdateService {
     } catch (_) {
       await openReleasePage();
     }
+  }
+
+  Future<void> _updateMacOS(UpdateInfo info, Function(double)? onProgress) async {
+    final tempDir = await getTemporaryDirectory();
+    final dmgPath = '${tempDir.path}/AlochiMonitoring-Update.dmg';
+
+    // Download DMG
+    final request = http.Request('GET', Uri.parse(info.downloadUrl));
+    final response = await http.Client().send(request);
+    if (response.statusCode != 200) {
+      await openReleasePage();
+      return;
+    }
+
+    final contentLength = response.contentLength;
+    int downloaded = 0;
+    final sink = File(dmgPath).openWrite();
+    await for (final chunk in response.stream) {
+      sink.add(chunk);
+      downloaded += chunk.length;
+      if (contentLength != null && onProgress != null) {
+        onProgress(downloaded / contentLength);
+      }
+    }
+    await sink.close();
+
+    // Create a shell script to mount, copy, unmount, and relaunch
+    final scriptPath = '${tempDir.path}/update.sh';
+    final script = '''#!/bin/bash
+sleep 2
+MOUNT_PATH=\$(hdiutil attach "$dmgPath" -nobrowse | grep /Volumes/ | awk -F '\\t' '{print \$3}' | xargs)
+if [ -z "\$MOUNT_PATH" ]; then
+    open "${_releasePageUrl}"
+    exit 1
+fi
+rm -rf "/Applications/alochi_monitoring.app"
+cp -R "\$MOUNT_PATH/alochi_monitoring.app" "/Applications/"
+hdiutil detach "\$MOUNT_PATH" -force
+open -a "/Applications/alochi_monitoring.app"
+''';
+    await File(scriptPath).writeAsString(script);
+    await Process.run('chmod', ['+x', scriptPath]);
+
+    Process.start(scriptPath, [], mode: ProcessStartMode.detached);
+    exit(0);
   }
 
   /// Opens the GitHub release page in the system browser so the user can

@@ -478,6 +478,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
 
   Widget _buildSectionBody(SectionData section) {
     return _SectionScroll(
+      key: ValueKey(section.name),
       child: Builder(builder: (ctx) {
         if (section.isReading) {
           return _buildReadingBody(section);
@@ -645,7 +646,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
 
 class _SectionScroll extends StatelessWidget {
   final Widget child;
-  const _SectionScroll({required this.child});
+  const _SectionScroll({super.key, required this.child});
 
   @override
   Widget build(BuildContext context) => Center(

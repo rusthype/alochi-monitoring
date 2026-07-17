@@ -95,9 +95,18 @@ class Question {
     final type = _parseType(rawType);
 
     // Metadata carried on every question type (TZ per-§ reporting + geometry SVG).
-    final topic = json['topic']?.toString();
+    final topic = json['topic']?.toString() ?? json['t']?.toString();
     final svg = json['svg']?.toString();
-    final bob = (json['bob'] as num?)?.toInt();
+    int? parseUnit(dynamic val) {
+      if (val == null) return null;
+      if (val is num) return val.toInt();
+      if (val is String) {
+        final match = RegExp(r'\d+').firstMatch(val);
+        if (match != null) return int.tryParse(match.group(0)!);
+      }
+      return null;
+    }
+    final bob = parseUnit(json['bob']) ?? parseUnit(json['unit']);
     final category = json['category']?.toString();
 
     if (type == null) {

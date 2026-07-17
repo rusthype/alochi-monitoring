@@ -1466,6 +1466,12 @@ abstract class AppLocalizations {
   /// **'Mavzu bo\'yicha tahlil'**
   String get subjectAnalysisByTopic;
 
+  /// No description provided for @subjectAnalysisByUnit.
+  ///
+  /// In uz, this message translates to:
+  /// **'Unitlar bo\'yicha tahlil'**
+  String get subjectAnalysisByUnit;
+
   /// No description provided for @strongAndWeakSides.
   ///
   /// In uz, this message translates to:

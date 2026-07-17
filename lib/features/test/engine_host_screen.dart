@@ -23,6 +23,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -589,21 +590,23 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     setState(() => _pdfGenerating = true);
     try {
       final bytes = await _buildPdfBytes();
-      // Prefer a real, user-visible Downloads folder on desktop platforms
-      // (Windows/macOS/Linux) so "PDF hisobot" actually lands somewhere the
-      // user can find it. getDownloadsDirectory() returns null on
-      // mobile (Android/iOS), so fall back to the app-private directory
-      // there — mobile behavior is unchanged.
-      Directory? dir;
-      try {
-        if (!Platform.isIOS && !Platform.isAndroid) {
-          dir = await getDownloadsDirectory();
-        }
-      } catch (_) {}
-      dir ??= await getApplicationSupportDirectory();
-      final path =
-          '${dir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      await File(path).writeAsBytes(bytes);
+      String? path;
+      if (!Platform.isIOS && !Platform.isAndroid) {
+        try {
+          final dir = await getDownloadsDirectory();
+          if (dir != null) {
+            final testPath = '${dir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+            await File(testPath).writeAsBytes(bytes);
+            path = testPath;
+          }
+        } catch (_) {}
+      }
+      
+      if (path == null) {
+        final fallbackDir = await getApplicationSupportDirectory();
+        path = '${fallbackDir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+        await File(path).writeAsBytes(bytes);
+      }
 
       if (mounted) setState(() => _pdfPath = path);
       final openResult = await OpenFilex.open(path);
@@ -1084,6 +1087,47 @@ class _TzAnalysis extends StatelessWidget {
           ]),
         ),
 
+        // Unitlar bo'yicha tahlil
+        if (result.unitScores.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                child: Row(children: [
+                  const Icon(Icons.layers_rounded, size: 18, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Text(AppLocalizations.of(context)!.subjectAnalysisByUnit, style: AppTextStyles.labelLarge),
+                ]),
+              ),
+              const Divider(height: 1),
+              ...result.unitScores.map((u) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(u.topic, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
+                      ),
+                      Text('${u.correct}/${u.total} — ${u.pct.round()}%',
+                          style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w800,
+                              color: _c(u.pct))),
+                    ],
+                  ),
+                );
+              }),
+            ]),
+          ),
+        ],
+
         // Kuchli / zaif — TZ §10.2
         if (strong.isNotEmpty || weak.isNotEmpty) ...[
           const SizedBox(height: 16),
@@ -1118,33 +1162,170 @@ class _TzAnalysis extends StatelessWidget {
     );
   }
 
-  Widget _qRow(QuestionResult r) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(r.correct ? Icons.check_circle_rounded : Icons.cancel_rounded,
-              size: 16, color: r.correct ? AppColors.ok : AppColors.err),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(r.questionText,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodyMedium),
-          ),
-          if (r.topic != null) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                  color: AppColors.bg,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.border)),
-              child: Text(r.topic!,
-                  style: const TextStyle(
-                      fontFamily: 'Inter', fontSize: 10, color: AppColors.ink3)),
+  Widget _qRow(QuestionResult r) {
+    // Generate some color based on the topic string
+    final String topic = r.topic ?? r.category ?? r.section;
+    final int hash = topic.hashCode;
+    
+    // Choose a color palette similar to the HTML tags (t-h, t-a, t-s, etc)
+    final colors = [
+      (const Color(0xFF1B5E20), const Color(0xFFE8F5E9)), // green
+      (const Color(0xFF4A148C), const Color(0xFFEDE7F6)), // purple
+      (const Color(0xFFE65100), const Color(0xFFFFF3E0)), // orange
+      (const Color(0xFF0D47A1), const Color(0xFFE3F2FD)), // blue
+      (const Color(0xFF880E4F), const Color(0xFFFCE4EC)), // pink
+      (const Color(0xFF006064), const Color(0xFFE0F7FA)), // cyan
+      (const Color(0xFFBF360C), const Color(0xFFFBE9E7)), // deep orange
+    ];
+    final colorPair = colors[hash.abs() % colors.length];
+
+    final questionText = r.questionText;
+    final opts = r.question.opts;
+    final correctAnsIndex = r.question.ans;
+    final userAns = r.userAnswer;
+    int? userAnsIndex;
+    if (userAns is int) {
+      userAnsIndex = userAns;
+    } else if (userAns is String) {
+      userAnsIndex = int.tryParse(userAns);
+      userAnsIndex ??= opts.indexWhere((o) => o == userAns);
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8, left: 16, right: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: AppColors.bg,
+              borderRadius: BorderRadius.circular(7),
             ),
-          ],
-        ]),
-      );
+            alignment: Alignment.center,
+            child: Text('${r.index + 1}',
+                style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink2)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: colorPair.$2,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(topic,
+                      style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: colorPair.$1)),
+                ),
+                const SizedBox(height: 4),
+                Text(questionText,
+                    style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        height: 1.5)),
+                if (r.question.svg != null && r.question.svg!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  SvgPicture.string(r.question.svg!, height: 80, fit: BoxFit.contain),
+                ],
+                if (opts.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Column(
+                    children: opts.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final optText = entry.value;
+                      final isCorrectOpt = idx == correctAnsIndex;
+                      final isSelectedOpt = idx == userAnsIndex;
+
+                      if (!isCorrectOpt && !isSelectedOpt) return const SizedBox.shrink();
+
+                      Color borderColor = AppColors.border;
+                      Color bgColor = AppColors.surface;
+                      Color textColor = AppColors.ink1;
+                      Color labelBg = AppColors.bg;
+                      Color labelColor = AppColors.ink2;
+
+                      if (isCorrectOpt) {
+                        borderColor = AppColors.ok;
+                        bgColor = const Color(0xFFECFDF5);
+                        textColor = AppColors.ok;
+                        labelBg = AppColors.ok;
+                        labelColor = Colors.white;
+                      } else if (isSelectedOpt && !isCorrectOpt) {
+                        borderColor = AppColors.err;
+                        bgColor = const Color(0xFFFEF2F2);
+                        textColor = AppColors.err;
+                        labelBg = AppColors.err;
+                        labelColor = Colors.white;
+                      }
+
+                      final label = String.fromCharCode(65 + idx); // A, B, C, D
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: bgColor,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: borderColor, width: 1.5),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: labelBg,
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(label,
+                                  style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: labelColor)),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(optText,
+                                  style: TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: textColor)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _chipRow(String label, List<String> items, Color color) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,

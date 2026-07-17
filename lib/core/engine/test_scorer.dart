@@ -30,15 +30,21 @@ class QuestionResult {
   final String questionText;
   final String? topic;       // e.g. "§17 Matnli masala"
   final String? category;    // e.g. "matnli"
+  final int? bob;            // unit/chapter
   final bool correct;
+  final Question question;
+  final dynamic userAnswer;
 
   const QuestionResult({
     required this.section,
     required this.index,
     required this.questionText,
     required this.correct,
+    required this.question,
+    this.userAnswer,
     this.topic,
     this.category,
+    this.bob,
   });
 }
 
@@ -75,6 +81,7 @@ class ScoredResult {
   // Per-§ analysis (TZ §10)
   final List<QuestionResult> questionResults;
   final List<TopicScore> topicScores;
+  final List<TopicScore> unitScores;
 
   // Shield / level (only populated when TestSpec.scoring != null)
   final int? shields;
@@ -91,6 +98,7 @@ class ScoredResult {
     required this.totalPct,
     this.questionResults = const [],
     this.topicScores = const [],
+    this.unitScores = const [],
     this.shields,
     this.levelLabel,
     this.levelCefr,
@@ -198,7 +206,7 @@ class TestScorer {
       }
     }
 
-    final detail = _buildDetail(sections, answers);
+    final detail = _buildDetail(spec, sections, answers);
 
     return ScoredResult(
       testKey: spec.testKey,
@@ -208,6 +216,7 @@ class TestScorer {
       totalPct: totalPct,
       questionResults: detail.$1,
       topicScores: detail.$2,
+      unitScores: detail.$3,
       shields: shields,
       levelLabel: levelLabel,
       levelCefr: levelCefr,
@@ -281,8 +290,8 @@ class TestScorer {
 
   // ── Per-§ detail builder (TZ §10) ───────────────────────────────────────────
 
-  static (List<QuestionResult>, List<TopicScore>) _buildDetail(
-      List<SectionData> sections, Map<String, dynamic> answers) {
+  static (List<QuestionResult>, List<TopicScore>, List<TopicScore>) _buildDetail(
+      TestSpec spec, List<SectionData> sections, Map<String, dynamic> answers) {
     final List<QuestionResult> results = [];
     for (final section in sections) {
       for (final slot in section.answerSlots) {
@@ -292,16 +301,49 @@ class TestScorer {
           questionText: slot.question.q ?? slot.question.strAns ?? '',
           topic: slot.question.topic,
           category: slot.question.category,
+          bob: slot.question.bob,
           correct: _isCorrect(slot.question, answers[slot.key]),
+          question: slot.question,
+          userAnswer: answers[slot.key],
         ));
       }
     }
 
     final Map<String, List<QuestionResult>> byTopic = {};
+    final Map<String, List<QuestionResult>> byUnit = {};
     for (final r in results) {
       final key = r.topic ?? r.category ?? r.section;
       (byTopic[key] ??= []).add(r);
+      int? unitNum = r.bob;
+      if (unitNum == null) {
+        final searchStr = r.topic ?? r.category ?? r.section;
+        final bobMatch = RegExp(r'(\d+)\s*-bob', caseSensitive: false).firstMatch(searchStr);
+        final unitMatch = RegExp(r'Unit\s*(\d+)', caseSensitive: false).firstMatch(searchStr);
+        if (bobMatch != null) {
+          unitNum = int.tryParse(bobMatch.group(1)!);
+        } else if (unitMatch != null) {
+          unitNum = int.tryParse(unitMatch.group(1)!);
+        }
+      }
+      
+      // Fallback to TestSpec title if unit still null
+      if (unitNum == null) {
+        final title = spec.title;
+        final bobMatch = RegExp(r'(\d+)\s*-bob', caseSensitive: false).firstMatch(title);
+        final unitMatch = RegExp(r'Unit\s*(\d+)', caseSensitive: false).firstMatch(title);
+        if (bobMatch != null) {
+          unitNum = int.tryParse(bobMatch.group(1)!);
+        } else if (unitMatch != null) {
+          unitNum = int.tryParse(unitMatch.group(1)!);
+        }
+      }
+      
+      if (unitNum != null) {
+        final unitKey = 'Unit $unitNum';
+        (byUnit[unitKey] ??= []).add(r);
+      }
     }
+    
     final topics = byTopic.entries
         .map((e) => TopicScore(
               topic: e.key,
@@ -310,6 +352,22 @@ class TestScorer {
             ))
         .toList()
       ..sort((a, b) => a.pct.compareTo(b.pct)); // weakest first
-    return (results, topics);
+      
+    final units = byUnit.entries
+        .map((e) => TopicScore(
+              topic: e.key,
+              correct: e.value.where((r) => r.correct).length,
+              total: e.value.length,
+            ))
+        .toList()
+      ..sort((a, b) {
+        final matchA = RegExp(r'\d+').firstMatch(a.topic);
+        final matchB = RegExp(r'\d+').firstMatch(b.topic);
+        final numA = matchA != null ? int.parse(matchA.group(0)!) : 0;
+        final numB = matchB != null ? int.parse(matchB.group(0)!) : 0;
+        return numA.compareTo(numB);
+      });
+      
+    return (results, topics, units);
   }
 }
