@@ -1,5 +1,6 @@
 // lib/features/local_test/local_result_screen.dart
 // Offline natija — mavzular bo'yicha + Server /result/ endpointga yuborish + PDF
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
 import 'local_data.dart';
@@ -104,6 +105,8 @@ class _LocalResultScreenState extends State<LocalResultScreen>
         _sent = true;
         _sendStatus = AppLocalizations.of(context)!.localResSavedSending;
       });
+      // Submit bo'lgandan keyin PDF ni bot uchun yuklaymiz (retry bilan)
+      _autoUploadPdfForBot(token);
     } catch (e) {
       debugPrint('Navbatga yozishda xato: $e');
       if (!mounted) return;
@@ -112,6 +115,49 @@ class _LocalResultScreenState extends State<LocalResultScreen>
         _sendStatus = AppLocalizations.of(context)!.localResSaveError;
       });
     }
+  }
+
+  /// App ko'rsatadigan PDF ni bot uchun serverga yuklaydi.
+  /// Race condition: /result/ submit va PDF upload parallel — agar natija
+  /// DB ga hali yetmagan bo'lsa (404), exponential back-off: 2s → 5s → 10s.
+  Future<void> _autoUploadPdfForBot(String token) async {
+    Uint8List bytes;
+    try {
+      bytes = await PdfService.generateResultPdf(
+        firstName: widget.firstName,
+        lastName: widget.lastName,
+        group: widget.group,
+        grade: widget.grade,
+        variant: widget.variant,
+        mathOk: widget.mathOk,
+        mathTotal: _mathTotal,
+        engOk: widget.engOk,
+        engTotal: _engTotal,
+        pct: widget.pct,
+        mathTopics: _mathTopics,
+        engTopics: _engTopics,
+      );
+    } catch (e) {
+      debugPrint('LocalResultScreen._autoUploadPdfForBot: PDF generate xato: $e');
+      return;
+    }
+
+    const delays = [Duration(seconds: 2), Duration(seconds: 5), Duration(seconds: 10)];
+    for (var i = 0; i <= delays.length; i++) {
+      try {
+        final ok = await api.uploadResultPdf(token, bytes);
+        if (ok) return; // muvaffaqiyatli yuklandi
+        // ok==false → 404 (result hali serverda yo'q) — keyingi urinish
+      } catch (e) {
+        debugPrint('LocalResultScreen._autoUploadPdfForBot attempt $i error: $e');
+        return; // tarmoq xatosi — qayta urinish ma'nosiz
+      }
+      if (i < delays.length) {
+        debugPrint('LocalResultScreen._autoUploadPdfForBot: 404, ${delays[i].inSeconds}s kutilmoqda...');
+        await Future<void>.delayed(delays[i]);
+      }
+    }
+    debugPrint('LocalResultScreen._autoUploadPdfForBot: barcha urinishlar tugadi.');
   }
 
   Map<String, dynamic> _buildPayload() {
