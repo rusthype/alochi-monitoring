@@ -7,9 +7,11 @@
 // (in the alochi monorepo) for the full design rationale.
 
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:path_provider/path_provider.dart';
 
 final RegExp _setupExePattern =
     RegExp(r'^AlochiMonitoring-(\d+)\.(\d+)\.(\d+)-Setup\.exe$');
@@ -77,9 +79,12 @@ int _compareParts(List<int> a, List<int> b) {
 class UpdateInfo {
   final String latestVersion;
   final String currentVersion;
+  final String downloadUrl;
+
   const UpdateInfo({
     required this.latestVersion,
     required this.currentVersion,
+    required this.downloadUrl,
   });
 }
 
@@ -117,23 +122,76 @@ class UpdateService {
       if (latestVersion == null) return null;
       if (!isNewerVersion(latestVersion, currentVersion)) return null;
 
+      String? downloadUrl;
+      final expectedName = 'AlochiMonitoring-$latestVersion-Setup.exe';
+      for (final asset in assets) {
+        if (asset is Map && asset['name'] == expectedName) {
+          downloadUrl = asset['browser_download_url'] as String?;
+          break;
+        }
+      }
+
+      if (downloadUrl == null) return null;
+
       return UpdateInfo(
         latestVersion: latestVersion,
         currentVersion: currentVersion,
+        downloadUrl: downloadUrl,
       );
     } catch (_) {
       return null;
     }
   }
 
+  /// Downloads the update installer and executes it silently, then exits the app.
+  /// Falls back to opening the release page on any failure.
+  Future<void> downloadAndInstallUpdate(UpdateInfo info, {Function(double)? onProgress}) async {
+    try {
+      if (!Platform.isWindows) {
+        // Auto-install is currently only supported on Windows
+        await openReleasePage();
+        return;
+      }
+
+      final tempDir = await getTemporaryDirectory();
+      final savePath = '${tempDir.path}\\AlochiMonitoring-Setup-${info.latestVersion}.exe';
+      final file = File(savePath);
+
+      final request = http.Request('GET', Uri.parse(info.downloadUrl));
+      final response = await http.Client().send(request);
+      
+      if (response.statusCode != 200) {
+        await openReleasePage();
+        return;
+      }
+      
+      final contentLength = response.contentLength;
+      int downloaded = 0;
+      
+      final sink = file.openWrite();
+      
+      await for (final chunk in response.stream) {
+        sink.add(chunk);
+        downloaded += chunk.length;
+        if (contentLength != null && onProgress != null) {
+          onProgress(downloaded / contentLength);
+        }
+      }
+      await sink.close();
+
+      // Launch installer
+      // InnoSetup supports /SILENT (shows progress) or /VERYSILENT (no UI)
+      // /CLOSEAPPLICATIONS will close the current running app so it can overwrite
+      await Process.start(savePath, ['/SILENT', '/CLOSEAPPLICATIONS']);
+      
+      exit(0);
+    } catch (_) {
+      await openReleasePage();
+    }
+  }
+
   /// Opens the GitHub release page in the system browser so the user can
-  /// download the new installer/DMG themselves. Link-out only — no
-  /// auto-download or silent install (see design spec).
-  ///
-  /// Any failure (no default browser registered, restricted desktop
-  /// sandbox, etc.) is swallowed silently, matching fetchUpdateInfo()'s
-  /// error-handling pattern above — there is nothing meaningful to do on
-  /// failure for a fire-and-forget browser launch triggered by a button tap.
+  /// download the new installer/DMG themselves.
   Future<void> openReleasePage() async {
     try {
       await launchUrl(
@@ -141,7 +199,7 @@ class UpdateService {
         mode: LaunchMode.externalApplication,
       );
     } catch (_) {
-      // Swallowed — see doc comment above.
+      // Swallowed
     }
   }
 }

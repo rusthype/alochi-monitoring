@@ -191,6 +191,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ── Yangilanish badge holati ────────────────────────────────────────────────
   UpdateInfo? _updateInfo;
+  bool _isDownloadingUpdate = false;
+  double _updateProgress = 0.0;
 
   @override
   void initState() {
@@ -588,10 +590,29 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_updateInfo == null) return const SizedBox.shrink();
     return Semantics(
       button: true,
-      label: 'Yangilanish mavjud',
+      label: _isDownloadingUpdate ? 'Yuklanmoqda...' : 'Yangilanish mavjud',
       child: HoverRegion(
         builder: (context, isHovered) => GestureDetector(
-          onTap: () => UpdateService.instance.openReleasePage(),
+          onTap: () async {
+            if (_isDownloadingUpdate) return;
+            setState(() {
+              _isDownloadingUpdate = true;
+              _updateProgress = 0.0;
+            });
+            await UpdateService.instance.downloadAndInstallUpdate(
+              _updateInfo!,
+              onProgress: (progress) {
+                if (mounted) {
+                  setState(() => _updateProgress = progress);
+                }
+              },
+            );
+            if (mounted) {
+              setState(() {
+                _isDownloadingUpdate = false;
+              });
+            }
+          },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -610,14 +631,27 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.system_update_alt_rounded,
-                  size: 16,
-                  color: Colors.white,
-                ),
+                if (_isDownloadingUpdate)
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                      value: _updateProgress > 0 ? _updateProgress : null,
+                    ),
+                  )
+                else
+                  const Icon(
+                    Icons.system_update_alt_rounded,
+                    size: 16,
+                    color: Colors.white,
+                  ),
                 const SizedBox(width: 6),
                 Text(
-                  'Yangilanish mavjud',
+                  _isDownloadingUpdate
+                      ? 'Yuklanmoqda... ${(_updateProgress * 100).toInt()}%'
+                      : 'Yangilanish mavjud',
                   style: AppTextStyles.labelMedium.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
