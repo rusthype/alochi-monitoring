@@ -1,0 +1,54 @@
+name: macOS Release & Homebrew
+
+on:
+  push:
+    tags:
+      - 'v*' # v1.0.0, v1.0.1 kabi taglar qo'shilganda ishga tushadi
+
+jobs:
+  build:
+    name: Build and Release macOS App
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build macOS App
+        run: flutter build macos --release
+
+      - name: Create Zip Archive
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r alochi-monitoring-macos.zip "Alochi Monitoring.app"
+
+      - name: Release to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/macos/Build/Products/Release/alochi-monitoring-macos.zip
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Avtomatik Homebrew Cask yangilash qismi
+      - name: Update Homebrew Cask
+        uses: mislav/bump-homebrew-formula-action@v3
+        if: "!contains(github.ref, '-')" # Agar pre-release bo'lmasa ishlaydi
+        with:
+          formula-name: alochi-monitoring
+          formula-path: Casks/alochi-monitoring.rb
+          homebrew-tap: rusthype/homebrew-alochi
+          download-url: https://github.com/rusthype/alochi-monitoring/releases/download/${{ github.ref_name }}/alochi-monitoring-macos.zip
+          commit-message: "bump alochi-monitoring to ${{ github.ref_name }}"
+        env:
+          COMMITTER_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
