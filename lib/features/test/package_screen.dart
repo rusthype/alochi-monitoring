@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/db/credential_cache.dart';
 import '../auth/login_screen.dart';
 import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
@@ -66,6 +67,10 @@ class _PackageScreenState extends State<PackageScreen>
     );
     if (ok == true && ctx.mounted) {
       api.clearToken();
+      // Keyingi talaba oldingi talabaning login/parolini ko'rmasligi uchun
+      // saqlangan credential'larni tozalaymiz.
+      await CredentialCache.clear();
+      if (!ctx.mounted) return;
       Navigator.pushAndRemoveUntil(
         ctx,
         MaterialPageRoute(builder: (_) => const LoginScreen()),

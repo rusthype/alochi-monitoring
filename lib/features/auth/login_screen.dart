@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
@@ -10,16 +11,18 @@ import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
-import '../test/package_screen.dart';
-import '../local_test/local_grade_screen.dart';
+import '../../shared/widgets/hover_region.dart';
+
+
 import '../local_test/sync_images_button.dart';
-import '../local_test/history_screen.dart';
-import '../combined/combined_screen.dart';
-import '../session/session_setup_screen.dart';
-import '../downloads/downloads_sheet.dart';
+
+
 import '../../core/services/update_service.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/widgets/skeleton.dart';
+import '../../shared/widgets/language_switcher.dart';
+import '../session/session_providers.dart';
 
 Future<bool> checkOnlineWithRetry(
   Future<bool> Function() ping, {
@@ -186,11 +189,11 @@ class _LoginScreenState extends State<LoginScreen> {
   // ── Test katalog banner holati ─────────────────────────────────────────────
   List<CatalogEntry> _catalogEntries = [];
 
-  @override
-  void initState() {
   // ── Yangilanish badge holati ────────────────────────────────────────────────
   UpdateInfo? _updateInfo;
 
+  @override
+  void initState() {
     super.initState();
     _tryAutoLogin();
     _loadCatalog();
@@ -320,7 +323,7 @@ class _LoginScreenState extends State<LoginScreen> {
           await CredentialCache.saveSession(session, username, password);
           if (!mounted) return;
           context.pushReplacement('/package',
-              extra: session);
+              extra: {'session': session});
           return;
         } on ApiException catch (e) {
           // 400 = login/parol xato — offline ham urinma
@@ -365,6 +368,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isSmall = MediaQuery.of(context).size.width < 800;
     
     // Auto-login urinayotganda spinner
@@ -379,7 +383,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: CircularProgressIndicator(
                   strokeWidth: 3, color: AppColors.brand)),
           const SizedBox(height: 16),
-          Text('Kirish...',
+          Text(l10n.loggingIn,
               style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3)),
         ])),
       );
@@ -434,16 +438,23 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 18),
-                            Text('Alochi Monitoring',
+                            Text(l10n.appTitle,
                                 textAlign: TextAlign.center,
                                 style: AppTextStyles.titleLarge
                                     .copyWith(fontWeight: FontWeight.w800)),
                             const SizedBox(height: 4),
-                            Text("Ta'lim monitoring platformasi",
+                            Text(l10n.appSubtitle,
                                 textAlign: TextAlign.center,
                                 style: AppTextStyles.bodyMedium
                                     .copyWith(color: AppColors.ink2)),
                             const SizedBox(height: 24),
+                            const Align(
+                              alignment: Alignment.centerRight,
+                              child: Padding(
+                                padding: EdgeInsets.only(bottom: 8.0, right: 4.0),
+                                child: LanguageSwitcher(),
+                              ),
+                            ),
                             _routeButtons(isSmall),
                             _accordion(),
                             const SizedBox(height: 16),
@@ -455,10 +466,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 const SyncImagesButton(),
                                 TextButton.icon(
-                                  onPressed: () => context.push('/history'),
+                                  onPressed: () => context.push('/history',
+                                      extra: {}),
                                   icon: const Icon(Icons.history_rounded,
                                       size: 16),
-                                  label: const Text('Oflayn Tarix'),
+                                  label: Text(l10n.offlineHistory),
                                   style: TextButton.styleFrom(
                                     foregroundColor: AppColors.ink2,
                                     textStyle: const TextStyle(
@@ -485,6 +497,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
+              Positioned(
+                top: 0,
+                right: 0,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: _updateBadge(),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -496,16 +518,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final l10n = AppLocalizations.of(context)!;
     final downloadable = _catalogEntries
         .where((e) =>
-              Positioned(
-                top: 0,
-                right: 0,
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: _updateBadge(),
-                  ),
-                ),
-              ),
             e.status == CatalogStatus.notDownloaded ||
             e.status == CatalogStatus.updatable)
         .length;
@@ -514,41 +526,47 @@ class _LoginScreenState extends State<LoginScreen> {
     return Semantics(
       button: true,
       label: l10n.schools,
-      child: GestureDetector(
-        onTap: _showCatalogSheet,
-        child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: hasNew ? AppColors.primary : AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: hasNew ? AppColors.primary : AppColors.border,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: .12),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.school_rounded,
-              size: 16,
-              color: hasNew ? Colors.white : AppColors.ink2,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              l10n.schools,
-              style: AppTextStyles.labelMedium.copyWith(
-                color: hasNew ? Colors.white : AppColors.ink1,
-                fontWeight: FontWeight.w700,
+      child: HoverRegion(
+        builder: (context, isHovered) => GestureDetector(
+          onTap: _showCatalogSheet,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: hasNew 
+                  ? (isHovered ? AppColors.brand : AppColors.primary) 
+                  : (isHovered ? const Color(0xFFF5F5F5) : AppColors.surface),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: hasNew ? AppColors.primary : AppColors.border,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: .12),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.school_rounded,
+                  size: 16,
+                  color: hasNew ? Colors.white : AppColors.ink2,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  l10n.schools,
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: hasNew ? Colors.white : AppColors.ink1,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -566,65 +584,69 @@ class _LoginScreenState extends State<LoginScreen> {
     ).whenComplete(_loadCatalog);
   }
 
-  Widget _routeButtons(bool isSmall) {
-    final children = [
-      _routeButton(
-        icon: Icons.monitor_rounded,
-        label: 'Alochi Monitoring',
-        active: _expanded,
-        onTap: () => setState(() => _expanded = !_expanded),
-      ),
-      if (isSmall) const SizedBox(height: 12) else const SizedBox(width: 12),
-      _routeButton(
-        icon: Icons.quiz_rounded,
-        label: 'Testlar',
   Widget _updateBadge() {
     if (_updateInfo == null) return const SizedBox.shrink();
     return Semantics(
       button: true,
       label: 'Yangilanish mavjud',
-      child: GestureDetector(
-        onTap: () => UpdateService.instance.openReleasePage(),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.primary),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .12),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.system_update_alt_rounded,
-                size: 16,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Yangilanish mavjud',
-                style: AppTextStyles.labelMedium.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
+      child: HoverRegion(
+        builder: (context, isHovered) => GestureDetector(
+          onTap: () => UpdateService.instance.openReleasePage(),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isHovered ? AppColors.brand : AppColors.primary,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.primary),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: .12),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
-              ),
-            ],
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.system_update_alt_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Yangilanish mavjud',
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  Widget _routeButtons(bool isSmall) {
+    final l10n = AppLocalizations.of(context)!;
+    final children = [
+      _routeButton(
+        icon: Icons.monitor_rounded,
+        label: l10n.appTitle,
+        active: _expanded,
+        onTap: () => setState(() => _expanded = !_expanded),
+      ),
+      if (isSmall) const SizedBox(height: 12) else const SizedBox(width: 12),
+      _routeButton(
+        icon: Icons.quiz_rounded,
+        label: l10n.testsRoute,
         active: false,
         disabled: true,
-        badge: 'Tez kunda',
+        badge: l10n.comingSoon,
         onTap: null,
       ),
     ];
@@ -704,31 +726,43 @@ class _LoginScreenState extends State<LoginScreen> {
       ],
     );
 
-    final content = AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        color: disabled
-            ? AppColors.muted
-            : (active ? AppColors.brand : AppColors.surface),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: active ? AppColors.brand : AppColors.border,
-          width: active ? 2 : 1,
-        ),
-      ),
-      child: cardChild,
-    );
-
     return disabled
-        ? Opacity(opacity: .6, child: content)
+        ? Opacity(
+            opacity: .6, 
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.muted,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: cardChild,
+            )
+          )
         : Semantics(
             button: true,
             label: label,
-            child: GestureDetector(onTap: onTap, child: content),
+            child: HoverRegion(
+              builder: (context, isHovered) => GestureDetector(
+                onTap: onTap,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  decoration: BoxDecoration(
+                    color: active ? AppColors.brand : (isHovered ? const Color(0xFFF5F5F5) : AppColors.surface),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: active ? AppColors.brand : (isHovered ? AppColors.border.withValues(alpha: 0.8) : AppColors.border),
+                      width: active ? 2 : 1,
+                    ),
+                  ),
+                  child: cardChild,
+                ),
+              ),
+            ),
           );
   }
 
   Widget _accordion() {
+    final l10n = AppLocalizations.of(context)!;
     return ClipRect(
       child: AnimatedSize(
         duration: const Duration(milliseconds: 220),
@@ -786,7 +820,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     minimumSize: const Size(0, 0),
                                     tapTargetSize:
                                         MaterialTapTargetSize.shrinkWrap),
-                                child: Text('Qayta tekshirish',
+                                child: Text(l10n.retryCheck,
                                     style: AppTextStyles.labelMedium
                                         .copyWith(color: AppColors.brand)),
                               ),
@@ -794,37 +828,37 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        Text('Kirish',
+                        Text(l10n.loginTitle,
                             style: AppTextStyles.titleMedium
                                 .copyWith(fontWeight: FontWeight.w800)),
                         const SizedBox(height: 2),
-                        Text("Login va parolni o'qituvchingizdan oling",
+                        Text(l10n.loginInstruction,
                             style: AppTextStyles.labelMedium
                                 .copyWith(color: AppColors.ink2)),
                         const SizedBox(height: 16),
                         _field(
                           controller: _userCtrl,
                           focusNode: _userFocus,
-                          label: 'Login',
+                          label: l10n.usernameLabel,
                           hint: '',
                           icon: Icons.person_outline_rounded,
                           action: TextInputAction.next,
                           onSubmit: (_) => _passFocus.requestFocus(),
                           validator: (v) =>
-                              v!.isEmpty ? 'Login kiriting' : null,
+                              v!.isEmpty ? l10n.usernameRequired : null,
                         ),
                         const SizedBox(height: 14),
                         _field(
                           controller: _passCtrl,
                           focusNode: _passFocus,
-                          label: 'Parol',
+                          label: l10n.passwordLabel,
                           hint: '',
                           icon: Icons.lock_outline_rounded,
                           obscure: !_showPass,
                           action: TextInputAction.done,
                           onSubmit: (_) => _login(),
                           validator: (v) =>
-                              v!.isEmpty ? 'Parol kiriting' : null,
+                              v!.isEmpty ? l10n.passwordRequired : null,
                           suffix: IconButton(
                             icon: Icon(
                                 _showPass
@@ -890,7 +924,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : Icon(_isOnline
                                     ? Icons.arrow_forward_rounded
                                     : Icons.wifi_off_rounded),
-                            label: Text(_isOnline ? 'Kirish' : 'Offline kirish',
+                            label: Text(_isOnline ? l10n.loginTitle : l10n.offlineLogin,
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 14)),
                           ),
@@ -899,7 +933,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           height: 48,
                           child: OutlinedButton.icon(
-                            onPressed: () => context.push('/local_grade'),
+                            onPressed: () => context.push('/local_grade',
+                                extra: {}),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.ink2,
                               side: const BorderSide(color: AppColors.border),
@@ -907,9 +942,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.circular(13)),
                             ),
                             icon: const Icon(Icons.groups_rounded, size: 18),
-                            label: const Text(
-                                'Oddiy kirish (Internet kerak emas)',
-                                style: TextStyle(
+                            label: Text(
+                                l10n.localGradeEntry,
+                                style: const TextStyle(
                                     fontWeight: FontWeight.w600, fontSize: 13)),
                           ),
                         ),
@@ -917,7 +952,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           height: 48,
                           child: OutlinedButton.icon(
-                            onPressed: () => context.push('/combined'),
+                            onPressed: () => context.push('/combined',
+                                extra: {}),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFF5B21B6),
                               side: const BorderSide(
@@ -927,8 +963,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             icon: const Icon(Icons.menu_book_rounded,
                                 size: 18, color: Color(0xFF7C3AED)),
-                            label: const Text('Monitoring Test Unit 1',
-                                style: TextStyle(
+                            label: Text(l10n.monitoringTestUnit1,
+                                style: const TextStyle(
                                     fontWeight: FontWeight.w600, fontSize: 13)),
                           ),
                         ),
@@ -1473,34 +1509,120 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
     if (schoolWidgets.isNotEmpty) {
       widgets.add(
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-          child: Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: schoolWidgets,
+          padding: const EdgeInsets.only(bottom: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: const BoxDecoration(
+                        color: Color(0x1ADE8E52),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.school_rounded, color: Color(0xFFDE8E52), size: 14),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Maktablar',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF111111),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: schoolWidgets.expand((w) => [w, const SizedBox(width: 12)]).toList()..removeLast(),
+                ),
+              ),
+            ],
           ),
         ),
       );
     }
 
     if (codes.contains(umumiy)) {
-      final l10n = AppLocalizations.of(context)!;
       final groupEntries = groups[umumiy]!
         ..sort((a, b) =>
             (b.updatedAt ?? DateTime(0)).compareTo(a.updatedAt ?? DateTime(0)));
-      final groupCached = groupEntries
-          .where((e) =>
-              e.status == CatalogStatus.cached ||
-              e.status == CatalogStatus.cachedOnly)
-          .length;
-      widgets.add(_buildSectionHeader(
-          l10n.generalTests, groupCached, groupEntries.length));
+      
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: const BoxDecoration(
+                  color: Color(0x1ADE8E52),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Icon(Icons.library_books_rounded, color: Color(0xFFDE8E52), size: 14),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Umumiy testlar',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF111111),
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final List<Widget> testItems = [];
       for (var i = 0; i < groupEntries.length; i++) {
-        widgets.add(_buildItem(groupEntries[i]));
+        testItems.add(_buildItem(groupEntries[i]));
         if (i < groupEntries.length - 1) {
-          widgets.add(const Divider(height: 1, indent: 60));
+          testItems.add(const Divider(height: 1, color: Color(0x99E5E7EB)));
         }
       }
+
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Column(
+                children: testItems,
+              ),
+            ),
+          ),
+        ),
+      );
     }
 
     return ListView.builder(
@@ -1508,39 +1630,6 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       padding: const EdgeInsets.only(top: 4, bottom: 24),
       itemCount: widgets.length,
       itemBuilder: (_, i) => widgets[i],
-    );
-  }
-
-  Widget _buildSectionHeader(String label, int cached, int total) {
-    final allDone = cached == total && total > 0;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 6),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: allDone ? AppColors.okMuted : AppColors.muted,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.school_rounded,
-                    size: 14, color: allDone ? AppColors.ok : AppColors.ink2),
-                const SizedBox(width: 5),
-                Text(
-                  label,
-                  style: AppTextStyles.caption.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: allDone ? AppColors.ok : AppColors.ink1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1554,8 +1643,14 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
         entry.lockedUntil != null && entry.lockedUntil!.isAfter(DateTime.now());
 
     void openSession() {
+      final container = ProviderScope.containerOf(context);
+      container.read(selectedCatalogEntryProvider.notifier).state = entry;
+      // No specific school tapped here (this is the "Umumiy testlar" list) —
+      // clear any stale value left over from a previous school-card tap so
+      // SessionSetupScreen falls back to schoolButtons.first correctly.
+      container.read(selectedSchoolCodeProvider.notifier).state = null;
       context.pop();
-      context.push('/session_setup', extra: entry);
+      context.push('/session_setup', extra: {'testKey': entry.testKey});
     }
 
     void handleStartTap() {
@@ -1571,171 +1666,144 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       openSession();
     }
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      leading: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: isDone ? AppColors.okMuted : AppColors.primaryMuted,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(
-          isDone ? Icons.check_rounded : Icons.cloud_download_rounded,
-          size: 18,
-          color: isDone ? AppColors.ok : AppColors.primary,
-        ),
-      ),
-      title: Text(
-        entry.title,
-        style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700),
-      ),
-      subtitle: isLocked
-          ? Text(
-              '🔒 ${DateFormat('dd.MM.yyyy HH:mm').format(entry.lockedUntil!.toLocal())} ${l10n.opensAt}',
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isDone ? handleStartTap : (isDownloading ? null : () => _download(entry)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDone ? const Color(0x1ADE8E52) : const Color(0xFFF3F4F6),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: isDownloading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFFDE8E52),
+                          ),
+                        )
+                      : Icon(
+                          isLocked ? Icons.lock_clock_rounded : (isDone ? Icons.check_rounded : Icons.cloud_download_rounded),
+                          color: isDone ? const Color(0xFFDE8E52) : const Color(0xFF9CA3AF),
+                          size: 20,
+                        ),
+                ),
               ),
-            )
-          : isUpdatable && !isDownloading
-              ? Text(l10n.newVersionAvailable,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ))
-              : isDone
-                  ? Text(l10n.downloaded,
-                      style:
-                          AppTextStyles.caption.copyWith(color: AppColors.ink3))
-                  : null,
-      trailing: isDownloading
-          ? const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                color: AppColors.primary,
-              ),
-            )
-          : isDone && !isUpdatable
-              ? Semantics(
-                  button: true,
-                  label: l10n.start,
-                  child: GestureDetector(
-                    onTap: handleStartTap,
-                    child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.ok,
-                      borderRadius: BorderRadius.circular(10),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entry.title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF111111),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                    const SizedBox(height: 2),
+                    Row(
                       children: [
                         Icon(
-                          isLocked
-                              ? Icons.lock_clock_rounded
-                              : Icons.play_arrow_rounded,
-                          size: 14,
-                          color: Colors.white,
+                          isDownloading ? Icons.sync_rounded : (isDone ? Icons.file_download_done_rounded : Icons.download_rounded),
+                          size: 12,
+                          color: const Color(0xFF737373),
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          l10n.start,
-                          style: AppTextStyles.caption.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
+                          isLocked
+                            ? '🔒 ${DateFormat('dd.MM.yyyy HH:mm').format(entry.lockedUntil!.toLocal())} ${l10n.opensAt}'
+                            : isUpdatable && !isDownloading
+                                ? l10n.newVersionAvailable
+                                : isDownloading
+                                    ? 'Yuklab olinmoqda'
+                                    : isDone
+                                        ? 'Yuklab olingan' // Use direct translation for visual match
+                                        : 'Yuklab olinmagan',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF737373),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                )
-              : isUpdatable
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Semantics(
-                          button: true,
-                          label: l10n.update,
-                          child: GestureDetector(
-                            onTap: () => _download(entry),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              l10n.update,
-                              style: AppTextStyles.caption.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              if (isUpdatable && !isDownloading)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => _download(entry),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFFDE8E52),
+                        elevation: 0,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: const BorderSide(color: Color(0xFFDE8E52)),
                         ),
-                        const SizedBox(width: 6),
-                        Semantics(
-                          button: true,
-                          label: l10n.start,
-                          child: GestureDetector(
-                            onTap: handleStartTap,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: AppColors.ok,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  isLocked
-                                      ? Icons.lock_clock_rounded
-                                      : Icons.play_arrow_rounded,
-                                  size: 14,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  l10n.start,
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : Semantics(
-                      button: true,
-                      label: l10n.download,
-                      child: GestureDetector(
-                        onTap: () => _download(entry),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          l10n.download,
-                          style: AppTextStyles.caption.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                        minimumSize: const Size(0, 36),
+                      ),
+                      child: Text(
+                        l10n.update,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+              ElevatedButton.icon(
+                onPressed: isDone ? handleStartTap : (isDownloading ? null : () => _download(entry)),
+                icon: isDownloading 
+                    ? const SizedBox.shrink() 
+                    : Icon(
+                        isDone ? Icons.play_arrow_rounded : Icons.cloud_download_rounded,
+                        size: 16,
+                      ),
+                label: Text(
+                  isDone ? l10n.start : l10n.download,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isDone ? const Color(0xFFDE8E52) : const Color(0xFFF3F4F6),
+                  foregroundColor: isDone ? Colors.white : const Color(0xFF111111),
+                  elevation: 0,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  minimumSize: const Size(0, 36),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1743,25 +1811,22 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       String schoolCode, String label, CatalogEntry? entry) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .03),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Material(
-        color: Colors.transparent,
-        child: Semantics(
-          button: true,
-          label: label,
-          child: InkWell(
-            onTap: () {
-              context.pop();
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            context.pop();
             final targetEntry = entry ??
                 CatalogEntry(
                   testKey: '',
@@ -1778,29 +1843,45 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                     ),
                   ],
                 );
-            context.push('/session_setup', extra: targetEntry);
+            final container = ProviderScope.containerOf(context);
+            container.read(selectedCatalogEntryProvider.notifier).state = targetEntry;
+            container.read(selectedSchoolCodeProvider.notifier).state = schoolCode;
+            context.push('/session_setup',
+                extra: {'testKey': targetEntry.testKey});
           },
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryMuted,
-                    borderRadius: BorderRadius.circular(10),
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: Color(0x1ADE8E52),
+                    shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.school_rounded,
-                      size: 20, color: AppColors.primary),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.school_rounded,
+                    color: Color(0xFFDE8E52),
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  label,
-                  style: AppTextStyles.labelLarge.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink1,
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(
+                    label,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: const Color(0xFF111111),
+                    ),
                   ),
                 ),
               ],

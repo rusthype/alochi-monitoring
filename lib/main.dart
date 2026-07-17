@@ -10,7 +10,10 @@ import 'core/services/heartbeat_service.dart';
 import 'core/locale/locale_provider.dart';
 import 'l10n/app_localizations.dart';
 import 'shared/theme/app_theme.dart';
-import 'features/auth/login_screen.dart';
+import 'core/router/app_router.dart';
+import 'core/widgets/inactivity_wrapper.dart';
+import 'core/widgets/command_palette.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -49,14 +52,40 @@ class AlochiMonitoringApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
-    return MaterialApp(
-      title: 'Alochi Monitoring',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
-      locale: locale,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: const LoginScreen(),
+    final router = ref.watch(goRouterProvider);
+    return InactivityWrapper(
+      child: MaterialApp.router(
+        title: 'Alochi Monitoring',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.theme,
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: router,
+        builder: (context, child) {
+          return Shortcuts(
+            shortcuts: <ShortcutActivator, Intent>{
+              LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyK): const CommandPaletteIntent(),
+              LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyK): const CommandPaletteIntent(),
+            },
+            child: Actions(
+              actions: <Type, Action<Intent>>{
+                CommandPaletteIntent: CallbackAction<CommandPaletteIntent>(
+                  onInvoke: (CommandPaletteIntent intent) {
+                    CommandPalette.show(context);
+                    return null;
+                  },
+                ),
+              },
+              child: child!,
+            ),
+          );
+        },
+      ),
     );
   }
+}
+
+class CommandPaletteIntent extends Intent {
+  const CommandPaletteIntent();
 }

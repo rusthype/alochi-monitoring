@@ -571,9 +571,13 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       // user can find it. getDownloadsDirectory() returns null on
       // mobile (Android/iOS), so fall back to the app-private directory
       // there — mobile behavior is unchanged.
-      Directory dir;
-      final downloadsDir = await getDownloadsDirectory();
-      dir = downloadsDir ?? await getApplicationSupportDirectory();
+      Directory? dir;
+      try {
+        if (!Platform.isIOS && !Platform.isAndroid) {
+          dir = await getDownloadsDirectory();
+        }
+      } catch (_) {}
+      dir ??= await getApplicationSupportDirectory();
       final path =
           '${dir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
       await File(path).writeAsBytes(bytes);

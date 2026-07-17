@@ -410,5 +410,29 @@
   "opensAt": "откроется в",
   "newVersionAvailable": "Доступна новая версия",
   "update": "Обновить",
-  "download": "Скачать"
+  "download": "Скачать",
+  "confirmSessionTitle": "Подтвердите\nсессию",
+  "pinCodeRequired": "PIN-КОД (ОБЯЗАТЕЛЬНО)",
+  "enterPinCode": "Введите PIN-код",
+  "enterTeacherCode": "Введите код, выданный учителем",
+  "otherSchoolBtn": "Другая школа",
+  "groupsNotFound": "Группы не найдены",
+  "testsNotFoundForGroup": "Для этой группы тесты не найдены",
+  "notDownloaded": "Не скачано",
+  "stillLocked": "Всё ещё закрыто",
+  "ready": "Готово",
+  "whoTakesTest": "Кто сдает\nтест?",
+  "studentsInList": "учеников в списке",
+  "gradeShort": "класс",
+  "backBtn": "Назад",
+  "copyName": "Скопировать",
+  "nameCopied": "Имя {name} скопировано!",
+  "@nameCopied": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "searchStudents": "Поиск ученика (Ctrl+K)..."
 }

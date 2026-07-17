@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
+import '../../core/db/credential_cache.dart';
 import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/app_network_image.dart';
@@ -558,7 +559,11 @@ class _ResultScreenState extends State<ResultScreen>
                       child: SizedBox(
                     height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: () {
+                      onPressed: () async {
+                        // Kelgusi talaba oldingi talabaning login/parolini
+                        // ko'rmasligi uchun saqlangan credential'larni tozalaymiz.
+                        await CredentialCache.clear();
+                        if (!mounted) return;
                         Navigator.of(context).pop();
                       },
                       icon: const Icon(Icons.person_outline_rounded, size: 18),

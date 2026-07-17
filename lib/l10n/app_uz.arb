@@ -143,7 +143,7 @@
       }
     }
   },
-  "selectTest": "Test tanlang",
+  "selectTest": "Testni tanlang",
   "selectMonitoringTest": "Mavjud monitoring testlaridan birini tanlang",
   "retry": "Qayta urinish",
   "noActiveExam": "Aktiv imtihon yo'q",
@@ -448,5 +448,29 @@
   "opensAt": "da ochiladi",
   "newVersionAvailable": "Yangi versiya mavjud",
   "update": "Yangilash",
-  "download": "Yuklash"
+  "download": "Yuklash",
+  "confirmSessionTitle": "Sessiyani\ntasdiqlang",
+  "pinCodeRequired": "PIN KOD (MAJBURIY)",
+  "enterPinCode": "PIN kodni kiriting",
+  "enterTeacherCode": "O'qituvchi bergan kodni kiriting",
+  "otherSchoolBtn": "Boshqa maktab",
+  "groupsNotFound": "Guruhlar topilmadi",
+  "testsNotFoundForGroup": "Bu guruh uchun test topilmadi",
+  "notDownloaded": "Yuklab olinmagan",
+  "stillLocked": "Hali qulflangan",
+  "ready": "Tayyor",
+  "whoTakesTest": "Testni kim\ntopshiradi?",
+  "studentsInList": "o'quvchi ro'yxatda mavjud",
+  "gradeShort": "sinf",
+  "backBtn": "Ortga",
+  "copyName": "Nusxa olish",
+  "nameCopied": "{name} nusxalandi!",
+  "@nameCopied": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "searchStudents": "O'quvchini izlash (Ctrl+K)..."
 }

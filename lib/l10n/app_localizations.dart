@@ -563,7 +563,7 @@ abstract class AppLocalizations {
   /// No description provided for @selectTest.
   ///
   /// In uz, this message translates to:
-  /// **'Test tanlang'**
+  /// **'Testni tanlang'**
   String get selectTest;
 
   /// No description provided for @selectMonitoringTest.
@@ -1813,6 +1813,108 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Yuklash'**
   String get download;
+
+  /// No description provided for @confirmSessionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sessiyani\ntasdiqlang'**
+  String get confirmSessionTitle;
+
+  /// No description provided for @pinCodeRequired.
+  ///
+  /// In uz, this message translates to:
+  /// **'PIN KOD (MAJBURIY)'**
+  String get pinCodeRequired;
+
+  /// No description provided for @enterPinCode.
+  ///
+  /// In uz, this message translates to:
+  /// **'PIN kodni kiriting'**
+  String get enterPinCode;
+
+  /// No description provided for @enterTeacherCode.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi bergan kodni kiriting'**
+  String get enterTeacherCode;
+
+  /// No description provided for @otherSchoolBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqa maktab'**
+  String get otherSchoolBtn;
+
+  /// No description provided for @groupsNotFound.
+  ///
+  /// In uz, this message translates to:
+  /// **'Guruhlar topilmadi'**
+  String get groupsNotFound;
+
+  /// No description provided for @testsNotFoundForGroup.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu guruh uchun test topilmadi'**
+  String get testsNotFoundForGroup;
+
+  /// No description provided for @notDownloaded.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuklab olinmagan'**
+  String get notDownloaded;
+
+  /// No description provided for @stillLocked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hali qulflangan'**
+  String get stillLocked;
+
+  /// No description provided for @ready.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tayyor'**
+  String get ready;
+
+  /// No description provided for @whoTakesTest.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testni kim\ntopshiradi?'**
+  String get whoTakesTest;
+
+  /// No description provided for @studentsInList.
+  ///
+  /// In uz, this message translates to:
+  /// **'o\'quvchi ro\'yxatda mavjud'**
+  String get studentsInList;
+
+  /// No description provided for @gradeShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'sinf'**
+  String get gradeShort;
+
+  /// No description provided for @backBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ortga'**
+  String get backBtn;
+
+  /// No description provided for @copyName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nusxa olish'**
+  String get copyName;
+
+  /// No description provided for @nameCopied.
+  ///
+  /// In uz, this message translates to:
+  /// **'{name} nusxalandi!'**
+  String nameCopied(String name);
+
+  /// No description provided for @searchStudents.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'quvchini izlash (Ctrl+K)...'**
+  String get searchStudents;
 }
 
 class _AppLocalizationsDelegate

@@ -14,6 +14,7 @@
 // exactly as before this reorder (backward compatible, offline/kiosk
 // flow untouched).
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
@@ -181,12 +182,13 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       body: Stack(
         children: [
           // Background noise could be added here if we had an asset, but we'll stick to AppColors.bg
-          
+
           // Main Content
           Positioned.fill(
             child: _loadingGroups
                 ? const Center(child: CircularProgressIndicator())
                 : SingleChildScrollView(
+                    key: const PageStorageKey('group_select_scroll'),
                     padding: EdgeInsets.only(
                       top: MediaQuery.of(context).padding.top + 100,
                       bottom: 80,
@@ -195,7 +197,9 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                     ),
                     child: Center(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 768), // Max width from mockup 3xl approx 768
+                        constraints: const BoxConstraints(
+                            maxWidth:
+                                768), // Max width from mockup 3xl approx 768
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -205,16 +209,22 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                                 decoration: BoxDecoration(
                                   color: AppColors.errorMuted,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+                                  border: Border.all(
+                                      color: AppColors.error
+                                          .withValues(alpha: 0.2)),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.warning_rounded, color: AppColors.error, size: 20),
+                                    const Icon(Icons.warning_rounded,
+                                        color: AppColors.error, size: 20),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
                                         _err!,
-                                        style: const TextStyle(color: AppColors.error, fontSize: 14, fontWeight: FontWeight.w500),
+                                        style: const TextStyle(
+                                            color: AppColors.error,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500),
                                       ),
                                     ),
                                   ],
@@ -222,16 +232,15 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                               ),
                               const SizedBox(height: 24),
                             ],
-                            
                             if (_groups.isEmpty)
                               // _err != null bo'lsa, yuqoridagi xato bandida
                               // sabab allaqachon ko'rsatilgan — ikkinchi marta
                               // umumiy "Guruhlar topilmadi" matnini takrorlamaymiz.
                               if (_err == null)
-                                const Center(
+                                Center(
                                   child: Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 40),
-                                    child: Text('Guruhlar topilmadi', style: TextStyle(fontSize: 16, color: AppColors.ink3)),
+                                    padding: const EdgeInsets.symmetric(vertical: 40),
+                                    child: Text(AppLocalizations.of(context)!.groupsNotFound, style: const TextStyle(fontSize: 16, color: AppColors.ink3)),
                                   ),
                                 )
                               else
@@ -240,9 +249,9 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                               // Section 1: Guruhni tanlang
                               _buildStepIndicator('Qadam 1', active: true),
                               const SizedBox(height: 12),
-                              const Text(
-                                'Guruhni tanlang',
-                                style: TextStyle(
+                              Text(
+                                AppLocalizations.of(context)!.selectGroup,
+                                style: const TextStyle(
                                   fontSize: 36,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: -0.5,
@@ -256,15 +265,14 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                                 children: _groups.map(_buildGroupPill).toList(),
                               ),
                             ],
-                            
                             if (_selectedGroup != null) ...[
                               const SizedBox(height: 48),
                               // Section 2: Testni tanlang
                               _buildStepIndicator('Qadam 2', active: false),
                               const SizedBox(height: 12),
-                              const Text(
-                                'Testni tanlang',
-                                style: TextStyle(
+                              Text(
+                                AppLocalizations.of(context)!.selectTest,
+                                style: const TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: -0.5,
@@ -272,20 +280,21 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                                 ),
                               ),
                               const SizedBox(height: 24),
-                              
+
                               if (_loadingCatalog)
                                 const Center(
                                   child: Padding(
                                     padding: EdgeInsets.symmetric(vertical: 32),
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
                                   ),
                                 )
                               else if (_catalog.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 32),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 32),
                                   child: Text(
-                                    'Bu guruh uchun test topilmadi',
-                                    style: TextStyle(fontSize: 15, color: AppColors.ink3),
+                                    AppLocalizations.of(context)!.testsNotFoundForGroup,
+                                    style: const TextStyle(fontSize: 15, color: AppColors.ink3),
                                   ),
                                 )
                               else
@@ -308,7 +317,8 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                 padding: const EdgeInsets.all(6),
                 borderRadius: 100,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -323,9 +333,9 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                               children: [
                                 _HoverableBackButtonIcon(),
                                 const SizedBox(width: 8),
-                                const Text(
-                                  'Ortga',
-                                  style: TextStyle(
+                                Text(
+                                  AppLocalizations.of(context)!.backBtn,
+                                  style: const TextStyle(
                                     color: AppColors.brand,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 15,
@@ -337,9 +347,9 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                         ),
                       ),
                       const SizedBox(width: 48),
-                      const Text(
-                        'A\'lochi Monitoring',
-                        style: TextStyle(
+                      Text(
+                        AppLocalizations.of(context)!.appTitle,
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                           color: AppColors.ink1,
@@ -387,9 +397,10 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
 
   Widget _buildGroupPill(Map<String, dynamic> group) {
     final isSelected = _selectedGroup == group;
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(100),
         onTap: () => _selectGroup(group),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
@@ -430,7 +441,8 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
               ),
               if (isSelected) ...[
                 const SizedBox(width: 8),
-                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                const Icon(Icons.check_circle_rounded,
+                    color: Colors.white, size: 18),
               ]
             ],
           ),
@@ -443,8 +455,8 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
     final downloaded = entry.status == CatalogStatus.cached ||
         entry.status == CatalogStatus.cachedOnly ||
         entry.status == CatalogStatus.updatable;
-    final isLocked = entry.lockedUntil != null &&
-        entry.lockedUntil!.isAfter(DateTime.now());
+    final isLocked =
+        entry.lockedUntil != null && entry.lockedUntil!.isAfter(DateTime.now());
     final isDownloading = _downloadingKeys.contains(entry.testKey);
 
     if (!downloaded) {
@@ -470,13 +482,13 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.brand),
-                        SizedBox(width: 6),
+                        const Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.brand),
+                        const SizedBox(width: 6),
                         Text(
-                          'Yuklab olinmagan',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brand),
+                          AppLocalizations.of(context)!.notDownloaded,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brand),
                         ),
                       ],
                     ),
@@ -486,7 +498,9 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                     ? const SizedBox(
                         width: 40,
                         height: 40,
-                        child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brand)),
+                        child: Center(
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: AppColors.brand)),
                       )
                     : _HoverableDownloadButton(
                         onPressed: () => _downloadEntry(entry),
@@ -505,10 +519,26 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
           opacity: 0.6,
           child: ColorFiltered(
             colorFilter: const ColorFilter.matrix([
-              0.5, 0.5, 0.5, 0, 0,
-              0.5, 0.5, 0.5, 0, 0,
-              0.5, 0.5, 0.5, 0, 0,
-              0,   0,   0,   1, 0,
+              0.5,
+              0.5,
+              0.5,
+              0,
+              0,
+              0.5,
+              0.5,
+              0.5,
+              0,
+              0,
+              0.5,
+              0.5,
+              0.5,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
             ]),
             child: _DoubleBezel(
               child: Container(
@@ -530,13 +560,13 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        const Row(
+                        Row(
                           children: [
-                            Icon(Icons.lock_rounded, size: 16, color: AppColors.error),
-                            SizedBox(width: 6),
+                            const Icon(Icons.lock_rounded, size: 16, color: AppColors.error),
+                            const SizedBox(width: 6),
                             Text(
-                              'Hali qulflangan',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.error),
+                              AppLocalizations.of(context)!.stillLocked,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.error),
                             ),
                           ],
                         ),
@@ -550,7 +580,8 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: const Icon(Icons.lock_rounded, color: AppColors.ink3, size: 20),
+                      child: const Icon(Icons.lock_rounded,
+                          color: AppColors.ink3, size: 20),
                     ),
                   ],
                 ),
@@ -570,12 +601,13 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
 
 class _HoverableBackButtonIcon extends StatefulWidget {
   @override
-  State<_HoverableBackButtonIcon> createState() => _HoverableBackButtonIconState();
+  State<_HoverableBackButtonIcon> createState() =>
+      _HoverableBackButtonIconState();
 }
 
 class _HoverableBackButtonIconState extends State<_HoverableBackButtonIcon> {
   bool _isHovered = false;
-  
+
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
@@ -606,7 +638,8 @@ class _HoverableDownloadButton extends StatefulWidget {
   const _HoverableDownloadButton({required this.onPressed});
 
   @override
-  State<_HoverableDownloadButton> createState() => _HoverableDownloadButtonState();
+  State<_HoverableDownloadButton> createState() =>
+      _HoverableDownloadButtonState();
 }
 
 class _HoverableDownloadButtonState extends State<_HoverableDownloadButton> {
@@ -617,46 +650,55 @@ class _HoverableDownloadButtonState extends State<_HoverableDownloadButton> {
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-          transform: _isHovered ? Matrix4.translationValues(0, -2, 0) : Matrix4.identity(),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          decoration: BoxDecoration(
-            color: _isHovered ? AppColors.brand : Colors.white,
-            borderRadius: BorderRadius.circular(100),
-            border: Border.all(color: _isHovered ? AppColors.brand : AppColors.border),
-            boxShadow: [
-              if (_isHovered)
-                BoxShadow(
-                  color: AppColors.brand.withValues(alpha: 0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                )
-              else
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 2,
-                  offset: const Offset(0, 1),
-                ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.download_rounded, size: 18, color: _isHovered ? Colors.white : AppColors.ink1),
-              const SizedBox(width: 8),
-              Text(
-                'Yuklash',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(100),
+          onTap: widget.onPressed,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            transform: _isHovered
+                ? Matrix4.translationValues(0, -2, 0)
+                : Matrix4.identity(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            decoration: BoxDecoration(
+              color: _isHovered ? AppColors.brand : Colors.white,
+              borderRadius: BorderRadius.circular(100),
+              border: Border.all(
+                  color: _isHovered ? AppColors.brand : AppColors.border),
+              boxShadow: [
+                if (_isHovered)
+                  BoxShadow(
+                    color: AppColors.brand.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  )
+                else
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.download_rounded,
+                    size: 18,
+                    color: _isHovered ? Colors.white : AppColors.ink1),
+                const SizedBox(width: 8),
+                Text(
+                AppLocalizations.of(context)!.download,
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: _isHovered ? Colors.white : AppColors.ink1,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: _isHovered ? Colors.white : AppColors.ink1,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -684,53 +726,59 @@ class _HoverableTestCardState extends State<_HoverableTestCard> {
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: _DoubleBezel(
-            isHovered: _isHovered,
-            child: Container(
-              color: Colors.transparent,
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.entry.title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.ink1,
-                          letterSpacing: -0.2,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(32),
+            onTap: widget.onTap,
+            child: _DoubleBezel(
+              isHovered: _isHovered,
+              child: Container(
+                color: Colors.transparent,
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.entry.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.ink1,
+                            letterSpacing: -0.2,
+                          ),
                         ),
+                        const SizedBox(height: 6),
+                        Text(
+                        AppLocalizations.of(context)!.ready,
+                        style: const TextStyle(fontSize: 13, color: AppColors.ink3, fontWeight: FontWeight.w500),
                       ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Tayyor',
-                        style: TextStyle(fontSize: 13, color: AppColors.ink3, fontWeight: FontWeight.w500),
+                      ],
+                    ),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      width: 40,
+                      height: 40,
+                      transform: _isHovered
+                          ? Matrix4.translationValues(4, 0, 0)
+                          : Matrix4.identity(),
+                      decoration: BoxDecoration(
+                        color:
+                            _isHovered ? AppColors.brand : AppColors.brandLight,
+                        shape: BoxShape.circle,
                       ),
-                    ],
-                  ),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutCubic,
-                    width: 40,
-                    height: 40,
-                    transform: _isHovered ? Matrix4.translationValues(4, 0, 0) : Matrix4.identity(),
-                    decoration: BoxDecoration(
-                      color: _isHovered ? AppColors.brand : AppColors.brandLight,
-                      shape: BoxShape.circle,
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        color: _isHovered ? Colors.white : AppColors.brand,
+                        size: 20,
+                      ),
                     ),
-                    child: Icon(
-                      Icons.arrow_forward_rounded,
-                      color: _isHovered ? Colors.white : AppColors.brand,
-                      size: 20,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -758,7 +806,8 @@ class _DoubleBezel extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeOutCubic,
-      transform: isHovered ? Matrix4.translationValues(0, -4, 0) : Matrix4.identity(),
+      transform:
+          isHovered ? Matrix4.translationValues(0, -4, 0) : Matrix4.identity(),
       padding: padding,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.5),
@@ -799,4 +848,3 @@ class _DoubleBezel extends StatelessWidget {
     );
   }
 }
-
