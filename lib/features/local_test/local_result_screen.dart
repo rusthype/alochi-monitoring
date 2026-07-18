@@ -9,6 +9,7 @@ import '../../core/db/history_db.dart';
 import '../../core/api/api_client.dart';
 import '../../core/sync/sync_service.dart';
 import '../../core/services/pdf_service.dart';
+import '../../core/services/html_service.dart';
 import 'package:printing/printing.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
@@ -105,8 +106,8 @@ class _LocalResultScreenState extends State<LocalResultScreen>
         _sent = true;
         _sendStatus = AppLocalizations.of(context)!.localResSavedSending;
       });
-      // Submit bo'lgandan keyin PDF ni bot uchun yuklaymiz (retry bilan)
-      _autoUploadPdfForBot(token);
+      // Submit bo'lgandan keyin HTML ni bot uchun yuklaymiz (retry bilan)
+      _autoUploadHtmlForBot(token);
     } catch (e) {
       debugPrint('Navbatga yozishda xato: $e');
       if (!mounted) return;
@@ -117,13 +118,13 @@ class _LocalResultScreenState extends State<LocalResultScreen>
     }
   }
 
-  /// App ko'rsatadigan PDF ni bot uchun serverga yuklaydi.
-  /// Race condition: /result/ submit va PDF upload parallel — agar natija
+  /// App ko'rsatadigan HTML ni bot uchun serverga yuklaydi.
+  /// Race condition: /result/ submit va HTML upload parallel — agar natija
   /// DB ga hali yetmagan bo'lsa (404), exponential back-off: 2s → 5s → 10s.
-  Future<void> _autoUploadPdfForBot(String token) async {
-    Uint8List bytes;
+  Future<void> _autoUploadHtmlForBot(String token) async {
+    String htmlStr;
     try {
-      bytes = await PdfService.generateResultPdf(
+      htmlStr = HtmlService.generateResultHtml(
         firstName: widget.firstName,
         lastName: widget.lastName,
         group: widget.group,
@@ -138,26 +139,26 @@ class _LocalResultScreenState extends State<LocalResultScreen>
         engTopics: _engTopics,
       );
     } catch (e) {
-      debugPrint('LocalResultScreen._autoUploadPdfForBot: PDF generate xato: $e');
+      debugPrint('LocalResultScreen._autoUploadHtmlForBot: HTML generate xato: $e');
       return;
     }
 
     const delays = [Duration(seconds: 2), Duration(seconds: 5), Duration(seconds: 10)];
     for (var i = 0; i <= delays.length; i++) {
       try {
-        final ok = await api.uploadResultPdf(token, bytes);
+        final ok = await api.uploadResultHtml(token, htmlStr);
         if (ok) return; // muvaffaqiyatli yuklandi
         // ok==false → 404 (result hali serverda yo'q) — keyingi urinish
       } catch (e) {
-        debugPrint('LocalResultScreen._autoUploadPdfForBot attempt $i error: $e');
+        debugPrint('LocalResultScreen._autoUploadHtmlForBot attempt $i error: $e');
         return; // tarmoq xatosi — qayta urinish ma'nosiz
       }
       if (i < delays.length) {
-        debugPrint('LocalResultScreen._autoUploadPdfForBot: 404, ${delays[i].inSeconds}s kutilmoqda...');
+        debugPrint('LocalResultScreen._autoUploadHtmlForBot: 404, ${delays[i].inSeconds}s kutilmoqda...');
         await Future<void>.delayed(delays[i]);
       }
     }
-    debugPrint('LocalResultScreen._autoUploadPdfForBot: barcha urinishlar tugadi.');
+    debugPrint('LocalResultScreen._autoUploadHtmlForBot: barcha urinishlar tugadi.');
   }
 
   Map<String, dynamic> _buildPayload() {
