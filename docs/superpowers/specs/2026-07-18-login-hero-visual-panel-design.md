@@ -36,12 +36,16 @@ interactive element and its behavior untouched.
    Below that, the screen is **pixel-identical to today** — same
    `_NetworkBg`, same single-column `Column`, same everything. No new
    behavior to regress on narrow windows.
-3. **Color scheme:** the hero visual uses `AppColors.brand` (existing brand
-   green) as the primary glow/beam color, over the existing cream
-   background, with muted/desaturated versions of the `_Dot` palette
-   (`0xFF4A90D9`, `0xFFF97316`, `0xFF7C3AED`, `0xFF0D9488`, `0xFFE11D48`) for
-   secondary orbs — not the reference image's purple gradient. Visual must
-   read as "Alochi", not as a copy of the mockup's palette.
+3. **Color scheme:** the hero visual uses `AppColors.brand` (defined in
+   `lib/core/theme/app_colors.dart:41` as `static const Color brand =
+   secondary;`, i.e. `0xFFE8954E` — a warm orange, **not green**, despite
+   what the initial design proposal assumed) as the primary glow/beam color,
+   over the existing cream background, with muted/desaturated versions of
+   the `_Dot` palette (`0xFF4A90D9`, `0xFFF97316`, `0xFF7C3AED`,
+   `0xFF0D9488`, `0xFFE11D48`) for secondary orbs — not the reference
+   image's purple gradient. This also happens to match `assets/logo.png`'s
+   tree icon, whose leaves are a mix of green, teal, and orange tones.
+   Visual must read as "Alochi", not as a copy of the mockup's palette.
 
 ## Architecture
 
