@@ -465,29 +465,27 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     _loadAiSummary().then((_) => _autoUploadPdfForBot());
   }
 
-  /// Generates the same PDF the "PDF hisobot" button would (now that the AI
-  /// summary has had a chance to load) and uploads it silently so the
+  /// Generates the HTML report and uploads it silently so the
   /// parent/teacher Telegram report forwards this exact file. Best-effort —
-  /// any failure (offline, upload error) is swallowed; the server falls back
-  /// to its own older-format PDF in that case.
+  /// any failure (offline, upload error) is swallowed.
   ///
-  /// Race condition tuzatish: /result/ submit va PDF upload parallel ishlaydi.
+  /// Race condition tuzatish: /result/ submit va HTML upload parallel ishlaydi.
   /// Agar natija DB ga hali yetmagan bo'lsa (404), exponential back-off bilan
   /// qayta uriniladi: 2s → 5s → 10s. Shundan keyin ham bo'lmasa — server-side
   /// fallback PDF bot ga ketadi.
   Future<void> _autoUploadPdfForBot() async {
-    Uint8List? bytes;
+    String? htmlStr;
     try {
-      bytes = await _buildPdfBytes();
+      htmlStr = await _buildHtmlString();
     } catch (e) {
-      debugPrint('_EngineResultScreen._autoUploadPdfForBot: PDF generate xato: $e');
+      debugPrint('_EngineResultScreen._autoUploadPdfForBot: HTML generate xato: $e');
       return;
     }
 
     const delays = [Duration(seconds: 2), Duration(seconds: 5), Duration(seconds: 10)];
     for (var i = 0; i <= delays.length; i++) {
       try {
-        final ok = await api.uploadResultPdf(widget.clientToken, bytes);
+        final ok = await api.uploadResultHtml(widget.clientToken, htmlStr);
         if (ok) return; // muvaffaqiyatli yuklandi
         // ok==false → 404 (result hali serverda yo'q) — keyingi urinish
       } catch (e) {
@@ -560,9 +558,9 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     return AppLocalizations.of(context)!.gradeNeedsPractice;
   }
 
-  /// Builds the result PDF bytes — shared by the "PDF hisobot" button and
+  /// Builds the result HTML string — shared by the "PDF hisobot" button and
   /// the silent bot-upload so both ever produce exactly the same file.
-  Future<Uint8List> _buildPdfBytes() async {
+  Future<String> _buildHtmlString() async {
     // Same subject-aware decision _buildPayload/_handleComplete use (Task
     // 1.6) — list-shaped here so the per-§ "Matematika"/"Ingliz tili" topic
     // tables below can never disagree with their own header totals (e.g. a
@@ -591,7 +589,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         .map((u) => MapEntry(u.topic, (ok: u.correct, tot: u.total)))
         .toList();
 
-    return PdfService.generateResultPdf(
+    return HtmlService.generateResultHtml(
       firstName: widget.firstName,
       lastName: widget.lastName,
       group: widget.group ?? '',
@@ -614,14 +612,14 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     if (_pdfGenerating) return;
     setState(() => _pdfGenerating = true);
     try {
-      final bytes = await _buildPdfBytes();
+      final htmlStr = await _buildHtmlString();
       String? path;
       if (!Platform.isIOS && !Platform.isAndroid) {
         try {
           final dir = await getDownloadsDirectory();
           if (dir != null) {
-            final testPath = '${dir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-            await File(testPath).writeAsBytes(bytes);
+            final testPath = '${dir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.html';
+            await File(testPath).writeAsString(htmlStr);
             path = testPath;
           }
         } catch (_) {}
@@ -629,8 +627,8 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       
       if (path == null) {
         final fallbackDir = await getApplicationSupportDirectory();
-        path = '${fallbackDir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-        await File(path).writeAsBytes(bytes);
+        path = '${fallbackDir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.html';
+        await File(path).writeAsString(htmlStr);
       }
 
       if (mounted) setState(() => _pdfPath = path);
@@ -643,7 +641,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('PDF saqlandi, lekin ochib bo\'lmadi'),
+              content: Text('Hisobot saqlandi, lekin ochib bo\'lmadi'),
               backgroundColor: AppColors.err,
               behavior: SnackBarBehavior.floating,
             ),
@@ -655,7 +653,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('PDF yaratishda xato'),
+            content: Text('Hisobot yaratishda xato'),
             backgroundColor: AppColors.err,
             behavior: SnackBarBehavior.floating,
           ),
