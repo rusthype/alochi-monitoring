@@ -15,6 +15,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: subosito/flutter-action@v2
         with:
@@ -69,6 +71,67 @@ jobs:
           mv "$DMG" alochi-monitoring.dmg
           echo "DMG: $(ls -lh alochi-monitoring.dmg | awk '{print $5, $9}')"
 
+      - name: Generate release notes
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${GITHUB_REF_NAME}$" | head -n1)
+          RANGE="${PREV_TAG:+$PREV_TAG..}HEAD"
+
+          FEATS=$(git log "$RANGE" --pretty=format:'%s' | grep -E '^feat(\(.+\))?!?:' | sed -E 's/^feat(\(.+\))?!?:[[:space:]]*/- /')
+          FIXES=$(git log "$RANGE" --pretty=format:'%s' | grep -E '^fix(\(.+\))?!?:' | sed -E 's/^fix(\(.+\))?!?:[[:space:]]*/- /')
+          OTHER=$(git log "$RANGE" --pretty=format:'%s' | grep -E '^(chore|refactor|perf|docs|style|test)(\(.+\))?!?:' | sed -E 's/^[a-z]+(\(.+\))?!?:[[:space:]]*/- /')
+
+          DMG_SIZE=$(ls -lh alochi-monitoring.dmg | awk '{print $5}')
+          DMG_SHA256=$(shasum -a 256 alochi-monitoring.dmg | awk '{print $1}')
+          BASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+
+          {
+            echo "<div align=\"center\">"
+            echo ""
+            echo "# 🖥️ Alochi Monitoring"
+            echo "### v${VERSION}"
+            echo ""
+            echo "![macOS](https://img.shields.io/badge/macOS-11+-000000?style=flat-square&logo=apple&logoColor=white)"
+            echo "![Version](https://img.shields.io/badge/version-${VERSION}-4F46E5?style=flat-square)"
+            echo ""
+            echo "</div>"
+            echo ""
+            if [ -n "$FEATS" ]; then
+              echo "## ✨ New features"
+              echo "$FEATS"
+              echo ""
+            fi
+            if [ -n "$FIXES" ]; then
+              echo "## 🐛 Bug fixes"
+              echo "$FIXES"
+              echo ""
+            fi
+            if [ -n "$OTHER" ]; then
+              echo "## 🔧 Other changes"
+              echo "$OTHER"
+              echo ""
+            fi
+            echo "## 📦 Download"
+            echo ""
+            echo "|  | File | Size |"
+            echo "|---|---|---|"
+            echo "| 🍎 macOS DMG | [\`alochi-monitoring.dmg\`](${BASE_URL}/alochi-monitoring.dmg) | ${DMG_SIZE} |"
+            echo ""
+            echo "Ad-hoc signed. First launch: **right-click → Open** to bypass Gatekeeper — see [macOS o'rnatish qo'llanmasi](https://github.com/${GITHUB_REPOSITORY}/blob/main/docs/INSTALL_MACOS.md)."
+            echo ""
+            echo "**SHA256 (DMG):** \`${DMG_SHA256}\`"
+            echo ""
+
+            if [ -n "$PREV_TAG" ]; then
+              echo "<div align=\"center\">"
+              echo ""
+              echo "**[Full changelog → ${PREV_TAG}...${GITHUB_REF_NAME}](https://github.com/${GITHUB_REPOSITORY}/compare/${PREV_TAG}...${GITHUB_REF_NAME})**"
+              echo ""
+              echo "</div>"
+            fi
+          } > release_notes.md
+
       - name: Upload to latest prerelease
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
@@ -92,16 +155,7 @@ jobs:
         with:
           fail_on_unmatched_files: true
           files: alochi-monitoring.dmg
-          body: |
-            **macOS DMG** — v${{ steps.version.outputs.version }}
-
-            Ad-hoc signed. First launch: **right-click → Open** to bypass Gatekeeper.
-
-            ---
-            **Optional: add proper Apple Developer signing**
-            1. Export a Developer ID Application certificate as `.p12`
-            2. Add `MACOS_SIGNING_CERT` (base64) and `MACOS_SIGNING_PASSWORD` secrets
-            3. Replace the ad-hoc codesign step with a proper `security import` flow
+          body_path: release_notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
