@@ -36,6 +36,7 @@ import '../../core/engine/test_engine.dart';
 import '../../core/engine/test_models.dart';
 import '../../core/engine/test_scorer.dart';
 import '../../core/services/pdf_service.dart';
+import '../../core/services/html_service.dart';
 import '../../core/sync/sync_service.dart';
 import '../../shared/theme/app_theme.dart';
 
