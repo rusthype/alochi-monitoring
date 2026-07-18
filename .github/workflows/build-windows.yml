@@ -186,6 +186,15 @@ jobs:
           }
           echo "msix_sha256=$msixHash" >> $env:GITHUB_OUTPUT
 
+          $setupExe = Get-ChildItem -Path . -Filter "AlochiMonitoring-*-Setup.exe" | Select-Object -First 1
+          if ($setupExe) {
+            $setupHash = (Get-FileHash $setupExe.FullName -Algorithm SHA256).Hash
+            Write-Host "Setup.exe SHA256: $setupHash"
+          } else {
+            $setupHash = ""
+          }
+          echo "setup_sha256=$setupHash" >> $env:GITHUB_OUTPUT
+
       - name: Get version
         id: version
         shell: pwsh
@@ -193,6 +202,37 @@ jobs:
           $v = (Get-Content pubspec.yaml | Select-String "^version:" | ForEach-Object { $_ -replace "version:\s*", "" -replace "\+.*", "" }).Trim()
           echo "version=$v" >> $env:GITHUB_OUTPUT
           Write-Host "Version: $v"
+
+      - name: Generate Windows release notes
+        if: startsWith(github.ref, 'refs/tags/')
+        id: winnotes
+        shell: pwsh
+        run: |
+          $baseUrl = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}"
+          $lines = @("## 🪟 Windows", "", "|  | File | Size |", "|---|---|---|")
+
+          $zipSize = "{0:N1} MB" -f ((Get-Item "alochi-monitoring-windows.zip").Length / 1MB)
+          $lines += "| 🟢 Portable ZIP | [``alochi-monitoring-windows.zip``]($baseUrl/alochi-monitoring-windows.zip) | $zipSize |"
+
+          $setupExe = Get-ChildItem -Path . -Filter "AlochiMonitoring-*-Setup.exe" | Select-Object -First 1
+          if ($setupExe) {
+            $setupSize = "{0:N1} MB" -f ($setupExe.Length / 1MB)
+            $lines += "| 🔵 Setup.exe (tavsiya) | [``$($setupExe.Name)``]($baseUrl/$($setupExe.Name)) | $setupSize |"
+          }
+
+          if (Test-Path "alochi-monitoring.msix") {
+            $msixSize = "{0:N1} MB" -f ((Get-Item "alochi-monitoring.msix").Length / 1MB)
+            $lines += "| 🟣 MSIX | [``alochi-monitoring.msix``]($baseUrl/alochi-monitoring.msix) | $msixSize |"
+          }
+
+          $lines += ""
+          $lines += "**SHA256 (ZIP):** ``${{ steps.hashes.outputs.zip_sha256 }}``"
+          if ("${{ steps.hashes.outputs.setup_sha256 }}") {
+            $lines += ""
+            $lines += "**SHA256 (Setup.exe):** ``${{ steps.hashes.outputs.setup_sha256 }}``"
+          }
+
+          $lines -join "`n" | Out-File -FilePath release_notes_windows.md -Encoding utf8
 
       # ── 4. Latest release ─────────────────────────────────────
       # NOTE: no upload-artifact steps — the build outputs are distributed via
@@ -235,11 +275,8 @@ jobs:
             alochi-monitoring-windows.zip
             alochi-monitoring.msix
             AlochiMonitoring-*-Setup.exe
-          generate_release_notes: true
           append_body: true
-          body: |
-
-            **SHA256 (ZIP):** `${{ steps.hashes.outputs.zip_sha256 }}`
+          body_path: release_notes_windows.md
 
   # ── Winget manifest submit ────────────────────────────────────
   submit-winget:
