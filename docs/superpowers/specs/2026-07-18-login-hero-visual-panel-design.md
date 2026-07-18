@@ -94,7 +94,12 @@ Everything else in the file (imports, `_Dot`/`_NetworkPainter`/`_NetworkBg`,
 state fields, `_login`/`_accordion`/`_routeButtons`/`_field`/etc.) is
 untouched.
 
-New structure:
+New structure. `_formColumn()` is a new private helper on `_LoginScreenState`
+that returns **exactly the current `Column`** (L417–486 today: logo, title,
+subtitle, language switcher, `_routeButtons(isSmall)`, `_accordion()`,
+sync/history row) with no outer alignment/constraint wrapper baked in —
+those are supplied by each branch below, per decision #2 (narrow must stay
+pixel-identical):
 
 ```dart
 return CallbackShortcuts(
@@ -111,9 +116,17 @@ return CallbackShortcuts(
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final wide = constraints.maxWidth >= 900;
-                  final formColumn = _LoginFormColumn(...); // extracted existing Column, unchanged content
+                  final formColumn = ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 480),
+                    child: _formColumn(isSmall),
+                  );
                   if (!wide) {
-                    return SingleChildScrollView(... child: Center(child: formColumn));
+                    // Identical to today's L410-420: SingleChildScrollView +
+                    // Align(topCenter) + the same ConstrainedBox(480).
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+                      child: Align(alignment: Alignment.topCenter, child: formColumn),
+                    );
                   }
                   return Row(
                     children: [
@@ -121,6 +134,12 @@ return CallbackShortcuts(
                       Expanded(
                         flex: 3,
                         child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+                          // Vertically centered in its panel (matches the
+                          // reference mockup); still capped at 480 wide via
+                          // the same ConstrainedBox as the narrow branch, so
+                          // _routeButtons/_accordion never render wider than
+                          // they do today regardless of window width.
                           child: Center(child: formColumn),
                         ),
                       ),
@@ -139,12 +158,17 @@ return CallbackShortcuts(
 );
 ```
 
-`_LoginFormColumn` is not a new widget class strictly required — the plan
-may keep it as a local `Widget` variable/method (`_formColumn()`) inside
-`_LoginScreenState` if that's simpler than extracting a class, as long as
-the JSX-equivalent content (logo, title, subtitle, language switcher,
-`_routeButtons`, `_accordion`, sync/history row) is reused verbatim in both
-the narrow and wide branches — implementer's call, not a hard requirement.
+**`isSmall` stays exactly as it is today** —
+`MediaQuery.of(context).size.width < 800`, computed once at the top of
+`build()` (today's L374), reused unchanged as the argument to
+`_routeButtons(isSmall)` inside `_formColumn()` in *both* branches. This is
+intentional, not an oversight: `_routeButtons(isSmall)` decides whether its
+two buttons stack (`Column`) or sit side-by-side (`Row`) inside a form
+column that is *already* capped at `maxWidth: 480` today, regardless of
+window width — so the 900px split-panel threshold doesn't change how much
+horizontal room the buttons actually get (still ≤480px either way). No new
+breakpoint or plumbing is needed for `_routeButtons`; introducing one would
+be scope creep un-motivated by any actual layout change.
 
 ## Error handling / edge cases
 
