@@ -584,6 +584,13 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         .map((t) => MapEntry(t.topic, (ok: t.correct, tot: t.total)))
         .toList();
 
+    // Real per-unit breakdown ("Unit 1", "Unit 2", ...), sorted ascending by
+    // unit number — mirrors the panel-frontend result-detail page's nested
+    // unit rows. Empty when the test's questions carry no unit/bob tags.
+    final unitScores = widget.result.unitScores
+        .map((u) => MapEntry(u.topic, (ok: u.correct, tot: u.total)))
+        .toList();
+
     return PdfService.generateResultPdf(
       firstName: widget.firstName,
       lastName: widget.lastName,
@@ -598,6 +605,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       mathTopics: mathTopics,
       engTopics: engTopics,
       topicScores: topicScores,
+      unitScores: unitScores,
       aiSummary: _aiSummary,
     );
   }

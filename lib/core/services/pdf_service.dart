@@ -19,6 +19,9 @@ class PdfService {
     required List<MapEntry<String, ({int ok, int tot})>> engTopics,
     // TZ §11 passport extras (optional — legacy callers omit them).
     List<MapEntry<String, ({int ok, int tot})>> topicScores = const [],
+    // Real "Unit N" breakdown, already sorted ascending by unit number.
+    // Empty for tests whose questions carry no unit/bob tags.
+    List<MapEntry<String, ({int ok, int tot})>> unitScores = const [],
     Map<String, dynamic>? aiSummary,
   }) async {
     final pdf = pw.Document();
@@ -169,6 +172,14 @@ class PdfService {
           if (topicScores.isNotEmpty) ...[
             pw.SizedBox(height: 24),
             _buildTopicAnalysis(topicScores, ttf, ttfBold),
+          ],
+
+          // UNIT BO'YICHA TAHLIL — real Unit N breakdown per question tags,
+          // mirrors the panel-frontend result-detail page's nested unit rows.
+          if (unitScores.isNotEmpty) ...[
+            pw.SizedBox(height: 24),
+            _buildTopicAnalysis(unitScores, ttf, ttfBold,
+                title: 'Unit bo\'yicha tahlil', topicHeader: 'Unit'),
           ],
 
           // 14 KUNLIK REJA (TZ §10.3 / §11)
@@ -327,7 +338,10 @@ class PdfService {
   static pw.Widget _buildTopicAnalysis(
       List<MapEntry<String, ({int ok, int tot})>> topics,
       pw.Font ttf,
-      pw.Font ttfBold) {
+      pw.Font ttfBold, {
+      String title = 'Mavzu (§) bo\'yicha batafsil tahlil',
+      String topicHeader = 'Mavzu',
+  }) {
     final textColor = PdfColor.fromHex('#1A1A1A');
     return pw.Container(
       padding: const pw.EdgeInsets.all(18),
@@ -339,7 +353,7 @@ class PdfService {
       child: pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text('Mavzu (§) bo\'yicha batafsil tahlil',
+            pw.Text(title,
                 style:
                     pw.TextStyle(font: ttfBold, fontSize: 15, color: textColor)),
             pw.SizedBox(height: 12),
@@ -358,7 +372,7 @@ class PdfService {
                 1: const pw.FlexColumnWidth(1),
                 2: const pw.FlexColumnWidth(1),
               },
-              headers: ['Mavzu', 'To\'g\'ri', 'Foiz'],
+              headers: [topicHeader, 'To\'g\'ri', 'Foiz'],
               data: topics.map((e) {
                 final p =
                     e.value.tot > 0 ? (e.value.ok * 100 ~/ e.value.tot) : 0;
