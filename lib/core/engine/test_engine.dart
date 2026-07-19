@@ -273,6 +273,15 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     for (final c in _controllers.values) {
       c.dispose();
     }
+    if (!_finishing) {
+      // Route popped/replaced without ever calling _finishNow() — the
+      // student's attempt was abandoned mid-test (app closed, screen
+      // backed out of, etc.), not properly submitted. Drop the
+      // crash-recovery record so re-selecting this student later doesn't
+      // silently resume it after its deadline has elapsed and auto-submit
+      // it as a blank, all-wrong "finished" result.
+      AttemptStore.clear(widget.spec.testKey);
+    }
     super.dispose();
   }
 
