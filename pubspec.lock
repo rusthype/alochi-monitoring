@@ -493,6 +493,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.0"
+  mac_menu_bar:
+    dependency: "direct main"
+    description:
+      name: mac_menu_bar
+      sha256: "104a171cf2b3b0b44493acdf7889e1efc02dc437f748b6c297fc078ddb9384f5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.5"
   matcher:
     dependency: transitive
     description:

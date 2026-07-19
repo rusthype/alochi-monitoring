@@ -27,7 +27,11 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
 
   Future<void> _load() async {
     final items = await api.fetchDownloads(widget.schoolCode);
-    if (mounted) setState(() { _items = items; _loading = false; });
+    if (mounted)
+      setState(() {
+        _items = items;
+        _loading = false;
+      });
   }
 
   Future<void> _download(Map<String, dynamic> item) async {
@@ -40,7 +44,16 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
       Directory? dir;
       try {
         if (!Platform.isIOS && !Platform.isAndroid) {
-          dir = await getDownloadsDirectory();
+          if (Platform.isMacOS) {
+            final home = Platform.environment['HOME'];
+            if (home != null) {
+              final parts = home.split('/');
+              if (parts.length >= 3 && parts[1] == 'Users') {
+                dir = Directory('/Users/${parts[2]}/Downloads');
+              }
+            }
+          }
+          dir ??= await getDownloadsDirectory();
         }
       } catch (_) {}
       dir ??= await getApplicationDocumentsDirectory();
@@ -128,9 +141,11 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFF334155)),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Row(children: [
-                  const Icon(Icons.table_chart, color: Color(0xFF00d68f), size: 18),
+                  const Icon(Icons.table_chart,
+                      color: Color(0xFF00d68f), size: 18),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(

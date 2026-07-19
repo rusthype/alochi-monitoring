@@ -271,7 +271,8 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       return _ErrorScaffold(message: _parseError!);
     }
     if (_spec == null) {
-      return _ErrorScaffold(message: AppLocalizations.of(context)!.testLoadFailed);
+      return _ErrorScaffold(
+          message: AppLocalizations.of(context)!.testLoadFailed);
     }
 
     return TestEngine(
@@ -353,7 +354,8 @@ _Agg _sumSections(List<SectionScore> sections) {
 /// Scalar convenience over [_resolveMathEngSections] — what _buildPayload
 /// and _handleComplete need (a single {correct,total} pair each), without
 /// caring about which individual sections went into it.
-(_Agg math, _Agg eng) _resolveMathEngBuckets(ScoredResult result, String? subject) {
+(_Agg math, _Agg eng) _resolveMathEngBuckets(
+    ScoredResult result, String? subject) {
   final (mathSections, engSections) = _resolveMathEngSections(result, subject);
   return (_sumSections(mathSections), _sumSections(engSections));
 }
@@ -372,7 +374,8 @@ class _ErrorScaffold extends StatelessWidget {
         backgroundColor: AppColors.surface,
         elevation: 0,
         leading: const BackButton(color: AppColors.ink1),
-        title: Text(AppLocalizations.of(context)!.testTitle, style: AppTextStyles.titleMedium),
+        title: Text(AppLocalizations.of(context)!.testTitle,
+            style: AppTextStyles.titleMedium),
       ),
       body: Center(
         child: Padding(
@@ -479,26 +482,34 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     try {
       htmlStr = await _buildHtmlString();
     } catch (e) {
-      debugPrint('_EngineResultScreen._autoUploadPdfForBot: HTML generate xato: $e');
+      debugPrint(
+          '_EngineResultScreen._autoUploadPdfForBot: HTML generate xato: $e');
       return;
     }
 
-    const delays = [Duration(seconds: 2), Duration(seconds: 5), Duration(seconds: 10)];
+    const delays = [
+      Duration(seconds: 2),
+      Duration(seconds: 5),
+      Duration(seconds: 10)
+    ];
     for (var i = 0; i <= delays.length; i++) {
       try {
         final ok = await api.uploadResultHtml(widget.clientToken, htmlStr);
         if (ok) return; // muvaffaqiyatli yuklandi
         // ok==false → 404 (result hali serverda yo'q) — keyingi urinish
       } catch (e) {
-        debugPrint('_EngineResultScreen._autoUploadPdfForBot attempt $i error: $e');
+        debugPrint(
+            '_EngineResultScreen._autoUploadPdfForBot attempt $i error: $e');
         return; // tarmoq xatosi — qayta urinish ma'nosiz
       }
       if (i < delays.length) {
-        debugPrint('_EngineResultScreen._autoUploadPdfForBot: 404, ${delays[i].inSeconds}s kutilmoqda...');
+        debugPrint(
+            '_EngineResultScreen._autoUploadPdfForBot: 404, ${delays[i].inSeconds}s kutilmoqda...');
         await Future<void>.delayed(delays[i]);
       }
     }
-    debugPrint('_EngineResultScreen._autoUploadPdfForBot: barcha urinishlar tugadi, server fallback ishlaydi.');
+    debugPrint(
+        '_EngineResultScreen._autoUploadPdfForBot: barcha urinishlar tugadi, server fallback ishlaydi.');
   }
 
   /// Fetches the AI analysis (TZ §10.4) for the per-topic breakdown.
@@ -617,18 +628,31 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       String? path;
       if (!Platform.isIOS && !Platform.isAndroid) {
         try {
-          final dir = await getDownloadsDirectory();
+          Directory? dir;
+          if (Platform.isMacOS) {
+            final home = Platform.environment['HOME'];
+            if (home != null) {
+              final parts = home.split('/');
+              if (parts.length >= 3 && parts[1] == 'Users') {
+                dir = Directory('/Users/${parts[2]}/Downloads');
+              }
+            }
+          }
+          dir ??= await getDownloadsDirectory();
+
           if (dir != null) {
-            final testPath = '${dir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.html';
+            final testPath =
+                '${dir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.html';
             await File(testPath).writeAsString(htmlStr);
             path = testPath;
           }
         } catch (_) {}
       }
-      
+
       if (path == null) {
         final fallbackDir = await getApplicationSupportDirectory();
-        path = '${fallbackDir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.html';
+        path =
+            '${fallbackDir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.html';
         await File(path).writeAsString(htmlStr);
       }
 
@@ -683,7 +707,8 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         backgroundColor: AppColors.surface,
         elevation: 0,
         automaticallyImplyLeading: false,
-        title: Text(AppLocalizations.of(context)!.resultTitle, style: AppTextStyles.titleMedium),
+        title: Text(AppLocalizations.of(context)!.resultTitle,
+            style: AppTextStyles.titleMedium),
         actions: [
           TextButton.icon(
             onPressed: () => Navigator.of(context).pop(),
@@ -783,13 +808,15 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                       children: [
                         _StatChip(
                           icon: Icons.check_circle_rounded,
-                          label: AppLocalizations.of(context)!.correctAnswersWithCount(correct.toString()),
+                          label: AppLocalizations.of(context)!
+                              .correctAnswersWithCount(correct.toString()),
                           color: AppColors.success,
                         ),
                         const SizedBox(width: 8),
                         _StatChip(
                           icon: Icons.cancel_rounded,
-                          label: AppLocalizations.of(context)!.wrongAnswersWithCount(wrong.toString()),
+                          label: AppLocalizations.of(context)!
+                              .wrongAnswersWithCount(wrong.toString()),
                           color: const Color(0xFFEF4444),
                         ),
                       ],
@@ -804,7 +831,8 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                           if (result.shields != null)
                             _BadgeChip(
                               icon: Icons.shield_rounded,
-                              label: AppLocalizations.of(context)!.shieldsCount(result.shields.toString()),
+                              label: AppLocalizations.of(context)!
+                                  .shieldsCount(result.shields.toString()),
                               color: AppColors.primary,
                             ),
                           if (result.levelLabel != null)
@@ -833,7 +861,8 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                     ),
                     const SizedBox(height: 8),
                     if (result.sectionScores.isEmpty)
-                      Text(AppLocalizations.of(context)!.noDataAvailable, style: AppTextStyles.bodyMedium)
+                      Text(AppLocalizations.of(context)!.noDataAvailable,
+                          style: AppTextStyles.bodyMedium)
                     else
                       ...result.sectionScores.map(
                         (s) => _SectionRowV2(
@@ -879,7 +908,9 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                       )
                     : const Icon(Icons.picture_as_pdf_rounded, size: 20),
                 label: Text(
-                  _pdfPath != null ? AppLocalizations.of(context)!.reopenPdf : AppLocalizations.of(context)!.pdfReportButton,
+                  _pdfPath != null
+                      ? AppLocalizations.of(context)!.reopenPdf
+                      : AppLocalizations.of(context)!.pdfReportButton,
                 ),
               ),
 
@@ -968,9 +999,11 @@ class _AiSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Icon(Icons.auto_awesome_rounded, size: 18, color: AppColors.primary),
+            const Icon(Icons.auto_awesome_rounded,
+                size: 18, color: AppColors.primary),
             const SizedBox(width: 8),
-            Text(AppLocalizations.of(context)!.aiAnalysisTitle, style: AppTextStyles.labelLarge),
+            Text(AppLocalizations.of(context)!.aiAnalysisTitle,
+                style: AppTextStyles.labelLarge),
           ]),
           const SizedBox(height: 12),
           if (loading)
@@ -990,7 +1023,8 @@ class _AiSummaryCard extends StatelessWidget {
             )
           else ...[
             if (summary.isNotEmpty)
-              Text(summary, style: AppTextStyles.bodyLarge.copyWith(height: 1.4)),
+              Text(summary,
+                  style: AppTextStyles.bodyLarge.copyWith(height: 1.4)),
             if (strengths.isNotEmpty) ...[
               const SizedBox(height: 14),
               _block(AppLocalizations.of(context)!.strongSidesTitle, strengths,
@@ -998,13 +1032,13 @@ class _AiSummaryCard extends StatelessWidget {
             ],
             if (weaknesses.isNotEmpty) ...[
               const SizedBox(height: 14),
-              _block(AppLocalizations.of(context)!.weakSidesTitle, weaknesses, Icons.error_rounded,
-                  AppColors.err),
+              _block(AppLocalizations.of(context)!.weakSidesTitle, weaknesses,
+                  Icons.error_rounded, AppColors.err),
             ],
             if (recs.isNotEmpty) ...[
               const SizedBox(height: 14),
-              _block(AppLocalizations.of(context)!.recommendationsTitle, recs, Icons.lightbulb_rounded,
-                  const Color(0xFFD97706)),
+              _block(AppLocalizations.of(context)!.recommendationsTitle, recs,
+                  Icons.lightbulb_rounded, const Color(0xFFD97706)),
             ],
             if (focus.isNotEmpty) ...[
               const SizedBox(height: 14),
@@ -1080,9 +1114,11 @@ class _TzAnalysis extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
               child: Row(children: [
-                const Icon(Icons.checklist_rounded, size: 18, color: AppColors.primary),
+                const Icon(Icons.checklist_rounded,
+                    size: 18, color: AppColors.primary),
                 const SizedBox(width: 8),
-                Text(AppLocalizations.of(context)!.subjectAnalysisByTopic, style: AppTextStyles.labelLarge),
+                Text(AppLocalizations.of(context)!.subjectAnalysisByTopic,
+                    style: AppTextStyles.labelLarge),
               ]),
             ),
             const Divider(height: 1),
@@ -1125,19 +1161,24 @@ class _TzAnalysis extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
                 child: Row(children: [
-                  const Icon(Icons.layers_rounded, size: 18, color: AppColors.primary),
+                  const Icon(Icons.layers_rounded,
+                      size: 18, color: AppColors.primary),
                   const SizedBox(width: 8),
-                  Text(AppLocalizations.of(context)!.subjectAnalysisByUnit, style: AppTextStyles.labelLarge),
+                  Text(AppLocalizations.of(context)!.subjectAnalysisByUnit,
+                      style: AppTextStyles.labelLarge),
                 ]),
               ),
               const Divider(height: 1),
               ...result.unitScores.map((u) {
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(u.topic, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
+                        child: Text(u.topic,
+                            style: AppTextStyles.bodyLarge
+                                .copyWith(fontWeight: FontWeight.w700)),
                       ),
                       Text('${u.correct}/${u.total} — ${u.pct.round()}%',
                           style: TextStyle(
@@ -1162,12 +1203,14 @@ class _TzAnalysis extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppColors.border),
             ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(AppLocalizations.of(context)!.strongAndWeakSides,
                   style: AppTextStyles.labelLarge),
               const SizedBox(height: 10),
               if (strong.isNotEmpty) ...[
-                _chipRow(AppLocalizations.of(context)!.strongLabel, strong.map((t) => t.topic).toList(), AppColors.ok),
+                _chipRow(AppLocalizations.of(context)!.strongLabel,
+                    strong.map((t) => t.topic).toList(), AppColors.ok),
                 const SizedBox(height: 8),
               ],
               if (weak.isNotEmpty)
@@ -1190,7 +1233,7 @@ class _TzAnalysis extends StatelessWidget {
     // Generate some color based on the topic string
     final String topic = r.topic ?? r.category ?? r.section;
     final int hash = topic.hashCode;
-    
+
     // Choose a color palette similar to the HTML tags (t-h, t-a, t-s, etc)
     final colors = [
       (const Color(0xFF1B5E20), const Color(0xFFE8F5E9)), // green
@@ -1247,7 +1290,8 @@ class _TzAnalysis extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                   decoration: BoxDecoration(
                     color: colorPair.$2,
                     borderRadius: BorderRadius.circular(20),
@@ -1268,7 +1312,8 @@ class _TzAnalysis extends StatelessWidget {
                         height: 1.5)),
                 if (r.question.svg != null && r.question.svg!.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  SvgPicture.string(r.question.svg!, height: 80, fit: BoxFit.contain),
+                  SvgPicture.string(r.question.svg!,
+                      height: 80, fit: BoxFit.contain),
                 ],
                 if (opts.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -1279,7 +1324,8 @@ class _TzAnalysis extends StatelessWidget {
                       final isCorrectOpt = idx == correctAnsIndex;
                       final isSelectedOpt = idx == userAnsIndex;
 
-                      if (!isCorrectOpt && !isSelectedOpt) return const SizedBox.shrink();
+                      if (!isCorrectOpt && !isSelectedOpt)
+                        return const SizedBox.shrink();
 
                       Color borderColor = AppColors.border;
                       Color bgColor = AppColors.surface;
@@ -1305,7 +1351,8 @@ class _TzAnalysis extends StatelessWidget {
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 5),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: bgColor,
                           borderRadius: BorderRadius.circular(8),
@@ -1366,12 +1413,13 @@ class _TzAnalysis extends StatelessWidget {
             runSpacing: 6,
             children: items
                 .map((t) => Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 4),
                       decoration: BoxDecoration(
                           color: color.withValues(alpha: .08),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: color.withValues(alpha: .25))),
+                          border:
+                              Border.all(color: color.withValues(alpha: .25))),
                       child: Text(t,
                           style: TextStyle(
                               fontFamily: 'Inter',
@@ -1385,13 +1433,27 @@ class _TzAnalysis extends StatelessWidget {
       );
 
   Widget _plan14(BuildContext context, List<TopicScore> weak) {
-    final f1 = weak.isNotEmpty ? weak[0].topic : AppLocalizations.of(context)!.weakTopicFallback;
+    final f1 = weak.isNotEmpty
+        ? weak[0].topic
+        : AppLocalizations.of(context)!.weakTopicFallback;
     final f2 = weak.length > 1 ? weak[1].topic : f1;
     final rows = <(String, String)>[
-      (AppLocalizations.of(context)!.days1to3, AppLocalizations.of(context)!.weakestTopicPlan(f1)),
-      (AppLocalizations.of(context)!.days4to7, AppLocalizations.of(context)!.secondTopicPlan(f2)),
-      (AppLocalizations.of(context)!.days8to11, AppLocalizations.of(context)!.mixedExercisesPlan),
-      (AppLocalizations.of(context)!.days12to14, AppLocalizations.of(context)!.controlTestPlan),
+      (
+        AppLocalizations.of(context)!.days1to3,
+        AppLocalizations.of(context)!.weakestTopicPlan(f1)
+      ),
+      (
+        AppLocalizations.of(context)!.days4to7,
+        AppLocalizations.of(context)!.secondTopicPlan(f2)
+      ),
+      (
+        AppLocalizations.of(context)!.days8to11,
+        AppLocalizations.of(context)!.mixedExercisesPlan
+      ),
+      (
+        AppLocalizations.of(context)!.days12to14,
+        AppLocalizations.of(context)!.controlTestPlan
+      ),
     ];
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1402,14 +1464,17 @@ class _TzAnalysis extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          const Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.primary),
+          const Icon(Icons.calendar_month_rounded,
+              size: 18, color: AppColors.primary),
           const SizedBox(width: 8),
-          Text(AppLocalizations.of(context)!.plan14DaysTitle, style: AppTextStyles.labelLarge),
+          Text(AppLocalizations.of(context)!.plan14DaysTitle,
+              style: AppTextStyles.labelLarge),
         ]),
         const SizedBox(height: 12),
         ...rows.map((r) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              child:
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Container(
                   width: 68,
                   padding: const EdgeInsets.symmetric(vertical: 3),
