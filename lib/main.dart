@@ -16,7 +16,6 @@ import 'core/widgets/command_palette.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:mac_menu_bar/mac_menu_bar.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'core/services/update_service.dart';
 
 void main() {
@@ -30,9 +29,18 @@ void main() {
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Explicit ProviderContainer (instead of a bare ProviderScope) so that
+      // main() — which runs outside the widget tree — can read the SAME
+      // goRouterProvider instance the widget tree uses, to reuse its
+      // NavigatorState for the "Check for Updates..." menu dialog below.
+      // UncontrolledProviderScope wires this container into the app exactly
+      // like ProviderScope would.
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
       runApp(
-        ProviderScope(
-          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        UncontrolledProviderScope(
+          container: container,
           child: const AlochiMonitoringApp(),
         ),
       );
@@ -42,6 +50,15 @@ void main() {
 
         if (Platform.isMacOS) {
           try {
+            // Try each candidate menu title in order, but stop at the first
+            // one that actually exists: MacMenuBar.addMenuItem's native side
+            // matches menus by exact title and returns false (no exception)
+            // when no menu with that title exists — it does not throw and
+            // does not create a menu. Without capturing the bool and
+            // breaking, every candidate that DOES match (e.g. both the real
+            // app menu 'alochi_monitoring' and Cocoa's default 'Help' menu)
+            // gets the item added, duplicating "Check for Updates..." in two
+            // places in the menu bar.
             for (final mId in [
               'alochi_monitoring',
               'Alochi Monitoring',
@@ -49,23 +66,53 @@ void main() {
               'Help'
             ]) {
               try {
-                await MacMenuBar.addMenuItem(
+                final added = await MacMenuBar.addMenuItem(
                   menuId: mId,
                   itemId: 'check_updates',
                   title: 'Check for Updates...',
                 );
+                if (added) break;
               } catch (e) {
                 debugPrint('mac_menu_bar could not add to $mId: $e');
               }
             }
+            // Reuse GoRouter's own (auto-created) navigatorKey so the menu
+            // handler below — which runs outside any widget's BuildContext —
+            // can show a dialog via its NavigatorState.
+            final navigatorKey =
+                container.read(goRouterProvider).routerDelegate.navigatorKey;
             MacMenuBar.setMenuItemSelectedHandler((itemId) async {
               if (itemId == 'check_updates') {
                 final updateInfo =
                     await UpdateService.instance.fetchUpdateInfo();
                 if (updateInfo != null) {
-                  final url = Uri.parse(updateInfo.downloadUrl);
-                  if (await canLaunchUrl(url)) {
-                    await launchUrl(url);
+                  // Open the release page (not the raw asset URL) — it has
+                  // the Gatekeeper "right-click -> Open" instructions this
+                  // ad-hoc-signed build needs; a raw .dmg download here would
+                  // leave the user with an unexplained "can't be opened".
+                  await UpdateService.instance.openReleasePage();
+                } else {
+                  // Manual "Check for Updates..." is a user-initiated action;
+                  // unlike the passive login-screen badge, staying silent
+                  // when already up to date is indistinguishable from the
+                  // menu item being broken.
+                  final dialogContext = navigatorKey.currentContext;
+                  if (dialogContext != null && dialogContext.mounted) {
+                    showDialog<void>(
+                      context: dialogContext,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Yangilanish'),
+                        content: const Text(
+                          'Sizda dasturning eng so\'nggi versiyasi o\'rnatilgan.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Yaxshi'),
+                          ),
+                        ],
+                      ),
+                    );
                   }
                 }
               }
