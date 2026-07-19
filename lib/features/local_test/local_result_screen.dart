@@ -1,6 +1,5 @@
 // lib/features/local_test/local_result_screen.dart
 // Offline natija — mavzular bo'yicha + Server /result/ endpointga yuborish + PDF
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
 import 'local_data.dart';
@@ -199,8 +198,8 @@ class _LocalResultScreenState extends State<LocalResultScreen>
               decoration: BoxDecoration(
                   gradient: LinearGradient(
                       colors: passed
-                          ? [const Color(0xFF10B981), const Color(0xFF059669)]
-                          : [const Color(0xFFEF4444), const Color(0xFFDC2626)],
+                          ? [AppColors.emerald, const Color(0xFF059669)]
+                          : [AppColors.brightRed, AppColors.error],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight),
                   borderRadius: BorderRadius.circular(20),
@@ -376,9 +375,9 @@ class _LocalResultScreenState extends State<LocalResultScreen>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _sent ? const Color(0xFFF0FDF4) : AppColors.surface,
+        color: _sent ? AppColors.successMuted : AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _sent ? const Color(0xFF86EFAC) : AppColors.border),
+        border: Border.all(color: _sent ? AppColors.correctBorder : AppColors.border),
       ),
       child: Row(children: [
         Icon(_sent ? Icons.check_circle_rounded : Icons.cloud_upload_rounded,
@@ -494,7 +493,7 @@ class _TopicsCard extends StatelessWidget {
           final barClr = p >= 0.8
               ? AppColors.ok
               : p >= 0.5
-                  ? const Color(0xFFF59E0B)
+                  ? AppColors.amber
                   : AppColors.err;
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),

@@ -128,7 +128,7 @@ class EngineOptionRow extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFFFF7ED) : AppColors.surface,
+            color: selected ? AppColors.secondaryMuted : AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected ? AppColors.brand : AppColors.border,
@@ -150,10 +150,10 @@ class EngineOptionRow extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: selected ? AppColors.brand : const Color(0xFFF4F4F5),
+                color: selected ? AppColors.brand : AppColors.chipBg,
                 borderRadius: BorderRadius.circular(9),
                 border: Border.all(
-                  color: selected ? AppColors.brand : const Color(0xFFD4D4D8),
+                  color: selected ? AppColors.brand : AppColors.chipBorder,
                   width: 1.5,
                 ),
               ),
@@ -163,7 +163,7 @@ class EngineOptionRow extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 13,
-                    color: selected ? Colors.white : const Color(0xFFA1A1AA),
+                    color: selected ? Colors.white : AppColors.chipIcon,
                   ),
                 ),
               ),
@@ -176,7 +176,7 @@ class EngineOptionRow extends StatelessWidget {
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                   color:
-                      selected ? const Color(0xFF7C2D12) : AppColors.ink1,
+                      selected ? AppColors.amberInk : AppColors.ink1,
                 ),
               ),
             ),
@@ -392,9 +392,9 @@ class SpellingWidget extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F3FF),
+            color: AppColors.violetMuted,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFDDD6FE)),
+            border: Border.all(color: AppColors.violetBorder),
           ),
           child: Text(
             question.scramble ?? '',
@@ -402,7 +402,7 @@ class SpellingWidget extends StatelessWidget {
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF6D28D9),
+              color: AppColors.violetInk,
               letterSpacing: 4,
             ),
           ),

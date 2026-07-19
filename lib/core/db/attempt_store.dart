@@ -15,6 +15,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'queue_crypto.dart';
+
 /// Persists a single in-progress attempt per `test_key`.
 ///
 /// Stored JSON shape:
@@ -38,7 +40,8 @@ class AttemptStore {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_key(testKey));
       if (raw == null || raw.isEmpty) return null;
-      final decoded = jsonDecode(raw);
+      final decrypted = await QueueCrypto.decryptPayload(raw);
+      final decoded = jsonDecode(decrypted);
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
       return null;
     } catch (e) {
@@ -73,7 +76,8 @@ class AttemptStore {
   static Future<void> save(String testKey, Map<String, dynamic> data) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_key(testKey), jsonEncode(data));
+      final encrypted = await QueueCrypto.encryptPayload(jsonEncode(data));
+      await prefs.setString(_key(testKey), encrypted);
     } catch (e) {
       debugPrint('AttemptStore.save($testKey) error: $e');
     }

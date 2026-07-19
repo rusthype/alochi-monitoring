@@ -17,15 +17,15 @@ import 'package:printing/printing.dart';
 import '../../core/utils/topic_format.dart';
 
 // ── Color accents ──────────────────────────────────────────────────────────────
-const Color _kPurple = Color(0xFF7C3AED);
-const Color _kPurpleMuted = Color(0xFFF5F3FF);
-const Color _kPurpleBorder = Color(0xFFDDD6FE);
-const Color _kBlue = Color(0xFF3B82F6);
-const Color _kBlueMuted = Color(0xFFEFF6FF);
-const Color _kBlueBorder = Color(0xFFBFDBFE);
+const Color _kPurple = AppColors.violet;
+const Color _kPurpleMuted = AppColors.violetMuted;
+const Color _kPurpleBorder = AppColors.violetBorder;
+const Color _kBlue = AppColors.blue;
+const Color _kBlueMuted = AppColors.blueMuted;
+const Color _kBlueBorder = AppColors.blueBorder;
 // Math section uses green accent
-const Color _kGreen = Color(0xFF10B981);
-const Color _kGreenMuted = Color(0xFFECFDF5);
+const Color _kGreen = AppColors.emerald;
+const Color _kGreenMuted = AppColors.emeraldMuted;
 
 // ── Score color per project rules ─────────────────────────────────────────────
 Color _scoreColor(double pct) {
@@ -573,11 +573,11 @@ class _CombinedRunnerState extends State<CombinedRunner>
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: _timerHot
-                    ? const Color(0xFFFEF2F2)
+                    ? AppColors.errorMuted
                     : _kPurpleMuted,
                 border: Border.all(
                   color: _timerHot
-                      ? const Color(0xFFFCA5A5)
+                      ? AppColors.dangerBorder
                       : _kPurpleBorder,
                   width: 1.5,
                 ),
@@ -589,14 +589,14 @@ class _CombinedRunnerState extends State<CombinedRunner>
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: _timerHot
-                            ? const Color(0xFFDC2626)
+                            ? AppColors.error
                             : _kPurple)),
                 Text(l10n.timeLeftLabel,
                     style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
                         color: _timerHot
-                            ? const Color(0xFFDC2626)
+                            ? AppColors.error
                             : _kPurple)),
               ]),
             ),
@@ -1251,12 +1251,12 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                           label: 'Grammar',
                           correct: widget.grammarOk,
                           total: 6,
-                          color: const Color(0xFF7C3AED)),
+                          color: AppColors.violet),
                       _CBreakdownRow(
                           label: 'Spelling',
                           correct: widget.spellingOk,
                           total: 6,
-                          color: const Color(0xFF0891B2)),
+                          color: AppColors.cyan),
                       _CBreakdownRow(
                           label: 'Sentences',
                           correct: widget.sentenceOk,
@@ -1285,7 +1285,7 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                           color: _error
                               ? AppColors.err.withValues(alpha: .3)
                               : _sent
-                                  ? const Color(0xFF86EFAC)
+                                  ? AppColors.correctBorder
                                   : AppColors.border),
                     ),
                     child: Row(children: [
@@ -1592,10 +1592,10 @@ class _CMathOptionRow extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: selected ? _kGreen : const Color(0xFFF4F4F5),
+                color: selected ? _kGreen : AppColors.chipBg,
                 borderRadius: BorderRadius.circular(9),
                 border: Border.all(
-                  color: selected ? _kGreen : const Color(0xFFD4D4D8),
+                  color: selected ? _kGreen : AppColors.chipBorder,
                   width: 1.5,
                 ),
               ),
@@ -1606,7 +1606,7 @@ class _CMathOptionRow extends StatelessWidget {
                           fontSize: 13,
                           color: selected
                               ? Colors.white
-                              : const Color(0xFFA1A1AA)))),
+                              : AppColors.chipIcon))),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1731,10 +1731,10 @@ class _COptionRow extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: selected ? _kBlue : const Color(0xFFF4F4F5),
+                color: selected ? _kBlue : AppColors.chipBg,
                 borderRadius: BorderRadius.circular(9),
                 border: Border.all(
-                  color: selected ? _kBlue : const Color(0xFFD4D4D8),
+                  color: selected ? _kBlue : AppColors.chipBorder,
                   width: 1.5,
                 ),
               ),
@@ -1745,7 +1745,7 @@ class _COptionRow extends StatelessWidget {
                           fontSize: 13,
                           color: selected
                               ? Colors.white
-                              : const Color(0xFFA1A1AA)))),
+                              : AppColors.chipIcon))),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1754,7 +1754,7 @@ class _COptionRow extends StatelessWidget {
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
                         color: selected
-                            ? const Color(0xFF1E3A5F)
+                            ? AppColors.navyInk
                             : AppColors.ink1))),
             if (selected)
               Container(
@@ -1936,16 +1936,16 @@ class _CSpellingQuestion extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F3FF),
+            color: AppColors.violetMuted,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFDDD6FE)),
+            border: Border.all(color: AppColors.violetBorder),
           ),
           child: Text(scramble,
               textAlign: TextAlign.center,
               style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF6D28D9),
+                  color: AppColors.violetInk,
                   letterSpacing: 4)),
         ),
         const SizedBox(height: 10),

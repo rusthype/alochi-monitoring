@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
@@ -62,8 +61,8 @@ class _Dot {
         radius = 1.5 + r.nextDouble() * 2.5,
         color = [
           const Color(0xFF4A90D9),
-          const Color(0xFFF97316),
-          const Color(0xFF7C3AED),
+          AppColors.flame,
+          AppColors.violet,
           const Color(0xFF0D9488),
           const Color(0xFFE11D48),
         ][r.nextInt(5)];
@@ -537,7 +536,7 @@ class _LoginScreenState extends State<LoginScreen> {
             decoration: BoxDecoration(
               color: hasNew 
                   ? (isHovered ? AppColors.brand : AppColors.primary) 
-                  : (isHovered ? const Color(0xFFF5F5F5) : AppColors.surface),
+                  : (isHovered ? AppColors.hoverBg : AppColors.surface),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: hasNew ? AppColors.primary : AppColors.border,
@@ -781,7 +780,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
-                    color: active ? AppColors.brand : (isHovered ? const Color(0xFFF5F5F5) : AppColors.surface),
+                    color: active ? AppColors.brand : (isHovered ? AppColors.hoverBg : AppColors.surface),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: active ? AppColors.brand : (isHovered ? AppColors.border.withValues(alpha: 0.8) : AppColors.border),
@@ -989,14 +988,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             onPressed: () => context.push('/combined',
                                 extra: {}),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF5B21B6),
+                              foregroundColor: AppColors.violetDark,
                               side: const BorderSide(
-                                  color: Color(0xFF7C3AED), width: 1.5),
+                                  color: AppColors.violet, width: 1.5),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(13)),
                             ),
                             icon: const Icon(Icons.menu_book_rounded,
-                                size: 18, color: Color(0xFF7C3AED)),
+                                size: 18, color: AppColors.violet),
                             label: Text(l10n.monitoringTestUnit1,
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w600, fontSize: 13)),
@@ -1559,16 +1558,16 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
-                        child: Icon(Icons.school_rounded, color: Color(0xFFDE8E52), size: 14),
+                        child: Icon(Icons.school_rounded, color: AppColors.accent, size: 14),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text(
+                    const Text(
                       'Maktablar',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF111111),
+                        color: AppColors.charcoal,
                         letterSpacing: -0.5,
                       ),
                     ),
@@ -1606,16 +1605,16 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
-                  child: Icon(Icons.library_books_rounded, color: Color(0xFFDE8E52), size: 14),
+                  child: Icon(Icons.library_books_rounded, color: AppColors.accent, size: 14),
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
+              const Text(
                 'Umumiy testlar',
-                style: GoogleFonts.plusJakartaSans(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF111111),
+                  color: AppColors.charcoal,
                   letterSpacing: -0.5,
                 ),
               ),
@@ -1639,7 +1638,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              border: Border.all(color: AppColors.border),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.02),
@@ -1712,7 +1711,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: isDone ? const Color(0x1ADE8E52) : const Color(0xFFF3F4F6),
+                  color: isDone ? const Color(0x1ADE8E52) : AppColors.gray100,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -1722,12 +1721,12 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Color(0xFFDE8E52),
+                            color: AppColors.accent,
                           ),
                         )
                       : Icon(
                           isLocked ? Icons.lock_clock_rounded : (isDone ? Icons.check_rounded : Icons.cloud_download_rounded),
-                          color: isDone ? const Color(0xFFDE8E52) : const Color(0xFF9CA3AF),
+                          color: isDone ? AppColors.accent : AppColors.ink3,
                           size: 20,
                         ),
                 ),
@@ -1739,10 +1738,10 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   children: [
                     Text(
                       entry.title,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF111111),
+                        color: AppColors.charcoal,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1753,7 +1752,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                         Icon(
                           isDownloading ? Icons.sync_rounded : (isDone ? Icons.file_download_done_rounded : Icons.download_rounded),
                           size: 12,
-                          color: const Color(0xFF737373),
+                          color: AppColors.stone,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -1766,10 +1765,10 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                                     : isDone
                                         ? 'Yuklab olingan' // Use direct translation for visual match
                                         : 'Yuklab olinmagan',
-                          style: GoogleFonts.plusJakartaSans(
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: const Color(0xFF737373),
+                            color: AppColors.stone,
                           ),
                         ),
                       ],
@@ -1786,19 +1785,19 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                       onPressed: () => _download(entry),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFFDE8E52),
+                        foregroundColor: AppColors.accent,
                         elevation: 0,
                         shadowColor: Colors.transparent,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
-                          side: const BorderSide(color: Color(0xFFDE8E52)),
+                          side: const BorderSide(color: AppColors.accent),
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                         minimumSize: const Size(0, 36),
                       ),
                       child: Text(
                         l10n.update,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1817,14 +1816,14 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                       ),
                 label: Text(
                   isDone ? l10n.start : l10n.download,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isDone ? const Color(0xFFDE8E52) : const Color(0xFFF3F4F6),
-                  foregroundColor: isDone ? Colors.white : const Color(0xFF111111),
+                  backgroundColor: isDone ? AppColors.accent : AppColors.gray100,
+                  foregroundColor: isDone ? Colors.white : AppColors.charcoal,
                   elevation: 0,
                   shadowColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
@@ -1885,7 +1884,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
           },
           child: Container(
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFE5E7EB)),
+              border: Border.all(color: AppColors.border),
               borderRadius: BorderRadius.circular(16),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1902,7 +1901,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   alignment: Alignment.center,
                   child: const Icon(
                     Icons.school_rounded,
-                    color: Color(0xFFDE8E52),
+                    color: AppColors.accent,
                     size: 20,
                   ),
                 ),
@@ -1911,10 +1910,10 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   padding: const EdgeInsets.only(right: 8),
                   child: Text(
                     label,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
-                      color: const Color(0xFF111111),
+                      color: AppColors.charcoal,
                     ),
                   ),
                 ),

@@ -10,10 +10,10 @@ import 'unit1_runner.dart';
 import 'unit1_spec_adapter.dart';
 
 // Blue accent used throughout this screen (instead of green used in Bob14)
-const Color _kBlue = Color(0xFF3B82F6);
-const Color _kBlueDark = Color(0xFF1D4ED8);
+const Color _kBlue = AppColors.blue;
+const Color _kBlueDark = AppColors.blueDark;
 const Color _kBlueBannerTitle = Color(0xFF1E3A8A); // blue-900
-const Color _kBlueBannerSub = Color(0xFF1D4ED8);   // blue-700
+const Color _kBlueBannerSub = AppColors.blueDark;   // blue-700
 
 class Unit1Screen extends StatefulWidget {
   const Unit1Screen({super.key});

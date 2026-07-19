@@ -234,7 +234,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
           ),
         },
         child: Scaffold(
-          backgroundColor: const Color(0xFFFAFAFA),
+          backgroundColor: AppColors.pageBg,
           body: Stack(
             children: [
               // Background noise
@@ -444,6 +444,23 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                 (availableWidth - horizontalPadding * 2) > 400
                                     ? 2
                                     : 1;
+                            // Base cell height (56) is tuned for default text
+                            // scale. Grow it with the system font scale so
+                            // large accessibility text doesn't get clipped.
+                            final double textScale = MediaQuery.textScalerOf(
+                                    context)
+                                .scale(14) /
+                                14;
+                            final double itemHeight =
+                                56 * textScale.clamp(1.0, 1.6);
+                            final double contentWidth =
+                                availableWidth - horizontalPadding * 2;
+                            final double itemWidth = crossAxisCount > 0
+                                ? (contentWidth - (crossAxisCount - 1) * 8) /
+                                    crossAxisCount
+                                : contentWidth;
+                            final double childAspectRatio =
+                                itemWidth / itemHeight;
 
                             if (_loadingStudents) {
                               return SliverPadding(
@@ -455,7 +472,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                     crossAxisCount: crossAxisCount,
                                     mainAxisSpacing: 8,
                                     crossAxisSpacing: 8,
-                                    mainAxisExtent: 56,
+                                    childAspectRatio: childAspectRatio,
                                   ),
                                   delegate: SliverChildBuilderDelegate(
                                     (context, index) => const Skeleton(
@@ -474,7 +491,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                     crossAxisCount: crossAxisCount,
                                     mainAxisSpacing: 8,
                                     crossAxisSpacing: 8,
-                                    mainAxisExtent: 56,
+                                    childAspectRatio: childAspectRatio,
                                   ),
                                   delegate: SliverChildBuilderDelegate(
                                     (context, index) {
@@ -572,10 +589,10 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                 }
                               },
                               child: Container(
-                                width: 40,
-                                height: 40,
+                                width: 44,
+                                height: 44,
                                 decoration: const BoxDecoration(
-                                  color: Color(0xFFFAFAFA),
+                                  color: AppColors.pageBg,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(Icons.arrow_back_rounded,
@@ -611,7 +628,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 40), // Spacer for centering
+                          const SizedBox(width: 44), // Spacer for centering
                         ],
                       ),
                     ),
@@ -632,8 +649,8 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          const Color(0xFFFAFAFA).withValues(alpha: 0),
-                          const Color(0xFFFAFAFA),
+                          AppColors.pageBg.withValues(alpha: 0),
+                          AppColors.pageBg,
                         ],
                         stops: const [0.0, 0.4],
                       ),
@@ -835,7 +852,7 @@ class _StudentCardState extends State<_StudentCard> {
                     ? AppColors.brand.withValues(alpha: 0.05)
                     : _isHovered 
                         ? const Color(0xFFF0F0F0) 
-                        : const Color(0xFFFAFAFA),
+                        : AppColors.pageBg,
                 border: Border.all(
                   color: widget.isSelected
                       ? AppColors.brand.withValues(alpha: 0.4)

@@ -142,7 +142,6 @@ class UpdateService {
 
       String? downloadUrl;
       final expectedExeName = 'AlochiMonitoring-$latestVersion-Setup.exe';
-      final expectedDmgName = 'alochi-monitoring.dmg'; // or we could check for .dmg extension
       
       for (final asset in assets) {
         if (asset is! Map) continue;

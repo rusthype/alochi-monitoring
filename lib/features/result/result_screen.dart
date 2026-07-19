@@ -16,7 +16,7 @@ Color _scoreBarColor(int score, int total) {
   if (total == 0) return AppColors.secondary;
   final p = score / total;
   if (p >= 0.8) return AppColors.ok;
-  if (p >= 0.6) return const Color(0xFFF59E0B);
+  if (p >= 0.6) return AppColors.amber;
   return AppColors.err;
 }
 
@@ -212,8 +212,8 @@ class _ResultScreenState extends State<ResultScreen>
                 child: ShaderMask(
                   shaderCallback: (bounds) => const LinearGradient(
                     colors: [
-                      Color(0xFFFBBF24),
-                      Color(0xFFF97316),
+                      AppColors.gold,
+                      AppColors.flame,
                       Color(0xFFFB923C)
                     ],
                   ).createShader(bounds),
@@ -240,7 +240,7 @@ class _ResultScreenState extends State<ResultScreen>
               fontWeight: FontWeight.w700,
               color: Colors.white,
               fontFamily: 'JetBrainsMono',
-              shadows: [Shadow(color: Color(0xFFF97316), blurRadius: 30)],
+              shadows: [Shadow(color: AppColors.flame, blurRadius: 30)],
             ),
           ),
           const SizedBox(height: 8),
@@ -321,7 +321,7 @@ class _ResultScreenState extends State<ResultScreen>
 
   Widget _buildResultCard() {
     final mainColor = _passed ? AppColors.ok : AppColors.brand;
-    final bgColor = _passed ? const Color(0xFFF0FDF4) : const Color(0xFFFFF7ED);
+    final bgColor = _passed ? AppColors.successMuted : AppColors.secondaryMuted;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -692,8 +692,8 @@ class _Particle {
   late bool isRect;
 
   static const _colors = [
-    Color(0xFFF97316),
-    Color(0xFFFBBF24),
+    AppColors.flame,
+    AppColors.gold,
     Color(0xFF4ADE80),
     Color(0xFF60A5FA),
     Color(0xFFA78BFA),
@@ -964,7 +964,7 @@ class _SubjectAnalysis extends StatelessWidget {
       mathColor = AppColors.ok;
     } else if (mathPct >= 0.6) {
       mathStatus = "O'rtacha";
-      mathColor = const Color(0xFFF59E0B);
+      mathColor = AppColors.amber;
     } else {
       mathStatus = "Zaif — mashq kerak";
       mathColor = AppColors.err;
@@ -975,7 +975,7 @@ class _SubjectAnalysis extends StatelessWidget {
       engColor = AppColors.ok;
     } else if (engPct >= 0.6) {
       engStatus = "O'rtacha";
-      engColor = const Color(0xFFF59E0B);
+      engColor = AppColors.amber;
     } else {
       engStatus = "Zaif — mashq kerak";
       engColor = AppColors.err;

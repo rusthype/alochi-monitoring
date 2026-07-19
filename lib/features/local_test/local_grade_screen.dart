@@ -147,14 +147,14 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withValues(alpha: .12),
+              color: AppColors.emerald.withValues(alpha: .12),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                  color: const Color(0xFF10B981).withValues(alpha: .3)),
+                  color: AppColors.emerald.withValues(alpha: .3)),
             ),
             child: Row(children: [
               const Icon(Icons.info_outline_rounded,
-                  color: Color(0xFF10B981), size: 18),
+                  color: AppColors.emerald, size: 18),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -162,7 +162,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
                   style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF10B981),
+                      color: AppColors.emerald,
                       height: 1.5),
                 ),
               ),
@@ -362,7 +362,7 @@ class _GradeBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = {
       1: AppColors.brand,
-      2: const Color(0xFF10B981),
+      2: AppColors.emerald,
       3: const Color(0xFF6366F1),
       4: const Color(0xFFEC4899),
     };

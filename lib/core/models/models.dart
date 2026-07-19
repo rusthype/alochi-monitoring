@@ -21,7 +21,7 @@ class StudentSession {
 
   factory StudentSession.fromJson(Map<String, dynamic> j) => StudentSession(
         token: j['token'] as String? ?? '',
-        studentId: j['student_id'] as String? ?? '',
+        studentId: j['student_id']?.toString() ?? '',
         studentName: j['student_name'] as String? ?? '',
         variant: j['variant'] == null ? null : int.tryParse(j['variant'].toString()),
         grade: j['grade'] == null ? null : int.tryParse(j['grade'].toString()),
@@ -49,7 +49,7 @@ class TestPackage {
   });
 
   factory TestPackage.fromJson(Map<String, dynamic> j) => TestPackage(
-        id: j['id'] as String? ?? '',
+        id: j['id']?.toString() ?? '',
         title: j['title'] as String? ?? '',
         grade: (j['grade'] as num?)?.toInt() ?? 9,
         mathCount: (j['math_count'] as num?)?.toInt() ?? 0,
@@ -82,7 +82,7 @@ class Question {
   });
 
   factory Question.fromJson(Map<String, dynamic> j) => Question(
-        id: j['id'] as String? ?? '',
+        id: j['id']?.toString() ?? '',
         subject: j['subject'] as String? ?? '',
         position: (j['position'] as num?)?.toInt() ?? 0,
         prompt: j['prompt'] as String? ?? '',

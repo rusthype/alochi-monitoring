@@ -31,9 +31,11 @@ class MonitoringApi {
         trimmed.startsWith('//');
     final fullUrl = trimmed.startsWith('//')
         ? 'https:$trimmed'
-        : absolute
-            ? trimmed
-            : '$_media${trimmed.startsWith('/') ? trimmed : '/$trimmed'}';
+        : trimmed.startsWith('http://')
+            ? 'https://${trimmed.substring('http://'.length)}'
+            : absolute
+                ? trimmed
+                : '$_media${trimmed.startsWith('/') ? trimmed : '/$trimmed'}';
     return _normalizeImageUrl(fullUrl);
   }
 
@@ -124,6 +126,19 @@ class MonitoringApi {
       throw ApiException(resp.statusCode, _statusMessage(resp.statusCode));
     }
     return jsonDecode(utf8.decode(resp.bodyBytes));
+  }
+
+  /// [_get] bilan bir xil, lekin katta javoblar (test katalog/kontent) uchun
+  /// jsonDecode'ni alohida isolatda bajaradi — UI thread bloklanmaydi.
+  Future<dynamic> _getCompute(String path) async {
+    final resp = await _send(() => http.get(
+          Uri.parse('$_base$path'),
+          headers: _headers,
+        ));
+    if (resp.statusCode >= 400) {
+      throw ApiException(resp.statusCode, _statusMessage(resp.statusCode));
+    }
+    return compute(jsonDecode, utf8.decode(resp.bodyBytes));
   }
 
   String _statusMessage(int status) {
@@ -367,7 +382,7 @@ class MonitoringApi {
       final sc = (schoolCode != null && schoolCode.isNotEmpty)
           ? '&school_code=${Uri.encodeComponent(schoolCode)}'
           : '';
-      final data = await _get('/tests/catalog/?client=3$gid$sc');
+      final data = await _getCompute('/tests/catalog/?client=3$gid$sc');
       if (data is! List) return [];
       if (data.isEmpty) return [];
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -397,7 +412,7 @@ class MonitoringApi {
       final sc = (schoolCode != null && schoolCode.isNotEmpty)
           ? '&school_code=${Uri.encodeComponent(schoolCode)}'
           : '';
-      final data = await _get('/tests/$testKey/?client=3$gid$sc');
+      final data = await _getCompute('/tests/$testKey/?client=3$gid$sc');
       if (data is! Map) return null;
       return Map<String, dynamic>.from(data);
     } catch (e) {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/theme/app_colors.dart';
+
 Widget buildSchoolCardPremium(
   BuildContext context,
   String schoolCode,
@@ -38,13 +40,13 @@ Widget buildSchoolCardPremium(
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFDE8E52).withValues(alpha: 0.1),
+                  color: AppColors.accent.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: const Icon(
                   Icons.school_rounded,
-                  color: Color(0xFFDE8E52),
+                  color: AppColors.accent,
                   size: 20,
                 ),
               ),
@@ -56,7 +58,7 @@ Widget buildSchoolCardPremium(
                   style: GoogleFonts.inter(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
-                    color: const Color(0xFF111111),
+                    color: AppColors.charcoal,
                   ),
                 ),
               ),
