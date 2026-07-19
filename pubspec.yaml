@@ -1,6 +1,6 @@
 name: alochi_monitoring
 description: Alochi Monitoring — Maktab test tizimi
-version: 1.0.54+54
+version: 1.0.55+55
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -46,6 +46,7 @@ dependencies:
   intl: ^0.20.2
   flutter_riverpod: ^2.6.1
   go_router: ^17.3.0
+  mac_menu_bar: ^0.0.5
 
 dev_dependencies:
   flutter_test:
@@ -70,7 +71,7 @@ msix_config:
   publisher_display_name: Alochi Education
   identity_name: alochi.monitoring
   publisher: CN=Alochi Education
-  msix_version: 1.0.54.0
+  msix_version: 1.0.55.0
   logo_path: assets/logo.png
   start_menu_icon_path: assets/logo.png
   tile_icon_path: assets/logo.png

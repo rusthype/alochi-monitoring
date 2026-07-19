@@ -14,6 +14,10 @@ import 'core/router/app_router.dart';
 import 'core/widgets/inactivity_wrapper.dart';
 import 'core/widgets/command_palette.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'package:mac_menu_bar/mac_menu_bar.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'core/services/update_service.dart';
 
 void main() {
   runZonedGuarded(() async {
@@ -35,6 +39,41 @@ void main() {
       if (!kIsWeb) {
         SyncService.instance.start();
         unawaited(HeartbeatService.instance.start());
+
+        if (Platform.isMacOS) {
+          try {
+            for (final mId in [
+              'alochi_monitoring',
+              'Alochi Monitoring',
+              'APP_NAME',
+              'Help'
+            ]) {
+              try {
+                await MacMenuBar.addMenuItem(
+                  menuId: mId,
+                  itemId: 'check_updates',
+                  title: 'Check for Updates...',
+                );
+              } catch (e) {
+                debugPrint('mac_menu_bar could not add to $mId: $e');
+              }
+            }
+            MacMenuBar.setMenuItemSelectedHandler((itemId) async {
+              if (itemId == 'check_updates') {
+                final updateInfo =
+                    await UpdateService.instance.fetchUpdateInfo();
+                if (updateInfo != null) {
+                  final url = Uri.parse(updateInfo.downloadUrl);
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url);
+                  }
+                }
+              }
+            });
+          } catch (e) {
+            debugPrint('mac_menu_bar error: $e');
+          }
+        }
       }
     } catch (error, stackTrace) {
       debugPrint('Startup error: $error');
@@ -65,8 +104,11 @@ class AlochiMonitoringApp extends ConsumerWidget {
         builder: (context, child) {
           return Shortcuts(
             shortcuts: <ShortcutActivator, Intent>{
-              LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyK): const CommandPaletteIntent(),
-              LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyK): const CommandPaletteIntent(),
+              LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyK):
+                  const CommandPaletteIntent(),
+              LogicalKeySet(
+                      LogicalKeyboardKey.control, LogicalKeyboardKey.keyK):
+                  const CommandPaletteIntent(),
             },
             child: Actions(
               actions: <Type, Action<Intent>>{
