@@ -289,24 +289,44 @@ try {
     }
     await sink.close();
 
-    // Create a shell script to mount, copy, unmount, and relaunch
+    // Create a shell script to mount, copy, unmount, and relaunch.
+    // Every step that can fail is checked explicitly and logged: silently
+    // continuing after a failed rm/cp would leave the OLD app in place (a
+    // failed `rm -rf` leaves the old .app directory sitting there, which
+    // makes the following `cp -R` copy INTO it as a nested subdirectory
+    // instead of replacing it — no error, just a wrong result) and then
+    // `open -a` would relaunch that stale app while looking like success.
+    // On any failure we fall back to openReleasePage(), matching the
+    // fallback philosophy used everywhere else in this file.
     final scriptPath = '${tempDir.path}/update.sh';
     final script = '''#!/bin/bash
+LOG="\$HOME/Library/Logs/AlochiMonitoringUpdate.log"
 sleep 2
-MOUNT_PATH=\$(hdiutil attach "$dmgPath" -nobrowse | grep /Volumes/ | awk -F '\\t' '{print \$3}' | xargs)
+MOUNT_PATH=\$(hdiutil attach "$dmgPath" -nobrowse | grep -o '/Volumes/.*' | tail -1 | xargs)
 if [ -z "\$MOUNT_PATH" ]; then
-    open "${_releasePageUrl}"
+    echo "\$(date): hdiutil attach failed to produce a mount path" >> "\$LOG"
+    open "$_releasePageUrl"
     exit 1
 fi
-rm -rf "/Applications/alochi_monitoring.app"
-cp -R "\$MOUNT_PATH/alochi_monitoring.app" "/Applications/"
+if ! rm -rf "/Applications/alochi_monitoring.app"; then
+    echo "\$(date): rm -rf of old app failed" >> "\$LOG"
+    hdiutil detach "\$MOUNT_PATH" -force
+    open "$_releasePageUrl"
+    exit 1
+fi
+if ! cp -R "\$MOUNT_PATH/alochi_monitoring.app" "/Applications/"; then
+    echo "\$(date): cp -R of new app failed" >> "\$LOG"
+    hdiutil detach "\$MOUNT_PATH" -force
+    open "$_releasePageUrl"
+    exit 1
+fi
 hdiutil detach "\$MOUNT_PATH" -force
 open -a "/Applications/alochi_monitoring.app"
 ''';
     await File(scriptPath).writeAsString(script);
     await Process.run('chmod', ['+x', scriptPath]);
 
-    Process.start(scriptPath, [], mode: ProcessStartMode.detached);
+    await Process.start(scriptPath, [], mode: ProcessStartMode.detached);
     exit(0);
   }
 
