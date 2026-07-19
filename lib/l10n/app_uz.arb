@@ -473,5 +473,27 @@
       }
     }
   },
-  "searchStudents": "O'quvchini izlash (Ctrl+K)..."
+  "searchStudents": "O'quvchini izlash (Ctrl+K)...",
+  "back": "Orqaga",
+  "finish": "Tugatish",
+  "errorTitle": "Xatolik",
+  "returnToHome": "Bosh sahifaga qaytish",
+  "routeNotFound": "Route not found",
+  "reportGenerationError": "Hisobot yaratishda xato",
+  "printBtn": "Chop etish",
+  "downloadBtn": "Yuklab olish",
+  "exitBtn": "Chiqish",
+  "yesBtn": "Ha",
+  "updateBtn": "Yangilanish",
+  "okBtn": "Yaxshi",
+  "yesOption": "YES",
+  "noOption": "NO",
+  "alisherHint": "Alisher",
+  "vocabularyTopic": "Vocabulary",
+  "grammarTopic": "Grammar",
+  "spellingTopic": "Spelling",
+  "sentencesTopic": "Sentences",
+  "readingTopic": "Reading",
+  "checkForUpdates": "Check for Updates...",
+  "appNameTitle": "Alochi Monitoring"
 }

@@ -1921,6 +1921,138 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'O\'quvchini izlash (Ctrl+K)...'**
   String get searchStudents;
+
+  /// No description provided for @back.
+  ///
+  /// In uz, this message translates to:
+  /// **'Orqaga'**
+  String get back;
+
+  /// No description provided for @finish.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tugatish'**
+  String get finish;
+
+  /// No description provided for @errorTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xatolik'**
+  String get errorTitle;
+
+  /// No description provided for @returnToHome.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bosh sahifaga qaytish'**
+  String get returnToHome;
+
+  /// No description provided for @routeNotFound.
+  ///
+  /// In uz, this message translates to:
+  /// **'Route not found'**
+  String get routeNotFound;
+
+  /// No description provided for @reportGenerationError.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hisobot yaratishda xato'**
+  String get reportGenerationError;
+
+  /// No description provided for @printBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Chop etish'**
+  String get printBtn;
+
+  /// No description provided for @downloadBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuklab olish'**
+  String get downloadBtn;
+
+  /// No description provided for @exitBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Chiqish'**
+  String get exitBtn;
+
+  /// No description provided for @yesBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ha'**
+  String get yesBtn;
+
+  /// No description provided for @updateBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangilanish'**
+  String get updateBtn;
+
+  /// No description provided for @okBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yaxshi'**
+  String get okBtn;
+
+  /// No description provided for @yesOption.
+  ///
+  /// In uz, this message translates to:
+  /// **'YES'**
+  String get yesOption;
+
+  /// No description provided for @noOption.
+  ///
+  /// In uz, this message translates to:
+  /// **'NO'**
+  String get noOption;
+
+  /// No description provided for @alisherHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Alisher'**
+  String get alisherHint;
+
+  /// No description provided for @vocabularyTopic.
+  ///
+  /// In uz, this message translates to:
+  /// **'Vocabulary'**
+  String get vocabularyTopic;
+
+  /// No description provided for @grammarTopic.
+  ///
+  /// In uz, this message translates to:
+  /// **'Grammar'**
+  String get grammarTopic;
+
+  /// No description provided for @spellingTopic.
+  ///
+  /// In uz, this message translates to:
+  /// **'Spelling'**
+  String get spellingTopic;
+
+  /// No description provided for @sentencesTopic.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sentences'**
+  String get sentencesTopic;
+
+  /// No description provided for @readingTopic.
+  ///
+  /// In uz, this message translates to:
+  /// **'Reading'**
+  String get readingTopic;
+
+  /// No description provided for @checkForUpdates.
+  ///
+  /// In uz, this message translates to:
+  /// **'Check for Updates...'**
+  String get checkForUpdates;
+
+  /// No description provided for @appNameTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Alochi Monitoring'**
+  String get appNameTitle;
 }
 
 class _AppLocalizationsDelegate

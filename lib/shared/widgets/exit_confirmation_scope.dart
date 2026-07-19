@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+
 import 'package:go_router/go_router.dart';
 
 class ExitConfirmationScope extends StatelessWidget {
@@ -14,7 +16,7 @@ class ExitConfirmationScope extends StatelessWidget {
         final shouldPop = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Chiqish'),
+            title: Text(AppLocalizations.of(context)!.exitBtn),
             content: const Text('Haqiqatan ham chiqmoqchimisiz? Kiritilgan ma\'lumotlar saqlanmaydi.'),
             actions: [
               TextButton(
@@ -23,7 +25,7 @@ class ExitConfirmationScope extends StatelessWidget {
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Ha'),
+                child: Text(AppLocalizations.of(context)!.yesBtn),
               ),
             ],
           ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -236,7 +238,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           path: '/widget_route',
           builder: (context, state) {
              // Fallback for any other widget if ever passed via extra, but we shouldn't use this!
-             return const Scaffold(body: Center(child: Text("Route not found")));
+             return Scaffold(body: Center(child: Text(AppLocalizations.of(context)!.routeNotFound)));
           }),
     ],
   );

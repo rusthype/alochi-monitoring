@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+
 import 'package:go_router/go_router.dart';
 
 class ErrorScreen extends StatelessWidget {
@@ -10,7 +12,7 @@ class ErrorScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Xatolik'),
+        title: Text(AppLocalizations.of(context)!.errorTitle),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -47,7 +49,7 @@ class ErrorScreen extends StatelessWidget {
               FilledButton.icon(
                 onPressed: () => context.go('/'),
                 icon: const Icon(Icons.home_rounded),
-                label: const Text('Bosh sahifaga qaytish'),
+                label: Text(AppLocalizations.of(context)!.returnToHome),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                   shape: RoundedRectangleBorder(

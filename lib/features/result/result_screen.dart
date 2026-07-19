@@ -1,5 +1,7 @@
 // lib/features/result/result_screen.dart
 import 'dart:async';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
@@ -133,6 +135,7 @@ class _ResultScreenState extends State<ResultScreen>
         package: widget.package,
         result: widget.result,
         wrongAnswers: widget.wrongAnswers,
+        l10n: AppLocalizations.of(context)!,
       );
       if (!mounted) return;
       setState(() => _pdfPath = file.path);
@@ -436,7 +439,7 @@ class _ResultScreenState extends State<ResultScreen>
                 Row(children: [
                   Expanded(
                       child: _SubjectCard(
-                    label: 'Matematika',
+                    label: AppLocalizations.of(context)!.mathSubject,
                     icon: Icons.calculate_outlined,
                     score: widget.result.mathScore,
                     total: widget.package.mathCount,
@@ -446,7 +449,7 @@ class _ResultScreenState extends State<ResultScreen>
                   const SizedBox(width: 12),
                   Expanded(
                       child: _SubjectCard(
-                    label: 'Ingliz tili',
+                    label: AppLocalizations.of(context)!.englishSubject,
                     icon: Icons.language_rounded,
                     score: widget.result.engScore,
                     total: widget.package.engCount,
@@ -567,7 +570,7 @@ class _ResultScreenState extends State<ResultScreen>
                         Navigator.of(context).pop();
                       },
                       icon: const Icon(Icons.person_outline_rounded, size: 18),
-                      label: const Text("Keyingi talaba"),
+                      label: Text(AppLocalizations.of(context)!.nextStudent),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.brand,
                         foregroundColor: Colors.white,

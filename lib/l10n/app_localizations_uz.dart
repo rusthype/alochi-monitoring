@@ -992,4 +992,70 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get searchStudents => 'O\'quvchini izlash (Ctrl+K)...';
+
+  @override
+  String get back => 'Orqaga';
+
+  @override
+  String get finish => 'Tugatish';
+
+  @override
+  String get errorTitle => 'Xatolik';
+
+  @override
+  String get returnToHome => 'Bosh sahifaga qaytish';
+
+  @override
+  String get routeNotFound => 'Route not found';
+
+  @override
+  String get reportGenerationError => 'Hisobot yaratishda xato';
+
+  @override
+  String get printBtn => 'Chop etish';
+
+  @override
+  String get downloadBtn => 'Yuklab olish';
+
+  @override
+  String get exitBtn => 'Chiqish';
+
+  @override
+  String get yesBtn => 'Ha';
+
+  @override
+  String get updateBtn => 'Yangilanish';
+
+  @override
+  String get okBtn => 'Yaxshi';
+
+  @override
+  String get yesOption => 'YES';
+
+  @override
+  String get noOption => 'NO';
+
+  @override
+  String get alisherHint => 'Alisher';
+
+  @override
+  String get vocabularyTopic => 'Vocabulary';
+
+  @override
+  String get grammarTopic => 'Grammar';
+
+  @override
+  String get spellingTopic => 'Spelling';
+
+  @override
+  String get sentencesTopic => 'Sentences';
+
+  @override
+  String get readingTopic => 'Reading';
+
+  @override
+  String get checkForUpdates => 'Check for Updates...';
+
+  @override
+  String get appNameTitle => 'Alochi Monitoring';
 }

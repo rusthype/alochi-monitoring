@@ -988,4 +988,70 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get searchStudents => 'Поиск ученика (Ctrl+K)...';
+
+  @override
+  String get back => 'Назад';
+
+  @override
+  String get finish => 'Завершить';
+
+  @override
+  String get errorTitle => 'Ошибка';
+
+  @override
+  String get returnToHome => 'Вернуться на главную';
+
+  @override
+  String get routeNotFound => 'Маршрут не найден';
+
+  @override
+  String get reportGenerationError => 'Ошибка при создании отчета';
+
+  @override
+  String get printBtn => 'Печать';
+
+  @override
+  String get downloadBtn => 'Скачать';
+
+  @override
+  String get exitBtn => 'Выход';
+
+  @override
+  String get yesBtn => 'Да';
+
+  @override
+  String get updateBtn => 'Обновление';
+
+  @override
+  String get okBtn => 'Хорошо';
+
+  @override
+  String get yesOption => 'ДА';
+
+  @override
+  String get noOption => 'НЕТ';
+
+  @override
+  String get alisherHint => 'Алишер';
+
+  @override
+  String get vocabularyTopic => 'Словарный запас';
+
+  @override
+  String get grammarTopic => 'Грамматика';
+
+  @override
+  String get spellingTopic => 'Орфография';
+
+  @override
+  String get sentencesTopic => 'Предложения';
+
+  @override
+  String get readingTopic => 'Чтение';
+
+  @override
+  String get checkForUpdates => 'Проверить обновления...';
+
+  @override
+  String get appNameTitle => 'Мониторинг Alochi';
 }

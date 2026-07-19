@@ -101,14 +101,14 @@ void main() {
                     showDialog<void>(
                       context: dialogContext,
                       builder: (context) => AlertDialog(
-                        title: const Text('Yangilanish'),
+                        title: Text(AppLocalizations.of(context)!.updateBtn),
                         content: const Text(
                           'Sizda dasturning eng so\'nggi versiyasi o\'rnatilgan.',
                         ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Yaxshi'),
+                            child: Text(AppLocalizations.of(context)!.okBtn),
                           ),
                         ],
                       ),
@@ -141,7 +141,7 @@ class AlochiMonitoringApp extends ConsumerWidget {
     final router = ref.watch(goRouterProvider);
     return InactivityWrapper(
       child: MaterialApp.router(
-        title: 'Alochi Monitoring',
+        title: AppLocalizations.of(context)!.appNameTitle,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.theme,
         locale: locale,
