@@ -1238,32 +1238,32 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                       ),
                       const SizedBox(height: 10),
                       _CBreakdownRow(
-                          label: 'Matematika',
+                          label: AppLocalizations.of(context)!.mathSubject,
                           correct: widget.mathOk,
                           total: 30,
                           color: _kGreen),
                       _CBreakdownRow(
-                          label: 'Vocabulary',
+                          label: AppLocalizations.of(context)!.vocabularyTopic,
                           correct: widget.vocabOk,
                           total: 25,
                           color: _kBlue),
                       _CBreakdownRow(
-                          label: 'Grammar',
+                          label: AppLocalizations.of(context)!.grammarTopic,
                           correct: widget.grammarOk,
                           total: 6,
                           color: AppColors.violet),
                       _CBreakdownRow(
-                          label: 'Spelling',
+                          label: AppLocalizations.of(context)!.spellingTopic,
                           correct: widget.spellingOk,
                           total: 6,
                           color: AppColors.cyan),
                       _CBreakdownRow(
-                          label: 'Sentences',
+                          label: AppLocalizations.of(context)!.sentencesTopic,
                           correct: widget.sentenceOk,
                           total: 6,
                           color: AppColors.brand),
                       _CBreakdownRow(
-                          label: 'Reading',
+                          label: AppLocalizations.of(context)!.readingTopic,
                           correct: widget.readingOk,
                           total: 6,
                           color: AppColors.ok),
@@ -1343,7 +1343,7 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                                   '${widget.lastName}_${widget.firstName}_Natija.pdf');
                         },
                         icon: const Icon(Icons.print_rounded, size: 18),
-                        label: const Text('Chop etish'),
+                        label: Text(AppLocalizations.of(context)!.printBtn),
                         style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.ink1,
                             side: const BorderSide(color: AppColors.border),
@@ -2086,14 +2086,14 @@ class _CYnQuestion extends StatelessWidget {
         const SizedBox(width: 10),
         Row(mainAxisSize: MainAxisSize.min, children: [
           _CYnButton(
-            label: 'YES',
+            label: AppLocalizations.of(context)!.yesOption,
             color: AppColors.ok,
             selected: selected == 'YES',
             onTap: () => onSelect('YES'),
           ),
           const SizedBox(width: 8),
           _CYnButton(
-            label: 'NO',
+            label: AppLocalizations.of(context)!.noOption,
             color: AppColors.err,
             selected: selected == 'NO',
             onTap: () => onSelect('NO'),

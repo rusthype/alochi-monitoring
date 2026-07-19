@@ -4,6 +4,8 @@
 // Engine-agnostic: works with Question model from test_models.dart.
 
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../shared/widgets/app_network_image.dart';
 import '../../shared/theme/app_theme.dart';
@@ -595,14 +597,14 @@ class YesNoWidget extends StatelessWidget {
         const SizedBox(width: 10),
         Row(mainAxisSize: MainAxisSize.min, children: [
           _YesNoButton(
-            label: 'YES',
+            label: AppLocalizations.of(context)!.yesOption,
             color: AppColors.ok,
             selected: answer == 'YES',
             onTap: () => onSelect('YES'),
           ),
           const SizedBox(width: 8),
           _YesNoButton(
-            label: 'NO',
+            label: AppLocalizations.of(context)!.noOption,
             color: AppColors.err,
             selected: answer == 'NO',
             onTap: () => onSelect('NO'),

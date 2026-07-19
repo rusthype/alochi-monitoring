@@ -1,6 +1,8 @@
 // lib/features/bob14/bob14_screen.dart
 // 2-sinf Bob 1-4 monitoring testi — variant (1-15) + o'quvchi ma'lumotlari
 import 'package:flutter/material.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+
 import '../../shared/theme/app_theme.dart';
 import '../local_test/local_test_screen.dart';
 import 'bob14_data.dart';
@@ -276,11 +278,11 @@ class _Bob14ScreenState extends State<Bob14Screen>
               Row(children: [
                 Expanded(
                     child: _Field(
-                        label: 'Ism', ctrl: _firstCtrl, hint: 'Alisher')),
+                        label: AppLocalizations.of(context)!.firstNameLabel, ctrl: _firstCtrl, hint: AppLocalizations.of(context)!.alisherHint)),
                 const SizedBox(width: 12),
                 Expanded(
                     child: _Field(
-                        label: 'Familiya',
+                        label: AppLocalizations.of(context)!.lastNameLabel,
                         ctrl: _lastCtrl,
                         hint: 'Karimov')),
               ]),
@@ -295,7 +297,7 @@ class _Bob14ScreenState extends State<Bob14Screen>
                 const SizedBox(width: 12),
                 Expanded(
                     child: _Field(
-                        label: 'Maktab',
+                        label: AppLocalizations.of(context)!.schoolLabel,
                         ctrl: _schoolCtrl,
                         hint: '12-maktab',
                         required: false)),

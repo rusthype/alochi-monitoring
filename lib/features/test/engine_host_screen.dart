@@ -675,8 +675,8 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       debugPrint('_EngineResultScreen._generatePdf error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Hisobot yaratishda xato'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.reportGenerationError),
             backgroundColor: AppColors.err,
             behavior: SnackBarBehavior.floating,
           ),

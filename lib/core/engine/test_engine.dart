@@ -6,6 +6,8 @@
 // wired by entry screens in Faza 4.
 
 import 'dart:async';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
 import '../db/attempt_store.dart';
@@ -339,7 +341,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
                 _startTimer();
                 Navigator.pop(context, false);
               },
-              child: const Text('Orqaga'),
+              child: Text(AppLocalizations.of(context)!.back),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
@@ -347,7 +349,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
                 backgroundColor: AppColors.brand,
                 minimumSize: const Size(100, 40),
               ),
-              child: const Text('Tugatish'),
+              child: Text(AppLocalizations.of(context)!.finish),
             ),
           ],
         ),

@@ -210,7 +210,7 @@ class _Unit1RunnerState extends State<Unit1Runner>
                 });
                 Navigator.pop(context, false);
               },
-              child: const Text('Orqaga'),
+              child: Text(AppLocalizations.of(context)!.back),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
@@ -218,7 +218,7 @@ class _Unit1RunnerState extends State<Unit1Runner>
                   backgroundColor: _kBlue,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(100, 40)),
-              child: const Text('Tugatish'),
+              child: Text(AppLocalizations.of(context)!.finish),
             ),
           ],
         ),
@@ -1153,27 +1153,27 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
                       ),
                       const SizedBox(height: 10),
                       _BreakdownRow(
-                          label: 'Vocabulary',
+                          label: AppLocalizations.of(context)!.vocabularyTopic,
                           correct: vocabOk,
                           total: 25,
                           color: _kBlue),
                       _BreakdownRow(
-                          label: 'Grammar',
+                          label: AppLocalizations.of(context)!.grammarTopic,
                           correct: grammarOk,
                           total: 6,
                           color: AppColors.violet),
                       _BreakdownRow(
-                          label: 'Spelling',
+                          label: AppLocalizations.of(context)!.spellingTopic,
                           correct: spellingOk,
                           total: 6,
                           color: AppColors.cyan),
                       _BreakdownRow(
-                          label: 'Sentences',
+                          label: AppLocalizations.of(context)!.sentencesTopic,
                           correct: sentenceOk,
                           total: 6,
                           color: AppColors.brand),
                       _BreakdownRow(
-                          label: 'Reading',
+                          label: AppLocalizations.of(context)!.readingTopic,
                           correct: readingOk,
                           total: 6,
                           color: AppColors.ok),
@@ -1253,7 +1253,7 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
                                   '${widget.lastName}_${widget.firstName}_Natija.pdf');
                         },
                         icon: const Icon(Icons.print_rounded, size: 18),
-                        label: const Text('Chop etish'),
+                        label: Text(AppLocalizations.of(context)!.printBtn),
                         style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.ink1,
                             side: const BorderSide(color: AppColors.border),
@@ -1858,14 +1858,14 @@ class _YnQuestion extends StatelessWidget {
         const SizedBox(width: 10),
         Row(mainAxisSize: MainAxisSize.min, children: [
           _YnButton(
-            label: 'YES',
+            label: AppLocalizations.of(context)!.yesOption,
             color: AppColors.ok,
             selected: selected == 'YES',
             onTap: () => onSelect('YES'),
           ),
           const SizedBox(width: 8),
           _YnButton(
-            label: 'NO',
+            label: AppLocalizations.of(context)!.noOption,
             color: AppColors.err,
             selected: selected == 'NO',
             onTap: () => onSelect('NO'),

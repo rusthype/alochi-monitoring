@@ -1,5 +1,7 @@
 // lib/features/downloads/downloads_sheet.dart
 import 'dart:io';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -191,7 +193,7 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
                             textStyle: const TextStyle(
                                 fontSize: 12, fontWeight: FontWeight.w700),
                           ),
-                          child: const Text('Yuklab olish'),
+                          child: Text(AppLocalizations.of(context)!.downloadBtn),
                         ),
                 ]),
               );

@@ -300,19 +300,19 @@ class _Unit1ScreenState extends State<Unit1Screen>
                     Row(children: [
                       Expanded(
                           child: _Field(
-                              label: 'Ism',
+                              label: AppLocalizations.of(context)!.firstNameLabel,
                               ctrl: _firstCtrl,
-                              hint: 'Alisher')),
+                              hint: AppLocalizations.of(context)!.alisherHint)),
                       const SizedBox(width: 12),
                       Expanded(
                           child: _Field(
-                              label: 'Familiya',
+                              label: AppLocalizations.of(context)!.lastNameLabel,
                               ctrl: _lastCtrl,
                               hint: 'Karimov')),
                     ]),
                     const SizedBox(height: 14),
                     _Field(
-                        label: 'Maktab',
+                        label: AppLocalizations.of(context)!.schoolLabel,
                         ctrl: _schoolCtrl,
                         hint: '12-maktab',
                         required: false),

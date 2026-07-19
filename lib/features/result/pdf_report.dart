@@ -1,5 +1,7 @@
 // lib/features/result/pdf_report.dart
 import 'dart:io';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
@@ -25,6 +27,7 @@ class PdfReport {
     required TestPackage package,
     required TestResult result,
     required List<dynamic> wrongAnswers,
+    required AppLocalizations l10n,
   }) async {
     final doc = pw.Document(title: 'Natija - ${session.studentName}');
     final date = _date(DateTime.now());
@@ -100,7 +103,7 @@ class PdfReport {
           pw.SizedBox(height: 16),
           _totalRow(result, package),
           pw.SizedBox(height: 16),
-          _recommendations(mathPct, engPct, result.totalPct),
+          _recommendations(mathPct, engPct, result.totalPct, l10n),
           if (wrongAnswers.isNotEmpty) ...[
             pw.SizedBox(height: 16),
             _wrongSummary(wrongAnswers),
@@ -340,7 +343,7 @@ class PdfReport {
       ]));
 
   static pw.Widget _recommendations(
-      double mathPct, double engPct, int totalPct) {
+      double mathPct, double engPct, int totalPct, AppLocalizations l10n) {
     final mathTips = PdfTips.mathTips(mathPct);
     final engTips = PdfTips.englishTips(engPct);
     final status = PdfTips.overallStatus(totalPct);
@@ -360,7 +363,7 @@ class PdfReport {
           pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
             pw.Expanded(
                 child: _recommendationColumn(
-              title: 'Matematika tavsiyalari',
+              title: l10n.mathRecommendations,
               pct: mathPct,
               color: _blue,
               tips: mathTips,
@@ -368,7 +371,7 @@ class PdfReport {
             pw.SizedBox(width: 14),
             pw.Expanded(
                 child: _recommendationColumn(
-              title: 'Ingliz tili tavsiyalari',
+              title: l10n.englishRecommendations,
               pct: engPct,
               color: _teal,
               tips: engTips,

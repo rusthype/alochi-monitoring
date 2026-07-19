@@ -435,5 +435,27 @@
       }
     }
   },
-  "searchStudents": "Поиск ученика (Ctrl+K)..."
+  "searchStudents": "Поиск ученика (Ctrl+K)...",
+  "back": "Назад",
+  "finish": "Завершить",
+  "errorTitle": "Ошибка",
+  "returnToHome": "Вернуться на главную",
+  "routeNotFound": "Маршрут не найден",
+  "reportGenerationError": "Ошибка при создании отчета",
+  "printBtn": "Печать",
+  "downloadBtn": "Скачать",
+  "exitBtn": "Выход",
+  "yesBtn": "Да",
+  "updateBtn": "Обновление",
+  "okBtn": "Хорошо",
+  "yesOption": "ДА",
+  "noOption": "НЕТ",
+  "alisherHint": "Алишер",
+  "vocabularyTopic": "Словарный запас",
+  "grammarTopic": "Грамматика",
+  "spellingTopic": "Орфография",
+  "sentencesTopic": "Предложения",
+  "readingTopic": "Чтение",
+  "checkForUpdates": "Проверить обновления...",
+  "appNameTitle": "Мониторинг Alochi"
 }
