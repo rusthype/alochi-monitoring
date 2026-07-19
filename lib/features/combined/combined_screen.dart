@@ -8,10 +8,10 @@ import '../unit1/unit1_data.dart';
 import 'combined_runner.dart';
 
 // Purple accent for the combined test (distinct from blue/green)
-const Color _kPurple = Color(0xFF7C3AED);
-const Color _kPurpleDark = Color(0xFF5B21B6);
+const Color _kPurple = AppColors.violet;
+const Color _kPurpleDark = AppColors.violetDark;
 const Color _kPurpleBannerTitle = Color(0xFF3B0764);
-const Color _kPurpleBannerSub = Color(0xFF6D28D9);
+const Color _kPurpleBannerSub = AppColors.violetInk;
 
 class CombinedScreen extends StatefulWidget {
   const CombinedScreen({super.key});

@@ -142,14 +142,14 @@ class _Bob14ScreenState extends State<Bob14Screen>
             padding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withValues(alpha: .08),
+              color: AppColors.emerald.withValues(alpha: .08),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                  color: const Color(0xFF10B981).withValues(alpha: .25)),
+                  color: AppColors.emerald.withValues(alpha: .25)),
             ),
             child: const Row(children: [
               Icon(Icons.menu_book_rounded,
-                  color: Color(0xFF10B981), size: 20),
+                  color: AppColors.emerald, size: 20),
               SizedBox(width: 10),
               Expanded(
                   child: Column(
@@ -159,7 +159,7 @@ class _Bob14ScreenState extends State<Bob14Screen>
                         style: TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 13,
-                            color: Color(0xFF065F46))),
+                            color: AppColors.emeraldInk)),
                     SizedBox(height: 2),
                     Text('30 savol · 45 daqiqa · Offline rejim',
                         style:
@@ -189,18 +189,18 @@ class _Bob14ScreenState extends State<Bob14Screen>
                   duration: const Duration(milliseconds: 180),
                   decoration: BoxDecoration(
                     color: sel
-                        ? const Color(0xFF10B981)
+                        ? AppColors.emerald
                         : AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                         color: sel
-                            ? const Color(0xFF10B981)
+                            ? AppColors.emerald
                             : AppColors.border,
                         width: sel ? 2 : 1.5),
                     boxShadow: sel
                         ? [
                             BoxShadow(
-                                color: const Color(0xFF10B981)
+                                color: AppColors.emerald
                                     .withValues(alpha: .25),
                                 blurRadius: 8,
                                 offset: const Offset(0, 3))
@@ -227,7 +227,7 @@ class _Bob14ScreenState extends State<Bob14Screen>
               label: const Text('Davom etish',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
+                backgroundColor: AppColors.emerald,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: AppColors.border,
                 shape: RoundedRectangleBorder(
@@ -342,7 +342,7 @@ class _Bob14ScreenState extends State<Bob14Screen>
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.w700)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
+                    backgroundColor: AppColors.emerald,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -368,14 +368,14 @@ class _Bob14Header extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-          color: const Color(0xFF10B981).withValues(alpha: .12),
+          color: AppColors.emerald.withValues(alpha: .12),
           borderRadius: BorderRadius.circular(8)),
       child: Text(
           variant != null ? 'V$variant' : 'Bob 1-4',
           style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF065F46))),
+              color: AppColors.emeraldInk)),
     );
   }
 }
@@ -388,13 +388,13 @@ class _VariantBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-          color: const Color(0xFF10B981).withValues(alpha: .12),
+          color: AppColors.emerald.withValues(alpha: .12),
           borderRadius: BorderRadius.circular(8)),
       child: Text('Variant $variant',
           style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF065F46))));
+              color: AppColors.emeraldInk)));
   }
 }
 
@@ -444,7 +444,7 @@ class _Field extends StatelessWidget {
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(
-                  color: Color(0xFF10B981), width: 1.5)),
+                  color: AppColors.emerald, width: 1.5)),
         ),
       ),
       const SizedBox(height: 14),

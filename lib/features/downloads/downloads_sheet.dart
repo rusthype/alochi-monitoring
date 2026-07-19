@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../../core/api/api_client.dart';
+import '../../core/theme/app_colors.dart';
 
 class DownloadsSheet extends StatefulWidget {
   final String schoolCode;
@@ -27,11 +28,12 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
 
   Future<void> _load() async {
     final items = await api.fetchDownloads(widget.schoolCode);
-    if (mounted)
+    if (mounted) {
       setState(() {
         _items = items;
         _loading = false;
       });
+    }
   }
 
   Future<void> _download(Map<String, dynamic> item) async {
@@ -64,7 +66,7 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Saqlandi: ${file.path}'),
-            backgroundColor: const Color(0xFF00d68f),
+            backgroundColor: AppColors.mint,
           ),
         );
       }
@@ -96,19 +98,19 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFF334155),
+                color: AppColors.slateDark,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
           const SizedBox(height: 16),
           const Row(children: [
-            Icon(Icons.download_rounded, color: Color(0xFF00d68f), size: 20),
+            Icon(Icons.download_rounded, color: AppColors.mint, size: 20),
             SizedBox(width: 8),
             Text(
               'Hujjatlar',
               style: TextStyle(
-                color: Color(0xFFf1f5f9),
+                color: AppColors.muted,
                 fontWeight: FontWeight.w700,
                 fontSize: 16,
               ),
@@ -117,7 +119,7 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
           const SizedBox(height: 12),
           if (_loading)
             const Center(
-              child: CircularProgressIndicator(color: Color(0xFF00d68f)),
+              child: CircularProgressIndicator(color: AppColors.mint),
             )
           else if (_items.isEmpty)
             const Padding(
@@ -139,13 +141,13 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF1e293b),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  border: Border.all(color: AppColors.slateDark),
                 ),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Row(children: [
                   const Icon(Icons.table_chart,
-                      color: Color(0xFF00d68f), size: 18),
+                      color: AppColors.mint, size: 18),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -154,7 +156,7 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
                         Text(
                           item['title'] as String,
                           style: const TextStyle(
-                            color: Color(0xFFf1f5f9),
+                            color: AppColors.muted,
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
                           ),
@@ -163,7 +165,7 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
                           Text(
                             saved,
                             style: const TextStyle(
-                              color: Color(0xFF00d68f),
+                              color: AppColors.mint,
                               fontSize: 10,
                             ),
                           ),
@@ -176,13 +178,13 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Color(0xFF00d68f),
+                            color: AppColors.mint,
                           ),
                         )
                       : ElevatedButton(
                           onPressed: () => _download(item),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF00d68f),
+                            backgroundColor: AppColors.mint,
                             foregroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 6),

@@ -262,8 +262,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                         _Pill(
                             '${widget.grade}${AppLocalizations.of(context)!.gradeWord}',
                             _isMath
-                                ? const Color(0xFF1E40AF)
-                                : const Color(0xFF0F766E)),
+                                ? AppColors.blueInk
+                                : AppColors.tealInk),
                         const SizedBox(width: 6),
                         Text(_isMath ? AppLocalizations.of(context)!.mathSubjectFull : AppLocalizations.of(context)!.englishSubjectFull,
                             style: const TextStyle(
@@ -277,12 +277,12 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                   decoration: BoxDecoration(
                       color: _timerHot
-                          ? const Color(0xFFFEF2F2)
-                          : const Color(0xFFFFF7ED),
+                          ? AppColors.errorMuted
+                          : AppColors.secondaryMuted,
                       border: Border.all(
                           color: _timerHot
-                              ? const Color(0xFFFCA5A5)
-                              : const Color(0xFFFED7AA),
+                              ? AppColors.dangerBorder
+                              : AppColors.amberBorder,
                           width: 1.5),
                       borderRadius: BorderRadius.circular(12)),
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -292,14 +292,14 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
                             color: _timerHot
-                                ? const Color(0xFFDC2626)
-                                : const Color(0xFF7C2D12))),
+                                ? AppColors.error
+                                : AppColors.amberInk)),
                     Text(AppLocalizations.of(context)!.timeLeftLabel,
                         style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
                             color: _timerHot
-                                ? const Color(0xFFDC2626)
+                                ? AppColors.error
                                 : AppColors.brand)),
                   ]),
                 ),
@@ -443,8 +443,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                                         horizontal: 8,
                                                         vertical: 4),
                                                     decoration: BoxDecoration(
-                                                        color: const Color(
-                                                            0xFFF5F3FF),
+                                                        color: AppColors.violetMuted,
                                                         borderRadius:
                                                             BorderRadius
                                                                 .circular(20)),
@@ -453,8 +452,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                                             .ellipsis,
                                                         style: const TextStyle(
                                                             fontSize: 10,
-                                                            color: Color(
-                                                                0xFF6D28D9),
+                                                            color: AppColors.violetInk,
                                                             fontWeight:
                                                                 FontWeight
                                                                     .w600)),
@@ -628,8 +626,8 @@ class _QDot extends StatelessWidget {
     final accent = isCurrent
         ? AppColors.brand
         : isAnswered
-            ? const Color(0xFF86EFAC)
-            : const Color(0xFFD4D4D8);
+            ? AppColors.correctBorder
+            : AppColors.chipBorder;
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
@@ -644,7 +642,7 @@ class _QDot extends StatelessWidget {
                   color: isCurrent
                       ? AppColors.brand
                       : isAnswered
-                          ? const Color(0xFFF0FDF4)
+                          ? AppColors.successMuted
                           : AppColors.surface,
                   border: Border.all(color: accent, width: isCurrent ? 2 : 1.5),
                   boxShadow: isCurrent
@@ -663,8 +661,8 @@ class _QDot extends StatelessWidget {
                           color: isCurrent
                               ? Colors.white
                               : isAnswered
-                                  ? const Color(0xFF16A34A)
-                                  : const Color(0xFFA1A1AA)))),
+                                  ? AppColors.correctInk
+                                  : AppColors.chipIcon))),
             ),
             const SizedBox(height: 3),
             AnimatedContainer(
@@ -732,10 +730,10 @@ class _OptionRowState extends State<_OptionRow>
         duration: const Duration(milliseconds: 160),
         constraints: const BoxConstraints(minHeight: 54),
         decoration: BoxDecoration(
-          color: widget.selected ? const Color(0xFFFFF7ED) : AppColors.surface,
+          color: widget.selected ? AppColors.secondaryMuted : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: widget.selected ? AppColors.brand : const Color(0xFFE4E4E7),
+            color: widget.selected ? AppColors.brand : AppColors.chipBorderMuted,
             width: widget.selected ? 2 : 1.5,
           ),
           boxShadow: widget.selected
@@ -764,11 +762,11 @@ class _OptionRowState extends State<_OptionRow>
                 decoration: BoxDecoration(
                   color: widget.selected
                       ? AppColors.brand
-                      : const Color(0xFFF4F4F5),
+                      : AppColors.chipBg,
                   border: Border.all(
                       color: widget.selected
                           ? AppColors.brand
-                          : const Color(0xFFD4D4D8),
+                          : AppColors.chipBorder,
                       width: 1.5),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -779,7 +777,7 @@ class _OptionRowState extends State<_OptionRow>
                             fontSize: 13,
                             color: widget.selected
                                 ? Colors.white
-                                : const Color(0xFFA1A1AA)))),
+                                : AppColors.chipIcon))),
               ),
               const SizedBox(width: 14),
               // Option text
@@ -795,7 +793,7 @@ class _OptionRowState extends State<_OptionRow>
                                         fontSize: 16,
                                         fontWeight: FontWeight.w500,
                                         color: widget.selected
-                                            ? const Color(0xFF7C2D12)
+                                            ? AppColors.amberInk
                                             : AppColors.ink1)),
                                 const SizedBox(height: 6),
                               ],
@@ -819,7 +817,7 @@ class _OptionRowState extends State<_OptionRow>
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                               color: widget.selected
-                                  ? const Color(0xFF7C2D12)
+                                  ? AppColors.amberInk
                                   : AppColors.ink1))),
               // Check
               if (widget.selected)

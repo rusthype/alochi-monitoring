@@ -703,24 +703,24 @@ class _GradePill extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = {
       1: (
-        const Color(0xFFFFF7ED),
+        AppColors.secondaryMuted,
         const Color(0xFF9A3412),
-        const Color(0xFFFED7AA)
+        AppColors.amberBorder
       ),
       2: (
-        const Color(0xFFF0FDFA),
-        const Color(0xFF0F766E),
+        AppColors.tealMuted,
+        AppColors.tealInk,
         const Color(0xFF99F6E4)
       ),
       3: (
-        const Color(0xFFEFF6FF),
-        const Color(0xFF1E40AF),
-        const Color(0xFFBFDBFE)
+        AppColors.blueMuted,
+        AppColors.blueInk,
+        AppColors.blueBorder
       ),
       4: (
-        const Color(0xFFF5F3FF),
-        const Color(0xFF6D28D9),
-        const Color(0xFFDDD6FE)
+        AppColors.violetMuted,
+        AppColors.violetInk,
+        AppColors.violetBorder
       ),
     };
     final c = colors[grade] ?? colors[1]!;
@@ -745,14 +745,14 @@ class _SubjectPill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         decoration: BoxDecoration(
-          color: isMath ? const Color(0xFFEFF6FF) : const Color(0xFFF0FDFA),
+          color: isMath ? AppColors.blueMuted : AppColors.tealMuted,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(isMath ? AppLocalizations.of(context)!.mathSubjectFull : AppLocalizations.of(context)!.englishSubjectFull,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: isMath ? const Color(0xFF1E40AF) : const Color(0xFF0F766E),
+              color: isMath ? AppColors.blueInk : AppColors.tealInk,
             )),
       );
 }
@@ -766,9 +766,9 @@ class _TimerWidget extends StatelessWidget {
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
         decoration: BoxDecoration(
-          color: isHot ? const Color(0xFFFEF2F2) : const Color(0xFFFFF7ED),
+          color: isHot ? AppColors.errorMuted : AppColors.secondaryMuted,
           border: Border.all(
-              color: isHot ? const Color(0xFFFCA5A5) : const Color(0xFFFED7AA),
+              color: isHot ? AppColors.dangerBorder : AppColors.amberBorder,
               width: 1.5),
           borderRadius: BorderRadius.circular(12),
         ),
@@ -779,7 +779,7 @@ class _TimerWidget extends StatelessWidget {
               fontFamily: 'JetBrainsMono',
               fontSize: 22,
               fontWeight: FontWeight.w700,
-              color: isHot ? const Color(0xFFDC2626) : const Color(0xFF7C2D12),
+              color: isHot ? AppColors.error : AppColors.amberInk,
             ),
             child: Text(display),
           ),
@@ -789,7 +789,7 @@ class _TimerWidget extends StatelessWidget {
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
                   letterSpacing: .09,
-                  color: isHot ? const Color(0xFFDC2626) : AppColors.brand)),
+                  color: isHot ? AppColors.error : AppColors.brand)),
         ]),
       );
 }
@@ -810,8 +810,8 @@ class _QDot extends StatelessWidget {
     final accent = isCurrent
         ? AppColors.brand
         : isAnswered
-            ? const Color(0xFF86EFAC)
-            : const Color(0xFFD4D4D8);
+            ? AppColors.correctBorder
+            : AppColors.chipBorder;
 
     return GestureDetector(
       onTap: onTap,
@@ -829,7 +829,7 @@ class _QDot extends StatelessWidget {
               color: isCurrent
                   ? AppColors.brand
                   : isAnswered
-                      ? const Color(0xFFF0FDF4)
+                      ? AppColors.successMuted
                       : AppColors.surface,
               border: Border.all(color: accent, width: isCurrent ? 2 : 1.5),
               boxShadow: isCurrent
@@ -850,8 +850,8 @@ class _QDot extends StatelessWidget {
                       color: isCurrent
                           ? Colors.white
                           : isAnswered
-                              ? const Color(0xFF16A34A)
-                              : const Color(0xFFA1A1AA),
+                              ? AppColors.correctInk
+                              : AppColors.chipIcon,
                     ))),
           ),
           // Current indicator — animated underline
@@ -881,8 +881,8 @@ class _SectionBanner extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(18, 14, 14, 14),
         decoration: BoxDecoration(
           gradient:
-              const LinearGradient(colors: [Color(0xFFFFF7ED), Colors.white]),
-          border: Border.all(color: const Color(0xFFFED7AA), width: 1.5),
+              const LinearGradient(colors: [AppColors.secondaryMuted, Colors.white]),
+          border: Border.all(color: AppColors.amberBorder, width: 1.5),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(children: [
@@ -896,7 +896,7 @@ class _SectionBanner extends StatelessWidget {
                     style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF7C2D12))),
+                        color: AppColors.amberInk)),
                 const SizedBox(height: 2),
                 Text(AppLocalizations.of(context)!.engSectionTransitionDesc,
                     style: const TextStyle(fontSize: 11, color: AppColors.ink3)),
@@ -961,10 +961,10 @@ class _OptionRowState extends State<_OptionRow>
         duration: const Duration(milliseconds: 160),
         constraints: const BoxConstraints(minHeight: 54),
         decoration: BoxDecoration(
-          color: widget.selected ? const Color(0xFFFFF7ED) : AppColors.surface,
+          color: widget.selected ? AppColors.secondaryMuted : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: widget.selected ? AppColors.brand : const Color(0xFFE4E4E7),
+            color: widget.selected ? AppColors.brand : AppColors.chipBorderMuted,
             width: widget.selected ? 2 : 1.5,
           ),
           boxShadow: widget.selected
@@ -993,11 +993,11 @@ class _OptionRowState extends State<_OptionRow>
                 decoration: BoxDecoration(
                   color: widget.selected
                       ? AppColors.brand
-                      : const Color(0xFFF4F4F5),
+                      : AppColors.chipBg,
                   border: Border.all(
                       color: widget.selected
                           ? AppColors.brand
-                          : const Color(0xFFD4D4D8),
+                          : AppColors.chipBorder,
                       width: 1.5),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -1008,7 +1008,7 @@ class _OptionRowState extends State<_OptionRow>
                             fontSize: 13,
                             color: widget.selected
                                 ? Colors.white
-                                : const Color(0xFFA1A1AA)))),
+                                : AppColors.chipIcon))),
               ),
               const SizedBox(width: 14),
               // Option text
@@ -1024,7 +1024,7 @@ class _OptionRowState extends State<_OptionRow>
                                           fontSize: 16,
                                           fontWeight: FontWeight.w500,
                                           color: widget.selected
-                                              ? const Color(0xFF7C2D12)
+                                              ? AppColors.amberInk
                                               : AppColors.ink1)),
                                 const SizedBox(height: 6),
                               ],
@@ -1048,7 +1048,7 @@ class _OptionRowState extends State<_OptionRow>
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                               color: widget.selected
-                                  ? const Color(0xFF7C2D12)
+                                  ? AppColors.amberInk
                                   : AppColors.ink1))),
               // Check
               if (widget.selected)
@@ -1167,7 +1167,7 @@ class _KbdKey extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.bg,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: const Color(0xFFD4D4D8)),
+          border: Border.all(color: AppColors.chipBorder),
         ),
         child: Text(label,
             style: const TextStyle(

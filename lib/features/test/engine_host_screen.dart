@@ -21,7 +21,6 @@
 // Duration default: 60 seconds per answerable question, clamped to [60s, 90min].
 
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:open_filex/open_filex.dart';
@@ -35,7 +34,6 @@ import '../../core/db/offline_queue.dart';
 import '../../core/engine/test_engine.dart';
 import '../../core/engine/test_models.dart';
 import '../../core/engine/test_scorer.dart';
-import '../../core/services/pdf_service.dart';
 import '../../core/services/html_service.dart';
 import '../../core/sync/sync_service.dart';
 import '../../shared/theme/app_theme.dart';
@@ -560,7 +558,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
   Color _secColor(int pct) {
     if (pct >= 80) return AppColors.success;
     if (pct >= 55) return AppColors.secondary;
-    return const Color(0xFFEF4444);
+    return AppColors.brightRed;
   }
 
   String _gradeLabel(BuildContext context, int pct) {
@@ -817,7 +815,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                           icon: Icons.cancel_rounded,
                           label: AppLocalizations.of(context)!
                               .wrongAnswersWithCount(wrong.toString()),
-                          color: const Color(0xFFEF4444),
+                          color: AppColors.brightRed,
                         ),
                       ],
                     ),
@@ -1038,7 +1036,7 @@ class _AiSummaryCard extends StatelessWidget {
             if (recs.isNotEmpty) ...[
               const SizedBox(height: 14),
               _block(AppLocalizations.of(context)!.recommendationsTitle, recs,
-                  Icons.lightbulb_rounded, const Color(0xFFD97706)),
+                  Icons.lightbulb_rounded, AppColors.amberDark),
             ],
             if (focus.isNotEmpty) ...[
               const SizedBox(height: 14),
@@ -1083,7 +1081,7 @@ class _TzAnalysis extends StatelessWidget {
 
   Color _c(double pct) {
     if (pct >= 80) return AppColors.ok;
-    if (pct >= 55) return const Color(0xFFD97706);
+    if (pct >= 55) return AppColors.amberDark;
     return AppColors.err;
   }
 
@@ -1324,8 +1322,9 @@ class _TzAnalysis extends StatelessWidget {
                       final isCorrectOpt = idx == correctAnsIndex;
                       final isSelectedOpt = idx == userAnsIndex;
 
-                      if (!isCorrectOpt && !isSelectedOpt)
+                      if (!isCorrectOpt && !isSelectedOpt) {
                         return const SizedBox.shrink();
+                      }
 
                       Color borderColor = AppColors.border;
                       Color bgColor = AppColors.surface;
@@ -1335,13 +1334,13 @@ class _TzAnalysis extends StatelessWidget {
 
                       if (isCorrectOpt) {
                         borderColor = AppColors.ok;
-                        bgColor = const Color(0xFFECFDF5);
+                        bgColor = AppColors.emeraldMuted;
                         textColor = AppColors.ok;
                         labelBg = AppColors.ok;
                         labelColor = Colors.white;
                       } else if (isSelectedOpt && !isCorrectOpt) {
                         borderColor = AppColors.err;
-                        bgColor = const Color(0xFFFEF2F2);
+                        bgColor = AppColors.errorMuted;
                         textColor = AppColors.err;
                         labelBg = AppColors.err;
                         labelColor = Colors.white;

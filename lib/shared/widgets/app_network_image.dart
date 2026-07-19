@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/cache/image_cache_manager.dart';
+import '../../core/theme/app_colors.dart';
 
 /// Barcha server rasmlar uchun shu widget ishlatiladi.
 /// Bir marta yuklab, diskda saqlaydi (30 kun)
@@ -59,7 +60,7 @@ class AppNetworkImage extends StatelessWidget {
             const Center(
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(Color(0xFFF97316)),
+                valueColor: AlwaysStoppedAnimation(AppColors.flame),
               ),
             ),
       ),

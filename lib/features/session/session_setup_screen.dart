@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
@@ -106,8 +105,8 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
     if (entry == null) return const Scaffold();
     if (_selected == null) {
       return const Scaffold(
-        backgroundColor: Color(0xFFFAFAFA),
-        body: Center(child: CircularProgressIndicator(color: Color(0xFFDE8E52))),
+        backgroundColor: AppColors.pageBg,
+        body: Center(child: CircularProgressIndicator(color: AppColors.accent)),
       );
     }
 
@@ -116,7 +115,7 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
     final isSmall = MediaQuery.of(context).size.width < 800;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: AppColors.pageBg,
       body: SafeArea(
         child: Stack(
           children: [
@@ -199,21 +198,21 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFAFAFA),
+                      color: AppColors.pageBg,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
                     ),
-                    child: const Icon(Icons.arrow_back_rounded, color: Color(0xFFDE8E52), size: 20),
+                    child: const Icon(Icons.arrow_back_rounded, color: AppColors.accent, size: 20),
                   ),
                 ),
               ),
-              Text(
+              const Text(
                 'MONITORING TEST',
-                style: GoogleFonts.plusJakartaSans(
+                style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                   letterSpacing: 1.2,
-                  color: const Color(0xFF111111),
+                  color: AppColors.charcoal,
                 ),
               ),
               Container(
@@ -226,12 +225,12 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                     color: Colors.black.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(100),
                   ),
-                  child: Text(
+                  child: const Text(
                     '1/3',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 11,
-                      color: const Color(0xFF737373),
+                      color: AppColors.stone,
                     ),
                   ),
                 ),
@@ -250,22 +249,22 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFFDE8E52).withValues(alpha: 0.1),
+            color: AppColors.accent.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(100),
-            border: Border.all(color: const Color(0xFFDE8E52).withValues(alpha: 0.2)),
+            border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
           ),
-          child: Row(
+          child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.menu_book_rounded, size: 12, color: Color(0xFFDE8E52)),
-              const SizedBox(width: 6),
+              Icon(Icons.menu_book_rounded, size: 12, color: AppColors.accent),
+              SizedBox(width: 6),
               Text(
                 'MONITORING TEST',
-                style: GoogleFonts.plusJakartaSans(
+                style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 10,
                   letterSpacing: 2.0,
-                  color: const Color(0xFFDE8E52),
+                  color: AppColors.accent,
                 ),
               ),
             ],
@@ -274,22 +273,22 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
         const SizedBox(height: 16),
         Text(
           AppLocalizations.of(context)!.confirmSessionTitle,
-          style: GoogleFonts.plusJakartaSans(
+          style: TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: isSmall ? 32 : 40,
             height: 1.1,
             letterSpacing: -1.0,
-            color: const Color(0xFF111111),
+            color: AppColors.charcoal,
           ),
         ),
         const SizedBox(height: 12),
         Text(
           AppLocalizations.of(context)!.testSessionInstruction,
-          style: GoogleFonts.plusJakartaSans(
+          style: const TextStyle(
             fontWeight: FontWeight.w500,
             fontSize: 15,
             height: 1.5,
-            color: const Color(0xFF737373),
+            color: AppColors.stone,
           ),
         ),
       ],
@@ -325,9 +324,9 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFDE8E52).withValues(alpha: 0.05),
+                color: AppColors.accent.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFDE8E52).withValues(alpha: 0.2)),
+                border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [
@@ -335,7 +334,7 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                     width: 48,
                     height: 48,
                     decoration: const BoxDecoration(
-                      color: Color(0xFFDE8E52),
+                      color: AppColors.accent,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.school_rounded, color: Colors.white, size: 24),
@@ -347,20 +346,20 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                       children: [
                         Text(
                           _selected!.label,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 18,
-                            color: const Color(0xFF111111),
+                            color: AppColors.charcoal,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           entry.title,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: const TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 11,
                             letterSpacing: 1.0,
-                            color: const Color(0xFF737373),
+                            color: AppColors.stone,
                           ),
                         ),
                       ],
@@ -373,7 +372,7 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                       color: Colors.white.withValues(alpha: 0.5),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.check_rounded, color: Color(0xFFDE8E52), size: 18),
+                    child: const Icon(Icons.check_rounded, color: AppColors.accent, size: 18),
                   ),
                 ],
               ),
@@ -385,21 +384,21 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
               const SizedBox(height: 20),
               Text(
                 AppLocalizations.of(context)!.pinCodeRequired,
-                style: GoogleFonts.plusJakartaSans(
+                style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 11,
                   letterSpacing: 1.5,
-                  color: const Color(0xFF737373),
+                  color: AppColors.stone,
                 ),
               ),
               const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFAFAFA),
+                  color: AppColors.pageBg,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: _pinFocus.hasFocus 
-                        ? const Color(0xFFDE8E52).withValues(alpha: 0.5) 
+                        ? AppColors.accent.withValues(alpha: 0.5) 
                         : Colors.black.withValues(alpha: 0.05),
                   ),
                 ),
@@ -409,29 +408,29 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                   autofocus: true,
                   obscureText: _obscure,
                   keyboardType: TextInputType.number,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                     letterSpacing: _obscure ? 4.0 : 2.0,
-                    color: const Color(0xFF111111),
+                    color: AppColors.charcoal,
                   ),
                   decoration: InputDecoration(
                     hintText: AppLocalizations.of(context)!.enterPinCode,
-                    hintStyle: GoogleFonts.plusJakartaSans(
+                    hintStyle: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
                       letterSpacing: 0,
-                      color: const Color(0xFF737373).withValues(alpha: 0.4),
+                      color: AppColors.stone.withValues(alpha: 0.4),
                     ),
                     prefixIcon: Icon(
                       Icons.lock_outline_rounded,
-                      color: _pinFocus.hasFocus ? const Color(0xFFDE8E52) : const Color(0xFF737373).withValues(alpha: 0.6),
+                      color: _pinFocus.hasFocus ? AppColors.accent : AppColors.stone.withValues(alpha: 0.6),
                       size: 20,
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscure ? Icons.visibility_rounded : Icons.visibility_off_rounded,
-                        color: const Color(0xFF737373).withValues(alpha: 0.6),
+                        color: AppColors.stone.withValues(alpha: 0.6),
                         size: 20,
                       ),
                       onPressed: () => setState(() => _obscure = !_obscure),
@@ -454,7 +453,7 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                       const SizedBox(width: 4),
                       Text(
                         _err!,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
                           color: AppColors.err,
@@ -469,14 +468,14 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.info_rounded, color: const Color(0xFFDE8E52).withValues(alpha: 0.7), size: 16),
+                      Icon(Icons.info_rounded, color: AppColors.accent.withValues(alpha: 0.7), size: 16),
                       const SizedBox(width: 6),
                       Text(
                         AppLocalizations.of(context)!.enterTeacherCode,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: const TextStyle(
                           fontWeight: FontWeight.w500,
                           fontSize: 12,
-                          color: const Color(0xFF737373),
+                          color: AppColors.stone,
                         ),
                       ),
                     ],
@@ -494,10 +493,10 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                       },
                       child: Text(
                         AppLocalizations.of(context)!.otherSchoolBtn,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: const TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
-                          color: const Color(0xFF111111),
+                          color: AppColors.charcoal,
                           decoration: TextDecoration.underline,
                         ),
                       ),
@@ -520,9 +519,9 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            const Color(0xFFFAFAFA).withValues(alpha: 0.0),
-            const Color(0xFFFAFAFA).withValues(alpha: 0.8),
-            const Color(0xFFFAFAFA),
+            AppColors.pageBg.withValues(alpha: 0.0),
+            AppColors.pageBg.withValues(alpha: 0.8),
+            AppColors.pageBg,
           ],
         ),
       ),
@@ -542,8 +541,8 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: canSubmit 
-                        ? (isHovered && !_isChecking ? const Color(0xFF333333) : const Color(0xFF111111)) 
-                        : const Color(0xFF111111).withValues(alpha: 0.5),
+                        ? (isHovered && !_isChecking ? const Color(0xFF333333) : AppColors.charcoal) 
+                        : AppColors.charcoal.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(100),
                     boxShadow: canSubmit ? [
                       BoxShadow(
@@ -564,7 +563,7 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                           children: [
                             Text(
                               AppLocalizations.of(context)!.confirmBtn,
-                              style: GoogleFonts.plusJakartaSans(
+                              style: const TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 15,
                                 letterSpacing: 0.5,
@@ -574,7 +573,7 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                             const SizedBox(height: 2),
                             Text(
                               AppLocalizations.of(context)!.nextStepStudentName,
-                              style: GoogleFonts.plusJakartaSans(
+                              style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 10,
                                 letterSpacing: 1.0,
@@ -588,7 +587,7 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFDE8E52),
+                          color: AppColors.accent,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(

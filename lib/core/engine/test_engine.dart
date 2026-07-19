@@ -739,12 +739,12 @@ class _TopBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: timerHot
-                ? const Color(0xFFFEF2F2)
-                : const Color(0xFFFFF7ED),
+                ? AppColors.errorMuted
+                : AppColors.secondaryMuted,
             border: Border.all(
               color: timerHot
-                  ? const Color(0xFFFCA5A5)
-                  : const Color(0xFFFED7AA),
+                  ? AppColors.dangerBorder
+                  : AppColors.amberBorder,
               width: 1.5,
             ),
             borderRadius: BorderRadius.circular(12),
@@ -756,8 +756,8 @@ class _TopBar extends StatelessWidget {
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: timerHot
-                    ? const Color(0xFFDC2626)
-                    : const Color(0xFF7C2D12),
+                    ? AppColors.error
+                    : AppColors.amberInk,
               ),
             ),
             Text(
@@ -765,7 +765,7 @@ class _TopBar extends StatelessWidget {
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
-                color: timerHot ? const Color(0xFFDC2626) : AppColors.brand,
+                color: timerHot ? AppColors.error : AppColors.brand,
               ),
             ),
           ]),

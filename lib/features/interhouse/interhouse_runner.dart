@@ -291,7 +291,7 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                             color: AppColors.ink1)),
                     const SizedBox(height: 2),
                     Row(children: [
-                      const _Pill('Interhouse G2', Color(0xFF7C3AED)),
+                      const _Pill('Interhouse G2', AppColors.violet),
                       const SizedBox(width: 6),
                       _Pill(
                           'Variant ${widget.variant}', AppColors.brand),
@@ -319,12 +319,12 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: _timerHot
-                    ? const Color(0xFFFEF2F2)
-                    : const Color(0xFFFFF7ED),
+                    ? AppColors.errorMuted
+                    : AppColors.secondaryMuted,
                 border: Border.all(
                   color: _timerHot
-                      ? const Color(0xFFFCA5A5)
-                      : const Color(0xFFFED7AA),
+                      ? AppColors.dangerBorder
+                      : AppColors.amberBorder,
                   width: 1.5,
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -335,14 +335,14 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: _timerHot
-                            ? const Color(0xFFDC2626)
-                            : const Color(0xFF7C2D12))),
+                            ? AppColors.error
+                            : AppColors.amberInk)),
                 Text(l10n.timeLeftLabel,
                     style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
                         color: _timerHot
-                            ? const Color(0xFFDC2626)
+                            ? AppColors.error
                             : AppColors.brand)),
               ]),
             ),
@@ -759,7 +759,7 @@ class _IhOptionRow extends StatelessWidget {
               const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color:
-                selected ? const Color(0xFFFFF7ED) : AppColors.surface,
+                selected ? AppColors.secondaryMuted : AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected ? AppColors.brand : AppColors.border,
@@ -780,12 +780,12 @@ class _IhOptionRow extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: selected ? AppColors.brand : const Color(0xFFF4F4F5),
+                color: selected ? AppColors.brand : AppColors.chipBg,
                 borderRadius: BorderRadius.circular(9),
                 border: Border.all(
                   color: selected
                       ? AppColors.brand
-                      : const Color(0xFFD4D4D8),
+                      : AppColors.chipBorder,
                   width: 1.5,
                 ),
               ),
@@ -796,7 +796,7 @@ class _IhOptionRow extends StatelessWidget {
                           fontSize: 13,
                           color: selected
                               ? Colors.white
-                              : const Color(0xFFA1A1AA)))),
+                              : AppColors.chipIcon))),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -805,7 +805,7 @@ class _IhOptionRow extends StatelessWidget {
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
                         color: selected
-                            ? const Color(0xFF7C2D12)
+                            ? AppColors.amberInk
                             : AppColors.ink1))),
             if (selected)
               Container(
@@ -977,16 +977,16 @@ class _WordQuestion extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F3FF),
+            color: AppColors.violetMuted,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFDDD6FE)),
+            border: Border.all(color: AppColors.violetBorder),
           ),
           child: Text(question.scramble ?? '',
               textAlign: TextAlign.center,
               style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF6D28D9),
+                  color: AppColors.violetInk,
                   letterSpacing: 4)),
         ),
         const SizedBox(height: 10),

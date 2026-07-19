@@ -37,6 +37,57 @@ class AppColors {
   static const Color gray200 = Color(0xFFE5E7EB);
   static const Color gray700 = Color(0xFF374151);
 
+  // ── Accent (auth / session flow) ───────────────────────────────────────────
+  static const Color accent = Color(0xFFDE8E52);
+
+  // ── Extended semantic colors (quiz / test flows) ───────────────────────────
+  static const Color emerald       = Color(0xFF10B981);
+  static const Color emeraldInk    = Color(0xFF065F46);
+  static const Color emeraldMuted  = Color(0xFFECFDF5);
+  static const Color mint          = Color(0xFF00D68F);
+
+  static const Color violet       = Color(0xFF7C3AED);
+  static const Color violetDark   = Color(0xFF5B21B6);
+  static const Color violetInk    = Color(0xFF6D28D9);
+  static const Color violetMuted  = Color(0xFFF5F3FF);
+  static const Color violetBorder = Color(0xFFDDD6FE);
+
+  static const Color blue       = Color(0xFF3B82F6);
+  static const Color blueDark   = Color(0xFF1D4ED8);
+  static const Color blueInk    = Color(0xFF1E40AF);
+  static const Color blueMuted  = Color(0xFFEFF6FF);
+  static const Color blueBorder = Color(0xFFBFDBFE);
+  static const Color navyInk    = Color(0xFF1E3A5F);
+
+  static const Color tealInk   = Color(0xFF0F766E);
+  static const Color tealMuted = Color(0xFFF0FDFA);
+  static const Color cyan      = Color(0xFF0891B2);
+
+  static const Color amber       = Color(0xFFF59E0B);
+  static const Color amberDark   = Color(0xFFD97706);
+  static const Color amberInk    = Color(0xFF7C2D12);
+  static const Color amberBorder = Color(0xFFFED7AA);
+
+  static const Color brightRed   = Color(0xFFEF4444);
+  static const Color dangerBorder = Color(0xFFFCA5A5);
+
+  static const Color correctBorder = Color(0xFF86EFAC);
+  static const Color correctInk    = Color(0xFF16A34A);
+
+  static const Color gold  = Color(0xFFFBBF24);
+  static const Color flame = Color(0xFFF97316);
+
+  // ── Neutrals (chip / unselected states) ────────────────────────────────────
+  static const Color chipBg          = Color(0xFFF4F4F5);
+  static const Color chipBorder      = Color(0xFFD4D4D8);
+  static const Color chipBorderMuted = Color(0xFFE4E4E7);
+  static const Color chipIcon        = Color(0xFFA1A1AA);
+  static const Color charcoal        = Color(0xFF111111);
+  static const Color stone           = Color(0xFF737373);
+  static const Color pageBg          = Color(0xFFFAFAFA);
+  static const Color hoverBg         = Color(0xFFF5F5F5);
+  static const Color slateDark       = Color(0xFF334155);
+
   // ── Backward-compat aliases ────────────────────────────────────────────────
   static const Color brand       = secondary;
   static const Color brandLight  = secondaryMuted;

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 class HtmlService {
   static String generateResultHtml({
@@ -41,7 +40,7 @@ class HtmlService {
     final summaryStr = aiSummary != null ? sanitize(aiSummary['summary']?.toString() ?? '') : '';
     final finalSummary = summaryStr.isNotEmpty ? summaryStr : "$firstName $pct% natija ko'rsatdi. O'zlashtirish darajasiga qarab 14 kunlik reja bilan ishlash tavsiya etiladi.";
 
-    String _buildTopics(List<MapEntry<String, ({int ok, int tot})>> topics, String title) {
+    String buildTopics(List<MapEntry<String, ({int ok, int tot})>> topics, String title) {
       if (topics.isEmpty) return '';
       
       String rows = '';
@@ -111,8 +110,8 @@ $rows
     <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#FF8A00'>$totalQ</div><div style='font-size:11px;color:#888;margin-top:2px'>Jami savol</div></div>
   </div>
   
-  ${_buildTopics(combinedTopics, "Mavzu bo'yicha tahlil")}
-  ${_buildTopics(unitScores, "Unit bo'yicha tahlil")}
+  ${buildTopics(combinedTopics, "Mavzu bo'yicha tahlil")}
+  ${buildTopics(unitScores, "Unit bo'yicha tahlil")}
 
   <div style='display:grid;grid-template-columns:1fr 1fr;gap:14px'>
     <div>
