@@ -1,13 +1,18 @@
 // lib/core/services/update_service.dart
 // Checks GitHub Releases for a newer app version at startup and exposes it
 // as UpdateInfo — the login screen renders a persistent top-right badge
-// when an update is available. Link-out only, no auto-install.
+// when an update is available. Tapping it downloads and silently installs
+// the update (Windows: elevated via PowerShell Start-Process -Verb RunAs,
+// since installer.iss requires admin; macOS: DMG swap), falling back to
+// openReleasePage() on any failure.
 // See docs/superpowers/specs/2026-07-11-monitoring-flutter-update-mechanism-design.md
 // and docs/superpowers/specs/2026-07-16-monitoring-flutter-update-badge-design.md
-// (in the alochi monorepo) for the full design rationale.
+// (in the alochi monorepo) for the original link-out-only design — superseded
+// by the auto-install behavior below (commit 3f37a0b), which predates a spec.
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -73,6 +78,19 @@ int _compareParts(List<int> a, List<int> b) {
     if (a[i] != b[i]) return a[i] - b[i];
   }
   return 0;
+}
+
+/// Encodes [s] as UTF-16LE bytes, the format PowerShell's -EncodedCommand
+/// expects to be base64'd. Used to pass the installer launch script without
+/// any string-interpolation quoting/escaping pitfalls around the file path.
+Uint8List _utf16LEBytes(String s) {
+  final bytes = Uint8List(s.length * 2);
+  for (var i = 0; i < s.length; i++) {
+    final code = s.codeUnitAt(i);
+    bytes[i * 2] = code & 0xFF;
+    bytes[i * 2 + 1] = (code >> 8) & 0xFF;
+  }
+  return bytes;
 }
 
 /// Result of a successful update check: a newer version exists.
@@ -195,11 +213,52 @@ class UpdateService {
       }
       await sink.close();
 
-      // Launch installer
+      // Launch installer with UAC elevation.
+      // InnoSetup's installer.iss has PrivilegesRequired=admin, so the
+      // compiled Setup.exe requires elevation to run. Process.start() uses
+      // CreateProcess under the hood, which does not reliably surface the
+      // UAC consent prompt (it either fails with ERROR_ELEVATION_REQUIRED,
+      // or silently succeeds only if UAC happens to be disabled). Instead,
+      // shell out to PowerShell's Start-Process -Verb RunAs, which is the
+      // standard way to get Windows to show the UAC prompt from a
+      // non-elevated parent and to wait for the elevated child to finish.
+      //
       // InnoSetup supports /SILENT (shows progress) or /VERYSILENT (no UI)
       // /CLOSEAPPLICATIONS will close the current running app so it can overwrite
-      await Process.start(savePath, ['/SILENT', '/CLOSEAPPLICATIONS']);
-      
+      final psScript = '''
+try {
+  \$p = Start-Process -FilePath "$savePath" -ArgumentList "/SILENT","/CLOSEAPPLICATIONS" -Verb RunAs -Wait -PassThru
+  exit \$p.ExitCode
+} catch {
+  exit 1
+}
+''';
+      final encoded = base64Encode(_utf16LEBytes(psScript));
+      // Bounded wait: if the UAC prompt never gets a response (user AFK,
+      // minimized, on another virtual desktop), Process.run's Future would
+      // otherwise never resolve, leaving the login screen's update badge
+      // stuck forever. 3 minutes covers realistic UAC reaction time + the
+      // installer's file copy while still failing closed into the
+      // openReleasePage() fallback if nothing happens.
+      final result = await Process.run(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
+      ).timeout(
+        const Duration(minutes: 3),
+        onTimeout: () => ProcessResult(
+          -1,
+          -1,
+          '',
+          'timed out waiting for elevated installer',
+        ),
+      );
+
+      if (result.exitCode != 0) {
+        throw Exception(
+          'Windows installer failed or was cancelled (exit code ${result.exitCode})',
+        );
+      }
+
       exit(0);
     } catch (_) {
       await openReleasePage();
