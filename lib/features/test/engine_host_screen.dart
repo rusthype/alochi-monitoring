@@ -88,6 +88,28 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   TestSpec? _spec;
   String? _parseError;
 
+  // Set by _handleComplete once the test is scored. When non-null, build()
+  // renders _EngineResultScreen IN-PLACE instead of the running TestEngine.
+  //
+  // Deliberately NOT done via Navigator.pushReplacement(...) — this widget
+  // (EngineHostScreen) is itself the builder for the GoRouter route
+  // '/engine_host' (see lib/core/router/app_router.dart), which is reached
+  // via an AWAITED `GoRouter.of(context).push('/engine_host', ...)` in
+  // runner_dispatch.dart::launchRunner(). GoRouter only resolves that
+  // Future when its OWN declarative Page for '/engine_host' is popped
+  // through its own page-removal/onPopPage tracking. An imperative
+  // Navigator.pushReplacement from inside this subtree swaps in a route
+  // GoRouter never learns about (it just replaces the current entry in the
+  // ambient Navigator's history) — so a later Navigator.pop() on the result
+  // screen only pops that untracked route, never the '/engine_host' Page,
+  // and launchRunner()'s await never resolves. That left
+  // StudentEntryScreen._launching stuck true forever after "Keyingi
+  // talaba" (2026-07-21 bug). Swapping the widget in-place keeps everything
+  // on the single GoRouter-managed Page, so the "Keyingi talaba" button's
+  // plain Navigator.of(context).pop() correctly pops '/engine_host' itself.
+  ScoredResult? _completedResult;
+  String? _completedToken;
+
   @override
   void initState() {
     super.initState();
@@ -241,24 +263,13 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       debugPrint('EngineHostScreen: AttemptStore.clear error: $e');
     }
 
-    // 5. Navigate to result display.
+    // 5. Show result display in-place — see _completedResult doc comment
+    // for why this must not be a Navigator.pushReplacement.
     if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => _EngineResultScreen(
-          firstName: widget.firstName,
-          lastName: widget.lastName,
-          school: widget.school,
-          group: widget.group,
-          grade: widget.grade ?? _spec?.grade ?? 0,
-          variant: widget.variant,
-          result: result,
-          clientToken: token,
-          subject: _spec?.subject,
-        ),
-      ),
-    );
+    setState(() {
+      _completedResult = result;
+      _completedToken = token;
+    });
   }
 
   // ── Build ───────────────────────────────────────────────────────────────────
@@ -271,6 +282,19 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
     if (_spec == null) {
       return _ErrorScaffold(
           message: AppLocalizations.of(context)!.testLoadFailed);
+    }
+    if (_completedResult != null) {
+      return _EngineResultScreen(
+        firstName: widget.firstName,
+        lastName: widget.lastName,
+        school: widget.school,
+        group: widget.group,
+        grade: widget.grade ?? _spec?.grade ?? 0,
+        variant: widget.variant,
+        result: _completedResult!,
+        clientToken: _completedToken!,
+        subject: _spec?.subject,
+      );
     }
 
     return TestEngine(
