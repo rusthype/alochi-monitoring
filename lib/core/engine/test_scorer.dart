@@ -31,6 +31,7 @@ class QuestionResult {
   final String? topic;       // e.g. "§17 Matnli masala"
   final String? category;    // e.g. "matnli"
   final int? bob;            // unit/chapter
+  final String? bobTitle;    // human-readable chapter/unit title (Math World)
   final bool correct;
   final Question question;
   final dynamic userAnswer;
@@ -45,6 +46,7 @@ class QuestionResult {
     this.topic,
     this.category,
     this.bob,
+    this.bobTitle,
   });
 }
 
@@ -312,6 +314,7 @@ class TestScorer {
           topic: slot.question.topic,
           category: slot.question.category,
           bob: slot.question.bob,
+          bobTitle: slot.question.bobTitle,
           correct: _isCorrect(slot.question, answers[slot.key]),
           question: slot.question,
           userAnswer: answers[slot.key],
@@ -335,7 +338,7 @@ class TestScorer {
           unitNum = int.tryParse(unitMatch.group(1)!);
         }
       }
-      
+
       // Fallback to TestSpec title if unit still null
       if (unitNum == null) {
         final title = spec.title;
@@ -347,9 +350,21 @@ class TestScorer {
           unitNum = int.tryParse(unitMatch.group(1)!);
         }
       }
-      
+
       if (unitNum != null) {
-        final unitKey = 'Unit $unitNum';
+        // Math World questions carry a `bob_title` (e.g. "Ikki xonali sonlar
+        // ustida qo'shish va ayirish amallari") — prefer the richer
+        // "N-BOB — <title>" label when both bob and bobTitle are present on
+        // this question. Falls back to the plain "Unit N" label otherwise —
+        // English World questions only ever have `unit` (never `bobTitle`),
+        // so their grouping stays byte-identical to before. The two label
+        // formats are textually distinct, so a Combined test mixing Math
+        // (bob) and English (unit) questions can never collide even if the
+        // underlying numbers overlap (bob=2 → "2-BOB — ..." vs unit=2 →
+        // "Unit 2" are different map keys).
+        final unitKey = (r.bob != null && r.bobTitle != null)
+            ? '${r.bob}-BOB — ${r.bobTitle}'
+            : 'Unit $unitNum';
         (byUnit[unitKey] ??= []).add(r);
       }
     }
