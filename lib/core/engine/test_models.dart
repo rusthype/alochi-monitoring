@@ -71,6 +71,7 @@ class Question {
   // geometry diagram (inline SVG string) + TZ reporting metadata
   final String? svg;
   final int? bob;
+  final String? bobTitle; // human-readable chapter/unit title (Math World)
   final String? category;
 
   const Question({
@@ -87,6 +88,7 @@ class Question {
     this.topic,
     this.svg,
     this.bob,
+    this.bobTitle,
     this.category,
   });
 
@@ -107,6 +109,7 @@ class Question {
       return null;
     }
     final bob = parseUnit(json['bob']) ?? parseUnit(json['unit']);
+    final bobTitle = json['bob_title']?.toString();
     final category = json['category']?.toString();
 
     if (type == null) {
@@ -117,7 +120,7 @@ class Question {
         q: json['q']?.toString(),
         opts: _parseOpts(json['opts']),
         ans: (json['ans'] as num?)?.toInt() ?? 0,
-        topic: topic, svg: svg, bob: bob, category: category,
+        topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
       );
     }
 
@@ -128,7 +131,7 @@ class Question {
           q: json['q']?.toString(),
           opts: _parseOpts(json['opts']),
           ans: (json['ans'] as num?)?.toInt() ?? 0,
-          topic: topic, svg: svg, bob: bob, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
         );
 
       case QuestionType.imageChoice:
@@ -138,7 +141,7 @@ class Question {
           q: json['q']?.toString(),
           opts: _parseOpts(json['opts']),
           ans: (json['ans'] as num?)?.toInt() ?? 0,
-          topic: topic, svg: svg, bob: bob, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
         );
 
       case QuestionType.spelling:
@@ -147,7 +150,7 @@ class Question {
           img: json['img']?.toString(),
           scramble: json['scramble']?.toString(),
           strAns: json['ans']?.toString(),
-          topic: topic, svg: svg, bob: bob, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
         );
 
       case QuestionType.sentenceOrder:
@@ -155,14 +158,14 @@ class Question {
           type: type,
           words: json['words']?.toString(),
           strAns: json['ans']?.toString(),
-          topic: topic, svg: svg, bob: bob, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
         );
 
       case QuestionType.reading:
         return Question(
           type: type,
           reading: ReadingSection.fromJson(json),
-          topic: topic, svg: svg, bob: bob, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
         );
 
       case QuestionType.yesNo:
@@ -170,7 +173,7 @@ class Question {
           type: type,
           q: json['q']?.toString(),
           yesNoAns: json['ans']?.toString().toUpperCase(),
-          topic: topic, svg: svg, bob: bob, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
         );
 
       case QuestionType.fillBlank:
@@ -178,7 +181,7 @@ class Question {
           type: type,
           q: json['q']?.toString(),
           strAns: json['ans']?.toString(),
-          topic: topic, svg: svg, bob: bob, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
         );
     }
   }
