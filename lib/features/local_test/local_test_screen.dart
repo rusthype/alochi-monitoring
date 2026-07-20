@@ -64,7 +64,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
           _secs--;
         } else {
           _timer?.cancel();
-          _finish();
+          _finish(force: true);
         }
       });
     });
@@ -113,11 +113,16 @@ class _LocalTestScreenState extends State<LocalTestScreen>
     }
   }
 
-  Future<void> _finish() async {
+  bool _dialogOpen = false;
+  bool _submitting = false;
+
+  Future<void> _finish({bool force = false}) async {
+    if (_submitting) return;
     final localizations = AppLocalizations.of(context)!;
     _timer?.cancel();
     final unanswered = _total - _answers.length;
-    if (unanswered > 0) {
+    if (unanswered > 0 && !force) {
+      _dialogOpen = true;
       final ok = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
@@ -136,7 +141,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                         _secs--;
                       } else {
                         _timer?.cancel();
-                        _finish();
+                        _finish(force: true);
                       }
                     });
                   });
@@ -153,8 +158,14 @@ class _LocalTestScreenState extends State<LocalTestScreen>
           ],
         ),
       );
+      _dialogOpen = false;
       if (ok != true) return;
+    } else if (_dialogOpen) {
+      Navigator.pop(context);
+      _dialogOpen = false;
     }
+
+    setState(() => _submitting = true);
 
     // Calculate score locally
     int mathOk = 0, engOk = 0;
@@ -552,9 +563,10 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                           height: 44,
                           child: _isLast
                               ? ElevatedButton.icon(
-                                  onPressed: _finish,
-                                  icon:
-                                      const Icon(Icons.check_rounded, size: 15),
+                                  onPressed: _submitting ? null : _finish,
+                                  icon: _submitting
+                                      ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                      : const Icon(Icons.check_rounded, size: 15),
                                   label: Text(AppLocalizations.of(context)!.finishButtonText,
                                       style: const TextStyle(
                                           fontSize: 13,

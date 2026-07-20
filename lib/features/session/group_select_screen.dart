@@ -160,7 +160,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
   }
 
   void _goToStudentEntry(CatalogEntry entry, Map<String, dynamic>? group) {
-    Navigator.of(context).pushReplacement(
+    Navigator.of(context).push(
       MaterialPageRoute(
         settings: const RouteSettings(name: 'student_entry'),
         builder: (_) => StudentEntryScreen(

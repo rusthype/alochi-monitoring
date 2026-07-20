@@ -224,9 +224,14 @@ class UpdateService {
       //
       // InnoSetup supports /SILENT (shows progress) or /VERYSILENT (no UI)
       // /CLOSEAPPLICATIONS will close the current running app so it can overwrite
+      final exePath = Platform.resolvedExecutable;
       final psScript = '''
 try {
   \$p = Start-Process -FilePath "$savePath" -ArgumentList "/SILENT","/CLOSEAPPLICATIONS" -Verb RunAs -Wait -PassThru
+  if (\$p.ExitCode -eq 0) {
+    Start-Sleep -Seconds 1
+    Start-Process -FilePath "$exePath"
+  }
   exit \$p.ExitCode
 } catch {
   exit 1
