@@ -26,6 +26,19 @@ class HtmlService {
     String statusText = pct < 60 ? "Qo'shimcha mashq kerak" : "Yaxshi natija";
     String pctColor = pct < 60 ? "#EF4444" : "#10B981";
 
+    final mathPct = mathTotal > 0 ? (mathOk * 100 ~/ mathTotal) : 0;
+    final engPct = engTotal > 0 ? (engOk * 100 ~/ engTotal) : 0;
+    final mathPctColor = mathPct < 60 ? "#EF4444" : "#10B981";
+    final engPctColor = engPct < 60 ? "#EF4444" : "#10B981";
+    final subjectRow = (mathTotal == 0 && engTotal == 0) ? '' : '''
+  <div style='display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px'>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#111'>$mathOk/$mathTotal</div><div style='font-size:11px;color:#888;margin-top:2px'>Matematika</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#111'>$engOk/$engTotal</div><div style='font-size:11px;color:#888;margin-top:2px'>Ingliz tili</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:$mathPctColor'>$mathPct%</div><div style='font-size:11px;color:#888;margin-top:2px'>Math %</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:$engPctColor'>$engPct%</div><div style='font-size:11px;color:#888;margin-top:2px'>English %</div></div>
+  </div>
+''';
+
     List<MapEntry<String, ({int ok, int tot})>> combinedTopics = [];
     if (topicScores.isNotEmpty) {
       combinedTopics = List.from(topicScores);
@@ -109,7 +122,7 @@ $rows
     <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#EF4444'>$totalErr</div><div style='font-size:11px;color:#888;margin-top:2px'>Xato javob</div></div>
     <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#FF8A00'>$totalQ</div><div style='font-size:11px;color:#888;margin-top:2px'>Jami savol</div></div>
   </div>
-  
+  $subjectRow
   ${buildTopics(combinedTopics, "Mavzu bo'yicha tahlil")}
   ${buildTopics(unitScores, "Unit bo'yicha tahlil")}
 
