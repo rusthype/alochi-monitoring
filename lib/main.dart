@@ -19,6 +19,36 @@ import 'package:mac_menu_bar/mac_menu_bar.dart';
 import 'core/services/update_service.dart';
 
 void main() {
+  // Defense-in-depth: Flutter's default ErrorWidget.builder renders an
+  // essentially blank, textless box in release builds (the message is
+  // stripped via `assert()`), which — with no Directionality/Theme/MediaQuery
+  // ancestor available if the crash happens on the very first frame — reads
+  // to a real user as an unexplained solid gray fill with no login screen,
+  // no error, no spinner. That exact failure mode shipped in v1.0.58 (a
+  // `AppLocalizations.of(context)!` null-check thrown from
+  // AlochiMonitoringApp.build(), fixed below). Overriding the builder here
+  // guarantees ANY future build-time exception, anywhere in the tree, is
+  // shown to the user instead of silently rendering nothing.
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    debugPrint('ErrorWidget: ${details.exceptionAsString()}');
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Material(
+        color: const Color(0xFF1B1B1F),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              'Xatolik yuz berdi: ${details.exceptionAsString()}',
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  };
+
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
@@ -27,8 +57,19 @@ void main() {
       FlutterError.presentError(details);
     };
 
+    SharedPreferences? prefs;
     try {
-      final prefs = await SharedPreferences.getInstance();
+      prefs = await SharedPreferences.getInstance();
+    } catch (error, stackTrace) {
+      // Non-essential for reaching a visible UI: locale/prefs-backed
+      // providers fall back to their defaults below rather than blocking
+      // runApp() entirely. Previously, a throw here meant runApp() was
+      // NEVER called — not even a gray box, a genuinely blank native window.
+      debugPrint('SharedPreferences init failed: $error');
+      debugPrint('$stackTrace');
+    }
+
+    try {
       // Explicit ProviderContainer (instead of a bare ProviderScope) so that
       // main() — which runs outside the widget tree — can read the SAME
       // goRouterProvider instance the widget tree uses, to reuse its
@@ -36,7 +77,9 @@ void main() {
       // UncontrolledProviderScope wires this container into the app exactly
       // like ProviderScope would.
       final container = ProviderContainer(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
+        ],
       );
       runApp(
         UncontrolledProviderScope(
@@ -141,7 +184,27 @@ class AlochiMonitoringApp extends ConsumerWidget {
     final router = ref.watch(goRouterProvider);
     return InactivityWrapper(
       child: MaterialApp.router(
-        title: AppLocalizations.of(context)!.appNameTitle,
+        // ROOT CAUSE of the v1.0.58/v1.0.59 "solid gray screen on launch"
+        // bug: `title` is evaluated in AlochiMonitoringApp.build() — i.e.
+        // using the context ABOVE MaterialApp.router in the tree, before
+        // MaterialApp has created its own Localizations ancestor. Calling
+        // AppLocalizations.of(context) there always returns null (no
+        // Localizations ancestor exists yet), so the `!` threw
+        // "Null check operator used on a null value" on literally every
+        // launch — before login screen, before routing, before anything.
+        // Flutter caught the build() exception and substituted its default
+        // ErrorWidget, which in release mode renders as a textless
+        // near-black/gray box (message text is stripped via `assert()`),
+        // exactly matching the reported symptom. Fix: use `onGenerateTitle`,
+        // which MaterialApp invokes from a Builder that IS a descendant of
+        // the Localizations it establishes — the framework-sanctioned way
+        // to localize the OS-level window/task-switcher title. `title`
+        // stays as a static fallback (used only if onGenerateTitle is ever
+        // null; here it's always ignored in favor of onGenerateTitle once
+        // set, per MaterialApp's own docs).
+        title: 'Alochi Monitoring',
+        onGenerateTitle: (context) =>
+            AppLocalizations.of(context)!.appNameTitle,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.theme,
         locale: locale,
