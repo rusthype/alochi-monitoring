@@ -80,13 +80,13 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     }
     try {
       final g = await api.fetchGroups(widget.session.schoolCode);
-      if (!context.mounted) return;
+      if (!mounted) return;
       setState(() {
         _groups = g;
         _loadingGroups = false;
       });
     } catch (_) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       setState(() {
         _loadingGroups = false;
       });
@@ -103,13 +103,13 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     });
     try {
       final s = await api.fetchStudents(groupId);
-      if (!context.mounted) return;
+      if (!mounted) return;
       setState(() {
         _students = s;
         _loadingStudents = false;
       });
     } catch (_) {
-      if (!context.mounted) return;
+      if (!mounted) return;
       setState(() {
         _loadingStudents = false;
       });
@@ -192,13 +192,11 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       groupId: groupId,
       studentId: studentId,
     );
-    if (!context.mounted) return;
-    setState(() {
-      _firstCtrl.clear();
-      _lastCtrl.clear();
-      _selectedStudent = null;
-      _launching = false;
-    });
+    if (!mounted) return;
+    
+    // Foydalanuvchi "Keyingi o'quvchi"ni bossa yoki testdan qaytsa, 
+    // to'g'ridan-to'g'ri Guruh tanlash oynasiga (GroupSelectScreen) qaytarib yuboramiz.
+    Navigator.of(context).pop();
   }
 
   @override
@@ -799,7 +797,7 @@ class _StudentCard extends StatefulWidget {
 class _StudentCardState extends State<_StudentCard> {
   bool _isHovered = false;
 
-  void _showContextMenu(BuildContext context, Offset position) {
+  void _showContextMenu(Offset position) {
     showMenu(
       context: context,
       position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx, position.dy),
@@ -818,7 +816,7 @@ class _StudentCardState extends State<_StudentCard> {
     ).then((value) {
       if (value == 'copy') {
         Clipboard.setData(ClipboardData(text: widget.name));
-        if (!context.mounted) return;
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context)!.nameCopied(widget.name)),
@@ -842,7 +840,7 @@ class _StudentCardState extends State<_StudentCard> {
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: widget.onTap,
-            onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
+            onSecondaryTapDown: (details) => _showContextMenu(details.globalPosition),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,

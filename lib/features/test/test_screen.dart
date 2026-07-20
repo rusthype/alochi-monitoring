@@ -111,7 +111,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
               _navigate(_mathCount);
             } else {
               _timerTimer?.cancel();
-              _finish();
+              _finish(force: true);
             }
           }
         } else {
@@ -122,7 +122,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
               _navigate(0);
             } else {
               _timerTimer?.cancel();
-              _finish();
+              _finish(force: true);
             }
           }
         }
@@ -183,10 +183,14 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _finish() async {
+  bool _dialogOpen = false;
+
+  Future<void> _finish({bool force = false}) async {
+    if (_submitting) return;
     _timerTimer?.cancel();
     final unanswered = _total - _answers.length;
-    if (unanswered > 0) {
+    if (unanswered > 0 && !force) {
+      _dialogOpen = true;
       final ok = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
@@ -213,7 +217,11 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
           ],
         ),
       );
+      _dialogOpen = false;
       if (ok != true) return;
+    } else if (_dialogOpen) {
+      Navigator.pop(context);
+      _dialogOpen = false;
     }
 
     setState(() => _submitting = true);
