@@ -334,6 +334,13 @@ class ScoringSpec {
 class SectionData {
   final String name;
 
+  /// Human-facing label for this section. Math World's raw part name is
+  /// literally "Questions" (kept as-is on [name] since it's load-bearing
+  /// for answer-map keys — see [_buildAnswerSlots]) — this reads as
+  /// "Matematika" in the UI instead. Every other section name (English
+  /// World skill sections, etc.) passes through unchanged.
+  String get displayName => name == 'Questions' ? 'Matematika' : name;
+
   /// Non-reading questions (text_choice, image_choice, spelling, sentence_order,
   /// yes_no, fill_blank). Empty when this section is a reading container.
   /// May also contain `type:"reading"` items — an inline reading passage

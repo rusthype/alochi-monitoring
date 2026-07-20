@@ -248,4 +248,34 @@ void main() {
       expect(result.topicScores.map((t) => t.topic), isNot(contains('Math')));
     });
   });
+
+  // Regression (2026-07-21): "Bo'limlar bo'yicha" (the during-test tab bar
+  // AND the post-test section list) render SectionData.name / SectionScore.name
+  // directly — for Math World that's the literal, untranslated raw part key
+  // "Questions" (never renamed, since it's load-bearing for answer-map keys
+  // and the submission payload). displayName is a presentation-only label
+  // swap that leaves .name itself untouched everywhere else.
+  group('SectionData/SectionScore displayName label swap', () {
+    test('SectionData.displayName reads "Matematika" for the raw "Questions" part name', () {
+      final section = SectionData(name: 'Questions', questions: const []);
+      expect(section.displayName, 'Matematika');
+      expect(section.name, 'Questions'); // unchanged — still used for answer-slot keys
+    });
+
+    test('SectionData.displayName passes through non-Math section names unchanged', () {
+      final section = SectionData(name: 'Vocabulary', questions: const []);
+      expect(section.displayName, 'Vocabulary');
+    });
+
+    test('SectionScore.displayName reads "Matematika" for the raw "Questions" part name', () {
+      const score = SectionScore(name: 'Questions', correct: 2, total: 30);
+      expect(score.displayName, 'Matematika');
+      expect(score.name, 'Questions'); // unchanged — still serialized verbatim in the payload
+    });
+
+    test('SectionScore.displayName passes through non-Math section names unchanged', () {
+      const score = SectionScore(name: 'Grammar', correct: 4, total: 10);
+      expect(score.displayName, 'Grammar');
+    });
+  });
 }

@@ -19,6 +19,11 @@ class SectionScore {
 
   /// 0.0–100.0
   double get pct => total > 0 ? correct * 100.0 / total : 0.0;
+
+  /// Human-facing label — see [SectionData.displayName]. [name] itself stays
+  /// raw ("Questions" for Math World) since it's serialized verbatim into
+  /// the submission payload (`_buildPayload`'s `detail.sections[].name`).
+  String get displayName => name == 'Questions' ? 'Matematika' : name;
 }
 
 // ── Per-question / per-topic detail (TZ §10 result analysis) ────────────────────

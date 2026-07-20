@@ -1566,7 +1566,7 @@ class _SectionRowV2 extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(section.name, style: AppTextStyles.labelLarge),
+                child: Text(section.displayName, style: AppTextStyles.labelLarge),
               ),
               Text(
                 '${section.correct}/${section.total}',

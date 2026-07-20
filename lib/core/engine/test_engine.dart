@@ -852,7 +852,7 @@ class _SectionTabBar extends StatelessWidget {
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text(
-                    sections[i].name,
+                    sections[i].displayName,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: isActive
