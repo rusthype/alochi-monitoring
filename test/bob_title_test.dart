@@ -172,6 +172,23 @@ void main() {
       expect(qr.bob, 1);
       expect(qr.bobTitle, "Bir xonali sonlar");
     });
+
+    // Regression (2026-07-21): "Mavzu bo'yicha tahlil" in the downloadable
+    // HTML report used topicScores, not unitScores — Math questions have no
+    // `topic`/`category`, so they fell back to the raw section name
+    // ("Questions") and never got split by BOB even after unitScores was
+    // fixed. topicScores must use the same "N-BOB — <title>" grouping.
+    test('topicScores also groups Math by BOB, never falls back to "Questions"', () {
+      final labels = result.topicScores.map((t) => t.topic).toList();
+      expect(labels, contains("1-BOB — Bir xonali sonlar"));
+      expect(
+        labels,
+        contains(
+          "2-BOB — Ikki xonali sonlar ustida qo'shish va ayirish amallari",
+        ),
+      );
+      expect(labels, isNot(contains('Questions')));
+    });
   });
 
   group('Combined test — Math (bob) + English (unit) coexist', () {
@@ -222,6 +239,13 @@ void main() {
       final mathGroups =
           result.unitScores.where((u) => u.topic.contains('-BOB — '));
       expect(mathGroups.length, 2);
+    });
+
+    test('topicScores groups Math by BOB here too (not the raw "Math" section name)', () {
+      final mathGroups =
+          result.topicScores.where((t) => t.topic.contains('-BOB — '));
+      expect(mathGroups.length, 2);
+      expect(result.topicScores.map((t) => t.topic), isNot(contains('Math')));
     });
   });
 }
