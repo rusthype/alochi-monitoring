@@ -1114,9 +1114,20 @@ class _TzAnalysis extends StatelessWidget {
     final qrs = result.questionResults;
     if (qrs.isEmpty) return const SizedBox.shrink();
 
+    // Regression (2026-07-21): this accordion used to group by the raw
+    // `r.section` name, so Math World questions (section == "Questions",
+    // no topic/category) collapsed into one undifferentiated "Questions"
+    // row here even though result.topicScores (used below for the
+    // strong/weak chips and the 14-day plan) already groups them correctly
+    // by BOB via TestScorer._buildDetail. Mirror that same key formula so
+    // this accordion's groups — and their titles — match topicScores
+    // exactly instead of re-deriving a different, coarser grouping.
     final Map<String, List<QuestionResult>> bySection = {};
     for (final r in qrs) {
-      (bySection[r.section] ??= []).add(r);
+      final key = (r.bob != null && r.bobTitle != null)
+          ? '${r.bob}-BOB — ${r.bobTitle}'
+          : (r.topic ?? r.category ?? r.section);
+      (bySection[key] ??= []).add(r);
     }
     final strong = result.topicScores.where((t) => t.pct >= 80).toList();
     final weak = result.topicScores.where((t) => t.pct < 55).toList();
