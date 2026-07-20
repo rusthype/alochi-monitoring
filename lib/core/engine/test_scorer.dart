@@ -325,7 +325,14 @@ class TestScorer {
     final Map<String, List<QuestionResult>> byTopic = {};
     final Map<String, List<QuestionResult>> byUnit = {};
     for (final r in results) {
-      final key = r.topic ?? r.category ?? r.section;
+      // Math World questions carry no `topic`/`category` (only `bob`), so
+      // without this they all fall back to the raw section name "Questions"
+      // and collapse into one undifferentiated row in "Mavzu bo'yicha
+      // tahlil" — same fix as byUnit below, applied here too so both tables
+      // agree on per-BOB granularity for Math.
+      final key = (r.bob != null && r.bobTitle != null)
+          ? '${r.bob}-BOB — ${r.bobTitle}'
+          : (r.topic ?? r.category ?? r.section);
       (byTopic[key] ??= []).add(r);
       int? unitNum = r.bob;
       if (unitNum == null) {
