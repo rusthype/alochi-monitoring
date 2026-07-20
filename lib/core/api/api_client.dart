@@ -310,6 +310,19 @@ class MonitoringApi {
       if (e.statusCode == 409) {
         return {'synced': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
       }
+      if (e.statusCode == 429) {
+        // Rate-limited, not rejected — a school-wide NAT IP can share the
+        // monitoring_submit throttle across ~20-30 concurrently-finishing
+        // students. Treating this as permanent (like a real 4xx payload
+        // rejection) silently DROPPED the result from the offline queue
+        // instead of retrying it (2026-07-21 fix).
+        return {
+          'synced': false,
+          'retryable': true,
+          'xp_earned': 0,
+          'wrong_answers': <dynamic>[]
+        };
+      }
       if (e.statusCode >= 400 && e.statusCode < 500) {
         // Permanent client error — server rejected payload, retrying won't help
         return {
@@ -513,7 +526,10 @@ class MonitoringApi {
           ));
       if (resp.statusCode >= 400) {
         debugPrint('submitLocalResultFull non-2xx: ${resp.statusCode}');
-        return {'synced': false, 'permanent': resp.statusCode < 500};
+        // 429 is a rate limit, not a payload rejection — must stay
+        // retryable, same fix as submitResultFull above.
+        final permanent = resp.statusCode != 429 && resp.statusCode < 500;
+        return {'synced': false, 'permanent': permanent};
       }
       return {'synced': true};
     } on ApiException {
