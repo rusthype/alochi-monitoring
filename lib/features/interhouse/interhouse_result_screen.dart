@@ -2,6 +2,7 @@
 // Interhouse Grade 2 result display + submission
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:go_router/go_router.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../core/models/models.dart';
 import '../../core/api/api_client.dart';
@@ -514,8 +515,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                 ),
                 const SizedBox(height: 8),
                 TextButton.icon(
-                  onPressed: () =>
-                      Navigator.popUntil(context, (r) => r.isFirst),
+                  onPressed: () => context.go('/'),
                   icon: const Icon(Icons.home_rounded, size: 16),
                   label: Text(l10n.homePage),
                   style: TextButton.styleFrom(

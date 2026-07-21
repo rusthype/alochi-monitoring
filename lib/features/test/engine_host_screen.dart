@@ -23,6 +23,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -738,8 +739,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
             label: Text(AppLocalizations.of(context)!.nextStudent),
           ),
           TextButton.icon(
-            onPressed: () =>
-                Navigator.of(context).popUntil((route) => route.isFirst),
+            onPressed: () => context.go('/'),
             icon: const Icon(Icons.home_rounded, size: 18),
             label: Text(AppLocalizations.of(context)!.homePage),
           ),

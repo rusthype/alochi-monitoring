@@ -2,6 +2,7 @@
 // Combined Monitoring Test runner: Math (30 MCQ) + English Unit 1 (49 Qs) = 79 total
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/exit_confirmation_scope.dart';
@@ -1392,8 +1393,7 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                     width: double.infinity,
                     height: 52,
                     child: OutlinedButton.icon(
-                      onPressed: () => Navigator.of(context)
-                          .popUntil((r) => r.isFirst),
+                      onPressed: () => context.go('/'),
                       icon: const Icon(Icons.home_outlined, size: 18),
                       label: const Text('Qaytish',
                           style: TextStyle(

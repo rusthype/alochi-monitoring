@@ -1,6 +1,7 @@
 // lib/features/local_test/local_result_screen.dart
 // Offline natija — mavzular bo'yicha + Server /result/ endpointga yuborish + PDF
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../shared/theme/app_theme.dart';
 import 'local_data.dart';
 import '../../core/db/offline_queue.dart';
@@ -360,7 +361,7 @@ class _LocalResultScreenState extends State<LocalResultScreen>
             ),
             const SizedBox(height: 8),
             TextButton.icon(
-              onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
+              onPressed: () => context.go('/'),
               icon: const Icon(Icons.home_rounded, size: 16),
               label: Text(AppLocalizations.of(context)!.homePage),
               style: TextButton.styleFrom(foregroundColor: AppColors.ink2),
