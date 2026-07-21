@@ -2,6 +2,7 @@
 // Offline English test runner — Grade 1, Unit 1 (49 questions, 49 minutes)
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../core/db/history_db.dart';
@@ -1302,8 +1303,7 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
                     width: double.infinity,
                     height: 52,
                     child: OutlinedButton.icon(
-                      onPressed: () => Navigator.of(context)
-                          .popUntil((r) => r.isFirst),
+                      onPressed: () => context.go('/'),
                       icon:
                           const Icon(Icons.home_outlined, size: 18),
                       label: const Text('Qaytish',
