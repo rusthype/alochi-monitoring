@@ -52,6 +52,7 @@ class AppNetworkImage extends StatelessWidget {
       width: width,
       fit: fit,
       alignment: alignment,
+      filterQuality: FilterQuality.medium,
       httpHeaders: const {'User-Agent': 'AlochiMonitoring/1.0'},
       placeholder: (ctx, url) => SizedBox(
         height: height ?? 80,
@@ -99,6 +100,7 @@ class AppNetworkImage extends StatelessWidget {
                           imageUrl: fixedUrl,
                           cacheManager: AlochiImageCacheManager(),
                           fit: BoxFit.contain,
+                          filterQuality: FilterQuality.medium,
                           httpHeaders: const {'User-Agent': 'AlochiMonitoring/1.0'},
                           placeholder: (c, u) => const Center(
                             child: CircularProgressIndicator(color: Colors.white),
