@@ -71,6 +71,24 @@ jobs:
           mv "$DMG" alochi-monitoring.dmg
           echo "DMG: $(ls -lh alochi-monitoring.dmg | awk '{print $5, $9}')"
 
+      # ── Update manifest (static release-asset JSON, NOT api.github.com) ──
+      # Consumed by lib/core/services/update_service.dart to check for
+      # updates without hitting GitHub's unauthenticated REST API rate limit
+      # (60 req/hour per IP — a problem for schools sharing one public IP).
+      # DMG creation above is unconditional (no continue-on-error), so this
+      # file always exists by the time "Upload to latest prerelease" runs.
+      - name: Generate macOS update manifest
+        if: github.ref == 'refs/heads/main'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/latest/alochi-monitoring.dmg"
+          cat > latest-macos.json << JSON
+          {"version": "$VERSION", "pub_date": "$PUB_DATE", "url": "$URL"}
+          JSON
+          echo "latest-macos.json:"
+          cat latest-macos.json
+
       - name: Generate release notes
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
@@ -141,7 +159,9 @@ jobs:
           prerelease: true
           make_latest: false
           fail_on_unmatched_files: true
-          files: alochi-monitoring.dmg
+          files: |
+            alochi-monitoring.dmg
+            latest-macos.json
           body: |
             **macOS DMG** — Latest build from `main` branch (v${{ steps.version.outputs.version }})
 
