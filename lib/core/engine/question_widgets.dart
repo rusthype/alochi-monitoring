@@ -413,6 +413,10 @@ class SpellingWidget extends StatelessWidget {
         TextField(
           controller: controller,
           onChanged: (v) => onChanged(v.toLowerCase()),
+          // Grade the pupil's answer as typed — autocorrect / suggestions would
+          // silently rewrite a valid Uzbek word before it is ever scored.
+          autocorrect: false,
+          enableSuggestions: false,
           decoration: _inputDecoration(),
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
@@ -425,8 +429,19 @@ class SpellingWidget extends StatelessWidget {
 // 4. SentenceOrderWidget — type: sentence_order
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Scrambled words → user types the sentence in correct order.
-class SentenceOrderWidget extends StatelessWidget {
+/// Chronology / word-order question. The scrambled segments (from
+/// [Question.words], split on '/') are shown as tappable rows; the pupil taps
+/// them into the correct order instead of RE-TYPING long phrases by hand. The
+/// old free-text field made a knowledge question fail on any typo, spacing or
+/// apostrophe drift, so a pupil who knew the order still scored 0 — this is
+/// acute for History chronology, whose segments are long event phrases.
+///
+/// The chosen order is written back to [controller] as the segments joined by
+/// ' / ' (and pushed via [onChanged]), so the engine's controller-flush +
+/// scoring path is unchanged. State is re-derived from the persisted
+/// [controller] text on init / widget-recycle, so a partly-built answer
+/// survives section switches.
+class SentenceOrderWidget extends StatefulWidget {
   final int index;
   final Question question;
   final TextEditingController controller;
@@ -441,9 +456,73 @@ class SentenceOrderWidget extends StatelessWidget {
   });
 
   @override
+  State<SentenceOrderWidget> createState() => _SentenceOrderWidgetState();
+}
+
+class _SentenceOrderWidgetState extends State<SentenceOrderWidget> {
+  late List<String> _pool; // all segments (scrambled display order)
+  late List<String> _ordered; // current selection, in chosen order
+
+  static List<String> _split(String s) => s
+      .split('/')
+      .map((p) => p.trim())
+      .where((p) => p.isNotEmpty)
+      .toList();
+
+  @override
+  void initState() {
+    super.initState();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(SentenceOrderWidget old) {
+    super.didUpdateWidget(old);
+    // Widget recycled for a different question/controller — re-derive state.
+    if (old.question != widget.question ||
+        old.controller != widget.controller) {
+      _sync();
+    }
+  }
+
+  void _sync() {
+    _pool = _split(widget.question.words ?? '');
+    // Restore any previously-chosen order from the persisted controller text,
+    // keeping only segments that still belong to this pool.
+    final saved = _split(widget.controller.text);
+    _ordered = saved.where((s) => _pool.contains(s)).toList();
+  }
+
+  List<String> get _remaining =>
+      _pool.where((s) => !_ordered.contains(s)).toList();
+
+  void _emit() {
+    final joined = _ordered.join(' / ');
+    widget.controller.text = joined;
+    widget.onChanged(joined);
+  }
+
+  void _add(String seg) {
+    setState(() => _ordered = [..._ordered, seg]);
+    _emit();
+  }
+
+  void _removeAt(int i) {
+    setState(() => _ordered = [..._ordered]..removeAt(i));
+    _emit();
+  }
+
+  void _clear() {
+    setState(() => _ordered = []);
+    _emit();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    assert(question.type == QuestionType.sentenceOrder,
-        'SentenceOrderWidget received wrong type: ${question.type}');
+    assert(widget.question.type == QuestionType.sentenceOrder,
+        'SentenceOrderWidget received wrong type: ${widget.question.type}');
+
+    final remaining = _remaining;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -455,48 +534,184 @@ class SentenceOrderWidget extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          EngineQNum(index),
+          EngineQNum(widget.index),
           const SizedBox(width: 10),
-          const Text(
-            'Jumlani to\'g\'ri tartibga soling',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.ink2,
+          const Expanded(
+            child: Text(
+              'Voqealarni to\'g\'ri tartibda belgilang',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink2,
+              ),
             ),
           ),
+          if (_ordered.isNotEmpty)
+            GestureDetector(
+              onTap: _clear,
+              behavior: HitTestBehavior.opaque,
+              child: const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Text(
+                  'Tozalash',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.brand,
+                  ),
+                ),
+              ),
+            ),
         ]),
-        const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.brandLight,
-            borderRadius: BorderRadius.circular(10),
-            border:
-                Border.all(color: AppColors.brand.withValues(alpha: .3)),
-          ),
-          child: Text(
-            question.words ?? '',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.brand,
+        const SizedBox(height: 12),
+
+        // Chosen order — numbered, tap ✕ to remove.
+        if (_ordered.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.bg,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Text(
+              'Quyidagi variantlarni to\'g\'ri ketma-ketlikda tanlang',
+              style: TextStyle(fontSize: 13, color: AppColors.ink3),
+            ),
+          )
+        else
+          ...List.generate(
+            _ordered.length,
+            (i) => _OrderedRow(
+              position: i + 1,
+              text: _ordered[i],
+              onRemove: () => _removeAt(i),
             ),
           ),
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: controller,
-          onChanged: onChanged,
-          decoration:
-              _inputDecoration(hintText: 'To\'liq jumlani yozing...'),
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
+
+        // Remaining scrambled segments — tap + to append.
+        if (remaining.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const Text(
+            'VARIANTLAR',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: .5,
+              color: AppColors.ink3,
+            ),
+          ),
+          const SizedBox(height: 6),
+          ...remaining.map((seg) => _ChoiceRow(
+                text: seg,
+                onTap: () => _add(seg),
+              )),
+        ],
       ]),
     );
   }
+}
+
+/// One row in the pupil's chosen order (numbered, removable).
+class _OrderedRow extends StatelessWidget {
+  final int position;
+  final String text;
+  final VoidCallback onRemove;
+
+  const _OrderedRow({
+    required this.position,
+    required this.text,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.brandLight,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.brand.withValues(alpha: .35)),
+        ),
+        child: Row(children: [
+          Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: AppColors.brand,
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '$position',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.amberInk,
+                height: 1.35,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onRemove,
+            behavior: HitTestBehavior.opaque,
+            child: const Icon(Icons.close_rounded,
+                size: 18, color: AppColors.brand),
+          ),
+        ]),
+      );
+}
+
+/// One tappable unused segment (adds itself to the end of the chosen order).
+class _ChoiceRow extends StatelessWidget {
+  final String text;
+  final VoidCallback onTap;
+
+  const _ChoiceRow({required this.text, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border, width: 1.5),
+          ),
+          child: Row(children: [
+            const Icon(Icons.add_circle_outline_rounded,
+                size: 18, color: AppColors.ink3),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.ink1,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ]),
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -723,6 +938,10 @@ class _FillBlankWidgetState extends State<FillBlankWidget> {
         TextField(
           controller: _ctrl,
           onChanged: widget.onChanged,
+          // Grade the pupil's answer as typed — autocorrect / suggestions would
+          // silently rewrite a valid Uzbek word before it is ever scored.
+          autocorrect: false,
+          enableSuggestions: false,
           decoration: _inputDecoration(),
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
