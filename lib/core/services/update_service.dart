@@ -1,10 +1,22 @@
 // lib/core/services/update_service.dart
-// Checks GitHub Releases for a newer app version at startup and exposes it
-// as UpdateInfo — the login screen renders a persistent top-right badge
-// when an update is available. Tapping it downloads and silently installs
-// the update (Windows: elevated via PowerShell Start-Process -Verb RunAs,
+// Checks a static release-asset manifest (latest-windows.json /
+// latest-macos.json) for a newer app version at startup and exposes it as
+// UpdateInfo — the login screen renders a persistent top-right badge when
+// an update is available. Tapping it downloads and silently installs the
+// update (Windows: elevated via PowerShell Start-Process -Verb RunAs,
 // since installer.iss requires admin; macOS: DMG swap), falling back to
 // openReleasePage() on any failure.
+//
+// The manifest is uploaded as a GitHub Release *asset* on the 'latest' tag
+// by .github/workflows/build-windows.yml / build-macos.yml on every push to
+// main, and is fetched via the static release-asset download URL
+// (github.com/OWNER/REPO/releases/download/latest/FILENAME), which is
+// served through GitHub's CDN redirect — NOT the api.github.com REST API.
+// This means it is never subject to GitHub's unauthenticated 60
+// requests/hour PER-IP rate limit, which previously caused update checks to
+// silently fail for schools sharing one public IP (the old approach polled
+// api.github.com/repos/.../releases/tags/latest directly). Because the rate
+// limit no longer applies, no client-side throttle/cache is needed either.
 // See docs/superpowers/specs/2026-07-11-monitoring-flutter-update-mechanism-design.md
 // and docs/superpowers/specs/2026-07-16-monitoring-flutter-update-badge-design.md
 // (in the alochi monorepo) for the original link-out-only design — superseded
@@ -17,10 +29,6 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-final RegExp _setupExePattern =
-    RegExp(r'^AlochiMonitoring-(\d+)\.(\d+)\.(\d+)-Setup\.exe$');
 
 /// True if [remote] is strictly newer than [local] (both "X.Y.Z" strings).
 /// Numeric comparison, not string comparison — "1.0.9" vs "1.0.10" must
@@ -36,32 +44,6 @@ bool isNewerVersion(String remote, String local) {
   return false;
 }
 
-/// Extracts the highest version among AlochiMonitoring-X.Y.Z-Setup.exe
-/// assets in a GitHub release's `assets` list (raw JSON, already decoded).
-/// The 'latest' release accumulates old Setup.exe assets over time (never
-/// deleted), so this MUST scan all matches and pick the max — not the first.
-/// Returns null if no matching asset is found.
-String? maxSetupExeVersion(List<dynamic> assets) {
-  List<int>? best;
-  for (final asset in assets) {
-    if (asset is! Map) continue;
-    final name = asset['name'];
-    if (name is! String) continue;
-    final match = _setupExePattern.firstMatch(name);
-    if (match == null) continue;
-    final parts = [
-      int.parse(match.group(1)!),
-      int.parse(match.group(2)!),
-      int.parse(match.group(3)!),
-    ];
-    if (best == null || _compareParts(parts, best) > 0) {
-      best = parts;
-    }
-  }
-  if (best == null) return null;
-  return '${best[0]}.${best[1]}.${best[2]}';
-}
-
 List<int>? _parseVersionParts(String version) {
   final segments = version.split('.');
   if (segments.length < 3) return null;
@@ -72,13 +54,6 @@ List<int>? _parseVersionParts(String version) {
     parts.add(n);
   }
   return parts;
-}
-
-int _compareParts(List<int> a, List<int> b) {
-  for (var i = 0; i < 3; i++) {
-    if (a[i] != b[i]) return a[i] - b[i];
-  }
-  return 0;
 }
 
 /// Encodes [s] as UTF-16LE bytes, the format PowerShell's -EncodedCommand
@@ -111,24 +86,15 @@ class UpdateService {
   UpdateService._();
   static final UpdateService instance = UpdateService._();
 
-  static const String _releaseApiUrl =
-      'https://api.github.com/repos/rusthype/alochi-monitoring/releases/tags/latest';
+  static const String _manifestUrlWindows =
+      'https://github.com/rusthype/alochi-monitoring/releases/download/latest/latest-windows.json';
+  static const String _manifestUrlMacOS =
+      'https://github.com/rusthype/alochi-monitoring/releases/download/latest/latest-macos.json';
   static const String _releasePageUrl =
       'https://github.com/rusthype/alochi-monitoring/releases/tag/latest';
 
-  // How often to actually hit the GitHub API, as opposed to reusing the
-  // cached result. Kept as a named constant since it's the one knob that's
-  // likely to need tuning later.
-  static const Duration _checkThrottle = Duration(hours: 6);
-
-  static const String _prefsLastAttemptMs = 'update_check_last_attempt_ms';
-  static const String _prefsCachedLatestVersion =
-      'update_check_cached_latest_version';
-  static const String _prefsCachedDownloadUrl =
-      'update_check_cached_download_url';
-
-  /// Checks for a newer release once. Any failure (offline, GitHub API rate
-  /// limit, malformed JSON) is swallowed silently, matching
+  /// Checks the static release-asset manifest once. Any failure (offline,
+  /// non-200, malformed JSON) is swallowed silently, matching
   /// HeartbeatService's error-handling pattern
   /// (lib/core/services/heartbeat_service.dart:62-71) — never throws, never
   /// blocks app startup. Returns null when no update is available or the
@@ -137,60 +103,20 @@ class UpdateService {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
-      final prefs = await SharedPreferences.getInstance();
 
-      // Throttle real network checks: GitHub's unauthenticated API allows
-      // only 60 requests/hour per IP, and many school machines sit behind
-      // one shared public IP — checking on every single app launch (as
-      // this used to do) exhausts that shared quota for the whole school.
-      final lastAttemptMs = prefs.getInt(_prefsLastAttemptMs);
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
-      if (lastAttemptMs != null &&
-          nowMs - lastAttemptMs < _checkThrottle.inMilliseconds) {
-        return _updateInfoFromCache(prefs, currentVersion);
-      }
-
-      await prefs.setInt(_prefsLastAttemptMs, nowMs);
-
+      final manifestUrl =
+          Platform.isMacOS ? _manifestUrlMacOS : _manifestUrlWindows;
       final resp = await http
-          .get(Uri.parse(_releaseApiUrl))
+          .get(Uri.parse(manifestUrl))
           .timeout(const Duration(seconds: 5));
       if (resp.statusCode != 200) return null;
 
       final decoded = jsonDecode(resp.body);
       if (decoded is! Map<String, dynamic>) return null;
-      final assets = decoded['assets'];
-      if (assets is! List) return null;
 
-      final latestVersion = maxSetupExeVersion(assets);
-      if (latestVersion == null) return null;
-
-      String? downloadUrl;
-      final expectedExeName = 'AlochiMonitoring-$latestVersion-Setup.exe';
-
-      for (final asset in assets) {
-        if (asset is! Map) continue;
-        final name = asset['name'].toString();
-        if (Platform.isMacOS) {
-          if (name.endsWith('.dmg')) {
-            downloadUrl = asset['browser_download_url'] as String?;
-            break;
-          }
-        } else {
-          if (name == expectedExeName) {
-            downloadUrl = asset['browser_download_url'] as String?;
-            break;
-          }
-        }
-      }
-
-      if (downloadUrl == null) return null;
-
-      // Cache the parsed result (independent of currentVersion) so the
-      // throttle window above can recompute the version comparison later
-      // without another network call.
-      await prefs.setString(_prefsCachedLatestVersion, latestVersion);
-      await prefs.setString(_prefsCachedDownloadUrl, downloadUrl);
+      final latestVersion = decoded['version'];
+      final downloadUrl = decoded['url'];
+      if (latestVersion is! String || downloadUrl is! String) return null;
 
       if (!isNewerVersion(latestVersion, currentVersion)) return null;
 
@@ -202,24 +128,6 @@ class UpdateService {
     } catch (_) {
       return null;
     }
-  }
-
-  /// Re-derives the throttled-path result from the last successfully cached
-  /// release, re-running [isNewerVersion] against the CURRENT app version
-  /// rather than trusting any stale "is update available" boolean.
-  UpdateInfo? _updateInfoFromCache(
-    SharedPreferences prefs,
-    String currentVersion,
-  ) {
-    final cachedVersion = prefs.getString(_prefsCachedLatestVersion);
-    final cachedUrl = prefs.getString(_prefsCachedDownloadUrl);
-    if (cachedVersion == null || cachedUrl == null) return null;
-    if (!isNewerVersion(cachedVersion, currentVersion)) return null;
-    return UpdateInfo(
-      latestVersion: cachedVersion,
-      currentVersion: currentVersion,
-      downloadUrl: cachedUrl,
-    );
   }
 
   /// Downloads the update installer and executes it silently, then exits the app.

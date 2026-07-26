@@ -203,6 +203,34 @@ jobs:
           echo "version=$v" >> $env:GITHUB_OUTPUT
           Write-Host "Version: $v"
 
+      # ── Update manifest (static release-asset JSON, NOT api.github.com) ──
+      # Consumed by lib/core/services/update_service.dart to check for
+      # updates without hitting GitHub's unauthenticated REST API rate limit
+      # (60 req/hour per IP — a problem for schools sharing one public IP).
+      - name: Generate Windows update manifest
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: |
+          $v = "${{ steps.version.outputs.version }}"
+          $setupExe = Get-ChildItem -Path . -Filter "AlochiMonitoring-*-Setup.exe" | Select-Object -First 1
+          if ($setupExe) {
+            $pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            $url = "https://github.com/${{ github.repository }}/releases/download/latest/$($setupExe.Name)"
+            $manifest = [ordered]@{
+              version  = $v
+              pub_date = $pubDate
+              url      = $url
+            }
+            $json = ($manifest | ConvertTo-Json -Compress)
+            # Write WITHOUT a BOM — Out-File -Encoding utf8 prepends one on
+            # some pwsh versions, which breaks Dart's jsonDecode client-side
+            # (silent failure, since fetchUpdateInfo() swallows all errors).
+            [System.IO.File]::WriteAllText("$PWD\latest-windows.json", $json, [System.Text.UTF8Encoding]::new($false))
+            Write-Host "latest-windows.json OK: $json"
+          } else {
+            Write-Host "Setup.exe not found (Inno Setup step failed), skipping latest-windows.json"
+          }
+
       - name: Generate Windows release notes
         if: startsWith(github.ref, 'refs/tags/')
         id: winnotes
@@ -250,6 +278,7 @@ jobs:
             alochi-monitoring-windows.zip
             alochi-monitoring-app-latest.zip
             AlochiMonitoring-*-Setup.exe
+            latest-windows.json
           body: |
             ### O'rnatish
 
