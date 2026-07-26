@@ -72,6 +72,8 @@ class Question {
   final String? svg;
   final int? bob;
   final String? bobTitle; // human-readable chapter/unit title (Math World)
+  final int? par;
+  final String? parName; // human-readable paragraph/topic title within a bob (Math World)
   final String? category;
 
   const Question({
@@ -89,6 +91,8 @@ class Question {
     this.svg,
     this.bob,
     this.bobTitle,
+    this.par,
+    this.parName,
     this.category,
   });
 
@@ -110,6 +114,11 @@ class Question {
     }
     final bob = parseUnit(json['bob']) ?? parseUnit(json['unit']);
     final bobTitle = json['bob_title']?.toString();
+    // `par`/`par_name` — paragraph/topic level within a bob (Math World),
+    // same shape as bob/bob_title. Optional — absent on older test_data, so
+    // both stay null and every consumer below already treats them as such.
+    final par = parseUnit(json['par']);
+    final parName = json['par_name']?.toString();
     final category = json['category']?.toString();
 
     if (type == null) {
@@ -120,7 +129,7 @@ class Question {
         q: json['q']?.toString(),
         opts: _parseOpts(json['opts']),
         ans: (json['ans'] as num?)?.toInt() ?? 0,
-        topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
+        topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, par: par, parName: parName, category: category,
       );
     }
 
@@ -131,7 +140,7 @@ class Question {
           q: json['q']?.toString(),
           opts: _parseOpts(json['opts']),
           ans: (json['ans'] as num?)?.toInt() ?? 0,
-          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, par: par, parName: parName, category: category,
         );
 
       case QuestionType.imageChoice:
@@ -141,7 +150,7 @@ class Question {
           q: json['q']?.toString(),
           opts: _parseOpts(json['opts']),
           ans: (json['ans'] as num?)?.toInt() ?? 0,
-          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, par: par, parName: parName, category: category,
         );
 
       case QuestionType.spelling:
@@ -150,7 +159,7 @@ class Question {
           img: json['img']?.toString(),
           scramble: json['scramble']?.toString(),
           strAns: json['ans']?.toString(),
-          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, par: par, parName: parName, category: category,
         );
 
       case QuestionType.sentenceOrder:
@@ -158,14 +167,14 @@ class Question {
           type: type,
           words: json['words']?.toString(),
           strAns: json['ans']?.toString(),
-          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, par: par, parName: parName, category: category,
         );
 
       case QuestionType.reading:
         return Question(
           type: type,
           reading: ReadingSection.fromJson(json),
-          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, par: par, parName: parName, category: category,
         );
 
       case QuestionType.yesNo:
@@ -173,7 +182,7 @@ class Question {
           type: type,
           q: json['q']?.toString(),
           yesNoAns: json['ans']?.toString().toUpperCase(),
-          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, par: par, parName: parName, category: category,
         );
 
       case QuestionType.fillBlank:
@@ -181,7 +190,7 @@ class Question {
           type: type,
           q: json['q']?.toString(),
           strAns: json['ans']?.toString(),
-          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, category: category,
+          topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, par: par, parName: parName, category: category,
         );
     }
   }

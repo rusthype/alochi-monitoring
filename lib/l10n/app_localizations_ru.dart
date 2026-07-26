@@ -755,6 +755,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get subjectAnalysisByUnit => 'Анализ по юнитам';
 
   @override
+  String get subjectAnalysisByParagraph => 'Разбивка по параграфам';
+
+  @override
   String get strongAndWeakSides => 'Kuchli va zaif tomonlar';
 
   @override
