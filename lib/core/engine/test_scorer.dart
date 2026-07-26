@@ -37,6 +37,8 @@ class QuestionResult {
   final String? category;    // e.g. "matnli"
   final int? bob;            // unit/chapter
   final String? bobTitle;    // human-readable chapter/unit title (Math World)
+  final int? par;            // paragraph/topic within the bob (Math World)
+  final String? parName;     // human-readable paragraph title (Math World)
   final bool correct;
   final Question question;
   final dynamic userAnswer;
@@ -52,6 +54,8 @@ class QuestionResult {
     this.category,
     this.bob,
     this.bobTitle,
+    this.par,
+    this.parName,
   });
 }
 
@@ -320,6 +324,8 @@ class TestScorer {
           category: slot.question.category,
           bob: slot.question.bob,
           bobTitle: slot.question.bobTitle,
+          par: slot.question.par,
+          parName: slot.question.parName,
           correct: _isCorrect(slot.question, answers[slot.key]),
           question: slot.question,
           userAnswer: answers[slot.key],

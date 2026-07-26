@@ -371,6 +371,7 @@
   "focus14DaysTitle": "14 kunlik e'tibor",
   "subjectAnalysisByTopic": "Mavzu bo'yicha tahlil",
   "subjectAnalysisByUnit": "Unitlar bo'yicha tahlil",
+  "subjectAnalysisByParagraph": "Paragraf bo'yicha taqsimot",
   "strongAndWeakSides": "Kuchli va zaif tomonlar",
   "strongLabel": "Kuchli",
   "needsReinforcement": "Mustahkamlash kerak",

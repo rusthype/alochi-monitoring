@@ -333,6 +333,7 @@
   "focus14DaysTitle": "14 kunlik e'tibor",
   "subjectAnalysisByTopic": "Mavzu bo'yicha tahlil",
   "subjectAnalysisByUnit": "Анализ по юнитам",
+  "subjectAnalysisByParagraph": "Разбивка по параграфам",
   "strongAndWeakSides": "Kuchli va zaif tomonlar",
   "strongLabel": "Kuchli",
   "needsReinforcement": "Mustahkamlash kerak",

@@ -1173,7 +1173,10 @@ class _TzAnalysis extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                           color: _c(pct))),
                   childrenPadding: const EdgeInsets.only(bottom: 8),
-                  children: e.value.map(_qRow).toList(),
+                  children: [
+                    ..._paragraphRows(context, e.value),
+                    ...e.value.map(_qRow),
+                  ],
                 ),
               );
             }),
@@ -1260,6 +1263,71 @@ class _TzAnalysis extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  /// Inner paragraph-level mini-breakdown shown at the top of a BOB's
+  /// expanded accordion body — one row per distinct `par`/`par_name` found
+  /// among that BOB's questions (Math World only; older test_data/other
+  /// subjects carry no `par`, so this returns an empty list and the
+  /// accordion looks exactly like before).
+  List<Widget> _paragraphRows(BuildContext context, List<QuestionResult> rows) {
+    final Map<String, List<QuestionResult>> byPar = {};
+    for (final r in rows) {
+      if (r.par == null || r.parName == null) continue;
+      final key = '§${r.par} — ${r.parName}';
+      (byPar[key] ??= []).add(r);
+    }
+    if (byPar.isEmpty) return const [];
+
+    final entries = byPar.entries.toList()
+      ..sort((a, b) {
+        final matchA = RegExp(r'\d+').firstMatch(a.key);
+        final matchB = RegExp(r'\d+').firstMatch(b.key);
+        final numA = matchA != null ? int.parse(matchA.group(0)!) : 0;
+        final numB = matchB != null ? int.parse(matchB.group(0)!) : 0;
+        return numA.compareTo(numB);
+      });
+
+    return [
+      Container(
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(AppLocalizations.of(context)!.subjectAnalysisByParagraph,
+                style: AppTextStyles.labelMedium),
+            const SizedBox(height: 6),
+            ...entries.map((e) {
+              final correct = e.value.where((r) => r.correct).length;
+              final total = e.value.length;
+              final pct = total > 0 ? correct * 100.0 / total : 0.0;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(e.key, style: AppTextStyles.bodyMedium),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('$correct/$total — ${pct.round()}%',
+                        style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _c(pct))),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    ];
   }
 
   Widget _qRow(QuestionResult r) {

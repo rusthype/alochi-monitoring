@@ -759,6 +759,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get subjectAnalysisByUnit => 'Unitlar bo\'yicha tahlil';
 
   @override
+  String get subjectAnalysisByParagraph => 'Paragraf bo\'yicha taqsimot';
+
+  @override
   String get strongAndWeakSides => 'Kuchli va zaif tomonlar';
 
   @override
