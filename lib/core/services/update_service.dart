@@ -17,6 +17,7 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final RegExp _setupExePattern =
     RegExp(r'^AlochiMonitoring-(\d+)\.(\d+)\.(\d+)-Setup\.exe$');
@@ -115,6 +116,17 @@ class UpdateService {
   static const String _releasePageUrl =
       'https://github.com/rusthype/alochi-monitoring/releases/tag/latest';
 
+  // How often to actually hit the GitHub API, as opposed to reusing the
+  // cached result. Kept as a named constant since it's the one knob that's
+  // likely to need tuning later.
+  static const Duration _checkThrottle = Duration(hours: 6);
+
+  static const String _prefsLastAttemptMs = 'update_check_last_attempt_ms';
+  static const String _prefsCachedLatestVersion =
+      'update_check_cached_latest_version';
+  static const String _prefsCachedDownloadUrl =
+      'update_check_cached_download_url';
+
   /// Checks for a newer release once. Any failure (offline, GitHub API rate
   /// limit, malformed JSON) is swallowed silently, matching
   /// HeartbeatService's error-handling pattern
@@ -125,6 +137,20 @@ class UpdateService {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
+      final prefs = await SharedPreferences.getInstance();
+
+      // Throttle real network checks: GitHub's unauthenticated API allows
+      // only 60 requests/hour per IP, and many school machines sit behind
+      // one shared public IP — checking on every single app launch (as
+      // this used to do) exhausts that shared quota for the whole school.
+      final lastAttemptMs = prefs.getInt(_prefsLastAttemptMs);
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      if (lastAttemptMs != null &&
+          nowMs - lastAttemptMs < _checkThrottle.inMilliseconds) {
+        return _updateInfoFromCache(prefs, currentVersion);
+      }
+
+      await prefs.setInt(_prefsLastAttemptMs, nowMs);
 
       final resp = await http
           .get(Uri.parse(_releaseApiUrl))
@@ -138,11 +164,10 @@ class UpdateService {
 
       final latestVersion = maxSetupExeVersion(assets);
       if (latestVersion == null) return null;
-      if (!isNewerVersion(latestVersion, currentVersion)) return null;
 
       String? downloadUrl;
       final expectedExeName = 'AlochiMonitoring-$latestVersion-Setup.exe';
-      
+
       for (final asset in assets) {
         if (asset is! Map) continue;
         final name = asset['name'].toString();
@@ -161,6 +186,14 @@ class UpdateService {
 
       if (downloadUrl == null) return null;
 
+      // Cache the parsed result (independent of currentVersion) so the
+      // throttle window above can recompute the version comparison later
+      // without another network call.
+      await prefs.setString(_prefsCachedLatestVersion, latestVersion);
+      await prefs.setString(_prefsCachedDownloadUrl, downloadUrl);
+
+      if (!isNewerVersion(latestVersion, currentVersion)) return null;
+
       return UpdateInfo(
         latestVersion: latestVersion,
         currentVersion: currentVersion,
@@ -169,6 +202,24 @@ class UpdateService {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Re-derives the throttled-path result from the last successfully cached
+  /// release, re-running [isNewerVersion] against the CURRENT app version
+  /// rather than trusting any stale "is update available" boolean.
+  UpdateInfo? _updateInfoFromCache(
+    SharedPreferences prefs,
+    String currentVersion,
+  ) {
+    final cachedVersion = prefs.getString(_prefsCachedLatestVersion);
+    final cachedUrl = prefs.getString(_prefsCachedDownloadUrl);
+    if (cachedVersion == null || cachedUrl == null) return null;
+    if (!isNewerVersion(cachedVersion, currentVersion)) return null;
+    return UpdateInfo(
+      latestVersion: cachedVersion,
+      currentVersion: currentVersion,
+      downloadUrl: cachedUrl,
+    );
   }
 
   /// Downloads the update installer and executes it silently, then exits the app.
