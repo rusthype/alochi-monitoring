@@ -1463,7 +1463,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (_, __) => const Skeleton(height: 72, borderRadius: 16),
                     )
-                  : _entries.isEmpty
+                  : (_entries.isEmpty && _schools.isEmpty)
                       ? Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
