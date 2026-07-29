@@ -57,6 +57,8 @@ flutter:
   generate: true
   uses-material-design: true
   assets:
+    - assets/certs/isrg_root_x1.pem
+    - assets/certs/isrg_root_x2.pem
     - assets/logo.png
     - assets/questions.json
     - assets/bob1_4.json

@@ -52,6 +52,27 @@ void main() {
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
+    // Dart/BoringSSL ships its own static root CA bundle (frozen at the SDK
+    // version this build was compiled with) instead of reading the OS trust
+    // store — so a server-side CA chain rollover (e.g. a new Let's Encrypt
+    // cross-sign intermediate) that every browser already trusts can still
+    // fail here with CERTIFICATE_VERIFY_FAILED / "unable to get local issuer
+    // certificate" on Windows clients. Explicitly trusting the current ISRG
+    // roots closes that gap without disabling verification.
+    if (!kIsWeb) {
+      try {
+        for (final asset in [
+          'assets/certs/isrg_root_x1.pem',
+          'assets/certs/isrg_root_x2.pem',
+        ]) {
+          final bytes = (await rootBundle.load(asset)).buffer.asUint8List();
+          SecurityContext.defaultContext.setTrustedCertificatesBytes(bytes);
+        }
+      } catch (error) {
+        debugPrint('Trusted root CA bundle load failed: $error');
+      }
+    }
+
     FlutterError.onError = (details) {
       debugPrint('Flutter error: ${details.exceptionAsString()}');
       FlutterError.presentError(details);
