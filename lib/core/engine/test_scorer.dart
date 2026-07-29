@@ -2,6 +2,7 @@
 // Generic scorer for JSON-driven test engine (Faza 3)
 // Pure Dart — no Flutter imports.
 
+import 'answer_normalization.dart';
 import 'test_models.dart';
 
 // ── SectionScore ──────────────────────────────────────────────────────────────
@@ -136,18 +137,24 @@ class TestScorer {
   /// Normalizes a typed/expected string before comparison: trims, lowercases,
   /// maps curly apostrophe (’) and the Uzbek modifier-letter apostrophes
   /// ʻ (U+02BB, turned comma — used in "oʻ"/"gʻ") and ʼ (U+02BC, apostrophe
-  /// letter) to straight ('), and collapses multiple whitespace to one.
-  /// Applies to spelling, sentence_order and fill_blank. Without this, an
-  /// AI-authored "oʻqituvchi" and a student-typed "o'qituvchi" compare as
+  /// letter) to straight ('), collapses multiple whitespace to one, then (a)
+  /// defensively collapses any leftover ' / ' word-chip separator (from
+  /// sentence_order answers stored before the join-character fix landed) to
+  /// a plain space, and (b) expands English contractions (they're → they
+  /// are) so contraction and full-form phrasing compare equal. Applies to
+  /// spelling, sentence_order and fill_blank. Without the apostrophe step,
+  /// an AI-authored "oʻqituvchi" and a student-typed "o'qituvchi" compare as
   /// different strings even though they're the same word (Ona tili §2/§3).
   static String _normalize(String s) {
-    return s
+    final base = s
         .trim()
         .toLowerCase()
         .replaceAll('’', "'")
         .replaceAll('ʻ', "'")
         .replaceAll('ʼ', "'")
         .replaceAll(_multiSpaceRe, ' ');
+    final slashCleaned = base.replaceAll(' / ', ' ');
+    return expandContractions(slashCleaned);
   }
 
   /// Score a completed test variant.

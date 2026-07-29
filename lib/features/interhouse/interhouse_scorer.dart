@@ -1,5 +1,6 @@
 // lib/features/interhouse/interhouse_scorer.dart
 // Pure Dart scorer — no Flutter imports
+import '../../core/engine/answer_normalization.dart';
 import 'interhouse_data.dart';
 
 // ── IhPartScore ──────────────────────────────────────────────────────────────
@@ -103,13 +104,13 @@ class IhScorer {
     int cntSen = 0;
     final trailRe = RegExp(r'[.!?\s]+$');
     for (int i = 0; i < variant.sentences.length; i++) {
-      final typed = (i < senAns.length ? senAns[i] : '')
+      final typed = expandContractions((i < senAns.length ? senAns[i] : '')
           .trim()
           .toLowerCase()
-          .replaceAll(trailRe, '');
-      final expected = (variant.sentences[i].ans as String)
+          .replaceAll(trailRe, ''));
+      final expected = expandContractions((variant.sentences[i].ans as String)
           .toLowerCase()
-          .replaceAll(trailRe, '');
+          .replaceAll(trailRe, ''));
       if (typed == expected) cntSen++;
     }
 

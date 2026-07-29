@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../core/engine/answer_normalization.dart';
 import '../../core/db/history_db.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/api/api_client.dart';
@@ -313,7 +314,7 @@ class _Unit1RunnerState extends State<Unit1Runner>
         correctAns =
             correctAns.substring(0, correctAns.length - 1).trim();
       }
-      final bool ok = userAns == correctAns;
+      final bool ok = expandContractions(userAns) == expandContractions(correctAns);
       if (ok) sentenceOk++;
       answers.add({
         'section': 'Sentences',

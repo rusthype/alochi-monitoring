@@ -437,10 +437,14 @@ class SpellingWidget extends StatelessWidget {
 /// acute for History chronology, whose segments are long event phrases.
 ///
 /// The chosen order is written back to [controller] as the segments joined by
-/// ' / ' (and pushed via [onChanged]), so the engine's controller-flush +
-/// scoring path is unchanged. State is re-derived from the persisted
-/// [controller] text on init / widget-recycle, so a partly-built answer
-/// survives section switches.
+/// a plain space (and pushed via [onChanged]) — matching the stored
+/// natural-sentence correct answer format (e.g. "It is a doll.") — so the
+/// engine's controller-flush + scoring path compares like-for-like. State is
+/// re-derived from the persisted [controller] text on init / widget-recycle
+/// (via [_restoreOrdered], which matches known pool segments against the
+/// saved text rather than splitting on a delimiter, since segments — e.g.
+/// History chronology event phrases — may themselves contain spaces), so a
+/// partly-built answer survives section switches.
 class SentenceOrderWidget extends StatefulWidget {
   final int index;
   final Question question;
@@ -463,11 +467,45 @@ class _SentenceOrderWidgetState extends State<SentenceOrderWidget> {
   late List<String> _pool; // all segments (scrambled display order)
   late List<String> _ordered; // current selection, in chosen order
 
+  // Splits the source [Question.words] pool, which is always '/'-delimited
+  // regardless of segment content (segments may be single words or, for
+  // History chronology, long multi-word event phrases).
   static List<String> _split(String s) => s
       .split('/')
       .map((p) => p.trim())
       .where((p) => p.isNotEmpty)
       .toList();
+
+  /// Reconstructs a previously-chosen order from the persisted, plain-space
+  /// -joined answer text (see [_emit]). Cannot simply split [saved] on
+  /// whitespace, since a [pool] segment may itself contain internal spaces
+  /// (e.g. "Napoleon crowned emperor") — instead greedily matches the
+  /// longest remaining pool segment against the front of the remaining text.
+  /// Any unparsable leftover (e.g. answer text from a stale/incompatible
+  /// format) is dropped rather than crashing.
+  static List<String> _restoreOrdered(String saved, List<String> pool) {
+    var rest = saved.trim();
+    if (rest.isEmpty) return [];
+    final remainingPool = List<String>.from(pool)
+      ..sort((a, b) => b.length.compareTo(a.length));
+    final result = <String>[];
+    while (rest.isNotEmpty) {
+      String? matched;
+      for (final seg in remainingPool) {
+        if (rest == seg || rest.startsWith('$seg ')) {
+          matched = seg;
+          break;
+        }
+      }
+      if (matched == null) break;
+      result.add(matched);
+      remainingPool.remove(matched);
+      rest = rest.length == matched.length
+          ? ''
+          : rest.substring(matched.length + 1);
+    }
+    return result;
+  }
 
   @override
   void initState() {
@@ -487,17 +525,15 @@ class _SentenceOrderWidgetState extends State<SentenceOrderWidget> {
 
   void _sync() {
     _pool = _split(widget.question.words ?? '');
-    // Restore any previously-chosen order from the persisted controller text,
-    // keeping only segments that still belong to this pool.
-    final saved = _split(widget.controller.text);
-    _ordered = saved.where((s) => _pool.contains(s)).toList();
+    // Restore any previously-chosen order from the persisted controller text.
+    _ordered = _restoreOrdered(widget.controller.text, _pool);
   }
 
   List<String> get _remaining =>
       _pool.where((s) => !_ordered.contains(s)).toList();
 
   void _emit() {
-    final joined = _ordered.join(' / ');
+    final joined = _ordered.join(' ');
     widget.controller.text = joined;
     widget.onChanged(joined);
   }

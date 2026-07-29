@@ -90,12 +90,14 @@ void main() {
         ];
 
     test('correct order matches (widget joins with " / ")', () {
-      final r = TestScorer.score(_build([], order()), '1', {'Order/0': 'A / B / C'});
+      final r =
+          TestScorer.score(_build([], order()), '1', {'Order/0': 'A / B / C'});
       expect(r.totalCorrect, 1);
     });
 
     test('wrong order fails', () {
-      final r = TestScorer.score(_build([], order()), '1', {'Order/0': 'B / A / C'});
+      final r =
+          TestScorer.score(_build([], order()), '1', {'Order/0': 'B / A / C'});
       expect(r.totalCorrect, 0);
     });
 
@@ -109,6 +111,86 @@ void main() {
       ]);
       final r = TestScorer.score(
           spec, '1', {'Order/0': 'Amir Temur / Ulug${_curly}bek'});
+      expect(r.totalCorrect, 1);
+    });
+
+    test(
+        'slash-joined stored answer (pre-fix widget output) still matches '
+        'a natural-sentence correct answer', () {
+      final spec = _build([], [
+        {
+          'type': 'sentence_order',
+          'words': 'is / doll / It / a',
+          'ans': 'It is a doll.',
+        },
+      ]);
+      final r = TestScorer.score(spec, '1', {'Order/0': 'it / is / a / doll'});
+      expect(r.totalCorrect, 1);
+    });
+
+    test(
+        'plain-space-joined answer (current widget output) matches a '
+        'natural-sentence correct answer', () {
+      final spec = _build([], [
+        {
+          'type': 'sentence_order',
+          'words': 'is / doll / It / a',
+          'ans': 'It is a doll.',
+        },
+      ]);
+      final r = TestScorer.score(spec, '1', {'Order/0': 'It is a doll'});
+      expect(r.totalCorrect, 1);
+    });
+  });
+
+  group('contraction equivalence', () {
+    test('expanded typed answer matches contracted correct answer', () {
+      final spec = _build([], [
+        {
+          'type': 'sentence_order',
+          'words': 'in / They / bedroom / are / the',
+          'ans': "They're in the bedroom.",
+        },
+      ]);
+      final r =
+          TestScorer.score(spec, '1', {'Order/0': 'they are in the bedroom'});
+      expect(r.totalCorrect, 1);
+    });
+
+    test(
+        'contracted typed answer matches expanded correct answer '
+        '(reverse direction)', () {
+      final spec = _build([], [
+        {
+          'type': 'sentence_order',
+          'words': 'in / They / bedroom / are / the',
+          'ans': 'They are in the bedroom.',
+        },
+      ]);
+      final r =
+          TestScorer.score(spec, '1', {'Order/0': "they're in the bedroom"});
+      expect(r.totalCorrect, 1);
+    });
+
+    test('a genuinely wrong verb still fails despite contraction expansion',
+        () {
+      final spec = _build([], [
+        {
+          'type': 'sentence_order',
+          'words': 'in / They / bedroom / were / the',
+          'ans': "They're in the bedroom.",
+        },
+      ]);
+      final r =
+          TestScorer.score(spec, '1', {'Order/0': 'they was in the bedroom'});
+      expect(r.totalCorrect, 0);
+    });
+
+    test('contraction expansion also applies to fill_blank', () {
+      final spec = _build([
+        {'type': 'fill_blank', 'q': 'Complete: ___ a doll.', 'ans': "It's"},
+      ], []);
+      final r = TestScorer.score(spec, '1', {'Fill/0': 'It is'});
       expect(r.totalCorrect, 1);
     });
   });
