@@ -337,9 +337,14 @@ class _Agg {
 //                           (_EngineHostScreenState.isMathSection)
 //   subject == 'math'    → every section → math bucket, english stays empty
 //   subject == 'english' → every section → english bucket, math stays empty
-//   subject == anything else (e.g. "tarix", "onatili") → both buckets stay
-//     empty — that subject has no top-level math/english bucket of its own;
-//     its real score lives only in detail.sections / topicScores.
+//   subject == anything else (e.g. "tarix", "onatili", or an unrecognized
+//     "combined"-style tag) → same per-section-name heuristic as the
+//     null-subject path. Single-subject content tagged this way still ends
+//     up entirely in one bucket (its section names never match
+//     isMathSection), leaving the other at total 0 — so showMathEngRow
+//     (requires BOTH totals > 0) stays false for those, unchanged from
+//     before. Only genuinely mixed math+English content tagged with an
+//     unrecognized subject value newly gets both buckets populated.
 
 /// Splits [result]'s sections into the (math, english) lists per the rule
 /// above. List-shaped so _buildPdfBytes can build its per-§ "Matematika"/
@@ -352,16 +357,32 @@ class _Agg {
   if (subject == null) {
     // Legacy path — no subject field on the test JSON. Byte-identical to
     // pre-Task-1.6 behaviour.
-    final math = <SectionScore>[];
-    final eng = <SectionScore>[];
-    for (final s in result.sectionScores) {
-      (_EngineHostScreenState.isMathSection(s.name) ? math : eng).add(s);
-    }
-    return (math, eng);
+    return _bucketBySectionName(result.sectionScores);
   }
   if (subject == 'math') return (result.sectionScores, const []);
   if (subject == 'english') return (const [], result.sectionScores);
-  return (const [], const []);
+  // Any other subject value (e.g. a "combined"-style tag we don't special-
+  // case above): fall back to the same per-section-name heuristic as the
+  // null-subject path. This correctly buckets genuinely mixed math+English
+  // content that arrives under an unrecognized subject tag, while
+  // single-subject content tagged this way (whose section names never
+  // match isMathSection) still lands entirely in `eng` with `math` empty —
+  // so showMathEngRow (requires BOTH totals > 0) stays false for those,
+  // same as before.
+  return _bucketBySectionName(result.sectionScores);
+}
+
+/// Shared per-section-name heuristic used by both the null-subject branch
+/// and the unrecognized-subject fallback in [_resolveMathEngSections].
+(List<SectionScore> math, List<SectionScore> eng) _bucketBySectionName(
+  List<SectionScore> sections,
+) {
+  final math = <SectionScore>[];
+  final eng = <SectionScore>[];
+  for (final s in sections) {
+    (_EngineHostScreenState.isMathSection(s.name) ? math : eng).add(s);
+  }
+  return (math, eng);
 }
 
 /// Sums a section list into a single {correct,total} aggregate.
@@ -1362,7 +1383,11 @@ class _TzAnalysis extends StatelessWidget {
 
   Widget _qRow(QuestionResult r) {
     // Generate some color based on the topic string
-    final String topic = r.topic ?? r.category ?? r.section;
+    final String topic = r.par != null
+        ? '§${r.par}'
+        : (r.topic ??
+            r.category ??
+            (r.section == 'Questions' ? 'Matematika' : r.section));
     final int hash = topic.hashCode;
 
     // Choose a color palette similar to the HTML tags (t-h, t-a, t-s, etc)
