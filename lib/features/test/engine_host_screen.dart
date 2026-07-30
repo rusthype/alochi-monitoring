@@ -35,6 +35,7 @@ import '../../core/db/offline_queue.dart';
 import '../../core/engine/test_engine.dart';
 import '../../core/engine/test_models.dart';
 import '../../core/engine/test_scorer.dart';
+import '../../core/services/heartbeat_service.dart';
 import '../../core/services/html_service.dart';
 import '../../core/sync/sync_service.dart';
 import '../../shared/theme/app_theme.dart';
@@ -763,7 +764,15 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
             label: Text(AppLocalizations.of(context)!.nextStudent),
           ),
           TextButton.icon(
-            onPressed: () => context.go('/'),
+            onPressed: () {
+              // context.go() replaces the whole go_router stack instead of
+              // popping — the pending push().then(finishTest) continuation
+              // in runner_dispatch.dart's launchRunner() never resolves, so
+              // the heartbeat never learns the test ended. Call finishTest()
+              // explicitly here as well.
+              HeartbeatService.instance.finishTest();
+              context.go('/');
+            },
             icon: const Icon(Icons.home_rounded, size: 18),
             label: Text(AppLocalizations.of(context)!.homePage),
           ),
