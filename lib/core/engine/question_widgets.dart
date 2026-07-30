@@ -199,6 +199,17 @@ class EngineOptionRow extends StatelessWidget {
       );
 }
 
+/// Splits a `sentence_order` question's `words` field ('/'-delimited,
+/// segments trimmed) into its display segments. Shared by
+/// [SentenceOrderWidget] (tap-to-order UI) and [SentenceFreeTextWidget]
+/// (free-text UI, English World "Writing") — both consume the same
+/// backend `words` contract, so the parsing lives in one place.
+List<String> _splitWords(String s) => s
+    .split('/')
+    .map((p) => p.trim())
+    .where((p) => p.isNotEmpty)
+    .toList();
+
 /// Shared text field decoration used across spelling / sentence_order /
 /// fill_blank input widgets.
 InputDecoration _inputDecoration({String hintText = 'Javob...'}) =>
@@ -469,12 +480,9 @@ class _SentenceOrderWidgetState extends State<SentenceOrderWidget> {
 
   // Splits the source [Question.words] pool, which is always '/'-delimited
   // regardless of segment content (segments may be single words or, for
-  // History chronology, long multi-word event phrases).
-  static List<String> _split(String s) => s
-      .split('/')
-      .map((p) => p.trim())
-      .where((p) => p.isNotEmpty)
-      .toList();
+  // History chronology, long multi-word event phrases). Delegates to the
+  // top-level [_splitWords] shared with [SentenceFreeTextWidget].
+  static List<String> _split(String s) => _splitWords(s);
 
   /// Reconstructs a previously-chosen order from the persisted, plain-space
   /// -joined answer text (see [_emit]). Cannot simply split [saved] on
@@ -748,6 +756,87 @@ class _ChoiceRow extends StatelessWidget {
           ]),
         ),
       );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4b. SentenceFreeTextWidget — free-text alternative to SentenceOrderWidget,
+//     used ONLY for the English World "Writing" section (test_engine.dart
+//     _buildQuestionWidget branches on sectionName == 'Writing').
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Free-text `sentence_order` input, restricted to the English World
+/// "Writing" section. [SentenceOrderWidget]'s tap-to-order chips are correct
+/// for History chronology (the segments come only from the answer key, so
+/// there is exactly one valid tap sequence), but they make English Writing's
+/// contraction-equivalence grading (answer_normalization.dart,
+/// TestScorer._normalize()) pointless: a pupil can only ever tap the
+/// canonical segments, never type an equally-correct alternative form (e.g.
+/// "they are" vs "They're"). This widget instead shows the
+/// [Question.words] segments as a static prompt and lets the pupil type the
+/// sentence freely — TestScorer grades the typed text exactly as it grades
+/// any other free-text answer, contraction-equivalence included.
+class SentenceFreeTextWidget extends StatelessWidget {
+  final int index;
+  final Question question;
+  final TextEditingController controller;
+  final void Function(String) onChanged;
+
+  const SentenceFreeTextWidget({
+    super.key,
+    required this.index,
+    required this.question,
+    required this.controller,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    assert(question.type == QuestionType.sentenceOrder,
+        'SentenceFreeTextWidget received wrong type: ${question.type}');
+
+    final words = _splitWords(question.words ?? '');
+    final prompt =
+        'Ushbu so\'zlardan foydalanib to\'g\'ri jumla tuzing: ${words.join(', ')}';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          EngineQNum(index),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              prompt,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink1,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        TextField(
+          controller: controller,
+          onChanged: onChanged,
+          // Grade the pupil's answer as typed — autocorrect / suggestions
+          // would silently rewrite a valid answer (e.g. a contraction) before
+          // it is ever scored.
+          autocorrect: false,
+          enableSuggestions: false,
+          decoration: _inputDecoration(),
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ]),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
