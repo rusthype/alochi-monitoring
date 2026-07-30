@@ -795,8 +795,7 @@ class SentenceFreeTextWidget extends StatelessWidget {
         'SentenceFreeTextWidget received wrong type: ${question.type}');
 
     final words = _splitWords(question.words ?? '');
-    final prompt =
-        'Ushbu so\'zlardan foydalanib to\'g\'ri jumla tuzing: ${words.join(', ')}';
+    final prompt = words.join(' / ');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
