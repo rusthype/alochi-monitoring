@@ -90,4 +90,43 @@ void main() {
     expect(field.controller!.text, 'They are in the bedroom');
     expect(find.text('They are in the bedroom'), findsOneWidget);
   });
+
+  testWidgets('typed prompt words get struck through as the pupil types',
+      (tester) async {
+    final controller = TextEditingController();
+
+    await tester.pumpWidget(_host(controller, (_) {},
+        question: _q(words: "he's / opening / present / a / ?")));
+
+    // "present" and "?" are deliberately left out of the typed text.
+    await tester.enterText(find.byType(TextField), "he's opening a");
+    await tester.pump();
+
+    // Find the RichText that renders the prompt row (contains 'opening').
+    final richText = tester
+        .widgetList<RichText>(find.byType(RichText))
+        .firstWhere((rt) => rt.text.toPlainText().contains('opening'));
+
+    bool isStruckThrough(String word) {
+      var found = false;
+      void visit(InlineSpan span) {
+        if (span is TextSpan) {
+          if (span.text == word &&
+              span.style?.decoration == TextDecoration.lineThrough) {
+            found = true;
+          }
+          span.children?.forEach(visit);
+        }
+      }
+
+      visit(richText.text);
+      return found;
+    }
+
+    expect(isStruckThrough("he's"), isTrue);
+    expect(isStruckThrough('opening'), isTrue);
+    expect(isStruckThrough('a'), isTrue);
+    // Not typed yet — must render without the strike-through.
+    expect(isStruckThrough('present'), isFalse);
+  });
 }

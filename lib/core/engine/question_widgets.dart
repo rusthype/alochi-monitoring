@@ -210,6 +210,23 @@ List<String> _splitWords(String s) => s
     .where((p) => p.isNotEmpty)
     .toList();
 
+/// True if [word] (a prompt segment from [_splitWords]) already appears in
+/// [typedText] — used by [SentenceFreeTextWidget] to strike through prompt
+/// segments the pupil has already typed. Presence-based, not order-based.
+///
+/// Segments made entirely of punctuation (e.g. "?") use a plain substring
+/// check, since `\b` word-boundary regex can't anchor around non-word
+/// characters. Everything else uses a case-insensitive whole-word match.
+bool _isWordUsed(String word, String typedText) {
+  if (word.isEmpty) return false;
+  if (!RegExp(r'[a-zA-Z0-9]').hasMatch(word)) {
+    return typedText.toLowerCase().contains(word.toLowerCase());
+  }
+  final pattern = RegExp(r'\b' + RegExp.escape(word) + r'\b',
+      caseSensitive: false);
+  return pattern.hasMatch(typedText);
+}
+
 /// Shared text field decoration used across spelling / sentence_order /
 /// fill_blank input widgets.
 InputDecoration _inputDecoration({String hintText = 'Javob...'}) =>
@@ -795,7 +812,20 @@ class SentenceFreeTextWidget extends StatelessWidget {
         'SentenceFreeTextWidget received wrong type: ${question.type}');
 
     final words = _splitWords(question.words ?? '');
-    final prompt = words.join(' / ');
+
+    const normalStyle = TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: AppColors.ink1,
+      height: 1.4,
+    );
+    const struckStyle = TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: AppColors.ink3,
+      height: 1.4,
+      decoration: TextDecoration.lineThrough,
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -810,14 +840,24 @@ class SentenceFreeTextWidget extends StatelessWidget {
           EngineQNum(index),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              prompt,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.ink1,
-                height: 1.4,
-              ),
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, value, _) {
+                final typedText = value.text;
+                final spans = <TextSpan>[];
+                for (var i = 0; i < words.length; i++) {
+                  if (i > 0) {
+                    spans.add(const TextSpan(text: ' / ', style: normalStyle));
+                  }
+                  final word = words[i];
+                  final used = _isWordUsed(word, typedText);
+                  spans.add(TextSpan(
+                    text: word,
+                    style: used ? struckStyle : normalStyle,
+                  ));
+                }
+                return Text.rich(TextSpan(children: spans));
+              },
             ),
           ),
         ]),
