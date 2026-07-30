@@ -723,6 +723,9 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     final studentName = '${widget.firstName} ${widget.lastName}';
     final subLine =
         '${widget.group?.isNotEmpty == true ? widget.group! : widget.school} · Variant ${widget.variant}';
+    final (mathBucket, engBucket) =
+        _resolveMathEngBuckets(result, widget.subject);
+    final showMathEngRow = mathBucket.total > 0 && engBucket.total > 0;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -871,6 +874,33 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
               ),
 
               const SizedBox(height: 12),
+
+              // ── 2b. Math/English subtotal ────────────────────────────────
+              if (showMathEngRow) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: _MathEngScoreCard(
+                        title: AppLocalizations.of(context)!.mathSubjectFull,
+                        ok: mathBucket.correct,
+                        total: mathBucket.total,
+                        color: AppColors.math,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _MathEngScoreCard(
+                        title:
+                            AppLocalizations.of(context)!.englishSubjectFull,
+                        ok: engBucket.correct,
+                        total: engBucket.total,
+                        color: AppColors.eng,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
 
               // ── 3. Bo'limlar bo'yicha ─────────────────────────────────────
               _ReportCard(
@@ -1616,6 +1646,101 @@ class _ReportCard extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: child,
+    );
+  }
+}
+
+// ── Math/English score card ─────────────────────────────────────────────────
+//
+// Compact subject-subtotal tile shown above the per-section breakdown.
+// Mirrors _ScoreCard in local_result_screen.dart (that class is private to
+// its own file, so this is a local equivalent rather than a shared import).
+
+class _MathEngScoreCard extends StatelessWidget {
+  final String title;
+  final int ok;
+  final int total;
+  final Color color;
+
+  const _MathEngScoreCard({
+    required this.title,
+    required this.ok,
+    required this.total,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = total > 0 ? ok * 100 ~/ total : 0;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.ink3,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '$ok',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '/ $total',
+                  style: const TextStyle(fontSize: 13, color: AppColors.ink3),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: Stack(
+              children: [
+                Container(
+                  height: 6,
+                  width: double.infinity,
+                  color: color.withValues(alpha: .1),
+                ),
+                FractionallySizedBox(
+                  widthFactor: pct / 100,
+                  child: Container(height: 6, color: color),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$pct%',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
