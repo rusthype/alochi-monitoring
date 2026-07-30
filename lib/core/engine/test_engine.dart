@@ -614,6 +614,19 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
         );
 
       case QuestionType.sentenceOrder:
+        // English World "Writing" keeps free-text input so contraction-
+        // equivalence grading (answer_normalization.dart) actually matters —
+        // tap-to-order chips only ever offer the canonical answer-key words.
+        // Every other sentence_order usage (e.g. History chronology) keeps
+        // the tap-to-order UI. See SentenceFreeTextWidget's doc-comment.
+        if (sectionName == 'Writing') {
+          return SentenceFreeTextWidget(
+            index: i,
+            question: q,
+            controller: _ctrl(key),
+            onChanged: (v) => _setAnswer(key, v),
+          );
+        }
         return SentenceOrderWidget(
           index: i,
           question: q,
