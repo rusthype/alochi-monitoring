@@ -16,7 +16,15 @@ class HeartbeatService with WidgetsBindingObserver {
 
   Timer? _timer;
   bool _started = false;
-  String? _sessionId;
+  // Persistent, per-device id (survives across app restarts) — used for
+  // idle/online presence heartbeats when no test is in progress.
+  String? _deviceSessionId;
+  // Fresh id minted per startTest() call — each test attempt gets its own
+  // MonitoringSession row, so `started_at` reflects when THIS test began
+  // rather than being frozen at first-ever app launch (see
+  // apps/monitoring/models.py MonitoringSession.started_at, auto_now_add).
+  String? _testSessionId;
+  String? get _activeSessionId => _testSessionId ?? _deviceSessionId;
   String _schoolCode = '';
   String _name = '';
   String _variant = '';
@@ -29,6 +37,7 @@ class HeartbeatService with WidgetsBindingObserver {
 
   String? _cachedPlatform;
   String? _cachedAppVersion;
+  String? _cachedDeviceName;
 
   Future<void> _resolveDeviceInfoOnce() async {
     if (_cachedPlatform != null) return; // resolved once per process lifetime
@@ -51,6 +60,15 @@ class HeartbeatService with WidgetsBindingObserver {
     } catch (_) {
       _cachedAppVersion = '';
     }
+    // The actual computer's own name (e.g. Windows "DESKTOP-AB12CD3" or a
+    // school-assigned PC name) — lets an admin tell which physical machine
+    // a live session belongs to, unlike the generic desktop/mobile/tablet
+    // device_type bucket.
+    try {
+      _cachedDeviceName = Platform.localHostname;
+    } catch (_) {
+      _cachedDeviceName = '';
+    }
   }
 
   Future<void> start() async {
@@ -62,7 +80,7 @@ class HeartbeatService with WidgetsBindingObserver {
       id = const Uuid().v4();
       await prefs.setString(_prefsKey, id);
     }
-    _sessionId = id;
+    _deviceSessionId = id;
     WidgetsBinding.instance.addObserver(this);
     _timer = Timer.periodic(_interval, (_) => _ping('active'));
     unawaited(_ping('active'));
@@ -75,6 +93,7 @@ class HeartbeatService with WidgetsBindingObserver {
     required String testKey,
     String? studentCode,
   }) {
+    _testSessionId = const Uuid().v4();
     _schoolCode = schoolCode;
     _name = name;
     _variant = variant;
@@ -85,6 +104,9 @@ class HeartbeatService with WidgetsBindingObserver {
   }
 
   void finishTest() {
+    if (_testSessionId == null) return;
+    unawaited(_ping('finished'));
+    _testSessionId = null;
     _schoolCode = '';
     _name = '';
     _variant = '';
@@ -94,7 +116,6 @@ class HeartbeatService with WidgetsBindingObserver {
     _currentQuestionIndex = null;
     _totalQuestions = null;
     _questionTimes = null;
-    unawaited(_ping('active'));
   }
 
   void updateProgress(
@@ -105,7 +126,7 @@ class HeartbeatService with WidgetsBindingObserver {
   }
 
   Future<void> _ping(String status) async {
-    final id = _sessionId;
+    final id = _activeSessionId;
     if (id == null) return;
     await _resolveDeviceInfoOnce();
     try {
@@ -123,6 +144,7 @@ class HeartbeatService with WidgetsBindingObserver {
         questionTimes: _questionTimes,
         platform: _cachedPlatform,
         appVersion: _cachedAppVersion,
+        deviceName: _cachedDeviceName,
       );
     } catch (_) {}
   }

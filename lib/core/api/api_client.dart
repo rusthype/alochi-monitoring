@@ -180,6 +180,7 @@ class MonitoringApi {
     List<int>? questionTimes,
     String? platform,
     String? appVersion,
+    String? deviceName,
   }) async {
     await _post('/session/ping/', {
       'session_id': sessionId,
@@ -195,6 +196,7 @@ class MonitoringApi {
       if (questionTimes != null) 'question_times': questionTimes,
       if (platform != null && platform.isNotEmpty) 'platform': platform,
       if (appVersion != null && appVersion.isNotEmpty) 'app_version': appVersion,
+      if (deviceName != null && deviceName.isNotEmpty) 'device_name': deviceName,
     });
   }
 
