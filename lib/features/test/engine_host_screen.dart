@@ -156,7 +156,14 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   /// True when the section name maps to the "math" bucket in the legacy payload.
   static bool isMathSection(String name) {
     final n = name.trim().toLowerCase();
-    return n == 'math' || n.startsWith('matema');
+    // Math World's engine section has no per-topic skill name like
+    // English's Vocabulary/Grammar/... — the server sends it as the
+    // generic literal "Questions" (see _qRow's identical "Questions" ->
+    // "Matematika" translation). Confirmed via prod survey: every
+    // subject=='combined' test's parts are exactly
+    // ['Questions', 'Vocabulary', 'Spelling', 'Grammar', 'Reading',
+    // 'Writing'] — no English-only test uses "Questions" as a section name.
+    return n == 'math' || n.startsWith('matema') || n == 'questions';
   }
 
   // ── Payload builder ─────────────────────────────────────────────────────────

@@ -145,7 +145,7 @@ int _totalQs(TestSpec spec, String variantKey) {
 
 bool _isMathSection(String name) {
   final n = name.trim().toLowerCase();
-  return n == 'math' || n.startsWith('matema');
+  return n == 'math' || n.startsWith('matema') || n == 'questions';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -307,6 +307,8 @@ void main() {
         () => expect(_isMathSection('Matematika'), isTrue));
     test('"matematika" (lowercase) is math bucket',
         () => expect(_isMathSection('matematika'), isTrue));
+    test('"Questions" is math bucket (Math World engine section name)',
+        () => expect(_isMathSection('Questions'), isTrue));
     test('"English" is NOT math',
         () => expect(_isMathSection('English'), isFalse));
     test('"Reading" is NOT math',
