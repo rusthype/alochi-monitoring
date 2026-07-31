@@ -1892,6 +1892,12 @@ abstract class AppLocalizations {
   /// **'Yangi'**
   String get newBadge;
 
+  /// No description provided for @newBadgeAddedOn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qo\'shildi: {date}'**
+  String newBadgeAddedOn(String date);
+
   /// No description provided for @whoTakesTest.
   ///
   /// In uz, this message translates to:

@@ -462,6 +462,14 @@
   "stillLocked": "Hali qulflangan",
   "ready": "Tayyor",
   "newBadge": "Yangi",
+  "newBadgeAddedOn": "Qo'shildi: {date}",
+  "@newBadgeAddedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "whoTakesTest": "Testni kim\ntopshiradi?",
   "studentsInList": "o'quvchi ro'yxatda mavjud",
   "gradeShort": "sinf",

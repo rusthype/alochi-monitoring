@@ -971,6 +971,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get newBadge => 'Новое';
 
   @override
+  String newBadgeAddedOn(String date) {
+    return 'Добавлено: $date';
+  }
+
+  @override
   String get whoTakesTest => 'Кто сдает\nтест?';
 
   @override

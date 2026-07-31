@@ -30,6 +30,13 @@ String _timeWindowLabel(CatalogEntry entry) {
   return '$from–$until';
 }
 
+/// "NEW" badge yonida ko'rsatiladigan sana matni ("Qo'shildi: 30.07.2026").
+/// Faqat [entry.isNew] va [entry.createdAt] != null bo'lganda chaqiriladi.
+String _newBadgeDateLabel(BuildContext context, CatalogEntry entry) {
+  final date = DateFormat('dd.MM.yyyy').format(entry.createdAt!.toLocal());
+  return AppLocalizations.of(context)!.newBadgeAddedOn(date);
+}
+
 /// "NEW"/"Yangi" pill badge — home ekrandagi "Tez kunda" badge bilan bir
 /// xil vizual retsept (login_screen.dart _routeButton()).
 class _NewBadge extends StatelessWidget {
@@ -544,6 +551,16 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                                 color: AppColors.ink3),
                           ),
                         ],
+                        if (entry.isNew && entry.createdAt != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            _newBadgeDateLabel(context, entry),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.ink3),
+                          ),
+                        ],
                       ],
                     ),
                     isDownloading
@@ -823,6 +840,17 @@ class _HoverableTestCardState extends State<_HoverableTestCard> {
                               const SizedBox(height: 4),
                               Text(
                                 _timeWindowLabel(widget.entry),
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.ink3),
+                              ),
+                            ],
+                            if (widget.entry.isNew &&
+                                widget.entry.createdAt != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                _newBadgeDateLabel(context, widget.entry),
                                 style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
