@@ -61,6 +61,24 @@ class CatalogEntry {
   /// hisoblanadi va oxiriga tushadi).
   final DateTime? updatedAt;
 
+  /// Vaqt-oyna oxiri: [lockedUntil] bilan birga bo'lsa, test faqat
+  /// [lockedUntil]..[availableUntil] oralig'ida ochiq bo'ladi (TASK: test
+  /// availability window badge). Null bo'lsa — cheksiz ochiq (eski,
+  /// bir-nuqtali qulf xatti-harakati o'zgarishsiz qoladi).
+  final DateTime? availableUntil;
+
+  /// Test backend'da qachon yaratilgan — "NEW"/"Yangi" badge uchun
+  /// ([isNew]). Backend har doim jo'natadi, lekin eski/undeployed
+  /// backend bilan ham crash bo'lmasligi uchun null-safe parse qilinadi.
+  final DateTime? createdAt;
+
+  /// [isNew] uchun chegara — shundan yosh testlar "NEW" deb hisoblanadi.
+  static const Duration _newThreshold = Duration(days: 3);
+
+  /// Test so'nggi [_newThreshold] ichida yaratilganmi.
+  bool get isNew =>
+      createdAt != null && DateTime.now().difference(createdAt!) < _newThreshold;
+
   const CatalogEntry({
     required this.testKey,
     required this.title,
@@ -71,6 +89,8 @@ class CatalogEntry {
     this.runnerType = 'engine',
     this.lockedUntil,
     this.updatedAt,
+    this.availableUntil,
+    this.createdAt,
   });
 }
 
@@ -86,8 +106,7 @@ class TestCatalogService {
   /// launchRunner is ever reached through a path other than that UI.
   static final Map<String, DateTime?> _lockedUntilCache = {};
 
-  static DateTime? lockedUntilFor(String testKey) =>
-      _lockedUntilCache[testKey];
+  static DateTime? lockedUntilFor(String testKey) => _lockedUntilCache[testKey];
 
   /// Katalogni yangilaydi va holat bilan CatalogEntry ro'yxatini qaytaradi.
   ///
@@ -103,7 +122,8 @@ class TestCatalogService {
   /// `schoolCode` — berilsa, so'rovchi maktabni backendga bildiradi;
   /// maktabga bog'langan (school FK bor) testlarni ko'rish uchun SHART
   /// (groupId bilan birga, GroupSelectScreen).
-  Future<List<CatalogEntry>> refresh({String? groupId, String? schoolCode}) async {
+  Future<List<CatalogEntry>> refresh(
+      {String? groupId, String? schoolCode}) async {
     // Keshdan metadata olish (har doim holda kerak)
     final cachedRows = await TestCache.all();
     final cachedVersions = <String, int>{};
@@ -116,7 +136,8 @@ class TestCatalogService {
     // Online urinish
     List<Map<String, dynamic>> catalog;
     try {
-      catalog = await _api.fetchTestCatalog(groupId: groupId, schoolCode: schoolCode);
+      catalog =
+          await _api.fetchTestCatalog(groupId: groupId, schoolCode: schoolCode);
     } catch (e) {
       debugPrint('TestCatalogService.refresh: network error: $e');
       catalog = [];
@@ -168,10 +189,17 @@ class TestCatalogService {
           : <SchoolButton>[];
 
       final lockedUntilRaw = item['locked_until'];
-      final lockedUntil = (lockedUntilRaw is String && lockedUntilRaw.isNotEmpty)
-          ? DateTime.tryParse(lockedUntilRaw)
-          : null;
+      final lockedUntil =
+          (lockedUntilRaw is String && lockedUntilRaw.isNotEmpty)
+              ? DateTime.tryParse(lockedUntilRaw)
+              : null;
       _lockedUntilCache[key] = lockedUntil;
+
+      final availableUntilRaw = item['available_until'];
+      final availableUntil =
+          (availableUntilRaw is String && availableUntilRaw.isNotEmpty)
+              ? DateTime.tryParse(availableUntilRaw)
+              : null;
 
       entries.add(CatalogEntry(
         testKey: key,
@@ -183,6 +211,8 @@ class TestCatalogService {
         runnerType: item['runner_type']?.toString() ?? 'engine',
         lockedUntil: lockedUntil,
         updatedAt: DateTime.tryParse(item['updated_at']?.toString() ?? ''),
+        availableUntil: availableUntil,
+        createdAt: DateTime.tryParse(item['created_at']?.toString() ?? ''),
       ));
     }
     return entries;
@@ -200,9 +230,11 @@ class TestCatalogService {
   ///
   /// `schoolCode` — tanlangan maktab kodi ma'lum bo'lganda uzatiladi;
   /// maktabga bog'langan testni yuklash uchun SHART (groupId bilan birga).
-  Future<bool> download(String testKey, {String? groupId, String? schoolCode}) async {
+  Future<bool> download(String testKey,
+      {String? groupId, String? schoolCode}) async {
     try {
-      final data = await _api.fetchTest(testKey, groupId: groupId, schoolCode: schoolCode);
+      final data = await _api.fetchTest(testKey,
+          groupId: groupId, schoolCode: schoolCode);
       if (data == null) {
         debugPrint('TestCatalogService.download($testKey): null response');
         return false;
@@ -248,10 +280,13 @@ class TestCatalogService {
         return [node];
       }
       final lower = node.toLowerCase();
-      if (node.startsWith('/') && 
-          (lower.endsWith('.png') || lower.endsWith('.jpg') || 
-           lower.endsWith('.jpeg') || lower.endsWith('.gif') || 
-           lower.endsWith('.webp') || lower.endsWith('.svg'))) {
+      if (node.startsWith('/') &&
+          (lower.endsWith('.png') ||
+              lower.endsWith('.jpg') ||
+              lower.endsWith('.jpeg') ||
+              lower.endsWith('.gif') ||
+              lower.endsWith('.webp') ||
+              lower.endsWith('.svg'))) {
         return [MonitoringApi.fixImageUrl(node)];
       }
       return [];

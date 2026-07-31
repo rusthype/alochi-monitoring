@@ -67,7 +67,8 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
         setState(() => _saved[id] = file.path);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Saqlandi: ${file.path}'),
+            content:
+                Text(AppLocalizations.of(context)!.savedFileMsg(file.path)),
             backgroundColor: AppColors.mint,
           ),
         );
@@ -75,7 +76,10 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Xato: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content:
+                  Text(AppLocalizations.of(context)!.errorPrefix(e.toString())),
+              backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -106,12 +110,12 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          const Row(children: [
-            Icon(Icons.download_rounded, color: AppColors.mint, size: 20),
-            SizedBox(width: 8),
+          Row(children: [
+            const Icon(Icons.download_rounded, color: AppColors.mint, size: 20),
+            const SizedBox(width: 8),
             Text(
-              'Hujjatlar',
-              style: TextStyle(
+              AppLocalizations.of(context)!.hujjatlarLabel,
+              style: const TextStyle(
                 color: AppColors.muted,
                 fontWeight: FontWeight.w700,
                 fontSize: 16,
@@ -124,12 +128,12 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
               child: CircularProgressIndicator(color: AppColors.mint),
             )
           else if (_items.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
+            Padding(
+              padding: const EdgeInsets.all(24),
               child: Center(
                 child: Text(
-                  'Hujjat yo\'q',
-                  style: TextStyle(color: Color(0xFF64748b)),
+                  AppLocalizations.of(context)!.noDocumentsMsg,
+                  style: const TextStyle(color: Color(0xFF64748b)),
                 ),
               ),
             )
@@ -193,7 +197,8 @@ class _DownloadsSheetState extends State<DownloadsSheet> {
                             textStyle: const TextStyle(
                                 fontSize: 12, fontWeight: FontWeight.w700),
                           ),
-                          child: Text(AppLocalizations.of(context)!.downloadBtn),
+                          child:
+                              Text(AppLocalizations.of(context)!.downloadBtn),
                         ),
                 ]),
               );

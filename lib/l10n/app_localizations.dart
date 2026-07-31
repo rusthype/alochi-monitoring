@@ -1886,6 +1886,12 @@ abstract class AppLocalizations {
   /// **'Tayyor'**
   String get ready;
 
+  /// No description provided for @newBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi'**
+  String get newBadge;
+
   /// No description provided for @whoTakesTest.
   ///
   /// In uz, this message translates to:
@@ -2059,6 +2065,450 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Alochi Monitoring'**
   String get appNameTitle;
+
+  /// No description provided for @bobEmptySectionMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu bo\'lim bo\'sh.'**
+  String get bobEmptySectionMsg;
+
+  /// No description provided for @returnBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qaytish'**
+  String get returnBtn;
+
+  /// No description provided for @sectionsResultTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bo\'limlar natijasi'**
+  String get sectionsResultTitle;
+
+  /// No description provided for @vocabularyQuestionsNotFoundMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Vocabulary savollari topilmadi.'**
+  String get vocabularyQuestionsNotFoundMsg;
+
+  /// No description provided for @grammarQuestionsNotFoundMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Grammar savollari topilmadi.'**
+  String get grammarQuestionsNotFoundMsg;
+
+  /// No description provided for @spellingQuestionsNotFoundMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Spelling savollari topilmadi.'**
+  String get spellingQuestionsNotFoundMsg;
+
+  /// No description provided for @sentencesQuestionsNotFoundMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sentences savollari topilmadi.'**
+  String get sentencesQuestionsNotFoundMsg;
+
+  /// No description provided for @readingQuestionsNotFoundMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Reading savollari topilmadi.'**
+  String get readingQuestionsNotFoundMsg;
+
+  /// No description provided for @variantsNotFoundMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Variantlar topilmadi.'**
+  String get variantsNotFoundMsg;
+
+  /// No description provided for @arrangeLettersPrompt.
+  ///
+  /// In uz, this message translates to:
+  /// **'Harflarni to\'g\'ri joylashtiring'**
+  String get arrangeLettersPrompt;
+
+  /// No description provided for @arrangeSentencePrompt.
+  ///
+  /// In uz, this message translates to:
+  /// **'Jumlani to\'g\'ri tartibga soling'**
+  String get arrangeSentencePrompt;
+
+  /// No description provided for @arrangeEventsPrompt.
+  ///
+  /// In uz, this message translates to:
+  /// **'Voqealarni to\'g\'ri tartibda belgilang'**
+  String get arrangeEventsPrompt;
+
+  /// No description provided for @selectVariantsInOrderPrompt.
+  ///
+  /// In uz, this message translates to:
+  /// **'Quyidagi variantlarni to\'g\'ri ketma-ketlikda tanlang'**
+  String get selectVariantsInOrderPrompt;
+
+  /// No description provided for @clearSelectionBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tozalash'**
+  String get clearSelectionBtn;
+
+  /// No description provided for @variantsSectionHeader.
+  ///
+  /// In uz, this message translates to:
+  /// **'VARIANTLAR'**
+  String get variantsSectionHeader;
+
+  /// No description provided for @answerHintText.
+  ///
+  /// In uz, this message translates to:
+  /// **'Javob...'**
+  String get answerHintText;
+
+  /// No description provided for @fullSentenceHintText.
+  ///
+  /// In uz, this message translates to:
+  /// **'To\'liq jumlani yozing...'**
+  String get fullSentenceHintText;
+
+  /// No description provided for @sessionGradeVariantLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'{grade}-sinf · Variant {variant}'**
+  String sessionGradeVariantLabel(String grade, String variant);
+
+  /// No description provided for @reportSavedButOpenFailedMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hisobot saqlandi, lekin ochib bo\'lmadi'**
+  String get reportSavedButOpenFailedMsg;
+
+  /// No description provided for @bob14ScreenTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'2-sinf — Bob 1-4 Monitoringi'**
+  String get bob14ScreenTitle;
+
+  /// No description provided for @bob14TestInfo.
+  ///
+  /// In uz, this message translates to:
+  /// **'30 savol · 45 daqiqa · Offline rejim'**
+  String get bob14TestInfo;
+
+  /// No description provided for @unit1ScreenTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'1-sinf Ingliz tili — Unit 1'**
+  String get unit1ScreenTitle;
+
+  /// No description provided for @unit1TestInfo.
+  ///
+  /// In uz, this message translates to:
+  /// **'49 savol · 49 daqiqa · Offline rejim'**
+  String get unit1TestInfo;
+
+  /// No description provided for @unit1RunnerHeaderTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'1-sinf Unit 1 — Ingliz tili'**
+  String get unit1RunnerHeaderTitle;
+
+  /// No description provided for @correctFractionLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'{correct} / {total} to\'g\'ri'**
+  String correctFractionLabel(int correct, int total);
+
+  /// No description provided for @hujjatlarLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hujjatlar'**
+  String get hujjatlarLabel;
+
+  /// No description provided for @noDocumentsMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hujjat yo\'q'**
+  String get noDocumentsMsg;
+
+  /// No description provided for @savedFileMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Saqlandi: {path}'**
+  String savedFileMsg(String path);
+
+  /// No description provided for @exitConfirmationMessage.
+  ///
+  /// In uz, this message translates to:
+  /// **'Haqiqatan ham chiqmoqchimisiz? Kiritilgan ma\'lumotlar saqlanmaydi.'**
+  String get exitConfirmationMessage;
+
+  /// No description provided for @pageNotFoundTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sahifa topilmadi'**
+  String get pageNotFoundTitle;
+
+  /// No description provided for @pageNotFoundMessage.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kechirasiz, siz qidirayotgan sahifa mavjud emas yoki ko\'chirilgan.'**
+  String get pageNotFoundMessage;
+
+  /// No description provided for @monitoringTestHeader.
+  ///
+  /// In uz, this message translates to:
+  /// **'MONITORING TEST'**
+  String get monitoringTestHeader;
+
+  /// No description provided for @testDataNotFoundMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test ma\'lumotlari topilmadi'**
+  String get testDataNotFoundMsg;
+
+  /// No description provided for @updateUpToDateMessage.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sizda dasturning eng so\'nggi versiyasi o\'rnatilgan.'**
+  String get updateUpToDateMessage;
+
+  /// No description provided for @shieldsProgressLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count}/25 shields'**
+  String shieldsProgressLabel(int count);
+
+  /// No description provided for @diagnosticPassportHeader.
+  ///
+  /// In uz, this message translates to:
+  /// **'A\'LOCHI — DIAGNOSTIK PASPORT'**
+  String get diagnosticPassportHeader;
+
+  /// No description provided for @totalQuestionsCountLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Jami savol'**
+  String get totalQuestionsCountLabel;
+
+  /// No description provided for @correctAnswerLabelPdf.
+  ///
+  /// In uz, this message translates to:
+  /// **'To\'g\'ri javob'**
+  String get correctAnswerLabelPdf;
+
+  /// No description provided for @wrongAnswerLabelPdf.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xato javob'**
+  String get wrongAnswerLabelPdf;
+
+  /// No description provided for @topicAnalysisHeader.
+  ///
+  /// In uz, this message translates to:
+  /// **'MAVZU BO\'YICHA TAHLIL'**
+  String get topicAnalysisHeader;
+
+  /// No description provided for @unitAnalysisHeader.
+  ///
+  /// In uz, this message translates to:
+  /// **'UNIT BO\'YICHA TAHLIL'**
+  String get unitAnalysisHeader;
+
+  /// No description provided for @fourteenDayPlanHeader.
+  ///
+  /// In uz, this message translates to:
+  /// **'14 KUNLIK REJA'**
+  String get fourteenDayPlanHeader;
+
+  /// No description provided for @aiSummaryHeader.
+  ///
+  /// In uz, this message translates to:
+  /// **'AI XULOSA'**
+  String get aiSummaryHeader;
+
+  /// No description provided for @alochiAiLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'A\'LOCHI AI'**
+  String get alochiAiLabel;
+
+  /// No description provided for @forParentsLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ota-onaga'**
+  String get forParentsLabel;
+
+  /// No description provided for @parentTipsText.
+  ///
+  /// In uz, this message translates to:
+  /// **'• Har kuni 20–30 daqiqa o\'qish vaqti\n• Zaif mavzularni birgalikda takrorlang\n• Rag\'batlantiring va sabr bilan o\'rgating'**
+  String get parentTipsText;
+
+  /// No description provided for @footerBrandTagline.
+  ///
+  /// In uz, this message translates to:
+  /// **'A\'lochi Ta\'lim · alochi.uz'**
+  String get footerBrandTagline;
+
+  /// No description provided for @dayRange1_3.
+  ///
+  /// In uz, this message translates to:
+  /// **'1–3 KUN'**
+  String get dayRange1_3;
+
+  /// No description provided for @dayRange4_7.
+  ///
+  /// In uz, this message translates to:
+  /// **'4–7 KUN'**
+  String get dayRange4_7;
+
+  /// No description provided for @dayRange8_11.
+  ///
+  /// In uz, this message translates to:
+  /// **'8–11 KUN'**
+  String get dayRange8_11;
+
+  /// No description provided for @dayRange12_14.
+  ///
+  /// In uz, this message translates to:
+  /// **'12–14 KUN'**
+  String get dayRange12_14;
+
+  /// No description provided for @dailyPractice15MinMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Har kuni 15 daqiqa mashq'**
+  String get dailyPractice15MinMsg;
+
+  /// No description provided for @dailyExamples5Msg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Har kuni 5 ta misol yechish'**
+  String get dailyExamples5Msg;
+
+  /// No description provided for @mixedExercisesTopic.
+  ///
+  /// In uz, this message translates to:
+  /// **'Aralash mashqlar'**
+  String get mixedExercisesTopic;
+
+  /// No description provided for @reviewAllTopicsMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barcha mavzularni takrorlash'**
+  String get reviewAllTopicsMsg;
+
+  /// No description provided for @controlTestTopic.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nazorat testi'**
+  String get controlTestTopic;
+
+  /// No description provided for @compareResultsMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijalarni solishtirish'**
+  String get compareResultsMsg;
+
+  /// No description provided for @wellMasteredBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yaxshi o\'zlashtirilgan'**
+  String get wellMasteredBadge;
+
+  /// No description provided for @needsReviewBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qayta o\'rganish'**
+  String get needsReviewBadge;
+
+  /// No description provided for @aiSummaryFallbackMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'{firstName} {pct}% natija ko\'rsatdi. O\'zlashtirish darajasiga qarab 14 kunlik reja bilan ishlash tavsiya etiladi.'**
+  String aiSummaryFallbackMsg(String firstName, int pct);
+
+  /// No description provided for @goodResultLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yaxshi natija'**
+  String get goodResultLabel;
+
+  /// No description provided for @searchOrCommandHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Izlash yoki buyruq kiriting...'**
+  String get searchOrCommandHint;
+
+  /// No description provided for @commandHistoryTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oflayn tarix'**
+  String get commandHistoryTitle;
+
+  /// No description provided for @commandLocalGradeTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mahalliy baholash'**
+  String get commandLocalGradeTitle;
+
+  /// No description provided for @commandCombinedTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kombinatsiyalangan'**
+  String get commandCombinedTitle;
+
+  /// No description provided for @bob14FallbackLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bob 1-4'**
+  String get bob14FallbackLabel;
+
+  /// No description provided for @unit1FallbackLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Unit 1'**
+  String get unit1FallbackLabel;
+
+  /// No description provided for @saveErrorRetryMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Saqlashda xato. Qayta urinib ko\'ring.'**
+  String get saveErrorRetryMsg;
+
+  /// No description provided for @unit1PillLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Unit 1 G1'**
+  String get unit1PillLabel;
+
+  /// No description provided for @interhousePillLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Interhouse G2'**
+  String get interhousePillLabel;
+
+  /// No description provided for @combinedPillLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Monitoring Unit 1'**
+  String get combinedPillLabel;
+
+  /// No description provided for @mathEngCountSummary.
+  ///
+  /// In uz, this message translates to:
+  /// **'Matematika: {math} ta  Ingliz tili: {eng} ta'**
+  String mathEngCountSummary(int math, int eng);
+
+  /// No description provided for @testDataEmptyMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test ma\'lumotlari bo\'sh (variants topilmadi)'**
+  String get testDataEmptyMsg;
+
+  /// No description provided for @testLoadErrorMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test yuklanmadi: {error}'**
+  String testLoadErrorMsg(String error);
 }
 
 class _AppLocalizationsDelegate

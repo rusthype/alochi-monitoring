@@ -73,7 +73,7 @@ class PdfReport {
           }
         } catch (_) {}
       }
-      wrongItemsWithImages.add(_wrongItem(map, img));
+      wrongItemsWithImages.add(_wrongItem(map, img, l10n));
     }
 
     doc.addPage(pw.Page(
@@ -83,33 +83,33 @@ class PdfReport {
       build: (_) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.stretch,
         children: [
-          _header(date, logo),
+          _header(date, logo, l10n),
           pw.SizedBox(height: 24),
-          _studentRow(session, result, mainClr, passed),
+          _studentRow(session, result, mainClr, passed, l10n),
           pw.SizedBox(height: 24),
-          pw.Text("Fanlar bo'yicha natija",
+          pw.Text(l10n.subjectsResultTitle,
               style: pw.TextStyle(
                   fontSize: 16, fontWeight: pw.FontWeight.bold, color: _ink1)),
           pw.SizedBox(height: 14),
           pw.Row(children: [
             pw.Expanded(
-                child: _subjectCard('Matematika', result.mathScore,
+                child: _subjectCard(l10n.mathSubjectFull, result.mathScore,
                     package.mathCount, mathPct, _blue)),
             pw.SizedBox(width: 16),
             pw.Expanded(
-                child: _subjectCard('Ingliz tili', result.engScore,
+                child: _subjectCard(l10n.englishSubjectFull, result.engScore,
                     package.engCount, engPct, _teal)),
           ]),
           pw.SizedBox(height: 16),
-          _totalRow(result, package),
+          _totalRow(result, package, l10n),
           pw.SizedBox(height: 16),
           _recommendations(mathPct, engPct, result.totalPct, l10n),
           if (wrongAnswers.isNotEmpty) ...[
             pw.SizedBox(height: 16),
-            _wrongSummary(wrongAnswers),
+            _wrongSummary(wrongAnswers, l10n),
           ],
           pw.Spacer(),
-          _footer(),
+          _footer(l10n),
         ],
       ),
     ));
@@ -120,7 +120,7 @@ class PdfReport {
         margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 36),
         theme: theme,
         build: (_) => [
-          _wrongHeader(session.studentName),
+          _wrongHeader(session.studentName, l10n),
           pw.SizedBox(height: 20),
           ...wrongItemsWithImages,
         ],
@@ -139,47 +139,50 @@ class PdfReport {
     return file;
   }
 
-  static pw.Widget _header(String date, pw.MemoryImage? logo) => pw.Container(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      decoration: const pw.BoxDecoration(
-          color: _orange,
-          borderRadius: pw.BorderRadius.all(pw.Radius.circular(16))),
-      child: pw.Row(children: [
-        pw.Container(
-            width: 54,
-            height: 54,
-            padding: const pw.EdgeInsets.all(4),
-            decoration: const pw.BoxDecoration(
-                color: PdfColors.white, shape: pw.BoxShape.circle),
-            child: logo != null
-                ? pw.ClipOval(child: pw.Image(logo, fit: pw.BoxFit.cover))
-                : pw.Center(
-                    child: pw.Text('A',
-                        style: pw.TextStyle(
-                            fontSize: 28,
-                            fontWeight: pw.FontWeight.bold,
-                            color: _orange)))),
-        pw.SizedBox(width: 18),
-        pw.Expanded(
-            child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-              pw.Text('Alochi Monitoring',
-                  style: pw.TextStyle(
-                      fontSize: 20,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.white)),
-              pw.SizedBox(height: 2),
-              pw.Text('Monitoring test natijasi',
-                  style:
-                      const pw.TextStyle(fontSize: 13, color: PdfColors.white)),
-            ])),
-        pw.Text(date,
-            style: const pw.TextStyle(fontSize: 12, color: PdfColors.white)),
-      ]));
+  static pw.Widget _header(
+          String date, pw.MemoryImage? logo, AppLocalizations l10n) =>
+      pw.Container(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          decoration: const pw.BoxDecoration(
+              color: _orange,
+              borderRadius: pw.BorderRadius.all(pw.Radius.circular(16))),
+          child: pw.Row(children: [
+            pw.Container(
+                width: 54,
+                height: 54,
+                padding: const pw.EdgeInsets.all(4),
+                decoration: const pw.BoxDecoration(
+                    color: PdfColors.white, shape: pw.BoxShape.circle),
+                child: logo != null
+                    ? pw.ClipOval(child: pw.Image(logo, fit: pw.BoxFit.cover))
+                    : pw.Center(
+                        child: pw.Text('A',
+                            style: pw.TextStyle(
+                                fontSize: 28,
+                                fontWeight: pw.FontWeight.bold,
+                                color: _orange)))),
+            pw.SizedBox(width: 18),
+            pw.Expanded(
+                child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                  pw.Text(l10n.appTitle,
+                      style: pw.TextStyle(
+                          fontSize: 20,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.white)),
+                  pw.SizedBox(height: 2),
+                  pw.Text(l10n.monitoringTestResult,
+                      style: const pw.TextStyle(
+                          fontSize: 13, color: PdfColors.white)),
+                ])),
+            pw.Text(date,
+                style:
+                    const pw.TextStyle(fontSize: 12, color: PdfColors.white)),
+          ]));
 
-  static pw.Widget _studentRow(
-      StudentSession s, TestResult r, PdfColor clr, bool passed) {
+  static pw.Widget _studentRow(StudentSession s, TestResult r, PdfColor clr,
+      bool passed, AppLocalizations l10n) {
     return pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
       pw.Expanded(
           flex: 3,
@@ -193,7 +196,7 @@ class PdfReport {
               child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text("O'quvchi",
+                    pw.Text(l10n.studentLabel,
                         style: const pw.TextStyle(fontSize: 11, color: _ink3)),
                     pw.SizedBox(height: 4),
                     pw.Text(s.studentName,
@@ -203,12 +206,14 @@ class PdfReport {
                             color: _ink1)),
                     pw.SizedBox(height: 12),
                     if (s.grade != null)
-                      pw.Text('${s.grade}-sinf',
-                          style: const pw.TextStyle(fontSize: 13, color: _ink2)),
+                      pw.Text('${s.grade}-${l10n.gradeShort}',
+                          style:
+                              const pw.TextStyle(fontSize: 13, color: _ink2)),
                     if (s.grade != null) pw.SizedBox(height: 6),
                     if (s.variant != null)
-                      pw.Text('Variant ${s.variant}',
-                          style: const pw.TextStyle(fontSize: 13, color: _ink2)),
+                      pw.Text(l10n.variantBadge(s.variant!),
+                          style:
+                              const pw.TextStyle(fontSize: 13, color: _ink2)),
                     if (s.variant != null) pw.SizedBox(height: 6),
                     if (s.groupName != null) ...[
                       pw.SizedBox(height: 6),
@@ -247,8 +252,9 @@ class PdfReport {
                                       fontSize: 24,
                                       fontWeight: pw.FontWeight.bold,
                                       color: clr)),
-                              pw.Text('ball',
-                                  style: pw.TextStyle(fontSize: 10, color: clr)),
+                              pw.Text(l10n.scorePoint,
+                                  style:
+                                      pw.TextStyle(fontSize: 10, color: clr)),
                             ]))),
                     pw.SizedBox(height: 14),
                     pw.Container(
@@ -258,13 +264,13 @@ class PdfReport {
                             color: clr,
                             borderRadius: const pw.BorderRadius.all(
                                 pw.Radius.circular(20))),
-                        child: pw.Text(passed ? "O'tdi" : "O'tmadi",
+                        child: pw.Text(passed ? l10n.passed : l10n.failed,
                             style: pw.TextStyle(
                                 fontSize: 13,
                                 fontWeight: pw.FontWeight.bold,
                                 color: PdfColors.white))),
                     pw.SizedBox(height: 8),
-                    pw.Text(passed ? 'Tabriklaymiz!' : 'Harakat qiling!',
+                    pw.Text(passed ? l10n.congratsTitle : l10n.keepTrying,
                         style: pw.TextStyle(fontSize: 12, color: clr)),
                   ]))),
     ]);
@@ -327,20 +333,24 @@ class PdfReport {
             ]));
   }
 
-  static pw.Widget _totalRow(TestResult r, TestPackage p) => pw.Container(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: pw.BoxDecoration(
-          color: _bgLight,
-          border: pw.Border.all(color: _border, width: 1.5),
-          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))),
-      child: pw.Row(children: [
-        pw.Text("Jami to'g'ri javoblar:",
-            style: const pw.TextStyle(fontSize: 14, color: _ink2)),
-        pw.Spacer(),
-        pw.Text('${r.mathScore + r.engScore} / ${p.totalCount}',
-            style: pw.TextStyle(
-                fontSize: 16, fontWeight: pw.FontWeight.bold, color: _ink1)),
-      ]));
+  static pw.Widget _totalRow(
+          TestResult r, TestPackage p, AppLocalizations l10n) =>
+      pw.Container(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: pw.BoxDecoration(
+              color: _bgLight,
+              border: pw.Border.all(color: _border, width: 1.5),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(10))),
+          child: pw.Row(children: [
+            pw.Text(l10n.totalCorrectAnswers,
+                style: const pw.TextStyle(fontSize: 14, color: _ink2)),
+            pw.Spacer(),
+            pw.Text('${r.mathScore + r.engScore} / ${p.totalCount}',
+                style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                    color: _ink1)),
+          ]));
 
   static pw.Widget _recommendations(
       double mathPct, double engPct, int totalPct, AppLocalizations l10n) {
@@ -356,7 +366,7 @@ class PdfReport {
             borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12))),
         child: pw
             .Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-          pw.Text('Qanday yaxshilash mumkin?',
+          pw.Text(l10n.howToImprove,
               style: pw.TextStyle(
                   fontSize: 15, fontWeight: pw.FontWeight.bold, color: _ink1)),
           pw.SizedBox(height: 12),
@@ -440,8 +450,8 @@ class PdfReport {
                       color: color)),
               pw.SizedBox(height: 8),
               pw.Container(
-                  padding:
-                      const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const pw.EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
                   decoration: pw.BoxDecoration(
                       color: color,
                       borderRadius:
@@ -474,27 +484,28 @@ class PdfReport {
             ]));
   }
 
-  static pw.Widget _wrongSummary(List<dynamic> wrong) {
+  static pw.Widget _wrongSummary(List<dynamic> wrong, AppLocalizations l10n) {
     final math = wrong.where((w) => w['subject'] == 'math').length;
     final eng = wrong.where((w) => w['subject'] == 'english').length;
     return pw.Container(
         padding: const pw.EdgeInsets.all(18),
         decoration: pw.BoxDecoration(
             color: const PdfColor.fromInt(0xFFFFF1F2),
-            border: pw.Border.all(color: const PdfColor.fromInt(0xFFFCA5A5), width: 1.5),
+            border: pw.Border.all(
+                color: const PdfColor.fromInt(0xFFFCA5A5), width: 1.5),
             borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12))),
         child: pw.Row(children: [
           pw.Expanded(
               child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                pw.Text('Xato javoblar',
+                pw.Text(l10n.wrongAnswersTitle,
                     style: pw.TextStyle(
                         fontSize: 14,
                         fontWeight: pw.FontWeight.bold,
                         color: _red)),
                 pw.SizedBox(height: 6),
-                pw.Text('Matematika: $math ta  Ingliz tili: $eng ta',
+                pw.Text(l10n.mathEngCountSummary(math, eng),
                     style: const pw.TextStyle(fontSize: 12, color: _ink2)),
               ])),
           pw.Text('${wrong.length}',
@@ -503,23 +514,29 @@ class PdfReport {
         ]));
   }
 
-  static pw.Widget _wrongHeader(String name) => pw.Container(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: pw.BoxDecoration(
-          color: const PdfColor.fromInt(0xFFFFF7ED),
-          border: pw.Border.all(color: _orange, width: 1.5),
-          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12))),
-      child: pw.Row(children: [
-        pw.Text('Xato javoblar tahlili',
-            style: pw.TextStyle(
-                fontSize: 16, fontWeight: pw.FontWeight.bold, color: _orange)),
-        pw.Spacer(),
-        pw.Text(name, style: const pw.TextStyle(fontSize: 12, color: _ink2)),
-      ]));
+  static pw.Widget _wrongHeader(String name, AppLocalizations l10n) =>
+      pw.Container(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: pw.BoxDecoration(
+              color: const PdfColor.fromInt(0xFFFFF7ED),
+              border: pw.Border.all(color: _orange, width: 1.5),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12))),
+          child: pw.Row(children: [
+            pw.Text(l10n.wrongAnswersAnalysis,
+                style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                    color: _orange)),
+            pw.Spacer(),
+            pw.Text(name,
+                style: const pw.TextStyle(fontSize: 12, color: _ink2)),
+          ]));
 
-  static pw.Widget _wrongItem(Map<String, dynamic> w, pw.MemoryImage? img) {
+  static pw.Widget _wrongItem(
+      Map<String, dynamic> w, pw.MemoryImage? img, AppLocalizations l10n) {
     final pos = w['position'] as int? ?? 0;
-    final subj = w['subject'] == 'math' ? 'Matematika' : 'Ingliz tili';
+    final subj =
+        w['subject'] == 'math' ? l10n.mathSubjectFull : l10n.englishSubjectFull;
     final subjClr = w['subject'] == 'math' ? _blue : _teal;
     final prompt = w['prompt'] as String? ?? '';
     final sAns = (w['student_answer'] as String? ?? '').toUpperCase();
@@ -565,8 +582,10 @@ class PdfReport {
           pw.SizedBox(height: 10),
           pw.Text(prompt,
               style: pw.TextStyle(
-                  fontSize: 14, fontWeight: pw.FontWeight.bold, color: _ink1, lineSpacing: 2)),
-          
+                  fontSize: 14,
+                  fontWeight: pw.FontWeight.bold,
+                  color: _ink1,
+                  lineSpacing: 2)),
           if (img != null) ...[
             pw.SizedBox(height: 10),
             pw.ClipRRect(
@@ -575,7 +594,6 @@ class PdfReport {
               child: pw.Image(img, height: 120, fit: pw.BoxFit.contain),
             ),
           ],
-          
           pw.SizedBox(height: 12),
           pw.Row(children: [
             pw.Expanded(child: _answerBadge(sAns, sText, false)),
@@ -619,11 +637,11 @@ class PdfReport {
         ]));
   }
 
-  static pw.Widget _footer() => pw.Column(children: [
+  static pw.Widget _footer(AppLocalizations l10n) => pw.Column(children: [
         pw.Divider(color: _border),
         pw.SizedBox(height: 6),
         pw.Row(children: [
-          pw.Text('Alochi Monitoring tizimi',
+          pw.Text(l10n.alochiMonitoringSystem,
               style: const pw.TextStyle(fontSize: 10, color: _ink3)),
           pw.Spacer(),
           pw.Text('alochi.org',

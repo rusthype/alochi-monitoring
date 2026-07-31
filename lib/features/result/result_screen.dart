@@ -143,7 +143,7 @@ class _ResultScreenState extends State<ResultScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('PDF xatosi: $e'),
+        content: Text(AppLocalizations.of(context)!.pdfError(e.toString())),
         backgroundColor: AppColors.err,
       ));
     } finally {
@@ -199,7 +199,8 @@ class _ResultScreenState extends State<ResultScreen>
             curve: Curves.elasticOut,
             builder: (_, v, __) => Transform.scale(
               scale: v,
-              child: const Icon(Icons.emoji_events_rounded, size: 80, color: Colors.amber),
+              child: const Icon(Icons.emoji_events_rounded,
+                  size: 80, color: Colors.amber),
             ),
           ),
           const SizedBox(height: 16),
@@ -323,6 +324,7 @@ class _ResultScreenState extends State<ResultScreen>
   }
 
   Widget _buildResultCard() {
+    final l10n = AppLocalizations.of(context)!;
     final mainColor = _passed ? AppColors.ok : AppColors.brand;
     final bgColor = _passed ? AppColors.successMuted : AppColors.secondaryMuted;
     return Container(
@@ -359,8 +361,8 @@ class _ResultScreenState extends State<ResultScreen>
                     ],
                   ),
                   child: ClipOval(
-                      child: Image.asset('assets/logo.png',
-                          fit: BoxFit.contain)),
+                      child:
+                          Image.asset('assets/logo.png', fit: BoxFit.contain)),
                 ),
                 const SizedBox(height: 16),
                 // ── Score ring ──────────────────────────────────
@@ -386,7 +388,7 @@ class _ResultScreenState extends State<ResultScreen>
                                   color: mainColor,
                                   fontFamily: 'JetBrainsMono',
                                 )),
-                            Text('ball',
+                            Text(l10n.scorePoint,
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: mainColor.withValues(alpha: .7),
@@ -414,10 +416,7 @@ class _ResultScreenState extends State<ResultScreen>
                         size: 16,
                         color: Colors.white),
                     const SizedBox(width: 7),
-                    Text(
-                        _passed
-                            ? "Tabriklaymiz! O'tdingiz!"
-                            : "O'tmadi. Harakat qiling!",
+                    Text(_passed ? l10n.passedMessage : l10n.failedMessage,
                         style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
@@ -429,7 +428,9 @@ class _ResultScreenState extends State<ResultScreen>
                     style: AppTextStyles.titleLarge),
                 const SizedBox(height: 4),
                 Text(
-                    '${widget.session.grade ?? '-'}-sinf · Variant ${widget.session.variant ?? '-'}',
+                    l10n.sessionGradeVariantLabel(
+                        widget.session.grade?.toString() ?? '-',
+                        widget.session.variant?.toString() ?? '-'),
                     style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.ink3,
@@ -439,21 +440,23 @@ class _ResultScreenState extends State<ResultScreen>
                 Row(children: [
                   Expanded(
                       child: _SubjectCard(
-                    label: AppLocalizations.of(context)!.mathSubject,
+                    label: l10n.mathSubject,
                     icon: Icons.calculate_outlined,
                     score: widget.result.mathScore,
                     total: widget.package.mathCount,
-                    color: _scoreBarColor(widget.result.mathScore, widget.package.mathCount),
+                    color: _scoreBarColor(
+                        widget.result.mathScore, widget.package.mathCount),
                     ring: _ring,
                   )),
                   const SizedBox(width: 12),
                   Expanded(
                       child: _SubjectCard(
-                    label: AppLocalizations.of(context)!.englishSubject,
+                    label: l10n.englishSubject,
                     icon: Icons.language_rounded,
                     score: widget.result.engScore,
                     total: widget.package.engCount,
-                    color: _scoreBarColor(widget.result.engScore, widget.package.engCount),
+                    color: _scoreBarColor(
+                        widget.result.engScore, widget.package.engCount),
                     ring: _ring,
                   )),
                 ]),
@@ -471,8 +474,9 @@ class _ResultScreenState extends State<ResultScreen>
                     const Icon(Icons.equalizer_rounded,
                         size: 18, color: AppColors.ink2),
                     const SizedBox(width: 8),
-                    Text('Jami ball',
-                        style: AppTextStyles.labelLarge.copyWith(color: AppColors.ink2)),
+                    Text(l10n.totalScoreLabel,
+                        style: AppTextStyles.labelLarge
+                            .copyWith(color: AppColors.ink2)),
                     const Spacer(),
                     Text(
                         '${widget.result.mathScore + widget.result.engScore} / ${widget.package.totalCount}',
@@ -506,9 +510,7 @@ class _ResultScreenState extends State<ResultScreen>
                     const SizedBox(width: 8),
                     Expanded(
                         child: Text(
-                      widget.synced
-                          ? 'Natija serverga muvaffaqiyatli yuborildi'
-                          : "Offline saqlandi. Internet bo'lganda avtomatik yuboriladi",
+                      widget.synced ? l10n.syncedSuccess : l10n.savedOffline,
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -774,11 +776,15 @@ class _WrongAnswersSection extends StatefulWidget {
 class _WrongAnswersSectionState extends State<_WrongAnswersSection> {
   bool _expanded = false;
 
-  static const _subjectLabel = {'math': 'Matematika', 'english': 'Ingliz tili'};
   static const _answerLabel = {'a': 'A', 'b': 'B', 'c': 'C', 'd': 'D'};
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final subjectLabel = {
+      'math': l10n.mathSubjectFull,
+      'english': l10n.englishSubjectFull,
+    };
     final math =
         widget.wrongAnswers.where((w) => w['subject'] == 'math').length;
     final eng =
@@ -813,12 +819,12 @@ class _WrongAnswersSectionState extends State<_WrongAnswersSection> {
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                    Text('Xato javoblar — ${widget.wrongAnswers.length} ta',
+                    Text(l10n.wrongAnswersCount(widget.wrongAnswers.length),
                         style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: AppColors.ink1)),
-                    Text('Mat: $math  ·  Ing: $eng',
+                    Text(l10n.wrongAnswersBreakdown(math, eng),
                         style: const TextStyle(
                             fontSize: 11, color: AppColors.ink3)),
                   ])),
@@ -833,7 +839,7 @@ class _WrongAnswersSectionState extends State<_WrongAnswersSection> {
           ...widget.wrongAnswers.asMap().entries.map((e) {
             final w = e.value as Map<String, dynamic>;
             final pos = w['position'] as int? ?? 0;
-            final subj = _subjectLabel[w['subject']] ?? w['subject'];
+            final subj = subjectLabel[w['subject']] ?? w['subject'];
             final sAns =
                 _answerLabel[w['student_answer']] ?? w['student_answer'];
             final cAns =
@@ -954,6 +960,7 @@ class _SubjectAnalysis extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final mathPct =
         package.mathCount > 0 ? result.mathScore / package.mathCount : 0.0;
     final engPct =
@@ -963,24 +970,24 @@ class _SubjectAnalysis extends StatelessWidget {
     Color mathColor, engColor;
 
     if (mathPct >= 0.8) {
-      mathStatus = "Yaxshi ✓";
+      mathStatus = l10n.statusGood;
       mathColor = AppColors.ok;
     } else if (mathPct >= 0.6) {
-      mathStatus = "O'rtacha";
+      mathStatus = l10n.statusAverage;
       mathColor = AppColors.amber;
     } else {
-      mathStatus = "Zaif — mashq kerak";
+      mathStatus = l10n.statusWeak;
       mathColor = AppColors.err;
     }
 
     if (engPct >= 0.8) {
-      engStatus = "Yaxshi ✓";
+      engStatus = l10n.statusGood;
       engColor = AppColors.ok;
     } else if (engPct >= 0.6) {
-      engStatus = "O'rtacha";
+      engStatus = l10n.statusAverage;
       engColor = AppColors.amber;
     } else {
-      engStatus = "Zaif — mashq kerak";
+      engStatus = l10n.statusWeak;
       engColor = AppColors.err;
     }
 
@@ -992,18 +999,18 @@ class _SubjectAnalysis extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Row(children: [
-          Icon(Icons.insights_rounded, size: 16, color: AppColors.brand),
-          SizedBox(width: 8),
-          Text('Mavzu tahlili',
-              style: TextStyle(
+        Row(children: [
+          const Icon(Icons.insights_rounded, size: 16, color: AppColors.brand),
+          const SizedBox(width: 8),
+          Text(l10n.subjectAnalysisTitle,
+              style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.ink1)),
         ]),
         const SizedBox(height: 14),
         _AnalysisRow(
-          subject: 'Matematika',
+          subject: l10n.mathSubjectFull,
           score: result.mathScore,
           total: package.mathCount,
           pct: mathPct,
@@ -1013,7 +1020,7 @@ class _SubjectAnalysis extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         _AnalysisRow(
-          subject: 'Ingliz tili',
+          subject: l10n.englishSubjectFull,
           score: result.engScore,
           total: package.engCount,
           pct: engPct,

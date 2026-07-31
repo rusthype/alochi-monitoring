@@ -258,8 +258,8 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
               height: 4,
               decoration: BoxDecoration(
                 color: progress >= 1.0 ? AppColors.ok : AppColors.brand,
-                borderRadius: const BorderRadius.horizontal(
-                    right: Radius.circular(3)),
+                borderRadius:
+                    const BorderRadius.horizontal(right: Radius.circular(3)),
               ),
             ),
           ]),
@@ -291,10 +291,13 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                             color: AppColors.ink1)),
                     const SizedBox(height: 2),
                     Row(children: [
-                      const _Pill('Interhouse G2', AppColors.violet),
+                      _Pill(AppLocalizations.of(context)!.interhousePillLabel,
+                          AppColors.violet),
                       const SizedBox(width: 6),
                       _Pill(
-                          'Variant ${widget.variant}', AppColors.brand),
+                          AppLocalizations.of(context)!
+                              .variantBadge(widget.variant),
+                          AppColors.brand),
                     ]),
                   ]),
             ),
@@ -308,19 +311,16 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink1)),
                 Text(l10n.answeredLabel,
-                    style:
-                        const TextStyle(fontSize: 9, color: AppColors.ink3)),
+                    style: const TextStyle(fontSize: 9, color: AppColors.ink3)),
               ]),
             ),
             // Timer
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _timerHot
-                    ? AppColors.errorMuted
-                    : AppColors.secondaryMuted,
+                color:
+                    _timerHot ? AppColors.errorMuted : AppColors.secondaryMuted,
                 border: Border.all(
                   color: _timerHot
                       ? AppColors.dangerBorder
@@ -334,16 +334,13 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: _timerHot
-                            ? AppColors.error
-                            : AppColors.amberInk)),
+                        color:
+                            _timerHot ? AppColors.error : AppColors.amberInk)),
                 Text(l10n.timeLeftLabel,
                     style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
-                        color: _timerHot
-                            ? AppColors.error
-                            : AppColors.brand)),
+                        color: _timerHot ? AppColors.error : AppColors.brand)),
               ]),
             ),
           ]),
@@ -369,9 +366,8 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
-                          color: isActive
-                              ? AppColors.brand
-                              : Colors.transparent,
+                          color:
+                              isActive ? AppColors.brand : Colors.transparent,
                           width: 2.5,
                         ),
                       ),
@@ -380,12 +376,10 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                       Text(_sectionNames[i],
                           style: TextStyle(
                               fontSize: 13,
-                              fontWeight: isActive
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
-                              color: isActive
-                                  ? AppColors.brand
-                                  : AppColors.ink2)),
+                              fontWeight:
+                                  isActive ? FontWeight.w800 : FontWeight.w500,
+                              color:
+                                  isActive ? AppColors.brand : AppColors.ink2)),
                       const SizedBox(width: 6),
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
@@ -617,9 +611,7 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
                 const SizedBox(height: 8),
                 Text(reading.text,
                     style: const TextStyle(
-                        fontSize: 14,
-                        height: 1.6,
-                        color: AppColors.ink2)),
+                        fontSize: 14, height: 1.6, color: AppColors.ink2)),
               ],
             ),
           ),
@@ -701,8 +693,7 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(
             color: color.withValues(alpha: .1),
             borderRadius: BorderRadius.circular(20)),
@@ -720,8 +711,7 @@ class _QNum extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
         decoration: BoxDecoration(
           color: AppColors.brandLight,
           borderRadius: BorderRadius.circular(20),
@@ -755,11 +745,9 @@ class _IhOptionRow extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           margin: const EdgeInsets.only(bottom: 8),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color:
-                selected ? AppColors.secondaryMuted : AppColors.surface,
+            color: selected ? AppColors.secondaryMuted : AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected ? AppColors.brand : AppColors.border,
@@ -783,9 +771,7 @@ class _IhOptionRow extends StatelessWidget {
                 color: selected ? AppColors.brand : AppColors.chipBg,
                 borderRadius: BorderRadius.circular(9),
                 border: Border.all(
-                  color: selected
-                      ? AppColors.brand
-                      : AppColors.chipBorder,
+                  color: selected ? AppColors.brand : AppColors.chipBorder,
                   width: 1.5,
                 ),
               ),
@@ -794,9 +780,8 @@ class _IhOptionRow extends StatelessWidget {
                       style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
-                          color: selected
-                              ? Colors.white
-                              : AppColors.chipIcon))),
+                          color:
+                              selected ? Colors.white : AppColors.chipIcon))),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -804,9 +789,8 @@ class _IhOptionRow extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: selected
-                            ? AppColors.amberInk
-                            : AppColors.ink1))),
+                        color:
+                            selected ? AppColors.amberInk : AppColors.ink1))),
             if (selected)
               Container(
                 width: 20,
@@ -966,8 +950,8 @@ class _WordQuestion extends StatelessWidget {
         Row(children: [
           _QNum(index),
           const SizedBox(width: 10),
-          const Text('Harflarni to\'g\'ri joylashtiring',
-              style: TextStyle(
+          Text(AppLocalizations.of(context)!.arrangeLettersPrompt,
+              style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppColors.ink2)),
@@ -994,7 +978,7 @@ class _WordQuestion extends StatelessWidget {
           controller: controller,
           onChanged: (v) => onChanged(v.toLowerCase()),
           decoration: InputDecoration(
-            hintText: 'Javob...',
+            hintText: AppLocalizations.of(context)!.answerHintText,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
@@ -1005,8 +989,7 @@ class _WordQuestion extends StatelessWidget {
                 borderSide: const BorderSide(color: AppColors.border)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: AppColors.brand, width: 2)),
+                borderSide: const BorderSide(color: AppColors.brand, width: 2)),
             filled: true,
             fillColor: AppColors.bg,
           ),
@@ -1090,8 +1073,7 @@ class _YnButton extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: selected ? color : color.withValues(alpha: .08),
             borderRadius: BorderRadius.circular(8),
@@ -1170,7 +1152,7 @@ class _FillQuestionState extends State<_FillQuestion> {
           controller: _ctrl,
           onChanged: widget.onChanged,
           decoration: InputDecoration(
-            hintText: 'Javob...',
+            hintText: AppLocalizations.of(context)!.answerHintText,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             border: OutlineInputBorder(
@@ -1181,8 +1163,7 @@ class _FillQuestionState extends State<_FillQuestion> {
                 borderSide: const BorderSide(color: AppColors.border)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: AppColors.brand, width: 2)),
+                borderSide: const BorderSide(color: AppColors.brand, width: 2)),
             filled: true,
             fillColor: AppColors.bg,
           ),
@@ -1222,8 +1203,8 @@ class _SentenceQuestion extends StatelessWidget {
         Row(children: [
           _QNum(index),
           const SizedBox(width: 10),
-          const Text('Jumlani to\'g\'ri tartibga soling',
-              style: TextStyle(
+          Text(AppLocalizations.of(context)!.arrangeSentencePrompt,
+              style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppColors.ink2)),
@@ -1235,8 +1216,7 @@ class _SentenceQuestion extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.brandLight,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-                color: AppColors.brand.withValues(alpha: .3)),
+            border: Border.all(color: AppColors.brand.withValues(alpha: .3)),
           ),
           child: Text(question.words ?? '',
               textAlign: TextAlign.center,
@@ -1250,7 +1230,7 @@ class _SentenceQuestion extends StatelessWidget {
           controller: controller,
           onChanged: onChanged,
           decoration: InputDecoration(
-            hintText: 'To\'liq jumlani yozing...',
+            hintText: AppLocalizations.of(context)!.fullSentenceHintText,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
@@ -1261,8 +1241,7 @@ class _SentenceQuestion extends StatelessWidget {
                 borderSide: const BorderSide(color: AppColors.border)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide:
-                    const BorderSide(color: AppColors.brand, width: 2)),
+                borderSide: const BorderSide(color: AppColors.brand, width: 2)),
             filled: true,
             fillColor: AppColors.bg,
           ),

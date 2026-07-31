@@ -64,11 +64,13 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
     final first = _firstCtrl.text.trim();
     final last = _lastCtrl.text.trim();
     if (first.isEmpty || last.isEmpty) {
-      setState(() => _err = AppLocalizations.of(context)!.enterFirstAndLastName);
+      setState(
+          () => _err = AppLocalizations.of(context)!.enterFirstAndLastName);
       return;
     }
     if (_passCtrl.text.trim() != '1234') {
-      setState(() => _err = AppLocalizations.of(context)!.incorrectSecretPassword);
+      setState(
+          () => _err = AppLocalizations.of(context)!.incorrectSecretPassword);
       return;
     }
     setState(() {
@@ -92,8 +94,9 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
             ),
           ));
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _err = 'Xato: $e';
+        _err = AppLocalizations.of(context)!.errorPrefix(e.toString());
         _loading = false;
       });
     }
@@ -115,7 +118,9 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
                 icon: const Icon(Icons.close_rounded, color: AppColors.ink2),
                 onPressed: () => Navigator.pop(context)),
         title: Text(
-            _step == 0 ? AppLocalizations.of(context)!.selectVariant : AppLocalizations.of(context)!.studentInfoTitle,
+            _step == 0
+                ? AppLocalizations.of(context)!.selectVariant
+                : AppLocalizations.of(context)!.studentInfoTitle,
             style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
@@ -144,13 +149,12 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: AppColors.emerald.withValues(alpha: .12),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AppColors.emerald.withValues(alpha: .3)),
+              border:
+                  Border.all(color: AppColors.emerald.withValues(alpha: .3)),
             ),
             child: Row(children: [
               const Icon(Icons.info_outline_rounded,
@@ -221,7 +225,8 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
               onPressed: _variant == null ? null : () => _goStep(1),
               icon: const Icon(Icons.arrow_forward_rounded),
               label: Text(AppLocalizations.of(context)!.continueButton,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w700)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.brand,
                 foregroundColor: Colors.white,
@@ -274,11 +279,15 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
               Row(children: [
                 Expanded(
                     child: _Field(
-                        label: AppLocalizations.of(context)!.firstNameLabel, ctrl: _firstCtrl, hint: AppLocalizations.of(context)!.firstNameHint)),
+                        label: AppLocalizations.of(context)!.firstNameLabel,
+                        ctrl: _firstCtrl,
+                        hint: AppLocalizations.of(context)!.firstNameHint)),
                 const SizedBox(width: 12),
                 Expanded(
                     child: _Field(
-                        label: AppLocalizations.of(context)!.lastNameLabel, ctrl: _lastCtrl, hint: AppLocalizations.of(context)!.lastNameHint)),
+                        label: AppLocalizations.of(context)!.lastNameLabel,
+                        ctrl: _lastCtrl,
+                        hint: AppLocalizations.of(context)!.lastNameHint)),
               ]),
               Row(children: [
                 Expanded(
@@ -333,7 +342,10 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.play_arrow_rounded),
-                  label: Text(_loading ? AppLocalizations.of(context)!.loadingLabelDots : AppLocalizations.of(context)!.startTest,
+                  label: Text(
+                      _loading
+                          ? AppLocalizations.of(context)!.loadingLabelDots
+                          : AppLocalizations.of(context)!.startTest,
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.w700)),
                   style: ElevatedButton.styleFrom(

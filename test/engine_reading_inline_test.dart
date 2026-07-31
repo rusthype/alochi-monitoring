@@ -17,7 +17,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alochi_monitoring/core/engine/test_models.dart';
 import 'package:alochi_monitoring/core/engine/test_scorer.dart';
 import 'package:alochi_monitoring/core/engine/test_engine.dart';
-import 'package:alochi_monitoring/core/engine/question_widgets.dart' show EngineQNum;
+import 'package:alochi_monitoring/core/engine/question_widgets.dart'
+    show EngineQNum;
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 // ── List-shaped reading fixture ─────────────────────────────────────────────
 //
@@ -28,19 +30,35 @@ import 'package:alochi_monitoring/core/engine/question_widgets.dart' show Engine
 //   list index 3 → yes_no                 → key "Manba/3"
 // questionCount == 6.
 
-Map<String, dynamic> _readingItem(String title, String text, List<Map<String, dynamic>> qs) {
+Map<String, dynamic> _readingItem(
+    String title, String text, List<Map<String, dynamic>> qs) {
   return {'type': 'reading', 'title': title, 'text': text, 'qs': qs};
 }
 
 List<Map<String, dynamic>> _manbaSection() {
   return [
-    {'type': 'text_choice', 'q': 'Q0', 'opts': ['A', 'B'], 'ans': 0},
+    {
+      'type': 'text_choice',
+      'q': 'Q0',
+      'opts': ['A', 'B'],
+      'ans': 0
+    },
     _readingItem('Passage One', 'Text one.', [
-      {'type': 'text_choice', 'q': 'P1Q0', 'opts': ['A', 'B'], 'ans': 0},
+      {
+        'type': 'text_choice',
+        'q': 'P1Q0',
+        'opts': ['A', 'B'],
+        'ans': 0
+      },
       {'type': 'yes_no', 'q': 'P1Q1', 'ans': 'YES'},
     ]),
     _readingItem('Passage Two', 'Text two.', [
-      {'type': 'text_choice', 'q': 'P2Q0', 'opts': ['A', 'B'], 'ans': 1},
+      {
+        'type': 'text_choice',
+        'q': 'P2Q0',
+        'opts': ['A', 'B'],
+        'ans': 1
+      },
       {'type': 'fill_blank', 'q': 'P2Q1', 'ans': 'dog'},
     ]),
     {'type': 'yes_no', 'q': 'Q3', 'ans': 'YES'},
@@ -101,8 +119,18 @@ Map<String, dynamic> _buildCombinedSpecJson() {
           'title': 'Whole Section Passage',
           'text': 'A whole-section reading passage.',
           'qs': [
-            {'type': 'text_choice', 'q': 'W0', 'opts': ['A', 'B'], 'ans': 0},
-            {'type': 'text_choice', 'q': 'W1', 'opts': ['A', 'B'], 'ans': 1},
+            {
+              'type': 'text_choice',
+              'q': 'W0',
+              'opts': ['A', 'B'],
+              'ans': 0
+            },
+            {
+              'type': 'text_choice',
+              'q': 'W1',
+              'opts': ['A', 'B'],
+              'ans': 1
+            },
           ],
         },
       },
@@ -127,7 +155,8 @@ bool _isMathSection(String name) {
   return n == 'math' || n.startsWith('matema');
 }
 
-(int, int) _mathBucket(String? subject, List<SectionScore> sections, int totalCorrect, int totalQuestions) {
+(int, int) _mathBucket(String? subject, List<SectionScore> sections,
+    int totalCorrect, int totalQuestions) {
   if (subject == null) {
     int cor = 0, tot = 0;
     for (final s in sections) {
@@ -141,7 +170,8 @@ bool _isMathSection(String name) {
   return subject == 'math' ? (totalCorrect, totalQuestions) : (0, 0);
 }
 
-(int, int) _englishBucket(String? subject, List<SectionScore> sections, int totalCorrect, int totalQuestions) {
+(int, int) _englishBucket(String? subject, List<SectionScore> sections,
+    int totalCorrect, int totalQuestions) {
   if (subject == null) {
     int cor = 0, tot = 0;
     for (final s in sections) {
@@ -159,7 +189,8 @@ bool _isMathSection(String name) {
 
 void main() {
   group('list-shaped reading — TestSpec.fromJson', () {
-    test('Manba section parses as a question list, not a reading container', () {
+    test('Manba section parses as a question list, not a reading container',
+        () {
       final spec = TestSpec.fromJson(_buildListShapedSpecJson());
       final section = spec.sectionsForVariant('1').first;
       expect(section.isReading, isFalse);
@@ -183,7 +214,14 @@ void main() {
       final section = spec.sectionsForVariant('1').first;
       expect(
         section.answerSlots.map((s) => s.key).toList(),
-        ['Manba/0', 'Manba/1/0', 'Manba/1/1', 'Manba/2/0', 'Manba/2/1', 'Manba/3'],
+        [
+          'Manba/0',
+          'Manba/1/0',
+          'Manba/1/1',
+          'Manba/2/0',
+          'Manba/2/1',
+          'Manba/3'
+        ],
       );
     });
   });
@@ -210,7 +248,8 @@ void main() {
       expect(result.totalQuestions, 6);
     });
 
-    test('partial: only the standalone questions correct, both passages wrong', () {
+    test('partial: only the standalone questions correct, both passages wrong',
+        () {
       final answers = <String, dynamic>{
         'Manba/0': 0, // correct
         'Manba/1/0': 1, // wrong
@@ -224,7 +263,9 @@ void main() {
       expect(result.totalQuestions, 6);
     });
 
-    test('unanswered leaves the passage questions counted as wrong (not skipped)', () {
+    test(
+        'unanswered leaves the passage questions counted as wrong (not skipped)',
+        () {
       // Only the two standalone questions answered — both inline reading
       // passages left untouched.
       final answers = <String, dynamic>{'Manba/0': 0, 'Manba/3': 'YES'};
@@ -261,13 +302,16 @@ void main() {
     });
   });
 
-  group('mixed spec — whole-section reading + list-shaped inline reading coexist', () {
+  group(
+      'mixed spec — whole-section reading + list-shaped inline reading coexist',
+      () {
     test('both shapes score independently in the same TestSpec', () {
       final spec = TestSpec.fromJson(_buildCombinedSpecJson());
       final sections = spec.sectionsForVariant('1');
       expect(sections.map((s) => s.name).toList(), ['Manba', 'Passage']);
       expect(sections[0].isReading, isFalse); // Manba: list-shaped
-      expect(sections[1].isReading, isTrue); // Passage: whole-section Map-shaped
+      expect(
+          sections[1].isReading, isTrue); // Passage: whole-section Map-shaped
 
       final answers = <String, dynamic>{
         ..._allCorrectManba(),
@@ -280,7 +324,8 @@ void main() {
       expect(result.totalCorrect, 8);
 
       final manba = result.sectionScores.firstWhere((s) => s.name == 'Manba');
-      final passage = result.sectionScores.firstWhere((s) => s.name == 'Passage');
+      final passage =
+          result.sectionScores.firstWhere((s) => s.name == 'Passage');
       expect(manba.correct, 6);
       expect(manba.total, 6);
       expect(passage.correct, 2);
@@ -299,6 +344,8 @@ void main() {
       final spec = TestSpec.fromJson(_buildListShapedSpecJson());
 
       await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: TestEngine(
           spec: spec,
           variant: 1,
@@ -327,7 +374,8 @@ void main() {
     });
   });
 
-  group('_buildPayload subject bucketing (Task 1.6 mirror — see comment above)', () {
+  group('_buildPayload subject bucketing (Task 1.6 mirror — see comment above)',
+      () {
     test('subject "tarix": both math and english buckets stay {0,0}', () {
       const sections = [
         SectionScore(name: 'Sanalar', correct: 8, total: 8),
@@ -339,7 +387,8 @@ void main() {
       expect(eng, (0, 0));
     });
 
-    test('subject "math": whole-test totals land in math, english stays {0,0}', () {
+    test('subject "math": whole-test totals land in math, english stays {0,0}',
+        () {
       const sections = [SectionScore(name: 'Algebra', correct: 5, total: 5)];
       final math = _mathBucket('math', sections, 5, 5);
       final eng = _englishBucket('math', sections, 5, 5);
@@ -347,7 +396,9 @@ void main() {
       expect(eng, (0, 0));
     });
 
-    test('subject null: old per-section-name heuristic, byte-identical to before', () {
+    test(
+        'subject null: old per-section-name heuristic, byte-identical to before',
+        () {
       const sections = [
         SectionScore(name: 'Math', correct: 2, total: 2),
         SectionScore(name: 'Matematika', correct: 1, total: 1),

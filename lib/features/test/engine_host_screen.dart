@@ -88,7 +88,11 @@ class EngineHostScreen extends StatefulWidget {
 
 class _EngineHostScreenState extends State<EngineHostScreen> {
   TestSpec? _spec;
-  String? _parseError;
+  // Raw parse-failure state — localized lazily in build() since
+  // AppLocalizations isn't available yet when _parseSpec() runs from
+  // initState().
+  bool _parseDataEmpty = false;
+  Object? _parseException;
 
   // Set by _handleComplete once the test is scored. When non-null, build()
   // renders _EngineResultScreen IN-PLACE instead of the running TestEngine.
@@ -127,12 +131,12 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
 
       final spec = TestSpec.fromJson(blob);
       if (spec.variants.isEmpty) {
-        _parseError = 'Test ma\'lumotlari bo\'sh (variants topilmadi)';
+        _parseDataEmpty = true;
       } else {
         _spec = spec;
       }
     } catch (e) {
-      _parseError = 'Test yuklanmadi: $e';
+      _parseException = e;
     }
   }
 
@@ -285,8 +289,14 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_parseError != null) {
-      return _ErrorScaffold(message: _parseError!);
+    if (_parseDataEmpty) {
+      return _ErrorScaffold(
+          message: AppLocalizations.of(context)!.testDataEmptyMsg);
+    }
+    if (_parseException != null) {
+      return _ErrorScaffold(
+          message: AppLocalizations.of(context)!
+              .testLoadErrorMsg(_parseException.toString()));
     }
     if (_spec == null) {
       return _ErrorScaffold(
@@ -717,8 +727,9 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Hisobot saqlandi, lekin ochib bo\'lmadi'),
+            SnackBar(
+              content: Text(
+                  AppLocalizations.of(context)!.reportSavedButOpenFailedMsg),
               backgroundColor: AppColors.err,
               behavior: SnackBarBehavior.floating,
             ),
@@ -927,8 +938,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
                     const SizedBox(width: 10),
                     Expanded(
                       child: _MathEngScoreCard(
-                        title:
-                            AppLocalizations.of(context)!.englishSubjectFull,
+                        title: AppLocalizations.of(context)!.englishSubjectFull,
                         ok: engBucket.correct,
                         total: engBucket.total,
                         color: AppColors.eng,
@@ -1835,7 +1845,8 @@ class _SectionRowV2 extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(section.displayName, style: AppTextStyles.labelLarge),
+                child:
+                    Text(section.displayName, style: AppTextStyles.labelLarge),
               ),
               Text(
                 '${section.correct}/${section.total}',

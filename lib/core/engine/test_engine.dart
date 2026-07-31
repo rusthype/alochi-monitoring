@@ -332,25 +332,25 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
 
     final unanswered = _totalQuestions - _answeredCount;
     if (unanswered > 0) {
+      final l10n = AppLocalizations.of(context)!;
       final ok = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (_) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            'Tugatish?',
-            style: TextStyle(fontWeight: FontWeight.w800),
+          title: Text(
+            l10n.finishConfirmTitle,
+            style: const TextStyle(fontWeight: FontWeight.w800),
           ),
-          content:
-              Text('$unanswered ta savol javobsiz. Tugatmoqchimisiz?'),
+          content: Text('$unanswered ${l10n.questionsUnansweredPrompt}'),
           actions: [
             TextButton(
               onPressed: () {
                 _startTimer();
                 Navigator.pop(context, false);
               },
-              child: Text(AppLocalizations.of(context)!.back),
+              child: Text(l10n.back),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
@@ -358,7 +358,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
                 backgroundColor: AppColors.brand,
                 minimumSize: const Size(100, 40),
               ),
-              child: Text(AppLocalizations.of(context)!.finish),
+              child: Text(l10n.finish),
             ),
           ],
         ),
@@ -395,20 +395,19 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final sections = _sections;
     if (sections.isEmpty) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: AppColors.bg,
         body: Center(
           child: Text(
-            'Test ma\'lumotlari topilmadi',
-            style: TextStyle(color: AppColors.ink2),
+            AppLocalizations.of(context)!.testDataNotFoundMsg,
+            style: const TextStyle(color: AppColors.ink2),
           ),
         ),
       );
     }
 
-    final progress = _totalQuestions > 0
-        ? _answeredCount / _totalQuestions
-        : 0.0;
+    final progress =
+        _totalQuestions > 0 ? _answeredCount / _totalQuestions : 0.0;
     final isLast = _sectionIdx == sections.length - 1;
 
     return Scaffold(
@@ -428,8 +427,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
               width: MediaQuery.sizeOf(context).width * progress,
               height: 4,
               decoration: BoxDecoration(
-                color:
-                    progress >= 1.0 ? AppColors.ok : AppColors.brand,
+                color: progress >= 1.0 ? AppColors.ok : AppColors.brand,
                 borderRadius:
                     const BorderRadius.horizontal(right: Radius.circular(3)),
               ),
@@ -502,9 +500,9 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   Widget _buildQuestionListBody(SectionData section) {
     final qs = section.questions;
     if (qs.isEmpty) {
-      return const Center(
-        child: Text('Bu bo\'lim bo\'sh.',
-            style: TextStyle(color: AppColors.ink3)),
+      return Center(
+        child: Text(AppLocalizations.of(context)!.bobEmptySectionMsg,
+            style: const TextStyle(color: AppColors.ink3)),
       );
     }
     // displayIdx runs independently of the list index i: an inline reading
@@ -646,8 +644,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
         return FillBlankWidget(
           index: i,
           question: q,
-          initialValue:
-              _answers[key] is String ? _answers[key] as String : '',
+          initialValue: _answers[key] is String ? _answers[key] as String : '',
           onChanged: (v) {
             _ctrl(key).text = v;
             _setAnswer(key, v);
@@ -705,6 +702,7 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
@@ -734,7 +732,7 @@ class _TopBar extends StatelessWidget {
               Row(children: [
                 _Pill(testTitle, AppColors.ink2),
                 const SizedBox(width: 6),
-                _Pill('Variant $variant', AppColors.brand),
+                _Pill(l10n.variantBadge(variant), AppColors.brand),
               ]),
             ],
           ),
@@ -751,9 +749,9 @@ class _TopBar extends StatelessWidget {
                 color: AppColors.ink1,
               ),
             ),
-            const Text(
-              'javoblandi',
-              style: TextStyle(fontSize: 9, color: AppColors.ink3),
+            Text(
+              l10n.answeredLabel,
+              style: const TextStyle(fontSize: 9, color: AppColors.ink3),
             ),
           ]),
         ),
@@ -762,13 +760,9 @@ class _TopBar extends StatelessWidget {
           duration: const Duration(milliseconds: 300),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: timerHot
-                ? AppColors.errorMuted
-                : AppColors.secondaryMuted,
+            color: timerHot ? AppColors.errorMuted : AppColors.secondaryMuted,
             border: Border.all(
-              color: timerHot
-                  ? AppColors.dangerBorder
-                  : AppColors.amberBorder,
+              color: timerHot ? AppColors.dangerBorder : AppColors.amberBorder,
               width: 1.5,
             ),
             borderRadius: BorderRadius.circular(12),
@@ -779,13 +773,11 @@ class _TopBar extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
-                color: timerHot
-                    ? AppColors.error
-                    : AppColors.amberInk,
+                color: timerHot ? AppColors.error : AppColors.amberInk,
               ),
             ),
             Text(
-              'qoldi',
+              l10n.timeLeftLabel,
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w700,
@@ -850,15 +842,13 @@ class _SectionTabBar extends StatelessWidget {
               onTap: () => onTap(i),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 margin: const EdgeInsets.only(right: 4),
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: isActive
-                          ? AppColors.brand
-                          : Colors.transparent,
+                      color: isActive ? AppColors.brand : Colors.transparent,
                       width: 2.5,
                     ),
                   ),
@@ -868,17 +858,15 @@ class _SectionTabBar extends StatelessWidget {
                     sections[i].displayName,
                     style: TextStyle(
                       fontSize: 13,
-                      fontWeight: isActive
-                          ? FontWeight.w800
-                          : FontWeight.w500,
+                      fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
                       color: isActive ? AppColors.brand : AppColors.ink2,
                     ),
                   ),
                   const SizedBox(width: 6),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: answered == total
                           ? AppColors.ok.withValues(alpha: .15)
@@ -929,6 +917,7 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       decoration: BoxDecoration(
@@ -952,9 +941,10 @@ class _BottomNav extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: sectionIdx == 0 ? null : onPrev,
               icon: const Icon(Icons.arrow_back_rounded, size: 15),
-              label: const Text(
-                'Oldingi',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              label: Text(
+                l10n.previousButton,
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.ink2,
@@ -973,9 +963,9 @@ class _BottomNav extends StatelessWidget {
               ? ElevatedButton.icon(
                   onPressed: onFinish,
                   icon: const Icon(Icons.check_rounded, size: 15),
-                  label: const Text(
-                    'Tugatish',
-                    style: TextStyle(
+                  label: Text(
+                    l10n.finish,
+                    style: const TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w700),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -988,9 +978,9 @@ class _BottomNav extends StatelessWidget {
                 )
               : ElevatedButton.icon(
                   onPressed: onNext,
-                  icon: const Text(
-                    'Keyingi',
-                    style: TextStyle(
+                  icon: Text(
+                    l10n.nextButton,
+                    style: const TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w700),
                   ),
                   label: const Icon(Icons.arrow_forward_rounded, size: 15),
