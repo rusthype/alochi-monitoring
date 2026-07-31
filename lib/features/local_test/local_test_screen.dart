@@ -89,8 +89,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
       final target = (idx * _dotItemWidth - viewport / 2 + _dotItemWidth / 2)
           .clamp(0.0, _dotsScrollCtrl.position.maxScrollExtent);
       _dotsScrollCtrl.animateTo(target,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut);
+          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     });
   }
 
@@ -130,7 +129,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(localizations.finishConfirmTitle,
               style: const TextStyle(fontWeight: FontWeight.w800)),
-          content: Text('$unanswered ${localizations.questionsUnansweredPrompt}'),
+          content:
+              Text('$unanswered ${localizations.questionsUnansweredPrompt}'),
           actions: [
             TextButton(
                 onPressed: () {
@@ -180,8 +180,11 @@ class _LocalTestScreenState extends State<LocalTestScreen>
         if (correct) engOk++;
       }
 
-      final t =
-          q.topic.isEmpty ? (q.isMath ? localizations.mathSubjectFull : localizations.englishSubjectFull) : q.topic;
+      final t = q.topic.isEmpty
+          ? (q.isMath
+              ? localizations.mathSubjectFull
+              : localizations.englishSubjectFull)
+          : q.topic;
       final prev = topicScores[t] ?? (ok: 0, tot: 0);
       topicScores[t] = (ok: prev.ok + (correct ? 1 : 0), tot: prev.tot + 1);
     }
@@ -213,8 +216,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
   Widget build(BuildContext context) {
     final progress = _total > 0 ? _answers.length / _total : 0.0;
     return ExitConfirmationScope(
-      child: Scaffold(
-        backgroundColor: AppColors.bg,
+        child: Scaffold(
+      backgroundColor: AppColors.bg,
       body: CallbackShortcuts(
         bindings: {
           const SingleActivator(LogicalKeyboardKey.keyA): () => _answer('a'),
@@ -272,11 +275,13 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                       Row(children: [
                         _Pill(
                             '${widget.grade}${AppLocalizations.of(context)!.gradeWord}',
-                            _isMath
-                                ? AppColors.blueInk
-                                : AppColors.tealInk),
+                            _isMath ? AppColors.blueInk : AppColors.tealInk),
                         const SizedBox(width: 6),
-                        Text(_isMath ? AppLocalizations.of(context)!.mathSubjectFull : AppLocalizations.of(context)!.englishSubjectFull,
+                        Text(
+                            _isMath
+                                ? AppLocalizations.of(context)!.mathSubjectFull
+                                : AppLocalizations.of(context)!
+                                    .englishSubjectFull,
                             style: const TextStyle(
                                 fontSize: 11, color: AppColors.ink3)),
                       ]),
@@ -309,9 +314,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                         style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
-                            color: _timerHot
-                                ? AppColors.error
-                                : AppColors.brand)),
+                            color:
+                                _timerHot ? AppColors.error : AppColors.brand)),
                   ]),
                 ),
               ]),
@@ -437,8 +441,12 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                                               .border)),
                                                   child: Text(
                                                       _isMath
-                                                          ? AppLocalizations.of(context)!.mathSubjectFull
-                                                          : AppLocalizations.of(context)!.englishSubjectFull,
+                                                          ? AppLocalizations.of(
+                                                                  context)!
+                                                              .mathSubjectFull
+                                                          : AppLocalizations.of(
+                                                                  context)!
+                                                              .englishSubjectFull,
                                                       style: const TextStyle(
                                                           fontSize: 11,
                                                           color: AppColors.ink2,
@@ -454,7 +462,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                                         horizontal: 8,
                                                         vertical: 4),
                                                     decoration: BoxDecoration(
-                                                        color: AppColors.violetMuted,
+                                                        color: AppColors
+                                                            .violetMuted,
                                                         borderRadius:
                                                             BorderRadius
                                                                 .circular(20)),
@@ -463,7 +472,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                                             .ellipsis,
                                                         style: const TextStyle(
                                                             fontSize: 10,
-                                                            color: AppColors.violetInk,
+                                                            color: AppColors
+                                                                .violetInk,
                                                             fontWeight:
                                                                 FontWeight
                                                                     .w600)),
@@ -494,8 +504,14 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                       padding: const EdgeInsets.only(bottom: 8),
                                       child: _OptionRow(
                                         label: 'ABCD'[i],
-                                        text: i < _q.options.length ? _q.options[i] : '',
-                                        optionImage: _q.optionImages.length > i && _q.optionImages[i].isNotEmpty ? _q.optionImages[i] : null,
+                                        text: i < _q.options.length
+                                            ? _q.options[i]
+                                            : '',
+                                        optionImage: _q.optionImages.length >
+                                                    i &&
+                                                _q.optionImages[i].isNotEmpty
+                                            ? _q.optionImages[i]
+                                            : null,
                                         selected: _answers[_cur] == ch,
                                         onTap: () => _answer(ch),
                                       ),
@@ -532,7 +548,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                   _isFirst ? null : () => _navigate(_cur - 1),
                               icon: const Icon(Icons.arrow_back_rounded,
                                   size: 15),
-                              label: Text(AppLocalizations.of(context)!.previousButton,
+                              label: Text(
+                                  AppLocalizations.of(context)!.previousButton,
                                   style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700)),
@@ -565,9 +582,17 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                               ? ElevatedButton.icon(
                                   onPressed: _submitting ? null : _finish,
                                   icon: _submitting
-                                      ? const SizedBox(width: 15, height: 15, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                      : const Icon(Icons.check_rounded, size: 15),
-                                  label: Text(AppLocalizations.of(context)!.finishButtonText,
+                                      ? const SizedBox(
+                                          width: 15,
+                                          height: 15,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white))
+                                      : const Icon(Icons.check_rounded,
+                                          size: 15),
+                                  label: Text(
+                                      AppLocalizations.of(context)!
+                                          .finishButtonText,
                                       style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700)),
@@ -581,7 +606,8 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                                 )
                               : ElevatedButton.icon(
                                   onPressed: () => _navigate(_cur + 1),
-                                  icon: Text(AppLocalizations.of(context)!.nextButton,
+                                  icon: Text(
+                                      AppLocalizations.of(context)!.nextButton,
                                       style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700)),
@@ -689,7 +715,6 @@ class _QDot extends StatelessWidget {
   }
 }
 
-
 class _OptionRow extends StatefulWidget {
   final String label, text;
   final String? optionImage;
@@ -745,7 +770,8 @@ class _OptionRowState extends State<_OptionRow>
           color: widget.selected ? AppColors.secondaryMuted : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: widget.selected ? AppColors.brand : AppColors.chipBorderMuted,
+            color:
+                widget.selected ? AppColors.brand : AppColors.chipBorderMuted,
             width: widget.selected ? 2 : 1.5,
           ),
           boxShadow: widget.selected
@@ -772,9 +798,7 @@ class _OptionRowState extends State<_OptionRow>
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: widget.selected
-                      ? AppColors.brand
-                      : AppColors.chipBg,
+                  color: widget.selected ? AppColors.brand : AppColors.chipBg,
                   border: Border.all(
                       color: widget.selected
                           ? AppColors.brand
@@ -911,31 +935,31 @@ class _QuestionImage extends StatelessWidget {
                   ),
                 ),
               ),
-          errorWidget: Builder(
-            builder: (context) {
-              debugPrint('IMAGE ERROR | URL: $url');
-              return Container(
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.err.withValues(alpha: .07),
-                  borderRadius: BorderRadius.circular(8),
-                  border:
-                      Border.all(color: AppColors.err.withValues(alpha: .2)),
-                ),
-                child: Center(
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.broken_image_outlined,
-                      color: AppColors.err.withValues(alpha: .5), size: 16),
-                  const SizedBox(width: 6),
-                  const Text('Rasm yuklanmadi',
-                      style: TextStyle(fontSize: 11, color: AppColors.ink3)),
-                ])),
-              );
-            },
+              errorWidget: Builder(
+                builder: (context) {
+                  debugPrint('IMAGE ERROR | URL: $url');
+                  return Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: AppColors.err.withValues(alpha: .07),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: AppColors.err.withValues(alpha: .2)),
+                    ),
+                    child: Center(
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.broken_image_outlined,
+                          color: AppColors.err.withValues(alpha: .5), size: 16),
+                      const SizedBox(width: 6),
+                      Text(AppLocalizations.of(context)!.imageLoadFailed,
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.ink3)),
+                    ])),
+                  );
+                },
+              ),
+            ),
           ),
         ),
-      ),
-    ),
-  );
+      );
 }
-

@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:alochi_monitoring/core/engine/test_models.dart';
 import 'package:alochi_monitoring/core/engine/question_widgets.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 Question _q() => const Question(
       type: QuestionType.sentenceOrder,
@@ -23,6 +24,8 @@ Question _q() => const Question(
 Widget _host(
         TextEditingController controller, void Function(String) onChanged) =>
     MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SentenceOrderWidget(
           index: 0,
@@ -107,6 +110,8 @@ void main() {
     );
 
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SentenceOrderWidget(
           index: 0,

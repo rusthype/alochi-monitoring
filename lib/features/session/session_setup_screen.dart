@@ -78,20 +78,20 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
 
   void _confirm() async {
     if (_selected == null) return;
-    
+
     final l10n = AppLocalizations.of(context)!;
     final expected = _expectedPin(_selected!);
-    
+
     if (expected.isNotEmpty && _pinCtrl.text.trim() != expected) {
       setState(() => _err = l10n.incorrectPin);
       return;
     }
-    
+
     setState(() {
       _err = null;
       _isChecking = true;
     });
-    
+
     // Simulate slight delay for premium feel
     await Future.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
@@ -131,7 +131,9 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
             Positioned.fill(
               top: isSmall ? 80 : 100,
               child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(horizontal: isSmall ? 16 : 24, vertical: 24).copyWith(bottom: 140),
+                padding: EdgeInsets.symmetric(
+                        horizontal: isSmall ? 16 : 24, vertical: 24)
+                    .copyWith(bottom: 140),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 600),
@@ -200,15 +202,17 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.pageBg,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                      border: Border.all(
+                          color: Colors.black.withValues(alpha: 0.05)),
                     ),
-                    child: const Icon(Icons.arrow_back_rounded, color: AppColors.accent, size: 20),
+                    child: const Icon(Icons.arrow_back_rounded,
+                        color: AppColors.accent, size: 20),
                   ),
                 ),
               ),
-              const Text(
-                'MONITORING TEST',
-                style: TextStyle(
+              Text(
+                AppLocalizations.of(context)!.monitoringTestHeader,
+                style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                   letterSpacing: 1.2,
@@ -220,7 +224,8 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                 height: 40,
                 alignment: Alignment.center,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(100),
@@ -253,14 +258,15 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
             borderRadius: BorderRadius.circular(100),
             border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.menu_book_rounded, size: 12, color: AppColors.accent),
-              SizedBox(width: 6),
+              const Icon(Icons.menu_book_rounded,
+                  size: 12, color: AppColors.accent),
+              const SizedBox(width: 6),
               Text(
-                'MONITORING TEST',
-                style: TextStyle(
+                AppLocalizations.of(context)!.monitoringTestHeader,
+                style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 10,
                   letterSpacing: 2.0,
@@ -326,7 +332,8 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
               decoration: BoxDecoration(
                 color: AppColors.accent.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
+                border:
+                    Border.all(color: AppColors.accent.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [
@@ -337,7 +344,8 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                       color: AppColors.accent,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.school_rounded, color: Colors.white, size: 24),
+                    child: const Icon(Icons.school_rounded,
+                        color: Colors.white, size: 24),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -372,7 +380,8 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                       color: Colors.white.withValues(alpha: 0.5),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.check_rounded, color: AppColors.accent, size: 18),
+                    child: const Icon(Icons.check_rounded,
+                        color: AppColors.accent, size: 18),
                   ),
                 ],
               ),
@@ -397,8 +406,8 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                   color: AppColors.pageBg,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: _pinFocus.hasFocus 
-                        ? AppColors.accent.withValues(alpha: 0.5) 
+                    color: _pinFocus.hasFocus
+                        ? AppColors.accent.withValues(alpha: 0.5)
                         : Colors.black.withValues(alpha: 0.05),
                   ),
                 ),
@@ -424,12 +433,16 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                     ),
                     prefixIcon: Icon(
                       Icons.lock_outline_rounded,
-                      color: _pinFocus.hasFocus ? AppColors.accent : AppColors.stone.withValues(alpha: 0.6),
+                      color: _pinFocus.hasFocus
+                          ? AppColors.accent
+                          : AppColors.stone.withValues(alpha: 0.6),
                       size: 20,
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscure ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+                        _obscure
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_rounded,
                         color: AppColors.stone.withValues(alpha: 0.6),
                         size: 20,
                       ),
@@ -449,7 +462,8 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                   padding: const EdgeInsets.only(top: 8),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline_rounded, color: AppColors.err, size: 14),
+                      const Icon(Icons.error_outline_rounded,
+                          color: AppColors.err, size: 14),
                       const SizedBox(width: 4),
                       Text(
                         _err!,
@@ -468,7 +482,9 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.info_rounded, color: AppColors.accent.withValues(alpha: 0.7), size: 16),
+                      Icon(Icons.info_rounded,
+                          color: AppColors.accent.withValues(alpha: 0.7),
+                          size: 16),
                       const SizedBox(width: 6),
                       Text(
                         AppLocalizations.of(context)!.enterTeacherCode,
@@ -538,19 +554,24 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeOutCubic,
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: canSubmit 
-                        ? (isHovered && !_isChecking ? const Color(0xFF333333) : AppColors.charcoal) 
+                    color: canSubmit
+                        ? (isHovered && !_isChecking
+                            ? const Color(0xFF333333)
+                            : AppColors.charcoal)
                         : AppColors.charcoal.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(100),
-                    boxShadow: canSubmit ? [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 32,
-                        offset: const Offset(0, 16),
-                      )
-                    ] : [],
+                    boxShadow: canSubmit
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 32,
+                              offset: const Offset(0, 16),
+                            )
+                          ]
+                        : [],
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -608,7 +629,8 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
                                   ),
                                 ),
                               )
-                            : const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                            : const Icon(Icons.arrow_forward_rounded,
+                                color: Colors.white, size: 20),
                       ),
                     ],
                   ),

@@ -119,14 +119,13 @@ class _CombinedScreenState extends State<CombinedScreen>
         elevation: 0,
         leading: _step > 0
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded,
-                    color: AppColors.ink1),
+                icon:
+                    const Icon(Icons.arrow_back_rounded, color: AppColors.ink1),
                 onPressed: () => _goStep(0))
             : IconButton(
                 icon: const Icon(Icons.close_rounded, color: AppColors.ink2),
                 onPressed: () => Navigator.pop(context)),
-        title: Text(
-            _step == 0 ? l10n.selectVariant : l10n.studentInfoTitle,
+        title: Text(_step == 0 ? l10n.selectVariant : l10n.studentInfoTitle,
             style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
@@ -156,8 +155,7 @@ class _CombinedScreenState extends State<CombinedScreen>
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             // Info banner
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: _kPurple.withValues(alpha: .08),
                 borderRadius: BorderRadius.circular(12),
@@ -182,8 +180,7 @@ class _CombinedScreenState extends State<CombinedScreen>
                       const SizedBox(height: 2),
                       Text(l10n.combinedTestSubjects,
                           style: const TextStyle(
-                              fontSize: 10,
-                              color: _kPurpleBannerSub)),
+                              fontSize: 10, color: _kPurpleBannerSub)),
                     ])),
               ]),
             ),
@@ -227,8 +224,7 @@ class _CombinedScreenState extends State<CombinedScreen>
                             style: TextStyle(
                                 fontWeight: FontWeight.w800,
                                 fontSize: 16,
-                                color:
-                                    sel ? Colors.white : AppColors.ink2))),
+                                color: sel ? Colors.white : AppColors.ink2))),
                   ),
                 );
               }),
@@ -347,14 +343,12 @@ class _CombinedScreenState extends State<CombinedScreen>
                                 width: 16,
                                 height: 16,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white))
+                                    strokeWidth: 2, color: Colors.white))
                             : const Icon(Icons.play_arrow_rounded),
                         label: Text(
                             _loading ? l10n.serverChecking : l10n.startTest,
                             style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700)),
+                                fontSize: 15, fontWeight: FontWeight.w700)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _kPurple,
                           foregroundColor: Colors.white,
@@ -387,11 +381,11 @@ class _CombinedHeader extends StatelessWidget {
           color: _kPurple.withValues(alpha: .12),
           borderRadius: BorderRadius.circular(8)),
       child: Text(
-          variant != null ? 'V$variant' : 'Unit 1',
+          variant != null
+              ? 'V$variant'
+              : AppLocalizations.of(context)!.unit1FallbackLabel,
           style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: _kPurpleDark)),
+              fontSize: 12, fontWeight: FontWeight.w700, color: _kPurpleDark)),
     );
   }
 }
@@ -403,15 +397,15 @@ class _CombinedVariantBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-          color: _kPurple.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(8)),
-      child: Text('Variant $variant',
-          style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: _kPurpleDark)));
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+            color: _kPurple.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(8)),
+        child: Text(AppLocalizations.of(context)!.variantBadge(variant),
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _kPurpleDark)));
   }
 }
 
@@ -449,24 +443,20 @@ class _CField extends StatelessWidget {
         style: const TextStyle(fontSize: 14, color: AppColors.ink1),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle:
-              TextStyle(color: AppColors.ink3.withValues(alpha: .6)),
+          hintStyle: TextStyle(color: AppColors.ink3.withValues(alpha: .6)),
           filled: true,
           fillColor: AppColors.bg,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  const BorderSide(color: AppColors.border)),
+              borderSide: const BorderSide(color: AppColors.border)),
           enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  const BorderSide(color: AppColors.border)),
+              borderSide: const BorderSide(color: AppColors.border)),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  const BorderSide(color: _kPurple, width: 1.5)),
+              borderSide: const BorderSide(color: _kPurple, width: 1.5)),
         ),
       ),
       const SizedBox(height: 14),

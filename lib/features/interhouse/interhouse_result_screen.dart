@@ -41,8 +41,7 @@ class InterhouseResultScreen extends StatefulWidget {
   });
 
   @override
-  State<InterhouseResultScreen> createState() =>
-      _InterhouseResultScreenState();
+  State<InterhouseResultScreen> createState() => _InterhouseResultScreenState();
 }
 
 class _InterhouseResultScreenState extends State<InterhouseResultScreen>
@@ -58,9 +57,8 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
     super.initState();
     _scoreAnim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200));
-    _scoreVal =
-        Tween<double>(begin: 0, end: widget.result.totalPct / 100).animate(
-            CurvedAnimation(parent: _scoreAnim, curve: Curves.easeOut));
+    _scoreVal = Tween<double>(begin: 0, end: widget.result.totalPct / 100)
+        .animate(CurvedAnimation(parent: _scoreAnim, curve: Curves.easeOut));
     _scoreAnim.forward();
     _submit();
   }
@@ -160,8 +158,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
       deviceId: 'flutter_interhouse-${defaultTargetPlatform.name}',
     );
 
-    final resp =
-        await api.submitResultFull(testResult, detail: detail);
+    final resp = await api.submitResultFull(testResult, detail: detail);
     final synced = resp['synced'] as bool? ?? false;
     final permanent = resp['permanent'] as bool? ?? false;
 
@@ -194,12 +191,18 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
 
   String _getSendStatusText(AppLocalizations l10n) {
     switch (_sendStatus) {
-      case 'Yuborilmoqda...': return l10n.sending;
-      case 'Xatolik. Keyinroq yuboriladi.': return l10n.errorLater;
-      case 'Saqlandi!': return l10n.savedSuccess;
-      case 'Saqlandi (offline — keyinroq yuboriladi)': return l10n.savedOfflineLater;
-      case 'Saqlandi, yuborilmoqda...': return l10n.savedSending;
-      default: return _sendStatus;
+      case 'Yuborilmoqda...':
+        return l10n.sending;
+      case 'Xatolik. Keyinroq yuboriladi.':
+        return l10n.errorLater;
+      case 'Saqlandi!':
+        return l10n.savedSuccess;
+      case 'Saqlandi (offline — keyinroq yuboriladi)':
+        return l10n.savedOfflineLater;
+      case 'Saqlandi, yuborilmoqda...':
+        return l10n.savedSending;
+      default:
+        return _sendStatus;
     }
   }
 
@@ -261,7 +264,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                             color: Colors.white)),
                     const SizedBox(height: 4),
                     Text(
-                        'Variant ${widget.variant} · ${DateTime.now().day}.${DateTime.now().month}.${DateTime.now().year}',
+                        '${l10n.variantBadge(widget.variant)} · ${DateTime.now().day}.${DateTime.now().month}.${DateTime.now().year}',
                         style: const TextStyle(
                             fontSize: 12, color: Colors.white60)),
                     const SizedBox(height: 20),
@@ -270,40 +273,31 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                     AnimatedBuilder(
                         animation: _scoreVal,
                         builder: (_, __) {
-                          final pct =
-                              (_scoreVal.value * 100).round();
-                          return Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                SizedBox(
-                                    width: 110,
-                                    height: 110,
-                                    child: CircularProgressIndicator(
-                                        value: _scoreVal.value,
-                                        strokeWidth: 9,
-                                        backgroundColor: Colors.white24,
-                                        valueColor:
-                                            const AlwaysStoppedAnimation(
-                                                Colors.white))),
-                                Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text('$pct%',
-                                          style: const TextStyle(
-                                              fontSize: 30,
-                                              fontWeight: FontWeight.w900,
-                                              color: Colors.white)),
-                                      Text(
-                                          '${result.total}/30',
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.white70)),
-                                    ]),
-                              ]);
+                          final pct = (_scoreVal.value * 100).round();
+                          return Stack(alignment: Alignment.center, children: [
+                            SizedBox(
+                                width: 110,
+                                height: 110,
+                                child: CircularProgressIndicator(
+                                    value: _scoreVal.value,
+                                    strokeWidth: 9,
+                                    backgroundColor: Colors.white24,
+                                    valueColor: const AlwaysStoppedAnimation(
+                                        Colors.white))),
+                            Column(mainAxisSize: MainAxisSize.min, children: [
+                              Text('$pct%',
+                                  style: const TextStyle(
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white)),
+                              Text('${result.total}/30',
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Colors.white70)),
+                            ]),
+                          ]);
                         }),
                     const SizedBox(height: 12),
-                    Text(
-                        '${result.totalShields}/25 shields',
+                    Text(l10n.shieldsProgressLabel(result.totalShields),
                         style: const TextStyle(
                             fontSize: 12, color: Colors.white70)),
                   ]),
@@ -318,8 +312,8 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                   decoration: BoxDecoration(
                     color: level.bgColor,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                        color: level.colColor.withValues(alpha: .3)),
+                    border:
+                        Border.all(color: level.colColor.withValues(alpha: .3)),
                   ),
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -340,11 +334,9 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                           ),
                         ]),
                         const SizedBox(height: 10),
-                        _LevelRow('Cambridge', level.cambridge,
-                            level.colColor),
+                        _LevelRow('Cambridge', level.cambridge, level.colColor),
                         const SizedBox(height: 4),
-                        _LevelRow(
-                            'CEFR', level.cefr, level.colColor),
+                        _LevelRow('CEFR', level.cefr, level.colColor),
                       ]),
                 ),
 
@@ -443,6 +435,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                           pct: widget.result.totalPct,
                           mathTopics: const [],
                           engTopics: _engTopics,
+                          l10n: l10n,
                         );
                         await Printing.layoutPdf(
                             onLayout: (_) => pdfBytes,
@@ -453,8 +446,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                       style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.ink1,
                           side: const BorderSide(color: AppColors.border),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14)),
+                          padding: const EdgeInsets.symmetric(vertical: 14)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -477,6 +469,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                           pct: widget.result.totalPct,
                           mathTopics: const [],
                           engTopics: _engTopics,
+                          l10n: l10n,
                         );
                         await Printing.sharePdf(
                             bytes: pdfBytes,
@@ -487,8 +480,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                       style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.brand,
                           side: const BorderSide(color: AppColors.brand),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14)),
+                          padding: const EdgeInsets.symmetric(vertical: 14)),
                     ),
                   ),
                 ]),
@@ -518,8 +510,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
                   onPressed: () => context.go('/'),
                   icon: const Icon(Icons.home_rounded, size: 16),
                   label: Text(l10n.homePage),
-                  style: TextButton.styleFrom(
-                      foregroundColor: AppColors.ink2),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.ink2),
                 ),
               ]),
             ),
@@ -548,9 +539,7 @@ class _LevelRow extends StatelessWidget {
         Expanded(
             child: Text(value,
                 style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: color))),
+                    fontSize: 13, fontWeight: FontWeight.w800, color: color))),
       ]);
 }
 
@@ -582,15 +571,10 @@ class _PartRow extends StatelessWidget {
                       color: AppColors.ink1))),
           Text('${part.score}/6',
               style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: clr)),
+                  fontSize: 13, fontWeight: FontWeight.w700, color: clr)),
           const SizedBox(width: 10),
           Text(shieldStr,
-              style: TextStyle(
-                  fontSize: 14,
-                  letterSpacing: 2,
-                  color: clr)),
+              style: TextStyle(fontSize: 14, letterSpacing: 2, color: clr)),
         ]),
         const SizedBox(height: 6),
         ClipRRect(
@@ -601,8 +585,7 @@ class _PartRow extends StatelessWidget {
                 width: double.infinity,
                 color: clr.withValues(alpha: .12)),
             FractionallySizedBox(
-                widthFactor: progress,
-                child: Container(height: 6, color: clr)),
+                widthFactor: progress, child: Container(height: 6, color: clr)),
           ]),
         ),
       ]),

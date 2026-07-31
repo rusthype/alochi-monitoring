@@ -93,8 +93,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
       final target = (idx * _dotItemWidth - viewport / 2 + _dotItemWidth / 2)
           .clamp(0.0, _dotsScrollCtrl.position.maxScrollExtent);
       _dotsScrollCtrl.animateTo(target,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut);
+          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     });
   }
 
@@ -132,21 +131,23 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
 
   void _navigate(int idx) {
     if (idx < 0 || idx >= _total) return;
-    
+
     final targetIsMath = idx < _mathCount;
     if (targetIsMath && _mathSecs <= 0) {
       ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.mathSectionTimeUp)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(AppLocalizations.of(context)!.mathSectionTimeUp)));
       return;
     }
     if (!targetIsMath && _engSecs <= 0) {
       ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.engSectionTimeUp)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(AppLocalizations.of(context)!.engSectionTimeUp)));
       return;
     }
 
     _autoAdv?.cancel();
-    
+
     if (_scrollCtrl.hasClients) {
       _scrollCtrl.jumpTo(0);
     }
@@ -198,8 +199,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(AppLocalizations.of(context)!.finishConfirmTitle,
               style: const TextStyle(fontWeight: FontWeight.w800)),
-          content: Text(
-              AppLocalizations.of(context)!.unansweredWarning(unanswered)),
+          content:
+              Text(AppLocalizations.of(context)!.unansweredWarning(unanswered)),
           actions: [
             TextButton(
                 onPressed: () {
@@ -247,7 +248,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
     final synced = resp['synced'] as bool? ?? false;
     final xpEarned = resp['xp_earned'] as int? ?? 0;
     final rawWrong = resp['wrong_answers'] as List<dynamic>? ?? [];
-    
+
     TestResult finalResult = result;
     if (synced && resp.containsKey('math_score')) {
       finalResult = TestResult(
@@ -507,8 +508,12 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                                                               .border)),
                                                   child: Text(
                                                       _isMath
-                                                          ? AppLocalizations.of(context)!.mathSubjectFull
-                                                          : AppLocalizations.of(context)!.englishSubjectFull,
+                                                          ? AppLocalizations.of(
+                                                                  context)!
+                                                              .mathSubjectFull
+                                                          : AppLocalizations.of(
+                                                                  context)!
+                                                              .englishSubjectFull,
                                                       style: const TextStyle(
                                                           fontSize: 11,
                                                           color: AppColors.ink2,
@@ -532,7 +537,10 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                                                               width: 3),
                                                       ],
                                                       const SizedBox(width: 5),
-                                                      Text(AppLocalizations.of(context)!.keyboardButtons,
+                                                      Text(
+                                                          AppLocalizations.of(
+                                                                  context)!
+                                                              .keyboardButtons,
                                                           style: const TextStyle(
                                                               fontSize: 10,
                                                               color: AppColors
@@ -612,7 +620,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                                   : () => _navigate(_current - 1),
                               icon: const Icon(Icons.arrow_back_rounded,
                                   size: 15),
-                              label: Text(AppLocalizations.of(context)!.previousButton,
+                              label: Text(
+                                  AppLocalizations.of(context)!.previousButton,
                                   style: const TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w700)),
@@ -656,7 +665,11 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                                       : const Icon(Icons.check_rounded,
                                           size: 15),
                                   label: Text(
-                                      _submitting ? AppLocalizations.of(context)!.uploadTest : AppLocalizations.of(context)!.finishTest,
+                                      _submitting
+                                          ? AppLocalizations.of(context)!
+                                              .uploadTest
+                                          : AppLocalizations.of(context)!
+                                              .finishTest,
                                       style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700)),
@@ -673,7 +686,8 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
                                 )
                               : ElevatedButton.icon(
                                   onPressed: () => _navigate(_current + 1),
-                                  icon: Text(AppLocalizations.of(context)!.nextButton,
+                                  icon: Text(
+                                      AppLocalizations.of(context)!.nextButton,
                                       style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w700)),
@@ -715,21 +729,9 @@ class _GradePill extends StatelessWidget {
         const Color(0xFF9A3412),
         AppColors.amberBorder
       ),
-      2: (
-        AppColors.tealMuted,
-        AppColors.tealInk,
-        const Color(0xFF99F6E4)
-      ),
-      3: (
-        AppColors.blueMuted,
-        AppColors.blueInk,
-        AppColors.blueBorder
-      ),
-      4: (
-        AppColors.violetMuted,
-        AppColors.violetInk,
-        AppColors.violetBorder
-      ),
+      2: (AppColors.tealMuted, AppColors.tealInk, const Color(0xFF99F6E4)),
+      3: (AppColors.blueMuted, AppColors.blueInk, AppColors.blueBorder),
+      4: (AppColors.violetMuted, AppColors.violetInk, AppColors.violetBorder),
     };
     final c = colors[grade] ?? colors[1]!;
     return Container(
@@ -739,7 +741,7 @@ class _GradePill extends StatelessWidget {
         border: Border.all(color: c.$3),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text('$grade-sinf',
+      child: Text('$grade-${AppLocalizations.of(context)!.gradeShort}',
           style: TextStyle(
               fontSize: 10, fontWeight: FontWeight.w700, color: c.$2)),
     );
@@ -756,7 +758,10 @@ class _SubjectPill extends StatelessWidget {
           color: isMath ? AppColors.blueMuted : AppColors.tealMuted,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(isMath ? AppLocalizations.of(context)!.mathSubjectFull : AppLocalizations.of(context)!.englishSubjectFull,
+        child: Text(
+            isMath
+                ? AppLocalizations.of(context)!.mathSubjectFull
+                : AppLocalizations.of(context)!.englishSubjectFull,
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -888,8 +893,8 @@ class _SectionBanner extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.fromLTRB(18, 14, 14, 14),
         decoration: BoxDecoration(
-          gradient:
-              const LinearGradient(colors: [AppColors.secondaryMuted, Colors.white]),
+          gradient: const LinearGradient(
+              colors: [AppColors.secondaryMuted, Colors.white]),
           border: Border.all(color: AppColors.amberBorder, width: 1.5),
           borderRadius: BorderRadius.circular(14),
         ),
@@ -907,7 +912,8 @@ class _SectionBanner extends StatelessWidget {
                         color: AppColors.amberInk)),
                 const SizedBox(height: 2),
                 Text(AppLocalizations.of(context)!.engSectionTransitionDesc,
-                    style: const TextStyle(fontSize: 11, color: AppColors.ink3)),
+                    style:
+                        const TextStyle(fontSize: 11, color: AppColors.ink3)),
               ])),
           IconButton(
               onPressed: onDismiss,
@@ -972,7 +978,8 @@ class _OptionRowState extends State<_OptionRow>
           color: widget.selected ? AppColors.secondaryMuted : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: widget.selected ? AppColors.brand : AppColors.chipBorderMuted,
+            color:
+                widget.selected ? AppColors.brand : AppColors.chipBorderMuted,
             width: widget.selected ? 2 : 1.5,
           ),
           boxShadow: widget.selected
@@ -999,9 +1006,7 @@ class _OptionRowState extends State<_OptionRow>
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: widget.selected
-                      ? AppColors.brand
-                      : AppColors.chipBg,
+                  color: widget.selected ? AppColors.brand : AppColors.chipBg,
                   border: Border.all(
                       color: widget.selected
                           ? AppColors.brand
@@ -1026,14 +1031,14 @@ class _OptionRowState extends State<_OptionRow>
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                               if (widget.text.isNotEmpty) ...[
-                                  Text(widget.text,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                          color: widget.selected
-                                              ? AppColors.amberInk
-                                              : AppColors.ink1)),
+                                Text(widget.text,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color: widget.selected
+                                            ? AppColors.amberInk
+                                            : AppColors.ink1)),
                                 const SizedBox(height: 6),
                               ],
                               Center(
@@ -1138,32 +1143,33 @@ class _QuestionImage extends StatelessWidget {
                   ),
                 ),
               ),
-          errorWidget: Builder(
-            builder: (context) {
-              debugPrint('IMAGE ERROR | URL: $url');
-              return Container(
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.err.withValues(alpha: .07),
-                  borderRadius: BorderRadius.circular(8),
-                  border:
-                      Border.all(color: AppColors.err.withValues(alpha: .2)),
-                ),
-                child: Center(
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.broken_image_outlined,
-                      color: AppColors.err.withValues(alpha: .5), size: 16),
-                  const SizedBox(width: 6),
-                  Text(AppLocalizations.of(context)!.imageLoadFailed,
-                      style: const TextStyle(fontSize: 11, color: AppColors.ink3)),
-                ])),
-              );
-            },
+              errorWidget: Builder(
+                builder: (context) {
+                  debugPrint('IMAGE ERROR | URL: $url');
+                  return Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: AppColors.err.withValues(alpha: .07),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: AppColors.err.withValues(alpha: .2)),
+                    ),
+                    child: Center(
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.broken_image_outlined,
+                          color: AppColors.err.withValues(alpha: .5), size: 16),
+                      const SizedBox(width: 6),
+                      Text(AppLocalizations.of(context)!.imageLoadFailed,
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.ink3)),
+                    ])),
+                  );
+                },
+              ),
+            ),
           ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 class _KbdKey extends StatelessWidget {

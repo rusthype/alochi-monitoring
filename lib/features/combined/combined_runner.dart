@@ -319,8 +319,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
     int grammarOk = 0;
     for (int i = 0; i < eng.grammar.length; i++) {
       final selectedIdx = i < _grammarAns.length ? _grammarAns[i] : null;
-      final bool ok =
-          selectedIdx != null && selectedIdx == eng.grammar[i].ans;
+      final bool ok = selectedIdx != null && selectedIdx == eng.grammar[i].ans;
       if (ok) grammarOk++;
       answers.add({
         'section': 'Grammar',
@@ -340,10 +339,9 @@ class _CombinedRunnerState extends State<CombinedRunner>
 
     int spellingOk = 0;
     for (int i = 0; i < eng.spelling.length; i++) {
-      final typed =
-          i < _spellingAns.length ? _spellingAns[i].trim() : '';
-      final bool ok = typed.toLowerCase() ==
-          eng.spelling[i].ans.trim().toLowerCase();
+      final typed = i < _spellingAns.length ? _spellingAns[i].trim() : '';
+      final bool ok =
+          typed.toLowerCase() == eng.spelling[i].ans.trim().toLowerCase();
       if (ok) spellingOk++;
       answers.add({
         'section': 'Spelling',
@@ -356,8 +354,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
 
     int sentenceOk = 0;
     for (int i = 0; i < eng.sentences.length; i++) {
-      final typed =
-          i < _sentenceAns.length ? _sentenceAns[i].trim() : '';
+      final typed = i < _sentenceAns.length ? _sentenceAns[i].trim() : '';
       String userAns = typed.toLowerCase();
       if (userAns.endsWith('.')) {
         userAns = userAns.substring(0, userAns.length - 1).trim();
@@ -366,7 +363,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
       if (correctAns.endsWith('.')) {
         correctAns = correctAns.substring(0, correctAns.length - 1).trim();
       }
-      final bool ok = expandContractions(userAns) == expandContractions(correctAns);
+      final bool ok =
+          expandContractions(userAns) == expandContractions(correctAns);
       if (ok) sentenceOk++;
       answers.add({
         'section': 'Sentences',
@@ -390,8 +388,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
         correct = (q.ans as String).toUpperCase();
         chosen = (ans is String) ? ans.trim().toUpperCase() : '';
         ok = ans is String &&
-            ans.trim().toLowerCase() ==
-                (q.ans as String).trim().toLowerCase();
+            ans.trim().toLowerCase() == (q.ans as String).trim().toLowerCase();
         if (ok) readingOk++;
       } else if (q.type == 'mc') {
         final correctIdx = q.ans as int;
@@ -399,9 +396,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
         correct = (correctIdx >= 0 && correctIdx < opts.length)
             ? opts[correctIdx]
             : '';
-        chosen = (ans is int && ans >= 0 && ans < opts.length)
-            ? opts[ans]
-            : '';
+        chosen = (ans is int && ans >= 0 && ans < opts.length) ? opts[ans] : '';
         ok = ans is int && ans == correctIdx;
         if (ok) readingOk++;
       } else {
@@ -409,8 +404,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
         correct = (q.ans as String);
         chosen = (ans is String) ? ans.trim() : '';
         ok = ans is String &&
-            ans.trim().toLowerCase() ==
-                (q.ans as String).trim().toLowerCase();
+            ans.trim().toLowerCase() == (q.ans as String).trim().toLowerCase();
         if (ok) readingOk++;
       }
       answers.add({
@@ -495,8 +489,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
     final isLast = _sectionIdx == _kTotalSections - 1;
 
     return ExitConfirmationScope(
-      child: Scaffold(
-        backgroundColor: AppColors.bg,
+        child: Scaffold(
+      backgroundColor: AppColors.bg,
       body: Column(children: [
         // ── Progress bar
         SizedBox(
@@ -533,10 +527,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
             Image.asset('assets/logo.png',
                 width: 30,
                 height: 30,
-                errorBuilder: (_, __, ___) => const Icon(
-                    Icons.school_outlined,
-                    size: 30,
-                    color: _kPurple)),
+                errorBuilder: (_, __, ___) => const Icon(Icons.school_outlined,
+                    size: 30, color: _kPurple)),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -549,9 +541,10 @@ class _CombinedRunnerState extends State<CombinedRunner>
                             color: AppColors.ink1)),
                     const SizedBox(height: 2),
                     Row(children: [
-                      const _CPill('Monitoring Unit 1', _kPurple),
+                      _CPill(l10n.combinedPillLabel, _kPurple),
                       const SizedBox(width: 6),
-                      _CPill('Variant ${widget.variant}', AppColors.brand),
+                      _CPill(
+                          l10n.variantBadge(widget.variant), AppColors.brand),
                     ]),
                   ]),
             ),
@@ -571,16 +564,11 @@ class _CombinedRunnerState extends State<CombinedRunner>
             // Timer
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _timerHot
-                    ? AppColors.errorMuted
-                    : _kPurpleMuted,
+                color: _timerHot ? AppColors.errorMuted : _kPurpleMuted,
                 border: Border.all(
-                  color: _timerHot
-                      ? AppColors.dangerBorder
-                      : _kPurpleBorder,
+                  color: _timerHot ? AppColors.dangerBorder : _kPurpleBorder,
                   width: 1.5,
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -590,16 +578,12 @@ class _CombinedRunnerState extends State<CombinedRunner>
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: _timerHot
-                            ? AppColors.error
-                            : _kPurple)),
+                        color: _timerHot ? AppColors.error : _kPurple)),
                 Text(l10n.timeLeftLabel,
                     style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
-                        color: _timerHot
-                            ? AppColors.error
-                            : _kPurple)),
+                        color: _timerHot ? AppColors.error : _kPurple)),
               ]),
             ),
           ]),
@@ -637,9 +621,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
                       Text(_kSectionNames[i],
                           style: TextStyle(
                               fontSize: 13,
-                              fontWeight: isActive
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
+                              fontWeight:
+                                  isActive ? FontWeight.w800 : FontWeight.w500,
                               color: isActive ? tabColor : AppColors.ink2)),
                       const SizedBox(width: 6),
                       AnimatedContainer(
@@ -688,8 +671,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            border:
-                const Border(top: BorderSide(color: AppColors.border)),
+            border: const Border(top: BorderSide(color: AppColors.border)),
             boxShadow: [
               BoxShadow(
                   color: Colors.black.withValues(alpha: .04),
@@ -731,8 +713,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
                       icon: const Icon(Icons.check_rounded, size: 15),
                       label: Text(l10n.finishBtn,
                           style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700)),
+                              fontSize: 13, fontWeight: FontWeight.w700)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.ok,
                         foregroundColor: Colors.white,
@@ -745,11 +726,8 @@ class _CombinedRunnerState extends State<CombinedRunner>
                       onPressed: () => _goSection(_sectionIdx + 1),
                       icon: Text(l10n.nextButton,
                           style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700)),
-                      label: const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 15),
+                              fontSize: 13, fontWeight: FontWeight.w700)),
+                      label: const Icon(Icons.arrow_forward_rounded, size: 15),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _kPurple,
                         foregroundColor: Colors.white,
@@ -814,10 +792,11 @@ class _CombinedRunnerState extends State<CombinedRunner>
   Widget _buildVocabSection() {
     final vocab = _engVariant.vocab;
     if (vocab.isEmpty) {
-      return const _CSectionScroll(
+      return _CSectionScroll(
           child: Center(
-              child: Text('Vocabulary savollari topilmadi.',
-                  style: TextStyle(color: AppColors.ink2))));
+              child: Text(
+                  AppLocalizations.of(context)!.vocabularyQuestionsNotFoundMsg,
+                  style: const TextStyle(color: AppColors.ink2))));
     }
     return _CSectionScroll(
       child: Column(
@@ -839,10 +818,11 @@ class _CombinedRunnerState extends State<CombinedRunner>
   Widget _buildGrammarSection() {
     final grammar = _engVariant.grammar;
     if (grammar.isEmpty) {
-      return const _CSectionScroll(
+      return _CSectionScroll(
           child: Center(
-              child: Text('Grammar savollari topilmadi.',
-                  style: TextStyle(color: AppColors.ink2))));
+              child: Text(
+                  AppLocalizations.of(context)!.grammarQuestionsNotFoundMsg,
+                  style: const TextStyle(color: AppColors.ink2))));
     }
     return _CSectionScroll(
       child: Column(
@@ -865,10 +845,11 @@ class _CombinedRunnerState extends State<CombinedRunner>
   Widget _buildSpellingSection() {
     final spelling = _engVariant.spelling;
     if (spelling.isEmpty) {
-      return const _CSectionScroll(
+      return _CSectionScroll(
           child: Center(
-              child: Text('Spelling savollari topilmadi.',
-                  style: TextStyle(color: AppColors.ink2))));
+              child: Text(
+                  AppLocalizations.of(context)!.spellingQuestionsNotFoundMsg,
+                  style: const TextStyle(color: AppColors.ink2))));
     }
     return _CSectionScroll(
       child: Column(
@@ -878,8 +859,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
             index: i,
             scramble: q.scramble,
             controller: _spellingCtrl[i],
-            onChanged: (v) =>
-                setState(() => _spellingAns[i] = v.toLowerCase()),
+            onChanged: (v) => setState(() => _spellingAns[i] = v.toLowerCase()),
           );
         }),
       ),
@@ -891,10 +871,11 @@ class _CombinedRunnerState extends State<CombinedRunner>
   Widget _buildSentencesSection() {
     final sentences = _engVariant.sentences;
     if (sentences.isEmpty) {
-      return const _CSectionScroll(
+      return _CSectionScroll(
           child: Center(
-              child: Text('Sentences savollari topilmadi.',
-                  style: TextStyle(color: AppColors.ink2))));
+              child: Text(
+                  AppLocalizations.of(context)!.sentencesQuestionsNotFoundMsg,
+                  style: const TextStyle(color: AppColors.ink2))));
     }
     return _CSectionScroll(
       child: Column(
@@ -934,32 +915,32 @@ class _CombinedRunnerState extends State<CombinedRunner>
               children: [
                 if (reading.img.isNotEmpty)
                   reading.img.startsWith('http')
-                    ? AppNetworkImage(
-                        url: reading.img,
-                        width: double.infinity,
-                        height: 200,
-                        fit: BoxFit.contain,
-                        borderRadius: BorderRadius.circular(10),
-                      )
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.asset(
-                          'assets/unit1/img/${reading.img}',
+                      ? AppNetworkImage(
+                          url: reading.img,
                           width: double.infinity,
                           height: 200,
                           fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => Container(
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: AppColors.err.withValues(alpha: .07),
-                              borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(10),
+                        )
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.asset(
+                            'assets/unit1/img/${reading.img}',
+                            width: double.infinity,
+                            height: 200,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => Container(
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: AppColors.err.withValues(alpha: .07),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Center(
+                                  child: Icon(Icons.broken_image_outlined,
+                                      color: AppColors.ink3)),
                             ),
-                            child: const Center(
-                                child: Icon(Icons.broken_image_outlined,
-                                    color: AppColors.ink3)),
                           ),
                         ),
-                      ),
                 if (reading.img.isNotEmpty) const SizedBox(height: 12),
                 if (reading.title.isNotEmpty)
                   Text(reading.title,
@@ -971,18 +952,17 @@ class _CombinedRunnerState extends State<CombinedRunner>
                 if (reading.text.isNotEmpty)
                   Text(reading.text,
                       style: const TextStyle(
-                          fontSize: 14,
-                          height: 1.6,
-                          color: AppColors.ink2)),
+                          fontSize: 14, height: 1.6, color: AppColors.ink2)),
               ],
             ),
           ),
 
           // Reading questions
           if (reading.qs.isEmpty)
-            const Center(
-                child: Text('Reading savollari topilmadi.',
-                    style: TextStyle(color: AppColors.ink2)))
+            Center(
+                child: Text(
+                    AppLocalizations.of(context)!.readingQuestionsNotFoundMsg,
+                    style: const TextStyle(color: AppColors.ink2)))
           else
             ...List.generate(reading.qs.length, (i) {
               final q = reading.qs[i];
@@ -1000,19 +980,16 @@ class _CombinedRunnerState extends State<CombinedRunner>
                   questionText: q.q,
                   opts: opts,
                   selected: _readingAns[i] as int?,
-                  onSelect: (idx) =>
-                      setState(() => _readingAns[i] = idx),
+                  onSelect: (idx) => setState(() => _readingAns[i] = idx),
                 );
               } else {
                 // fill
                 return _CFillQuestion(
                   index: i,
                   questionText: q.q,
-                  initialValue: _readingAns[i] is String
-                      ? _readingAns[i] as String
-                      : '',
-                  onChanged: (v) =>
-                      setState(() => _readingAns[i] = v),
+                  initialValue:
+                      _readingAns[i] is String ? _readingAns[i] as String : '',
+                  onChanged: (v) => setState(() => _readingAns[i] = v),
                 );
               }
             }),
@@ -1071,7 +1048,9 @@ class CombinedResultScreen extends StatefulWidget {
 }
 
 class _CombinedResultScreenState extends State<CombinedResultScreen> {
-  String _sendStatus = 'Yuborilmoqda...';
+  // null = still on the initial "sending" state; localized lazily since
+  // AppLocalizations isn't available yet at field-initializer time.
+  String? _sendStatus;
   bool _sent = false;
   bool _error = false;
 
@@ -1090,14 +1069,14 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
       if (!mounted) return;
       setState(() {
         _sent = true;
-        _sendStatus = 'Saqlandi, yuborilmoqda...';
+        _sendStatus = AppLocalizations.of(context)!.savedSending;
       });
     } catch (e) {
       debugPrint('Combined enqueue error: $e');
       if (!mounted) return;
       setState(() {
         _error = true;
-        _sendStatus = 'Saqlashda xato. Qayta urinib ko\'ring.';
+        _sendStatus = AppLocalizations.of(context)!.saveErrorRetryMsg;
       });
     }
   }
@@ -1133,6 +1112,7 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final scoreColor = _scoreColor(widget.pct.toDouble());
     final isPass = widget.pct >= 60;
 
@@ -1143,8 +1123,7 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 540),
             child: SingleChildScrollView(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -1176,9 +1155,9 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                           fontWeight: FontWeight.w800,
                           color: AppColors.ink1)),
                   const SizedBox(height: 4),
-                  const Text('Monitoring Test Unit 1',
-                      style: TextStyle(
-                          fontSize: 13, color: AppColors.ink2)),
+                  Text(l10n.monitoringTestUnit1,
+                      style:
+                          const TextStyle(fontSize: 13, color: AppColors.ink2)),
                   const SizedBox(height: 24),
 
                   // Score card
@@ -1220,7 +1199,7 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Text('${widget.totalOk} / $_kTotalQs to\'g\'ri',
+                      Text(l10n.correctFractionLabel(widget.totalOk, _kTotalQs),
                           style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -1230,10 +1209,10 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                       // Section breakdown
                       const Divider(),
                       const SizedBox(height: 12),
-                      const Align(
+                      Align(
                         alignment: Alignment.centerLeft,
-                        child: Text('Bo\'limlar natijasi',
-                            style: TextStyle(
+                        child: Text(l10n.sectionsResultTitle,
+                            style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.ink2)),
@@ -1306,7 +1285,9 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                          child: Text(_sendStatus,
+                          child: Text(
+                              _sendStatus ??
+                                  AppLocalizations.of(context)!.sending,
                               style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -1338,6 +1319,7 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                             pct: widget.pct,
                             mathTopics: _mathTopics,
                             engTopics: _engTopics,
+                            l10n: l10n,
                           );
                           await Printing.layoutPdf(
                               onLayout: (_) => pdfBytes,
@@ -1349,8 +1331,7 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                         style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.ink1,
                             side: const BorderSide(color: AppColors.border),
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 14)),
+                            padding: const EdgeInsets.symmetric(vertical: 14)),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1370,19 +1351,20 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                             pct: widget.pct,
                             mathTopics: _mathTopics,
                             engTopics: _engTopics,
+                            l10n: l10n,
                           );
                           await Printing.sharePdf(
                               bytes: pdfBytes,
                               filename:
                                   '${widget.lastName}_${widget.firstName}_Natija.pdf');
                         },
-                        icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                        icon:
+                            const Icon(Icons.picture_as_pdf_rounded, size: 18),
                         label: Text(AppLocalizations.of(context)!.savePdf),
                         style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.brand,
                             side: const BorderSide(color: AppColors.brand),
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 14)),
+                            padding: const EdgeInsets.symmetric(vertical: 14)),
                       ),
                     ),
                   ]),
@@ -1396,10 +1378,9 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () => context.go('/'),
                       icon: const Icon(Icons.home_outlined, size: 18),
-                      label: const Text('Qaytish',
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700)),
+                      label: Text(l10n.returnBtn,
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w700)),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.ink1,
                         side: const BorderSide(
@@ -1469,9 +1450,7 @@ class _CQNum extends StatelessWidget {
         ),
         child: Text('${index + 1}',
             style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: _kBlue)),
+                fontSize: 12, fontWeight: FontWeight.w800, color: _kBlue)),
       );
 }
 
@@ -1488,9 +1467,7 @@ class _CMathQNum extends StatelessWidget {
         ),
         child: Text('${index + 1}',
             style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: _kGreen)),
+                fontSize: 12, fontWeight: FontWeight.w800, color: _kGreen)),
       );
 }
 
@@ -1538,9 +1515,7 @@ class _CBreakdownRow extends StatelessWidget {
           child: Text('$correct/$total',
               textAlign: TextAlign.right,
               style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: color)),
+                  fontSize: 13, fontWeight: FontWeight.w800, color: color)),
         ),
       ]),
     );
@@ -1605,9 +1580,8 @@ class _CMathOptionRow extends StatelessWidget {
                       style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
-                          color: selected
-                              ? Colors.white
-                              : AppColors.chipIcon))),
+                          color:
+                              selected ? Colors.white : AppColors.chipIcon))),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1623,8 +1597,8 @@ class _CMathOptionRow extends StatelessWidget {
                 width: 20,
                 height: 20,
                 margin: const EdgeInsets.only(left: 8),
-                decoration: const BoxDecoration(
-                    color: _kGreen, shape: BoxShape.circle),
+                decoration:
+                    const BoxDecoration(color: _kGreen, shape: BoxShape.circle),
                 child: const Icon(Icons.check_rounded,
                     size: 12, color: Colors.white),
               ),
@@ -1668,8 +1642,8 @@ class _MathMcQuestion extends StatelessWidget {
         ]),
         const SizedBox(height: 10),
         if (question.options.isEmpty)
-          const Text('Variantlar topilmadi.',
-              style: TextStyle(color: AppColors.ink3))
+          Text(AppLocalizations.of(context)!.variantsNotFoundMsg,
+              style: const TextStyle(color: AppColors.ink3))
         else
           ...List.generate(question.options.length, (i) {
             final label = String.fromCharCode(65 + i); // A B C D
@@ -1744,9 +1718,8 @@ class _COptionRow extends StatelessWidget {
                       style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 13,
-                          color: selected
-                              ? Colors.white
-                              : AppColors.chipIcon))),
+                          color:
+                              selected ? Colors.white : AppColors.chipIcon))),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1754,16 +1727,14 @@ class _COptionRow extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: selected
-                            ? AppColors.navyInk
-                            : AppColors.ink1))),
+                        color: selected ? AppColors.navyInk : AppColors.ink1))),
             if (selected)
               Container(
                 width: 20,
                 height: 20,
                 margin: const EdgeInsets.only(left: 8),
-                decoration: const BoxDecoration(
-                    color: _kBlue, shape: BoxShape.circle),
+                decoration:
+                    const BoxDecoration(color: _kBlue, shape: BoxShape.circle),
                 child: const Icon(Icons.check_rounded,
                     size: 12, color: Colors.white),
               ),
@@ -1804,36 +1775,36 @@ class _CVocabImgQuestion extends StatelessWidget {
           const SizedBox(height: 12),
           Center(
             child: question.img!.startsWith('http')
-              ? AppNetworkImage(
-                  url: question.img,
-                  height: 270,
-                  fit: BoxFit.contain,
-                  borderRadius: BorderRadius.circular(10),
-                )
-              : ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    'assets/unit1/img/${question.img}',
+                ? AppNetworkImage(
+                    url: question.img,
                     height: 270,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: AppColors.err.withValues(alpha: .07),
-                        borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10),
+                  )
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset(
+                      'assets/unit1/img/${question.img}',
+                      height: 270,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: AppColors.err.withValues(alpha: .07),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Center(
+                            child: Icon(Icons.broken_image_outlined,
+                                color: AppColors.ink3)),
                       ),
-                      child: const Center(
-                          child: Icon(Icons.broken_image_outlined,
-                              color: AppColors.ink3)),
                     ),
                   ),
-                ),
           ),
         ],
         const SizedBox(height: 10),
         if (question.opts.isEmpty)
-          const Text('Variantlar topilmadi.',
-              style: TextStyle(color: AppColors.ink3))
+          Text(AppLocalizations.of(context)!.variantsNotFoundMsg,
+              style: const TextStyle(color: AppColors.ink3))
         else
           ...List.generate(question.opts.length, (i) {
             final label = String.fromCharCode(65 + i);
@@ -1882,8 +1853,8 @@ class _CTextMcQuestion extends StatelessWidget {
         ]),
         const SizedBox(height: 10),
         if (opts.isEmpty)
-          const Text('Variantlar topilmadi.',
-              style: TextStyle(color: AppColors.ink3))
+          Text(AppLocalizations.of(context)!.variantsNotFoundMsg,
+              style: const TextStyle(color: AppColors.ink3))
         else
           ...List.generate(opts.length, (i) {
             final label = String.fromCharCode(65 + i);
@@ -1926,8 +1897,8 @@ class _CSpellingQuestion extends StatelessWidget {
         Row(children: [
           _CQNum(index),
           const SizedBox(width: 10),
-          const Text('Harflarni to\'g\'ri joylashtiring',
-              style: TextStyle(
+          Text(AppLocalizations.of(context)!.arrangeLettersPrompt,
+              style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppColors.ink2)),
@@ -1954,7 +1925,7 @@ class _CSpellingQuestion extends StatelessWidget {
           controller: controller,
           onChanged: onChanged,
           decoration: InputDecoration(
-            hintText: 'Javob...',
+            hintText: AppLocalizations.of(context)!.answerHintText,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
@@ -2003,8 +1974,8 @@ class _CSentenceQuestion extends StatelessWidget {
         Row(children: [
           _CQNum(index),
           const SizedBox(width: 10),
-          const Text('Jumlani to\'g\'ri tartibga soling',
-              style: TextStyle(
+          Text(AppLocalizations.of(context)!.arrangeSentencePrompt,
+              style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppColors.ink2)),
@@ -2021,16 +1992,14 @@ class _CSentenceQuestion extends StatelessWidget {
           child: Text(words,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: _kBlue)),
+                  fontSize: 16, fontWeight: FontWeight.w700, color: _kBlue)),
         ),
         const SizedBox(height: 10),
         TextField(
           controller: controller,
           onChanged: onChanged,
           decoration: InputDecoration(
-            hintText: 'To\'liq jumlani yozing...',
+            hintText: AppLocalizations.of(context)!.fullSentenceHintText,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
@@ -2200,7 +2169,7 @@ class _CFillQuestionState extends State<_CFillQuestion> {
           controller: _ctrl,
           onChanged: widget.onChanged,
           decoration: InputDecoration(
-            hintText: 'Javob...',
+            hintText: AppLocalizations.of(context)!.answerHintText,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             border: OutlineInputBorder(

@@ -14,12 +14,46 @@
 // exactly as before this reorder (backward compatible, offline/kiosk
 // flow untouched).
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
 import 'student_entry_screen.dart';
 import 'test_session.dart';
+
+/// Test mavjudlik oynasi matni ("14:00–17:00"). Faqat [entry.lockedUntil]
+/// va [entry.availableUntil] ikkalasi ham bo'lganda chaqiriladi.
+String _timeWindowLabel(CatalogEntry entry) {
+  final from = DateFormat('HH:mm').format(entry.lockedUntil!.toLocal());
+  final until = DateFormat('HH:mm').format(entry.availableUntil!.toLocal());
+  return '$from–$until';
+}
+
+/// "NEW"/"Yangi" pill badge — home ekrandagi "Tez kunda" badge bilan bir
+/// xil vizual retsept (login_screen.dart _routeButton()).
+class _NewBadge extends StatelessWidget {
+  const _NewBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.secondary,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        AppLocalizations.of(context)!.newBadge,
+        style: AppTextStyles.caption.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+          fontSize: 9.5,
+        ),
+      ),
+    );
+  }
+}
 
 class GroupSelectScreen extends StatefulWidget {
   final String schoolCode;
@@ -462,52 +496,74 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
     if (!downloaded) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: _DoubleBezel(
-          child: Container(
-            color: AppColors.gray50.withValues(alpha: 0.5),
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            _DoubleBezel(
+              child: Container(
+                color: AppColors.gray50.withValues(alpha: 0.5),
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      entry.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.gray700,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.brand),
-                        const SizedBox(width: 6),
                         Text(
-                          AppLocalizations.of(context)!.notDownloaded,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.brand),
+                          entry.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.gray700,
+                            letterSpacing: -0.2,
+                          ),
                         ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded,
+                                size: 16, color: AppColors.brand),
+                            const SizedBox(width: 6),
+                            Text(
+                              AppLocalizations.of(context)!.notDownloaded,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.brand),
+                            ),
+                          ],
+                        ),
+                        if (entry.lockedUntil != null &&
+                            entry.availableUntil != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            _timeWindowLabel(entry),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.ink3),
+                          ),
+                        ],
                       ],
                     ),
+                    isDownloading
+                        ? const SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: Center(
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: AppColors.brand)),
+                          )
+                        : _HoverableDownloadButton(
+                            onPressed: () => _downloadEntry(entry),
+                          ),
                   ],
                 ),
-                isDownloading
-                    ? const SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: Center(
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: AppColors.brand)),
-                      )
-                    : _HoverableDownloadButton(
-                        onPressed: () => _downloadEntry(entry),
-                      ),
-              ],
+              ),
             ),
-          ),
+            if (entry.isNew)
+              const Positioned(top: -6, right: -6, child: _NewBadge()),
+          ],
         ),
       );
     }
@@ -731,55 +787,77 @@ class _HoverableTestCardState extends State<_HoverableTestCard> {
           child: InkWell(
             borderRadius: BorderRadius.circular(32),
             onTap: widget.onTap,
-            child: _DoubleBezel(
-              isHovered: _isHovered,
-              child: Container(
-                color: Colors.transparent,
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                _DoubleBezel(
+                  isHovered: _isHovered,
+                  child: Container(
+                    color: Colors.transparent,
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          widget.entry.title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.ink1,
-                            letterSpacing: -0.2,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.entry.title,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.ink1,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              AppLocalizations.of(context)!.ready,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.ink3,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                            if (widget.entry.lockedUntil != null &&
+                                widget.entry.availableUntil != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                _timeWindowLabel(widget.entry),
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.ink3),
+                              ),
+                            ],
+                          ],
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOutCubic,
+                          width: 40,
+                          height: 40,
+                          transform: _isHovered
+                              ? Matrix4.translationValues(4, 0, 0)
+                              : Matrix4.identity(),
+                          decoration: BoxDecoration(
+                            color: _isHovered
+                                ? AppColors.brand
+                                : AppColors.brandLight,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.arrow_forward_rounded,
+                            color: _isHovered ? Colors.white : AppColors.brand,
+                            size: 20,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                        AppLocalizations.of(context)!.ready,
-                        style: const TextStyle(fontSize: 13, color: AppColors.ink3, fontWeight: FontWeight.w500),
-                      ),
                       ],
                     ),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutCubic,
-                      width: 40,
-                      height: 40,
-                      transform: _isHovered
-                          ? Matrix4.translationValues(4, 0, 0)
-                          : Matrix4.identity(),
-                      decoration: BoxDecoration(
-                        color:
-                            _isHovered ? AppColors.brand : AppColors.brandLight,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.arrow_forward_rounded,
-                        color: _isHovered ? Colors.white : AppColors.brand,
-                        size: 20,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                if (widget.entry.isNew)
+                  const Positioned(top: -6, right: -6, child: _NewBadge()),
+              ],
             ),
           ),
         ),

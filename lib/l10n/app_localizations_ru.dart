@@ -586,170 +586,169 @@ class AppLocalizationsRu extends AppLocalizations {
   String get offlineTestResult => 'Офлайн тест';
 
   @override
-  String get clearHistoryTitle => 'Tozalash';
+  String get clearHistoryTitle => 'Очистить';
 
   @override
-  String get clearHistoryConfirm =>
-      'Barcha natijalar tarixi o\'chirib yuborilsinmi?';
+  String get clearHistoryConfirm => 'Удалить всю историю результатов?';
 
   @override
-  String get noWord => 'Yo\'q';
+  String get noWord => 'Нет';
 
   @override
-  String get yesDelete => 'Ha, o\'chirish';
+  String get yesDelete => 'Да, удалить';
 
   @override
-  String get offlineHistoryTitle => 'Oflayn Natijalar Tarixi';
+  String get offlineHistoryTitle => 'История офлайн результатов';
 
   @override
-  String get noHistoryYet => 'Hozircha tarix yo\'q';
+  String get noHistoryYet => 'Истории пока нет';
 
   @override
-  String get schoolLabel => 'Maktab';
+  String get schoolLabel => 'Школа';
 
   @override
-  String get dateLabel => 'Sana';
+  String get dateLabel => 'Дата';
 
   @override
-  String get mathShort => 'Mat';
+  String get mathShort => 'Мат';
 
   @override
-  String get engShort => 'Ing';
+  String get engShort => 'Англ';
 
   @override
   String syncCompleteMsg(String done) {
-    return 'Sinxronizatsiya yakunlandi! $done ta rasm oflayn saqlandi.';
+    return 'Синхронизация завершена! Сохранено офлайн $done изображений.';
   }
 
   @override
-  String get errorOccurred => 'Xato yuz berdi: ';
+  String get errorOccurred => 'Произошла ошибка: ';
 
   @override
-  String get offlineImagesLoading => 'Oflayn rasmlar yuklanmoqda...';
+  String get offlineImagesLoading => 'Загрузка офлайн изображений...';
 
   @override
   String savedOutOfTotal(String done, String total) {
-    return '$done / $total ta saqlandi';
+    return 'Сохранено $done / $total';
   }
 
   @override
-  String get syncImagesOfflineButton => 'Oflayn rasmlarni tayyorlash (Sync)';
+  String get syncImagesOfflineButton => 'Подготовить офлайн изображения (Sync)';
 
   @override
-  String get localResSending => '📤 Yuborilmoqda...';
+  String get localResSending => '📤 Отправка...';
 
   @override
-  String get localResSavedSending => '✅ Saqlandi, yuborilmoqda...';
+  String get localResSavedSending => '✅ Сохранено, отправка...';
 
   @override
-  String get localResSaveError => '❌ Saqlashda xato. Qayta urinib ko\'ring.';
+  String get localResSaveError => '❌ Ошибка при сохранении. Повторите попытку.';
 
   @override
-  String get localResBarakalla => 'Barakalla!';
+  String get localResBarakalla => 'Молодец!';
 
   @override
-  String get localResYaxshi => 'Yaxshi!';
+  String get localResYaxshi => 'Хорошо!';
 
   @override
-  String get nextStudentButton => 'Keyingi o\'quvchi';
+  String get nextStudentButton => 'Следующий ученик';
 
   @override
   String get questionsUnansweredPrompt =>
-      'ta savol javobsiz. Tugatmoqchimisiz?';
+      'вопрос(ов) без ответа. Всё равно завершить?';
 
   @override
-  String get finishButtonText => 'Tugatish';
+  String get finishButtonText => 'Завершить';
 
   @override
-  String get gradeWord => '-sinf';
+  String get gradeWord => '-класс';
 
   @override
-  String get mathSectionTimeUp => 'Matematika bo\'limi vaqti tugagan!';
+  String get mathSectionTimeUp => 'Время раздела «Математика» истекло!';
 
   @override
-  String get engSectionTimeUp => 'Ingliz tili bo\'limi vaqti tugagan!';
+  String get engSectionTimeUp => 'Время раздела «Английский язык» истекло!';
 
   @override
-  String get finishTest => 'Tugatish';
+  String get finishTest => 'Завершить';
 
   @override
-  String get uploadTest => 'Yuklash';
+  String get uploadTest => 'Отправка';
 
   @override
   String get resultNotSavedError =>
-      'Natija saqlanmadi — internet yoki xotira muammosi. Qayta urinib ko\'ring.';
+      'Результат не сохранён — проблема с интернетом или памятью. Повторите попытку.';
 
   @override
-  String get testLoadFailed => 'Test yuklanmadi';
+  String get testLoadFailed => 'Не удалось загрузить тест';
 
   @override
-  String get testTitle => 'Test';
+  String get testTitle => 'Тест';
 
   @override
-  String get gradeExcellent => 'A\'lo';
+  String get gradeExcellent => 'Отлично';
 
   @override
-  String get gradeGood => 'Yaxshi';
+  String get gradeGood => 'Хорошо';
 
   @override
-  String get gradeSatisfactory => 'Qoniqarli';
+  String get gradeSatisfactory => 'Удовлетворительно';
 
   @override
-  String get gradeNeedsPractice => 'Qo\'shimcha mashq kerak';
+  String get gradeNeedsPractice => 'Нужна дополнительная практика';
 
   @override
-  String get pdfGenerationError => 'PDF yaratishda xato';
+  String get pdfGenerationError => 'Ошибка при создании PDF';
 
   @override
-  String get resultTitle => 'Natija';
+  String get resultTitle => 'Результат';
 
   @override
   String correctAnswersWithCount(String count) {
-    return 'To\'g\'ri $count';
+    return 'Правильно $count';
   }
 
   @override
   String wrongAnswersWithCount(String count) {
-    return 'Xato $count';
+    return 'Неправильно $count';
   }
 
   @override
   String shieldsCount(String count) {
-    return '$count qalqon';
+    return '$count щит';
   }
 
   @override
-  String get sectionsByTitle => 'BO\'LIMLAR BO\'YICHA';
+  String get sectionsByTitle => 'ПО РАЗДЕЛАМ';
 
   @override
-  String get noDataAvailable => 'Ma\'lumot yo\'q';
+  String get noDataAvailable => 'Нет данных';
 
   @override
-  String get reopenPdf => 'PDF qayta ochish';
+  String get reopenPdf => 'Открыть PDF заново';
 
   @override
-  String get pdfReportButton => 'PDF hisobot';
+  String get pdfReportButton => 'PDF-отчёт';
 
   @override
-  String get aiAnalysisTitle => 'AI tahlil';
+  String get aiAnalysisTitle => 'ИИ анализ';
 
   @override
-  String get analysisPreparing => 'Tahlil tayyorlanmoqda…';
+  String get analysisPreparing => 'Анализ готовится…';
 
   @override
-  String get strongSidesTitle => 'Kuchli tomonlar';
+  String get strongSidesTitle => 'Сильные стороны';
 
   @override
-  String get weakSidesTitle => 'Zaif tomonlar';
+  String get weakSidesTitle => 'Слабые стороны';
 
   @override
-  String get recommendationsTitle => 'Tavsiyalar';
+  String get recommendationsTitle => 'Рекомендации';
 
   @override
-  String get focus14DaysTitle => '14 kunlik e\'tibor';
+  String get focus14DaysTitle => 'Фокус на 14 дней';
 
   @override
-  String get subjectAnalysisByTopic => 'Mavzu bo\'yicha tahlil';
+  String get subjectAnalysisByTopic => 'Анализ по темам';
 
   @override
   String get subjectAnalysisByUnit => 'Анализ по юнитам';
@@ -758,130 +757,129 @@ class AppLocalizationsRu extends AppLocalizations {
   String get subjectAnalysisByParagraph => 'Разбивка по параграфам';
 
   @override
-  String get strongAndWeakSides => 'Kuchli va zaif tomonlar';
+  String get strongAndWeakSides => 'Сильные и слабые стороны';
 
   @override
-  String get strongLabel => 'Kuchli';
+  String get strongLabel => 'Сильные';
 
   @override
-  String get needsReinforcement => 'Mustahkamlash kerak';
+  String get needsReinforcement => 'Нужно закрепить';
 
   @override
-  String get weakTopicFallback => 'zaif mavzu';
+  String get weakTopicFallback => 'слабая тема';
 
   @override
-  String get days1to3 => '1–3 kun';
+  String get days1to3 => '1–3 день';
 
   @override
   String weakestTopicPlan(String topic) {
-    return 'Eng zaif mavzu: $topic (15 daqiqa/kun)';
+    return 'Самая слабая тема: $topic (15 минут/день)';
   }
 
   @override
-  String get days4to7 => '4–7 kun';
+  String get days4to7 => '4–7 день';
 
   @override
   String secondTopicPlan(String topic) {
-    return 'Ikkinchi mavzu: $topic (5 ta misol/kun)';
+    return 'Вторая тема: $topic (5 примеров/день)';
   }
 
   @override
-  String get days8to11 => '8–11 kun';
+  String get days8to11 => '8–11 день';
 
   @override
-  String get mixedExercisesPlan =>
-      'Aralash mashqlar — barcha mavzularni takrorlash';
+  String get mixedExercisesPlan => 'Смешанные упражнения — повторение всех тем';
 
   @override
-  String get days12to14 => '12–14 kun';
+  String get days12to14 => '12–14 день';
 
   @override
-  String get controlTestPlan => 'Nazorat testi — natijani solishtirish';
+  String get controlTestPlan => 'Контрольный тест — сравнение результата';
 
   @override
-  String get plan14DaysTitle => '14 kunlik reja';
+  String get plan14DaysTitle => 'План на 14 дней';
 
   @override
-  String get sending => 'Yuborilmoqda...';
+  String get sending => 'Отправка...';
 
   @override
-  String get savedSuccess => 'Saqlandi!';
+  String get savedSuccess => 'Сохранено!';
 
   @override
-  String get savedOfflineLater => 'Saqlandi (offline — keyinroq yuboriladi)';
+  String get savedOfflineLater => 'Сохранено (офлайн — будет отправлено позже)';
 
   @override
-  String get savedSending => 'Saqlandi, yuborilmoqda...';
+  String get savedSending => 'Сохранено, отправка...';
 
   @override
   String get interhouseGrade2 => 'Interhouse Grade 2';
 
   @override
-  String get sectionsBreakdown => 'Bo\'limlar bo\'yicha';
+  String get sectionsBreakdown => 'По разделам';
 
   @override
-  String get nextStudentBtn => 'Keyingi o\'quvchi';
+  String get nextStudentBtn => 'Следующий ученик';
 
   @override
-  String get finishBtn => 'Tugatish';
+  String get finishBtn => 'Завершить';
 
   @override
-  String get mathQuestionsNotFound => 'Matematika savollari topilmadi.';
+  String get mathQuestionsNotFound => 'Вопросы по математике не найдены.';
 
   @override
-  String get generalTests => 'Umumiy testlar';
+  String get generalTests => 'Общие тесты';
 
   @override
-  String get loadingGroups => 'Guruhlar yuklanmoqda...';
+  String get loadingGroups => 'Загрузка групп...';
 
   @override
-  String get selectGroup => 'Guruhni tanlang';
+  String get selectGroup => 'Выберите группу';
 
   @override
-  String get selectStudent => 'O\'quvchini tanlang';
+  String get selectStudent => 'Выберите ученика';
 
   @override
-  String get selectGrade => 'Sinfni tanlang';
+  String get selectGrade => 'Выберите класс';
 
   @override
-  String get selectSchool => 'Maktabni tanlang';
+  String get selectSchool => 'Выберите школу';
 
   @override
-  String get incorrectPin => 'PIN noto\'g\'ri';
+  String get incorrectPin => 'Неверный PIN';
 
   @override
-  String get enterFourDigitPin => 'To\'rt xonali PIN kodni kiriting';
+  String get enterFourDigitPin => 'Введите четырёхзначный PIN-код';
 
   @override
-  String get showPassword => 'Ko\'rsatish';
+  String get showPassword => 'Показать';
 
   @override
-  String get hidePassword => 'Yashirish';
+  String get hidePassword => 'Скрыть';
 
   @override
-  String get confirmBtn => 'Tasdiqlash';
+  String get confirmBtn => 'Подтвердить';
 
   @override
-  String get nextStepStudentName => 'Keyingi qadam: o\'quvchi ismini kiritish';
+  String get nextStepStudentName => 'Следующий шаг: ввод имени ученика';
 
   @override
-  String get testSession => 'Sinov sessiyasi';
+  String get testSession => 'Сессия тестирования';
 
   @override
   String get testSessionInstruction =>
-      'Sinov sessiyasini boshlash uchun maktabni tanlang va PIN kodni kiriting.';
+      'Чтобы начать сессию тестирования, выберите школу и введите PIN-код.';
 
   @override
-  String get sessionSettings => 'Sessiya sozlamalari';
+  String get sessionSettings => 'Настройки сессии';
 
   @override
-  String get studentNameStep => 'O\'quvchi ismi';
+  String get studentNameStep => 'Имя ученика';
 
   @override
-  String get testLocked => 'Bu test hali qulflangan.';
+  String get testLocked => 'Этот тест пока заблокирован.';
 
   @override
-  String get testNotInCache => 'Test keshda topilmadi. Qayta yuklab oling.';
+  String get testNotInCache => 'Тест не найден в кэше. Загрузите заново.';
 
   @override
   String get schools => 'Школы';
@@ -968,6 +966,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get ready => 'Готово';
+
+  @override
+  String get newBadge => 'Новое';
 
   @override
   String get whoTakesTest => 'Кто сдает\nтест?';
@@ -1057,4 +1058,247 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get appNameTitle => 'Мониторинг Alochi';
+
+  @override
+  String get bobEmptySectionMsg => 'Этот раздел пуст.';
+
+  @override
+  String get returnBtn => 'Вернуться';
+
+  @override
+  String get sectionsResultTitle => 'Результаты по разделам';
+
+  @override
+  String get vocabularyQuestionsNotFoundMsg => 'Вопросы Vocabulary не найдены.';
+
+  @override
+  String get grammarQuestionsNotFoundMsg => 'Вопросы Grammar не найдены.';
+
+  @override
+  String get spellingQuestionsNotFoundMsg => 'Вопросы Spelling не найдены.';
+
+  @override
+  String get sentencesQuestionsNotFoundMsg => 'Вопросы Sentences не найдены.';
+
+  @override
+  String get readingQuestionsNotFoundMsg => 'Вопросы Reading не найдены.';
+
+  @override
+  String get variantsNotFoundMsg => 'Варианты не найдены.';
+
+  @override
+  String get arrangeLettersPrompt => 'Расположите буквы в правильном порядке';
+
+  @override
+  String get arrangeSentencePrompt =>
+      'Расставьте предложение в правильном порядке';
+
+  @override
+  String get arrangeEventsPrompt => 'Отметьте события в правильном порядке';
+
+  @override
+  String get selectVariantsInOrderPrompt =>
+      'Выберите варианты ниже в правильном порядке';
+
+  @override
+  String get clearSelectionBtn => 'Очистить';
+
+  @override
+  String get variantsSectionHeader => 'ВАРИАНТЫ';
+
+  @override
+  String get answerHintText => 'Ответ...';
+
+  @override
+  String get fullSentenceHintText => 'Напишите полное предложение...';
+
+  @override
+  String sessionGradeVariantLabel(String grade, String variant) {
+    return '$grade класс · Вариант $variant';
+  }
+
+  @override
+  String get reportSavedButOpenFailedMsg =>
+      'Отчёт сохранён, но не удалось открыть';
+
+  @override
+  String get bob14ScreenTitle => '2 класс — Мониторинг Bob 1-4';
+
+  @override
+  String get bob14TestInfo => '30 вопросов · 45 минут · Оффлайн режим';
+
+  @override
+  String get unit1ScreenTitle => '1 класс Английский язык — Unit 1';
+
+  @override
+  String get unit1TestInfo => '49 вопросов · 49 минут · Оффлайн режим';
+
+  @override
+  String get unit1RunnerHeaderTitle => '1 класс Unit 1 — Английский язык';
+
+  @override
+  String correctFractionLabel(int correct, int total) {
+    return '$correct / $total правильно';
+  }
+
+  @override
+  String get hujjatlarLabel => 'Документы';
+
+  @override
+  String get noDocumentsMsg => 'Нет документов';
+
+  @override
+  String savedFileMsg(String path) {
+    return 'Сохранено: $path';
+  }
+
+  @override
+  String get exitConfirmationMessage =>
+      'Вы действительно хотите выйти? Введённые данные не сохранятся.';
+
+  @override
+  String get pageNotFoundTitle => 'Страница не найдена';
+
+  @override
+  String get pageNotFoundMessage =>
+      'Извините, страница, которую вы ищете, не существует или была перемещена.';
+
+  @override
+  String get monitoringTestHeader => 'МОНИТОРИНГ ТЕСТ';
+
+  @override
+  String get testDataNotFoundMsg => 'Данные теста не найдены';
+
+  @override
+  String get updateUpToDateMessage =>
+      'У вас установлена последняя версия программы.';
+
+  @override
+  String shieldsProgressLabel(int count) {
+    return '$count/25 щитов';
+  }
+
+  @override
+  String get diagnosticPassportHeader => 'A\'LOCHI — ДИАГНОСТИЧЕСКИЙ ПАСПОРТ';
+
+  @override
+  String get totalQuestionsCountLabel => 'Всего вопросов';
+
+  @override
+  String get correctAnswerLabelPdf => 'Правильный ответ';
+
+  @override
+  String get wrongAnswerLabelPdf => 'Неправильный ответ';
+
+  @override
+  String get topicAnalysisHeader => 'АНАЛИЗ ПО ТЕМАМ';
+
+  @override
+  String get unitAnalysisHeader => 'АНАЛИЗ ПО UNIT';
+
+  @override
+  String get fourteenDayPlanHeader => 'ПЛАН НА 14 ДНЕЙ';
+
+  @override
+  String get aiSummaryHeader => 'AI ЗАКЛЮЧЕНИЕ';
+
+  @override
+  String get alochiAiLabel => 'A\'LOCHI AI';
+
+  @override
+  String get forParentsLabel => 'Родителям';
+
+  @override
+  String get parentTipsText =>
+      '• Ежедневно уделяйте 20–30 минут чтению\n• Повторяйте слабые темы вместе\n• Поощряйте и обучайте с терпением';
+
+  @override
+  String get footerBrandTagline => 'Образование A\'lochi · alochi.uz';
+
+  @override
+  String get dayRange1_3 => '1–3 ДЕНЬ';
+
+  @override
+  String get dayRange4_7 => '4–7 ДЕНЬ';
+
+  @override
+  String get dayRange8_11 => '8–11 ДЕНЬ';
+
+  @override
+  String get dayRange12_14 => '12–14 ДЕНЬ';
+
+  @override
+  String get dailyPractice15MinMsg => 'Каждый день 15 минут практики';
+
+  @override
+  String get dailyExamples5Msg => 'Каждый день решать 5 примеров';
+
+  @override
+  String get mixedExercisesTopic => 'Смешанные упражнения';
+
+  @override
+  String get reviewAllTopicsMsg => 'Повторить все темы';
+
+  @override
+  String get controlTestTopic => 'Контрольный тест';
+
+  @override
+  String get compareResultsMsg => 'Сравнить результаты';
+
+  @override
+  String get wellMasteredBadge => 'Хорошо усвоено';
+
+  @override
+  String get needsReviewBadge => 'Нужно повторить';
+
+  @override
+  String aiSummaryFallbackMsg(String firstName, int pct) {
+    return '$firstName показал(а) результат $pct%. Рекомендуется работать по 14-дневному плану в зависимости от уровня усвоения.';
+  }
+
+  @override
+  String get goodResultLabel => 'Хороший результат';
+
+  @override
+  String get searchOrCommandHint => 'Введите поиск или команду...';
+
+  @override
+  String get commandHistoryTitle => 'Оффлайн история';
+
+  @override
+  String get commandLocalGradeTitle => 'Локальная оценка';
+
+  @override
+  String get commandCombinedTitle => 'Комбинированный';
+
+  @override
+  String get bob14FallbackLabel => 'Bob 1-4';
+
+  @override
+  String get unit1FallbackLabel => 'Unit 1';
+
+  @override
+  String get saveErrorRetryMsg => 'Ошибка сохранения. Попробуйте ещё раз.';
+
+  @override
+  String get unit1PillLabel => 'Unit 1 G1';
+
+  @override
+  String get interhousePillLabel => 'Interhouse G2';
+
+  @override
+  String get combinedPillLabel => 'Monitoring Unit 1';
+
+  @override
+  String mathEngCountSummary(int math, int eng) {
+    return 'Математика: $math  Английский язык: $eng';
+  }
+
+  @override
+  String get testDataEmptyMsg => 'Данные теста пусты (варианты не найдены)';
+
+  @override
+  String testLoadErrorMsg(String error) {
+    return 'Тест не загружен: $error';
+  }
 }

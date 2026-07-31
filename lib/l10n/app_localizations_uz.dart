@@ -974,6 +974,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get ready => 'Tayyor';
 
   @override
+  String get newBadge => 'Yangi';
+
+  @override
   String get whoTakesTest => 'Testni kim\ntopshiradi?';
 
   @override
@@ -1061,4 +1064,248 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get appNameTitle => 'Alochi Monitoring';
+
+  @override
+  String get bobEmptySectionMsg => 'Bu bo\'lim bo\'sh.';
+
+  @override
+  String get returnBtn => 'Qaytish';
+
+  @override
+  String get sectionsResultTitle => 'Bo\'limlar natijasi';
+
+  @override
+  String get vocabularyQuestionsNotFoundMsg =>
+      'Vocabulary savollari topilmadi.';
+
+  @override
+  String get grammarQuestionsNotFoundMsg => 'Grammar savollari topilmadi.';
+
+  @override
+  String get spellingQuestionsNotFoundMsg => 'Spelling savollari topilmadi.';
+
+  @override
+  String get sentencesQuestionsNotFoundMsg => 'Sentences savollari topilmadi.';
+
+  @override
+  String get readingQuestionsNotFoundMsg => 'Reading savollari topilmadi.';
+
+  @override
+  String get variantsNotFoundMsg => 'Variantlar topilmadi.';
+
+  @override
+  String get arrangeLettersPrompt => 'Harflarni to\'g\'ri joylashtiring';
+
+  @override
+  String get arrangeSentencePrompt => 'Jumlani to\'g\'ri tartibga soling';
+
+  @override
+  String get arrangeEventsPrompt => 'Voqealarni to\'g\'ri tartibda belgilang';
+
+  @override
+  String get selectVariantsInOrderPrompt =>
+      'Quyidagi variantlarni to\'g\'ri ketma-ketlikda tanlang';
+
+  @override
+  String get clearSelectionBtn => 'Tozalash';
+
+  @override
+  String get variantsSectionHeader => 'VARIANTLAR';
+
+  @override
+  String get answerHintText => 'Javob...';
+
+  @override
+  String get fullSentenceHintText => 'To\'liq jumlani yozing...';
+
+  @override
+  String sessionGradeVariantLabel(String grade, String variant) {
+    return '$grade-sinf · Variant $variant';
+  }
+
+  @override
+  String get reportSavedButOpenFailedMsg =>
+      'Hisobot saqlandi, lekin ochib bo\'lmadi';
+
+  @override
+  String get bob14ScreenTitle => '2-sinf — Bob 1-4 Monitoringi';
+
+  @override
+  String get bob14TestInfo => '30 savol · 45 daqiqa · Offline rejim';
+
+  @override
+  String get unit1ScreenTitle => '1-sinf Ingliz tili — Unit 1';
+
+  @override
+  String get unit1TestInfo => '49 savol · 49 daqiqa · Offline rejim';
+
+  @override
+  String get unit1RunnerHeaderTitle => '1-sinf Unit 1 — Ingliz tili';
+
+  @override
+  String correctFractionLabel(int correct, int total) {
+    return '$correct / $total to\'g\'ri';
+  }
+
+  @override
+  String get hujjatlarLabel => 'Hujjatlar';
+
+  @override
+  String get noDocumentsMsg => 'Hujjat yo\'q';
+
+  @override
+  String savedFileMsg(String path) {
+    return 'Saqlandi: $path';
+  }
+
+  @override
+  String get exitConfirmationMessage =>
+      'Haqiqatan ham chiqmoqchimisiz? Kiritilgan ma\'lumotlar saqlanmaydi.';
+
+  @override
+  String get pageNotFoundTitle => 'Sahifa topilmadi';
+
+  @override
+  String get pageNotFoundMessage =>
+      'Kechirasiz, siz qidirayotgan sahifa mavjud emas yoki ko\'chirilgan.';
+
+  @override
+  String get monitoringTestHeader => 'MONITORING TEST';
+
+  @override
+  String get testDataNotFoundMsg => 'Test ma\'lumotlari topilmadi';
+
+  @override
+  String get updateUpToDateMessage =>
+      'Sizda dasturning eng so\'nggi versiyasi o\'rnatilgan.';
+
+  @override
+  String shieldsProgressLabel(int count) {
+    return '$count/25 shields';
+  }
+
+  @override
+  String get diagnosticPassportHeader => 'A\'LOCHI — DIAGNOSTIK PASPORT';
+
+  @override
+  String get totalQuestionsCountLabel => 'Jami savol';
+
+  @override
+  String get correctAnswerLabelPdf => 'To\'g\'ri javob';
+
+  @override
+  String get wrongAnswerLabelPdf => 'Xato javob';
+
+  @override
+  String get topicAnalysisHeader => 'MAVZU BO\'YICHA TAHLIL';
+
+  @override
+  String get unitAnalysisHeader => 'UNIT BO\'YICHA TAHLIL';
+
+  @override
+  String get fourteenDayPlanHeader => '14 KUNLIK REJA';
+
+  @override
+  String get aiSummaryHeader => 'AI XULOSA';
+
+  @override
+  String get alochiAiLabel => 'A\'LOCHI AI';
+
+  @override
+  String get forParentsLabel => 'Ota-onaga';
+
+  @override
+  String get parentTipsText =>
+      '• Har kuni 20–30 daqiqa o\'qish vaqti\n• Zaif mavzularni birgalikda takrorlang\n• Rag\'batlantiring va sabr bilan o\'rgating';
+
+  @override
+  String get footerBrandTagline => 'A\'lochi Ta\'lim · alochi.uz';
+
+  @override
+  String get dayRange1_3 => '1–3 KUN';
+
+  @override
+  String get dayRange4_7 => '4–7 KUN';
+
+  @override
+  String get dayRange8_11 => '8–11 KUN';
+
+  @override
+  String get dayRange12_14 => '12–14 KUN';
+
+  @override
+  String get dailyPractice15MinMsg => 'Har kuni 15 daqiqa mashq';
+
+  @override
+  String get dailyExamples5Msg => 'Har kuni 5 ta misol yechish';
+
+  @override
+  String get mixedExercisesTopic => 'Aralash mashqlar';
+
+  @override
+  String get reviewAllTopicsMsg => 'Barcha mavzularni takrorlash';
+
+  @override
+  String get controlTestTopic => 'Nazorat testi';
+
+  @override
+  String get compareResultsMsg => 'Natijalarni solishtirish';
+
+  @override
+  String get wellMasteredBadge => 'Yaxshi o\'zlashtirilgan';
+
+  @override
+  String get needsReviewBadge => 'Qayta o\'rganish';
+
+  @override
+  String aiSummaryFallbackMsg(String firstName, int pct) {
+    return '$firstName $pct% natija ko\'rsatdi. O\'zlashtirish darajasiga qarab 14 kunlik reja bilan ishlash tavsiya etiladi.';
+  }
+
+  @override
+  String get goodResultLabel => 'Yaxshi natija';
+
+  @override
+  String get searchOrCommandHint => 'Izlash yoki buyruq kiriting...';
+
+  @override
+  String get commandHistoryTitle => 'Oflayn tarix';
+
+  @override
+  String get commandLocalGradeTitle => 'Mahalliy baholash';
+
+  @override
+  String get commandCombinedTitle => 'Kombinatsiyalangan';
+
+  @override
+  String get bob14FallbackLabel => 'Bob 1-4';
+
+  @override
+  String get unit1FallbackLabel => 'Unit 1';
+
+  @override
+  String get saveErrorRetryMsg => 'Saqlashda xato. Qayta urinib ko\'ring.';
+
+  @override
+  String get unit1PillLabel => 'Unit 1 G1';
+
+  @override
+  String get interhousePillLabel => 'Interhouse G2';
+
+  @override
+  String get combinedPillLabel => 'Monitoring Unit 1';
+
+  @override
+  String mathEngCountSummary(int math, int eng) {
+    return 'Matematika: $math ta  Ingliz tili: $eng ta';
+  }
+
+  @override
+  String get testDataEmptyMsg =>
+      'Test ma\'lumotlari bo\'sh (variants topilmadi)';
+
+  @override
+  String testLoadErrorMsg(String error) {
+    return 'Test yuklanmadi: $error';
+  }
 }

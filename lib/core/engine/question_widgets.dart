@@ -34,8 +34,7 @@ Widget _buildQuestionImage(
   BorderRadius? borderRadius,
 }) {
   final br = borderRadius ?? BorderRadius.circular(10);
-  final isNetwork =
-      src.startsWith('http://') || src.startsWith('https://');
+  final isNetwork = src.startsWith('http://') || src.startsWith('https://');
 
   if (isNetwork) {
     return SizedBox(
@@ -90,8 +89,7 @@ class EngineQNum extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
         decoration: BoxDecoration(
           color: AppColors.brandLight,
           borderRadius: BorderRadius.circular(20),
@@ -109,7 +107,7 @@ class EngineQNum extends StatelessWidget {
 
 /// Option row used by text_choice and image_choice.
 class EngineOptionRow extends StatelessWidget {
-  final String label;   // "A", "B", "C", "D"
+  final String label; // "A", "B", "C", "D"
   final String text;
   final bool selected;
   final VoidCallback onTap;
@@ -177,8 +175,7 @@ class EngineOptionRow extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
-                  color:
-                      selected ? AppColors.amberInk : AppColors.ink1,
+                  color: selected ? AppColors.amberInk : AppColors.ink1,
                 ),
               ),
             ),
@@ -204,11 +201,8 @@ class EngineOptionRow extends StatelessWidget {
 /// [SentenceOrderWidget] (tap-to-order UI) and [SentenceFreeTextWidget]
 /// (free-text UI, English World "Writing") — both consume the same
 /// backend `words` contract, so the parsing lives in one place.
-List<String> _splitWords(String s) => s
-    .split('/')
-    .map((p) => p.trim())
-    .where((p) => p.isNotEmpty)
-    .toList();
+List<String> _splitWords(String s) =>
+    s.split('/').map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
 
 /// True if [word] (a prompt segment from [_splitWords]) already appears in
 /// [typedText] — used by [SentenceFreeTextWidget] to strike through prompt
@@ -222,8 +216,8 @@ bool _isWordUsed(String word, String typedText) {
   if (!RegExp(r'[a-zA-Z0-9]').hasMatch(word)) {
     return typedText.toLowerCase().contains(word.toLowerCase());
   }
-  final pattern = RegExp(r'\b' + RegExp.escape(word) + r'\b',
-      caseSensitive: false);
+  final pattern =
+      RegExp(r'\b' + RegExp.escape(word) + r'\b', caseSensitive: false);
   return pattern.hasMatch(typedText);
 }
 
@@ -232,8 +226,7 @@ bool _isWordUsed(String word, String typedText) {
 InputDecoration _inputDecoration({String hintText = 'Javob...'}) =>
     InputDecoration(
       hintText: hintText,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: AppColors.border),
@@ -299,12 +292,14 @@ class TextChoiceWidget extends StatelessWidget {
           _buildQuestionSvg(question.svg!),
         ],
         const SizedBox(height: 10),
-        ...List.generate(question.opts.length, (i) => EngineOptionRow(
-              label: String.fromCharCode(65 + i), // A, B, C…
-              text: question.opts[i],
-              selected: answer == i,
-              onTap: () => onSelect(i),
-            )),
+        ...List.generate(
+            question.opts.length,
+            (i) => EngineOptionRow(
+                  label: String.fromCharCode(65 + i), // A, B, C…
+                  text: question.opts[i],
+                  selected: answer == i,
+                  onTap: () => onSelect(i),
+                )),
       ]),
     );
   }
@@ -356,12 +351,14 @@ class ImageChoiceWidget extends StatelessWidget {
         if (question.img != null && question.img!.isNotEmpty)
           _buildQuestionImage(question.img!, height: 270),
         const SizedBox(height: 10),
-        ...List.generate(question.opts.length, (i) => EngineOptionRow(
-              label: String.fromCharCode(65 + i),
-              text: question.opts[i],
-              selected: answer == i,
-              onTap: () => onSelect(i),
-            )),
+        ...List.generate(
+            question.opts.length,
+            (i) => EngineOptionRow(
+                  label: String.fromCharCode(65 + i),
+                  text: question.opts[i],
+                  selected: answer == i,
+                  onTap: () => onSelect(i),
+                )),
       ]),
     );
   }
@@ -404,9 +401,9 @@ class SpellingWidget extends StatelessWidget {
         Row(children: [
           EngineQNum(index),
           const SizedBox(width: 10),
-          const Text(
-            'Harflarni to\'g\'ri joylashtiring',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context)!.arrangeLettersPrompt,
+            style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppColors.ink2,
@@ -584,6 +581,7 @@ class _SentenceOrderWidgetState extends State<SentenceOrderWidget> {
         'SentenceOrderWidget received wrong type: ${widget.question.type}');
 
     final remaining = _remaining;
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -597,10 +595,10 @@ class _SentenceOrderWidgetState extends State<SentenceOrderWidget> {
         Row(children: [
           EngineQNum(widget.index),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Voqealarni to\'g\'ri tartibda belgilang',
-              style: TextStyle(
+              l10n.arrangeEventsPrompt,
+              style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppColors.ink2,
@@ -611,11 +609,11 @@ class _SentenceOrderWidgetState extends State<SentenceOrderWidget> {
             GestureDetector(
               onTap: _clear,
               behavior: HitTestBehavior.opaque,
-              child: const Padding(
-                padding: EdgeInsets.only(left: 8),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8),
                 child: Text(
-                  'Tozalash',
-                  style: TextStyle(
+                  l10n.clearSelectionBtn,
+                  style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppColors.brand,
@@ -636,9 +634,9 @@ class _SentenceOrderWidgetState extends State<SentenceOrderWidget> {
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppColors.border),
             ),
-            child: const Text(
-              'Quyidagi variantlarni to\'g\'ri ketma-ketlikda tanlang',
-              style: TextStyle(fontSize: 13, color: AppColors.ink3),
+            child: Text(
+              l10n.selectVariantsInOrderPrompt,
+              style: const TextStyle(fontSize: 13, color: AppColors.ink3),
             ),
           )
         else
@@ -654,9 +652,9 @@ class _SentenceOrderWidgetState extends State<SentenceOrderWidget> {
         // Remaining scrambled segments — tap + to append.
         if (remaining.isNotEmpty) ...[
           const SizedBox(height: 12),
-          const Text(
-            'VARIANTLAR',
-            style: TextStyle(
+          Text(
+            l10n.variantsSectionHeader,
+            style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: .5,
@@ -1230,7 +1228,8 @@ class ReadingSectionWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    assert(section.isReading, 'ReadingSectionWidget requires a reading section');
+    assert(
+        section.isReading, 'ReadingSectionWidget requires a reading section');
     return ReadingBlockWidget(
       reading: section.readingContainer!,
       answers: answers,

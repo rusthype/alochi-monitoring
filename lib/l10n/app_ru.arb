@@ -243,17 +243,17 @@
   "correctAnswersCount": "Правильные ответы",
   "percentage": "Процент",
   "offlineTestResult": "Офлайн тест",
-  "clearHistoryTitle": "Tozalash",
-  "clearHistoryConfirm": "Barcha natijalar tarixi o'chirib yuborilsinmi?",
-  "noWord": "Yo'q",
-  "yesDelete": "Ha, o'chirish",
-  "offlineHistoryTitle": "Oflayn Natijalar Tarixi",
-  "noHistoryYet": "Hozircha tarix yo'q",
-  "schoolLabel": "Maktab",
-  "dateLabel": "Sana",
-  "mathShort": "Mat",
-  "engShort": "Ing",
-  "syncCompleteMsg": "Sinxronizatsiya yakunlandi! {done} ta rasm oflayn saqlandi.",
+  "clearHistoryTitle": "Очистить",
+  "clearHistoryConfirm": "Удалить всю историю результатов?",
+  "noWord": "Нет",
+  "yesDelete": "Да, удалить",
+  "offlineHistoryTitle": "История офлайн результатов",
+  "noHistoryYet": "Истории пока нет",
+  "schoolLabel": "Школа",
+  "dateLabel": "Дата",
+  "mathShort": "Мат",
+  "engShort": "Англ",
+  "syncCompleteMsg": "Синхронизация завершена! Сохранено офлайн {done} изображений.",
   "@syncCompleteMsg": {
     "placeholders": {
       "done": {
@@ -261,9 +261,9 @@
       }
     }
   },
-  "errorOccurred": "Xato yuz berdi: ",
-  "offlineImagesLoading": "Oflayn rasmlar yuklanmoqda...",
-  "savedOutOfTotal": "{done} / {total} ta saqlandi",
+  "errorOccurred": "Произошла ошибка: ",
+  "offlineImagesLoading": "Загрузка офлайн изображений...",
+  "savedOutOfTotal": "Сохранено {done} / {total}",
   "@savedOutOfTotal": {
     "placeholders": {
       "done": {
@@ -274,30 +274,30 @@
       }
     }
   },
-  "syncImagesOfflineButton": "Oflayn rasmlarni tayyorlash (Sync)",
-  "localResSending": "📤 Yuborilmoqda...",
-  "localResSavedSending": "✅ Saqlandi, yuborilmoqda...",
-  "localResSaveError": "❌ Saqlashda xato. Qayta urinib ko'ring.",
-  "localResBarakalla": "Barakalla!",
-  "localResYaxshi": "Yaxshi!",
-  "nextStudentButton": "Keyingi o'quvchi",
-  "questionsUnansweredPrompt": "ta savol javobsiz. Tugatmoqchimisiz?",
-  "finishButtonText": "Tugatish",
-  "gradeWord": "-sinf",
-  "mathSectionTimeUp": "Matematika bo'limi vaqti tugagan!",
-  "engSectionTimeUp": "Ingliz tili bo'limi vaqti tugagan!",
-  "finishTest": "Tugatish",
-  "uploadTest": "Yuklash",
-  "resultNotSavedError": "Natija saqlanmadi — internet yoki xotira muammosi. Qayta urinib ko'ring.",
-  "testLoadFailed": "Test yuklanmadi",
-  "testTitle": "Test",
-  "gradeExcellent": "A'lo",
-  "gradeGood": "Yaxshi",
-  "gradeSatisfactory": "Qoniqarli",
-  "gradeNeedsPractice": "Qo'shimcha mashq kerak",
-  "pdfGenerationError": "PDF yaratishda xato",
-  "resultTitle": "Natija",
-  "correctAnswersWithCount": "To'g'ri {count}",
+  "syncImagesOfflineButton": "Подготовить офлайн изображения (Sync)",
+  "localResSending": "📤 Отправка...",
+  "localResSavedSending": "✅ Сохранено, отправка...",
+  "localResSaveError": "❌ Ошибка при сохранении. Повторите попытку.",
+  "localResBarakalla": "Молодец!",
+  "localResYaxshi": "Хорошо!",
+  "nextStudentButton": "Следующий ученик",
+  "questionsUnansweredPrompt": "вопрос(ов) без ответа. Всё равно завершить?",
+  "finishButtonText": "Завершить",
+  "gradeWord": "-класс",
+  "mathSectionTimeUp": "Время раздела «Математика» истекло!",
+  "engSectionTimeUp": "Время раздела «Английский язык» истекло!",
+  "finishTest": "Завершить",
+  "uploadTest": "Отправка",
+  "resultNotSavedError": "Результат не сохранён — проблема с интернетом или памятью. Повторите попытку.",
+  "testLoadFailed": "Не удалось загрузить тест",
+  "testTitle": "Тест",
+  "gradeExcellent": "Отлично",
+  "gradeGood": "Хорошо",
+  "gradeSatisfactory": "Удовлетворительно",
+  "gradeNeedsPractice": "Нужна дополнительная практика",
+  "pdfGenerationError": "Ошибка при создании PDF",
+  "resultTitle": "Результат",
+  "correctAnswersWithCount": "Правильно {count}",
   "@correctAnswersWithCount": {
     "placeholders": {
       "count": {
@@ -305,7 +305,7 @@
       }
     }
   },
-  "wrongAnswersWithCount": "Xato {count}",
+  "wrongAnswersWithCount": "Неправильно {count}",
   "@wrongAnswersWithCount": {
     "placeholders": {
       "count": {
@@ -313,7 +313,7 @@
       }
     }
   },
-  "shieldsCount": "{count} qalqon",
+  "shieldsCount": "{count} щит",
   "@shieldsCount": {
     "placeholders": {
       "count": {
@@ -321,25 +321,25 @@
       }
     }
   },
-  "sectionsByTitle": "BO'LIMLAR BO'YICHA",
-  "noDataAvailable": "Ma'lumot yo'q",
-  "reopenPdf": "PDF qayta ochish",
-  "pdfReportButton": "PDF hisobot",
-  "aiAnalysisTitle": "AI tahlil",
-  "analysisPreparing": "Tahlil tayyorlanmoqda…",
-  "strongSidesTitle": "Kuchli tomonlar",
-  "weakSidesTitle": "Zaif tomonlar",
-  "recommendationsTitle": "Tavsiyalar",
-  "focus14DaysTitle": "14 kunlik e'tibor",
-  "subjectAnalysisByTopic": "Mavzu bo'yicha tahlil",
+  "sectionsByTitle": "ПО РАЗДЕЛАМ",
+  "noDataAvailable": "Нет данных",
+  "reopenPdf": "Открыть PDF заново",
+  "pdfReportButton": "PDF-отчёт",
+  "aiAnalysisTitle": "ИИ анализ",
+  "analysisPreparing": "Анализ готовится…",
+  "strongSidesTitle": "Сильные стороны",
+  "weakSidesTitle": "Слабые стороны",
+  "recommendationsTitle": "Рекомендации",
+  "focus14DaysTitle": "Фокус на 14 дней",
+  "subjectAnalysisByTopic": "Анализ по темам",
   "subjectAnalysisByUnit": "Анализ по юнитам",
   "subjectAnalysisByParagraph": "Разбивка по параграфам",
-  "strongAndWeakSides": "Kuchli va zaif tomonlar",
-  "strongLabel": "Kuchli",
-  "needsReinforcement": "Mustahkamlash kerak",
-  "weakTopicFallback": "zaif mavzu",
-  "days1to3": "1–3 kun",
-  "weakestTopicPlan": "Eng zaif mavzu: {topic} (15 daqiqa/kun)",
+  "strongAndWeakSides": "Сильные и слабые стороны",
+  "strongLabel": "Сильные",
+  "needsReinforcement": "Нужно закрепить",
+  "weakTopicFallback": "слабая тема",
+  "days1to3": "1–3 день",
+  "weakestTopicPlan": "Самая слабая тема: {topic} (15 минут/день)",
   "@weakestTopicPlan": {
     "placeholders": {
       "topic": {
@@ -347,8 +347,8 @@
       }
     }
   },
-  "days4to7": "4–7 kun",
-  "secondTopicPlan": "Ikkinchi mavzu: {topic} (5 ta misol/kun)",
+  "days4to7": "4–7 день",
+  "secondTopicPlan": "Вторая тема: {topic} (5 примеров/день)",
   "@secondTopicPlan": {
     "placeholders": {
       "topic": {
@@ -356,38 +356,38 @@
       }
     }
   },
-  "days8to11": "8–11 kun",
-  "mixedExercisesPlan": "Aralash mashqlar — barcha mavzularni takrorlash",
-  "days12to14": "12–14 kun",
-  "controlTestPlan": "Nazorat testi — natijani solishtirish",
-  "plan14DaysTitle": "14 kunlik reja",
-  "sending": "Yuborilmoqda...",
-  "savedSuccess": "Saqlandi!",
-  "savedOfflineLater": "Saqlandi (offline — keyinroq yuboriladi)",
-  "savedSending": "Saqlandi, yuborilmoqda...",
+  "days8to11": "8–11 день",
+  "mixedExercisesPlan": "Смешанные упражнения — повторение всех тем",
+  "days12to14": "12–14 день",
+  "controlTestPlan": "Контрольный тест — сравнение результата",
+  "plan14DaysTitle": "План на 14 дней",
+  "sending": "Отправка...",
+  "savedSuccess": "Сохранено!",
+  "savedOfflineLater": "Сохранено (офлайн — будет отправлено позже)",
+  "savedSending": "Сохранено, отправка...",
   "interhouseGrade2": "Interhouse Grade 2",
-  "sectionsBreakdown": "Bo'limlar bo'yicha",
-  "nextStudentBtn": "Keyingi o'quvchi",
-  "finishBtn": "Tugatish",
-  "mathQuestionsNotFound": "Matematika savollari topilmadi.",
-  "generalTests": "Umumiy testlar",
-  "loadingGroups": "Guruhlar yuklanmoqda...",
-  "selectGroup": "Guruhni tanlang",
-  "selectStudent": "O'quvchini tanlang",
-  "selectGrade": "Sinfni tanlang",
-  "selectSchool": "Maktabni tanlang",
-  "incorrectPin": "PIN noto'g'ri",
-  "enterFourDigitPin": "To'rt xonali PIN kodni kiriting",
-  "showPassword": "Ko'rsatish",
-  "hidePassword": "Yashirish",
-  "confirmBtn": "Tasdiqlash",
-  "nextStepStudentName": "Keyingi qadam: o'quvchi ismini kiritish",
-  "testSession": "Sinov sessiyasi",
-  "testSessionInstruction": "Sinov sessiyasini boshlash uchun maktabni tanlang va PIN kodni kiriting.",
-  "sessionSettings": "Sessiya sozlamalari",
-  "studentNameStep": "O'quvchi ismi",
-  "testLocked": "Bu test hali qulflangan.",
-  "testNotInCache": "Test keshda topilmadi. Qayta yuklab oling.",
+  "sectionsBreakdown": "По разделам",
+  "nextStudentBtn": "Следующий ученик",
+  "finishBtn": "Завершить",
+  "mathQuestionsNotFound": "Вопросы по математике не найдены.",
+  "generalTests": "Общие тесты",
+  "loadingGroups": "Загрузка групп...",
+  "selectGroup": "Выберите группу",
+  "selectStudent": "Выберите ученика",
+  "selectGrade": "Выберите класс",
+  "selectSchool": "Выберите школу",
+  "incorrectPin": "Неверный PIN",
+  "enterFourDigitPin": "Введите четырёхзначный PIN-код",
+  "showPassword": "Показать",
+  "hidePassword": "Скрыть",
+  "confirmBtn": "Подтвердить",
+  "nextStepStudentName": "Следующий шаг: ввод имени ученика",
+  "testSession": "Сессия тестирования",
+  "testSessionInstruction": "Чтобы начать сессию тестирования, выберите школу и введите PIN-код.",
+  "sessionSettings": "Настройки сессии",
+  "studentNameStep": "Имя ученика",
+  "testLocked": "Этот тест пока заблокирован.",
+  "testNotInCache": "Тест не найден в кэше. Загрузите заново.",
   "schools": "Школы",
   "otherSchools": "Другие школы",
   "schoolCodeOrName": "Код / название школы",
@@ -423,6 +423,7 @@
   "notDownloaded": "Не скачано",
   "stillLocked": "Всё ещё закрыто",
   "ready": "Готово",
+  "newBadge": "Новое",
   "whoTakesTest": "Кто сдает\nтест?",
   "studentsInList": "учеников в списке",
   "gradeShort": "класс",
@@ -458,5 +459,140 @@
   "sentencesTopic": "Предложения",
   "readingTopic": "Чтение",
   "checkForUpdates": "Проверить обновления...",
-  "appNameTitle": "Мониторинг Alochi"
+  "appNameTitle": "Мониторинг Alochi",
+  "bobEmptySectionMsg": "Этот раздел пуст.",
+  "returnBtn": "Вернуться",
+  "sectionsResultTitle": "Результаты по разделам",
+  "vocabularyQuestionsNotFoundMsg": "Вопросы Vocabulary не найдены.",
+  "grammarQuestionsNotFoundMsg": "Вопросы Grammar не найдены.",
+  "spellingQuestionsNotFoundMsg": "Вопросы Spelling не найдены.",
+  "sentencesQuestionsNotFoundMsg": "Вопросы Sentences не найдены.",
+  "readingQuestionsNotFoundMsg": "Вопросы Reading не найдены.",
+  "variantsNotFoundMsg": "Варианты не найдены.",
+  "arrangeLettersPrompt": "Расположите буквы в правильном порядке",
+  "arrangeSentencePrompt": "Расставьте предложение в правильном порядке",
+  "arrangeEventsPrompt": "Отметьте события в правильном порядке",
+  "selectVariantsInOrderPrompt": "Выберите варианты ниже в правильном порядке",
+  "clearSelectionBtn": "Очистить",
+  "variantsSectionHeader": "ВАРИАНТЫ",
+  "answerHintText": "Ответ...",
+  "fullSentenceHintText": "Напишите полное предложение...",
+  "sessionGradeVariantLabel": "{grade} класс · Вариант {variant}",
+  "@sessionGradeVariantLabel": {
+    "placeholders": {
+      "grade": {
+        "type": "String"
+      },
+      "variant": {
+        "type": "String"
+      }
+    }
+  },
+  "reportSavedButOpenFailedMsg": "Отчёт сохранён, но не удалось открыть",
+  "bob14ScreenTitle": "2 класс — Мониторинг Bob 1-4",
+  "bob14TestInfo": "30 вопросов · 45 минут · Оффлайн режим",
+  "unit1ScreenTitle": "1 класс Английский язык — Unit 1",
+  "unit1TestInfo": "49 вопросов · 49 минут · Оффлайн режим",
+  "unit1RunnerHeaderTitle": "1 класс Unit 1 — Английский язык",
+  "correctFractionLabel": "{correct} / {total} правильно",
+  "@correctFractionLabel": {
+    "placeholders": {
+      "correct": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "hujjatlarLabel": "Документы",
+  "noDocumentsMsg": "Нет документов",
+  "savedFileMsg": "Сохранено: {path}",
+  "@savedFileMsg": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "exitConfirmationMessage": "Вы действительно хотите выйти? Введённые данные не сохранятся.",
+  "pageNotFoundTitle": "Страница не найдена",
+  "pageNotFoundMessage": "Извините, страница, которую вы ищете, не существует или была перемещена.",
+  "monitoringTestHeader": "МОНИТОРИНГ ТЕСТ",
+  "testDataNotFoundMsg": "Данные теста не найдены",
+  "updateUpToDateMessage": "У вас установлена последняя версия программы.",
+  "shieldsProgressLabel": "{count}/25 щитов",
+  "@shieldsProgressLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "diagnosticPassportHeader": "A'LOCHI — ДИАГНОСТИЧЕСКИЙ ПАСПОРТ",
+  "totalQuestionsCountLabel": "Всего вопросов",
+  "correctAnswerLabelPdf": "Правильный ответ",
+  "wrongAnswerLabelPdf": "Неправильный ответ",
+  "topicAnalysisHeader": "АНАЛИЗ ПО ТЕМАМ",
+  "unitAnalysisHeader": "АНАЛИЗ ПО UNIT",
+  "fourteenDayPlanHeader": "ПЛАН НА 14 ДНЕЙ",
+  "aiSummaryHeader": "AI ЗАКЛЮЧЕНИЕ",
+  "alochiAiLabel": "A'LOCHI AI",
+  "forParentsLabel": "Родителям",
+  "parentTipsText": "• Ежедневно уделяйте 20–30 минут чтению\n• Повторяйте слабые темы вместе\n• Поощряйте и обучайте с терпением",
+  "footerBrandTagline": "Образование A'lochi · alochi.uz",
+  "dayRange1_3": "1–3 ДЕНЬ",
+  "dayRange4_7": "4–7 ДЕНЬ",
+  "dayRange8_11": "8–11 ДЕНЬ",
+  "dayRange12_14": "12–14 ДЕНЬ",
+  "dailyPractice15MinMsg": "Каждый день 15 минут практики",
+  "dailyExamples5Msg": "Каждый день решать 5 примеров",
+  "mixedExercisesTopic": "Смешанные упражнения",
+  "reviewAllTopicsMsg": "Повторить все темы",
+  "controlTestTopic": "Контрольный тест",
+  "compareResultsMsg": "Сравнить результаты",
+  "wellMasteredBadge": "Хорошо усвоено",
+  "needsReviewBadge": "Нужно повторить",
+  "aiSummaryFallbackMsg": "{firstName} показал(а) результат {pct}%. Рекомендуется работать по 14-дневному плану в зависимости от уровня усвоения.",
+  "@aiSummaryFallbackMsg": {
+    "placeholders": {
+      "firstName": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "goodResultLabel": "Хороший результат",
+  "searchOrCommandHint": "Введите поиск или команду...",
+  "commandHistoryTitle": "Оффлайн история",
+  "commandLocalGradeTitle": "Локальная оценка",
+  "commandCombinedTitle": "Комбинированный",
+  "bob14FallbackLabel": "Bob 1-4",
+  "unit1FallbackLabel": "Unit 1",
+  "saveErrorRetryMsg": "Ошибка сохранения. Попробуйте ещё раз.",
+  "unit1PillLabel": "Unit 1 G1",
+  "interhousePillLabel": "Interhouse G2",
+  "combinedPillLabel": "Monitoring Unit 1",
+  "mathEngCountSummary": "Математика: {math}  Английский язык: {eng}",
+  "@mathEngCountSummary": {
+    "placeholders": {
+      "math": {
+        "type": "int"
+      },
+      "eng": {
+        "type": "int"
+      }
+    }
+  },
+  "testDataEmptyMsg": "Данные теста пусты (варианты не найдены)",
+  "testLoadErrorMsg": "Тест не загружен: {error}",
+  "@testLoadErrorMsg": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

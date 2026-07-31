@@ -72,11 +72,13 @@ class _LocalResultScreenState extends State<LocalResultScreen>
   int get _engTotal => _total - _mathTotal;
   int get _totalOk => widget.mathOk + widget.engOk;
 
-  List<MapEntry<String, ({int ok, int tot})>> get _mathTopics => widget.topicScores.entries
+  List<MapEntry<String, ({int ok, int tot})>> get _mathTopics => widget
+      .topicScores.entries
       .where((e) => widget.questions.any((q) => q.isMath && q.topic == e.key))
       .toList();
 
-  List<MapEntry<String, ({int ok, int tot})>> get _engTopics => widget.topicScores.entries
+  List<MapEntry<String, ({int ok, int tot})>> get _engTopics => widget
+      .topicScores.entries
       .where((e) => widget.questions.any((q) => !q.isMath && q.topic == e.key))
       .toList();
 
@@ -139,31 +141,40 @@ class _LocalResultScreenState extends State<LocalResultScreen>
         engTopics: _engTopics,
       );
     } catch (e) {
-      debugPrint('LocalResultScreen._autoUploadHtmlForBot: HTML generate xato: $e');
+      debugPrint(
+          'LocalResultScreen._autoUploadHtmlForBot: HTML generate xato: $e');
       return;
     }
 
-    const delays = [Duration(seconds: 2), Duration(seconds: 5), Duration(seconds: 10)];
+    const delays = [
+      Duration(seconds: 2),
+      Duration(seconds: 5),
+      Duration(seconds: 10)
+    ];
     for (var i = 0; i <= delays.length; i++) {
       try {
         final ok = await api.uploadResultHtml(token, htmlStr);
         if (ok) return; // muvaffaqiyatli yuklandi
         // ok==false → 404 (result hali serverda yo'q) — keyingi urinish
       } catch (e) {
-        debugPrint('LocalResultScreen._autoUploadHtmlForBot attempt $i error: $e');
+        debugPrint(
+            'LocalResultScreen._autoUploadHtmlForBot attempt $i error: $e');
         return; // tarmoq xatosi — qayta urinish ma'nosiz
       }
       if (i < delays.length) {
-        debugPrint('LocalResultScreen._autoUploadHtmlForBot: 404, ${delays[i].inSeconds}s kutilmoqda...');
+        debugPrint(
+            'LocalResultScreen._autoUploadHtmlForBot: 404, ${delays[i].inSeconds}s kutilmoqda...');
         await Future<void>.delayed(delays[i]);
       }
     }
-    debugPrint('LocalResultScreen._autoUploadHtmlForBot: barcha urinishlar tugadi.');
+    debugPrint(
+        'LocalResultScreen._autoUploadHtmlForBot: barcha urinishlar tugadi.');
   }
 
   Map<String, dynamic> _buildPayload() {
     final now = DateTime.now();
-    final time = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final time =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     return {
       'name': '${widget.lastName} ${widget.firstName}'.trim(),
       'grade': widget.grade,
@@ -219,8 +230,8 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                   decoration: const BoxDecoration(
                       color: Colors.white, shape: BoxShape.circle),
                   child: ClipOval(
-                      child: Image.asset('assets/logo.png',
-                          fit: BoxFit.contain)),
+                      child:
+                          Image.asset('assets/logo.png', fit: BoxFit.contain)),
                 ),
                 const SizedBox(height: 8),
                 // Result emoji
@@ -282,11 +293,17 @@ class _LocalResultScreenState extends State<LocalResultScreen>
             Row(children: [
               Expanded(
                   child: _ScoreCard(
-                      AppLocalizations.of(context)!.mathSubjectFull, widget.mathOk, _mathTotal, AppColors.math)),
+                      AppLocalizations.of(context)!.mathSubjectFull,
+                      widget.mathOk,
+                      _mathTotal,
+                      AppColors.math)),
               const SizedBox(width: 10),
               Expanded(
                   child: _ScoreCard(
-                      AppLocalizations.of(context)!.englishSubjectFull, widget.engOk, _engTotal, AppColors.eng)),
+                      AppLocalizations.of(context)!.englishSubjectFull,
+                      widget.engOk,
+                      _engTotal,
+                      AppColors.eng)),
             ]),
             const SizedBox(height: 16),
             // Topics
@@ -317,13 +334,31 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                 child: OutlinedButton.icon(
                   onPressed: () async {
                     final pdfBytes = await PdfService.generateResultPdf(
-                      firstName: widget.firstName, lastName: widget.lastName, group: widget.group, grade: widget.grade, variant: widget.variant, mathOk: widget.mathOk, mathTotal: _mathTotal, engOk: widget.engOk, engTotal: _engTotal, pct: widget.pct, mathTopics: _mathTopics, engTopics: _engTopics,
+                      firstName: widget.firstName,
+                      lastName: widget.lastName,
+                      group: widget.group,
+                      grade: widget.grade,
+                      variant: widget.variant,
+                      mathOk: widget.mathOk,
+                      mathTotal: _mathTotal,
+                      engOk: widget.engOk,
+                      engTotal: _engTotal,
+                      pct: widget.pct,
+                      mathTopics: _mathTopics,
+                      engTopics: _engTopics,
+                      l10n: AppLocalizations.of(context)!,
                     );
-                    await Printing.layoutPdf(onLayout: (_) => pdfBytes, name: '${widget.lastName}_${widget.firstName}_Natija.pdf');
+                    await Printing.layoutPdf(
+                        onLayout: (_) => pdfBytes,
+                        name:
+                            '${widget.lastName}_${widget.firstName}_Natija.pdf');
                   },
                   icon: const Icon(Icons.print_rounded, size: 18),
                   label: Text(AppLocalizations.of(context)!.printPdf),
-                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.ink1, side: const BorderSide(color: AppColors.border), padding: const EdgeInsets.symmetric(vertical: 14)),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.ink1,
+                      side: const BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(vertical: 14)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -331,13 +366,31 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                 child: OutlinedButton.icon(
                   onPressed: () async {
                     final pdfBytes = await PdfService.generateResultPdf(
-                      firstName: widget.firstName, lastName: widget.lastName, group: widget.group, grade: widget.grade, variant: widget.variant, mathOk: widget.mathOk, mathTotal: _mathTotal, engOk: widget.engOk, engTotal: _engTotal, pct: widget.pct, mathTopics: _mathTopics, engTopics: _engTopics,
+                      firstName: widget.firstName,
+                      lastName: widget.lastName,
+                      group: widget.group,
+                      grade: widget.grade,
+                      variant: widget.variant,
+                      mathOk: widget.mathOk,
+                      mathTotal: _mathTotal,
+                      engOk: widget.engOk,
+                      engTotal: _engTotal,
+                      pct: widget.pct,
+                      mathTopics: _mathTopics,
+                      engTopics: _engTopics,
+                      l10n: AppLocalizations.of(context)!,
                     );
-                    await Printing.sharePdf(bytes: pdfBytes, filename: '${widget.lastName}_${widget.firstName}_Natija.pdf');
+                    await Printing.sharePdf(
+                        bytes: pdfBytes,
+                        filename:
+                            '${widget.lastName}_${widget.firstName}_Natija.pdf');
                   },
                   icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
                   label: Text(AppLocalizations.of(context)!.savePdf),
-                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.brand, side: const BorderSide(color: AppColors.brand), padding: const EdgeInsets.symmetric(vertical: 14)),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.brand,
+                      side: const BorderSide(color: AppColors.brand),
+                      padding: const EdgeInsets.symmetric(vertical: 14)),
                 ),
               ),
             ]),
@@ -350,8 +403,8 @@ class _LocalResultScreenState extends State<LocalResultScreen>
                 onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(Icons.person_add_rounded),
                 label: Text(AppLocalizations.of(context)!.nextStudentButton,
-                    style:
-                        const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w700)),
                 style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.brand,
                     foregroundColor: Colors.white,
@@ -378,14 +431,19 @@ class _LocalResultScreenState extends State<LocalResultScreen>
       decoration: BoxDecoration(
         color: _sent ? AppColors.successMuted : AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _sent ? AppColors.correctBorder : AppColors.border),
+        border: Border.all(
+            color: _sent ? AppColors.correctBorder : AppColors.border),
       ),
       child: Row(children: [
         Icon(_sent ? Icons.check_circle_rounded : Icons.cloud_upload_rounded,
             color: _sent ? AppColors.ok : AppColors.brand, size: 20),
         const SizedBox(width: 10),
-        Expanded(child: Text(_sendStatus,
-          style: TextStyle(fontSize: 13, color: _sent ? AppColors.ok : AppColors.ink2, fontWeight: FontWeight.w600))),
+        Expanded(
+            child: Text(_sendStatus,
+                style: TextStyle(
+                    fontSize: 13,
+                    color: _sent ? AppColors.ok : AppColors.ink2,
+                    fontWeight: FontWeight.w600))),
       ]),
     );
   }

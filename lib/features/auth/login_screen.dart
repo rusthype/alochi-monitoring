@@ -9,16 +9,18 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
 import '../../core/services/test_catalog_service.dart';
+import '../../core/network/connectivity_provider.dart';
+import '../../core/network/connectivity_service.dart' show SignalTier;
+import '../../shared/widgets/signal_strength_indicator.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/hover_region.dart';
 
-
 import '../local_test/sync_images_button.dart';
-
 
 import '../../core/services/update_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../shared/widgets/language_switcher.dart';
 import '../session/session_providers.dart';
@@ -41,6 +43,16 @@ Future<bool> checkOnlineWithRetry(
   }
 
   return false;
+}
+
+/// Test mavjudlik oynasi matni ("14:00–17:00"). Faqat [entry.lockedUntil]
+/// va [entry.availableUntil] ikkalasi ham bo'lganda chaqiriladi — aks
+/// holda joriy bir nuqtali qulf ko'rinishi (dd.MM.yyyy HH:mm) o'zgarishsiz
+/// qoladi (backward-compat, TASK: test availability window badge).
+String _testTimeWindowLabel(CatalogEntry entry) {
+  final from = DateFormat('HH:mm').format(entry.lockedUntil!.toLocal());
+  final until = DateFormat('HH:mm').format(entry.availableUntil!.toLocal());
+  return '$from–$until';
 }
 
 class LoginScreen extends StatefulWidget {
@@ -193,6 +205,9 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isDownloadingUpdate = false;
   double _updateProgress = 0.0;
 
+  // ── Ilova versiyasi (login ekranida pastki chapda ko'rsatish uchun) ────────
+  String _appVersion = '';
+
   @override
   void initState() {
     super.initState();
@@ -201,6 +216,16 @@ class _LoginScreenState extends State<LoginScreen> {
     UpdateService.instance.fetchUpdateInfo().then((info) {
       if (mounted && info != null) setState(() => _updateInfo = info);
     });
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) setState(() => _appVersion = info.version);
+    } catch (_) {
+      // silent — version badge simply won't render
+    }
   }
 
   Future<void> _loadCatalog() async {
@@ -323,8 +348,7 @@ class _LoginScreenState extends State<LoginScreen> {
           await CredentialCache.saveCredentials(username, password);
           await CredentialCache.saveSession(session, username, password);
           if (!mounted) return;
-          context.pushReplacement('/package',
-              extra: {'session': session});
+          context.pushReplacement('/package', extra: {'session': session});
           return;
         } on ApiException catch (e) {
           // 400 = login/parol xato — offline ham urinma
@@ -371,7 +395,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isSmall = MediaQuery.of(context).size.width < 800;
-    
+
     // Auto-login urinayotganda spinner
     if (_autoLogging) {
       return Scaffold(
@@ -448,11 +472,62 @@ class _LoginScreenState extends State<LoginScreen> {
                                 textAlign: TextAlign.center,
                                 style: AppTextStyles.bodyMedium
                                     .copyWith(color: AppColors.ink2)),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 8),
+                            // Always-visible online/offline + signal-strength
+                            // indicator. Sourced purely from signalProvider —
+                            // independent of _isOnline/_statusMsg (accordion
+                            // dot, lines ~858-880) and the retry-based
+                            // checkOnlineWithRetry()/_checkOnline() flow.
+                            Consumer(
+                              builder: (context, ref, _) {
+                                final signal = ref.watch(signalProvider);
+                                final isOnline = !signal.checking &&
+                                    signal.tier != SignalTier.none;
+                                final label = signal.checking
+                                    ? l10n.serverChecking
+                                    : (isOnline
+                                        ? l10n.serverConnected
+                                        : l10n.offlineMode);
+                                final dotColor = signal.checking
+                                    ? AppColors.brand
+                                    : (isOnline
+                                        ? AppColors.ok
+                                        : AppColors.ink3);
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    signal.checking
+                                        ? SizedBox(
+                                            width: 8,
+                                            height: 8,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 1.5,
+                                                color: dotColor),
+                                          )
+                                        : Container(
+                                            width: 7,
+                                            height: 7,
+                                            decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: dotColor),
+                                          ),
+                                    const SizedBox(width: 6),
+                                    Text(label,
+                                        style: AppTextStyles.caption
+                                            .copyWith(color: dotColor)),
+                                    const SizedBox(width: 10),
+                                    SignalStrengthIndicator(tier: signal.tier),
+                                  ],
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 16),
                             const Align(
                               alignment: Alignment.centerRight,
                               child: Padding(
-                                padding: EdgeInsets.only(bottom: 8.0, right: 4.0),
+                                padding:
+                                    EdgeInsets.only(bottom: 8.0, right: 4.0),
                                 child: LanguageSwitcher(),
                               ),
                             ),
@@ -467,8 +542,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 const SyncImagesButton(),
                                 TextButton.icon(
-                                  onPressed: () => context.push('/history',
-                                      extra: {}),
+                                  onPressed: () =>
+                                      context.push('/history', extra: {}),
                                   icon: const Icon(Icons.history_rounded,
                                       size: 16),
                                   label: Text(l10n.offlineHistory),
@@ -508,9 +583,31 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: _appVersionBadge(),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _appVersionBadge() {
+    if (_appVersion.isEmpty) return const SizedBox.shrink();
+    return Text(
+      'v$_appVersion',
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        color: AppColors.ink3.withValues(alpha: .45),
       ),
     );
   }
@@ -534,8 +631,8 @@ class _LoginScreenState extends State<LoginScreen> {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: hasNew 
-                  ? (isHovered ? AppColors.brand : AppColors.primary) 
+              color: hasNew
+                  ? (isHovered ? AppColors.brand : AppColors.primary)
                   : (isHovered ? AppColors.hoverBg : AppColors.surface),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
@@ -636,7 +733,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor:
+                          const AlwaysStoppedAnimation<Color>(Colors.white),
                       value: _updateProgress > 0 ? _updateProgress : null,
                     ),
                   )
@@ -761,7 +859,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return disabled
         ? Opacity(
-            opacity: .6, 
+            opacity: .6,
             child: Container(
               decoration: BoxDecoration(
                 color: AppColors.muted,
@@ -769,8 +867,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 border: Border.all(color: AppColors.border),
               ),
               child: cardChild,
-            )
-          )
+            ))
         : Semantics(
             button: true,
             label: label,
@@ -780,10 +877,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
-                    color: active ? AppColors.brand : (isHovered ? AppColors.hoverBg : AppColors.surface),
+                    color: active
+                        ? AppColors.brand
+                        : (isHovered ? AppColors.hoverBg : AppColors.surface),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: active ? AppColors.brand : (isHovered ? AppColors.border.withValues(alpha: 0.8) : AppColors.border),
+                      color: active
+                          ? AppColors.brand
+                          : (isHovered
+                              ? AppColors.border.withValues(alpha: 0.8)
+                              : AppColors.border),
                       width: active ? 2 : 1,
                     ),
                   ),
@@ -957,7 +1060,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : Icon(_isOnline
                                     ? Icons.arrow_forward_rounded
                                     : Icons.wifi_off_rounded),
-                            label: Text(_isOnline ? l10n.loginTitle : l10n.offlineLogin,
+                            label: Text(
+                                _isOnline ? l10n.loginTitle : l10n.offlineLogin,
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 14)),
                           ),
@@ -966,8 +1070,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           height: 48,
                           child: OutlinedButton.icon(
-                            onPressed: () => context.push('/local_grade',
-                                extra: {}),
+                            onPressed: () =>
+                                context.push('/local_grade', extra: {}),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.ink2,
                               side: const BorderSide(color: AppColors.border),
@@ -975,8 +1079,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.circular(13)),
                             ),
                             icon: const Icon(Icons.groups_rounded, size: 18),
-                            label: Text(
-                                l10n.localGradeEntry,
+                            label: Text(l10n.localGradeEntry,
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w600, fontSize: 13)),
                           ),
@@ -985,8 +1088,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         SizedBox(
                           height: 48,
                           child: OutlinedButton.icon(
-                            onPressed: () => context.push('/combined',
-                                extra: {}),
+                            onPressed: () =>
+                                context.push('/combined', extra: {}),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.violetDark,
                               side: const BorderSide(
@@ -1105,12 +1208,12 @@ class _LaunchDialogState extends State<_LaunchDialog> {
   final _lastCtrl = TextEditingController();
   final _schoolCtrl = TextEditingController();
   final _groupCtrl = TextEditingController();
-  
+
   final _firstFocus = FocusNode();
   final _lastFocus = FocusNode();
   final _schoolFocus = FocusNode();
   final _groupFocus = FocusNode();
-  
+
   String? _err;
 
   @override
@@ -1178,7 +1281,9 @@ class _LaunchDialogState extends State<_LaunchDialog> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _step == 0 ? 'Variantni tanlang' : "O'quvchi ma'lumotlari",
+                    _step == 0
+                        ? AppLocalizations.of(context)!.selectVariant
+                        : AppLocalizations.of(context)!.studentInfoTitle,
                     style: AppTextStyles.titleMedium,
                   ),
                 ),
@@ -1461,7 +1566,8 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                       padding: const EdgeInsets.all(20),
                       itemCount: 4,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (_, __) => const Skeleton(height: 72, borderRadius: 16),
+                      itemBuilder: (_, __) =>
+                          const Skeleton(height: 72, borderRadius: 16),
                     )
                   : (_entries.isEmpty && _schools.isEmpty)
                       ? Center(
@@ -1558,13 +1664,14 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
-                        child: Icon(Icons.school_rounded, color: AppColors.accent, size: 14),
+                        child: Icon(Icons.school_rounded,
+                            color: AppColors.accent, size: 14),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Maktablar',
-                      style: TextStyle(
+                    Text(
+                      AppLocalizations.of(context)!.schools,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: AppColors.charcoal,
@@ -1578,7 +1685,10 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
-                  children: schoolWidgets.expand((w) => [w, const SizedBox(width: 12)]).toList()..removeLast(),
+                  children: schoolWidgets
+                      .expand((w) => [w, const SizedBox(width: 12)])
+                      .toList()
+                    ..removeLast(),
                 ),
               ),
             ],
@@ -1591,7 +1701,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       final groupEntries = groups[umumiy]!
         ..sort((a, b) =>
             (b.updatedAt ?? DateTime(0)).compareTo(a.updatedAt ?? DateTime(0)));
-      
+
       widgets.add(
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -1605,13 +1715,14 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   shape: BoxShape.circle,
                 ),
                 child: const Center(
-                  child: Icon(Icons.library_books_rounded, color: AppColors.accent, size: 14),
+                  child: Icon(Icons.library_books_rounded,
+                      color: AppColors.accent, size: 14),
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Umumiy testlar',
-                style: TextStyle(
+              Text(
+                AppLocalizations.of(context)!.generalTests,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: AppColors.charcoal,
@@ -1688,9 +1799,11 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
 
     void handleStartTap() {
       if (isLocked) {
+        final lockMessage = entry.availableUntil != null
+            ? _testTimeWindowLabel(entry)
+            : '🔒 ${DateFormat('dd.MM.yyyy HH:mm').format(entry.lockedUntil!.toLocal())} ${l10n.opensAt}';
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              '🔒 ${DateFormat('dd.MM.yyyy HH:mm').format(entry.lockedUntil!.toLocal())} ${l10n.opensAt}'),
+          content: Text(lockMessage),
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ));
@@ -1702,7 +1815,9 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: isDone ? handleStartTap : (isDownloading ? null : () => _download(entry)),
+        onTap: isDone
+            ? handleStartTap
+            : (isDownloading ? null : () => _download(entry)),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
@@ -1725,7 +1840,11 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                           ),
                         )
                       : Icon(
-                          isLocked ? Icons.lock_clock_rounded : (isDone ? Icons.check_rounded : Icons.cloud_download_rounded),
+                          isLocked
+                              ? Icons.lock_clock_rounded
+                              : (isDone
+                                  ? Icons.check_rounded
+                                  : Icons.cloud_download_rounded),
                           color: isDone ? AppColors.accent : AppColors.ink3,
                           size: 20,
                         ),
@@ -1736,35 +1855,66 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      entry.title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.charcoal,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            entry.title,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.charcoal,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (entry.isNew) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              l10n.newBadge,
+                              style: AppTextStyles.caption.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 9.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Row(
                       children: [
                         Icon(
-                          isDownloading ? Icons.sync_rounded : (isDone ? Icons.file_download_done_rounded : Icons.download_rounded),
+                          isDownloading
+                              ? Icons.sync_rounded
+                              : (isDone
+                                  ? Icons.file_download_done_rounded
+                                  : Icons.download_rounded),
                           size: 12,
                           color: AppColors.stone,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           isLocked
-                            ? '🔒 ${DateFormat('dd.MM.yyyy HH:mm').format(entry.lockedUntil!.toLocal())} ${l10n.opensAt}'
-                            : isUpdatable && !isDownloading
-                                ? l10n.newVersionAvailable
-                                : isDownloading
-                                    ? 'Yuklab olinmoqda'
-                                    : isDone
-                                        ? 'Yuklab olingan' // Use direct translation for visual match
-                                        : 'Yuklab olinmagan',
+                              ? (entry.availableUntil != null
+                                  ? _testTimeWindowLabel(entry)
+                                  : '🔒 ${DateFormat('dd.MM.yyyy HH:mm').format(entry.lockedUntil!.toLocal())} ${l10n.opensAt}')
+                              : isUpdatable && !isDownloading
+                                  ? l10n.newVersionAvailable
+                                  : isDownloading
+                                      ? 'Yuklab olinmoqda'
+                                      : isDone
+                                          ? l10n.downloaded
+                                          : l10n.notDownloaded,
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
@@ -1792,7 +1942,8 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                           borderRadius: BorderRadius.circular(12),
                           side: const BorderSide(color: AppColors.accent),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 0),
                         minimumSize: const Size(0, 36),
                       ),
                       child: Text(
@@ -1807,11 +1958,15 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   ],
                 ),
               ElevatedButton.icon(
-                onPressed: isDone ? handleStartTap : (isDownloading ? null : () => _download(entry)),
-                icon: isDownloading 
-                    ? const SizedBox.shrink() 
+                onPressed: isDone
+                    ? handleStartTap
+                    : (isDownloading ? null : () => _download(entry)),
+                icon: isDownloading
+                    ? const SizedBox.shrink()
                     : Icon(
-                        isDone ? Icons.play_arrow_rounded : Icons.cloud_download_rounded,
+                        isDone
+                            ? Icons.play_arrow_rounded
+                            : Icons.cloud_download_rounded,
                         size: 16,
                       ),
                 label: Text(
@@ -1822,14 +1977,16 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isDone ? AppColors.accent : AppColors.gray100,
+                  backgroundColor:
+                      isDone ? AppColors.accent : AppColors.gray100,
                   foregroundColor: isDone ? Colors.white : AppColors.charcoal,
                   elevation: 0,
                   shadowColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                   minimumSize: const Size(0, 36),
                 ),
               ),
@@ -1877,8 +2034,10 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                   ],
                 );
             final container = ProviderScope.containerOf(context);
-            container.read(selectedCatalogEntryProvider.notifier).state = targetEntry;
-            container.read(selectedSchoolCodeProvider.notifier).state = schoolCode;
+            container.read(selectedCatalogEntryProvider.notifier).state =
+                targetEntry;
+            container.read(selectedSchoolCodeProvider.notifier).state =
+                schoolCode;
             context.push('/session_setup',
                 extra: {'testKey': targetEntry.testKey});
           },

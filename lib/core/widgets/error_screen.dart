@@ -27,11 +27,12 @@ class ErrorScreen extends StatelessWidget {
               Icon(
                 Icons.search_off_rounded,
                 size: 140,
-                color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+                color:
+                    Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
               ),
               const SizedBox(height: 32),
               Text(
-                'Sahifa topilmadi',
+                AppLocalizations.of(context)!.pageNotFoundTitle,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -39,7 +40,8 @@ class ErrorScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                error?.toString() ?? 'Kechirasiz, siz qidirayotgan sahifa mavjud emas yoki ko\'chirilgan.',
+                error?.toString() ??
+                    AppLocalizations.of(context)!.pageNotFoundMessage,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -51,7 +53,8 @@ class ErrorScreen extends StatelessWidget {
                 icon: const Icon(Icons.home_rounded),
                 label: Text(AppLocalizations.of(context)!.returnToHome),
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),

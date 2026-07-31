@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/sync/sync_service.dart';
 import 'core/services/heartbeat_service.dart';
+import 'core/network/connectivity_service.dart';
 import 'core/locale/locale_provider.dart';
 import 'l10n/app_localizations.dart';
 import 'shared/theme/app_theme.dart';
@@ -111,9 +112,16 @@ void main() {
       if (!kIsWeb) {
         SyncService.instance.start();
         unawaited(HeartbeatService.instance.start());
+        ConnectivityService.instance.start();
 
         if (Platform.isMacOS) {
           try {
+            // main() runs outside the widget tree, so there's no
+            // BuildContext to call AppLocalizations.of(context) with here —
+            // load the localizations bundle directly from the currently
+            // selected locale instead.
+            final menuL10n = await AppLocalizations.delegate
+                .load(container.read(localeProvider));
             // Try each candidate menu title in order, but stop at the first
             // one that actually exists: MacMenuBar.addMenuItem's native side
             // matches menus by exact title and returns false (no exception)
@@ -133,7 +141,7 @@ void main() {
                 final added = await MacMenuBar.addMenuItem(
                   menuId: mId,
                   itemId: 'check_updates',
-                  title: 'Check for Updates...',
+                  title: menuL10n.checkForUpdates,
                 );
                 if (added) break;
               } catch (e) {
@@ -166,8 +174,8 @@ void main() {
                       context: dialogContext,
                       builder: (context) => AlertDialog(
                         title: Text(AppLocalizations.of(context)!.updateBtn),
-                        content: const Text(
-                          'Sizda dasturning eng so\'nggi versiyasi o\'rnatilgan.',
+                        content: Text(
+                          AppLocalizations.of(context)!.updateUpToDateMessage,
                         ),
                         actions: [
                           TextButton(

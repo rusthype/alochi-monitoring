@@ -18,6 +18,7 @@ import 'package:alochi_monitoring/core/engine/test_models.dart';
 import 'package:alochi_monitoring/core/engine/test_engine.dart';
 import 'package:alochi_monitoring/core/engine/question_widgets.dart'
     show SentenceFreeTextWidget, SentenceOrderWidget;
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 Map<String, dynamic> _specJson(String sectionName) => {
       'test_key': 'writing_freetext_test_v1',
@@ -49,6 +50,8 @@ void main() {
     final spec = TestSpec.fromJson(_specJson('Writing'));
 
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: TestEngine(
         spec: spec,
         variant: 1,
@@ -76,6 +79,8 @@ void main() {
     final spec = TestSpec.fromJson(_specJson('Sanalar'));
 
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: TestEngine(
         spec: spec,
         variant: 1,
