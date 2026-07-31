@@ -55,6 +55,13 @@ String _testTimeWindowLabel(CatalogEntry entry) {
   return '$from–$until';
 }
 
+/// "NEW" pill yonida ko'rsatiladigan sana matni ("Qo'shildi: 30.07.2026").
+/// Faqat [entry.isNew] va [entry.createdAt] != null bo'lganda chaqiriladi.
+String _newBadgeDateLabel(AppLocalizations l10n, CatalogEntry entry) {
+  final date = DateFormat('dd.MM.yyyy').format(entry.createdAt!.toLocal());
+  return l10n.newBadgeAddedOn(date);
+}
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -1923,6 +1930,17 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                         ),
                       ],
                     ),
+                    if (entry.isNew && entry.createdAt != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        _newBadgeDateLabel(l10n, entry),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.stone,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

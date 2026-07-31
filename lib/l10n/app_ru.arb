@@ -424,6 +424,14 @@
   "stillLocked": "Всё ещё закрыто",
   "ready": "Готово",
   "newBadge": "Новое",
+  "newBadgeAddedOn": "Добавлено: {date}",
+  "@newBadgeAddedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "whoTakesTest": "Кто сдает\nтест?",
   "studentsInList": "учеников в списке",
   "gradeShort": "класс",

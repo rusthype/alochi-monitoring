@@ -977,6 +977,11 @@ class AppLocalizationsUz extends AppLocalizations {
   String get newBadge => 'Yangi';
 
   @override
+  String newBadgeAddedOn(String date) {
+    return 'Qo\'shildi: $date';
+  }
+
+  @override
   String get whoTakesTest => 'Testni kim\ntopshiradi?';
 
   @override
