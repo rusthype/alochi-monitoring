@@ -882,6 +882,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get testNotInCache => 'Тест не найден в кэше. Загрузите заново.';
 
   @override
+  String get sessionConflictOtherDevice =>
+      'Этот ученик уже начал тест на другом устройстве.';
+
+  @override
   String get schools => 'Школы';
 
   @override

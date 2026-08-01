@@ -166,7 +166,12 @@ class MonitoringApi {
     }
   }
 
-  Future<void> sessionPing({
+  /// Returns the decoded response body (contains `ok`, and optionally
+  /// `conflict`/`terminated` flags — see HeartbeatService for how these are
+  /// consumed). Throws [ApiException] on HTTP/network failure, same as
+  /// every other `_post`-based call; callers that need offline-first
+  /// degrade-on-failure behavior (HeartbeatService._ping) catch it there.
+  Future<Map<String, dynamic>> sessionPing({
     required String sessionId,
     String schoolCode = '',
     String name = '',
@@ -182,7 +187,7 @@ class MonitoringApi {
     String? appVersion,
     String? deviceName,
   }) async {
-    await _post('/session/ping/', {
+    return _post('/session/ping/', {
       'session_id': sessionId,
       'school_code': schoolCode,
       'name': name,

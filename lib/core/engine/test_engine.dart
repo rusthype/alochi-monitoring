@@ -140,6 +140,12 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 200),
     )..forward();
 
+    // Let HeartbeatService force-exit this test (same path as a timeout
+    // auto-submit) if a ping reports the admin remotely ended this
+    // session via the panel. Cleared in dispose so no stale test surface
+    // is ever notified after it stops being the active one.
+    HeartbeatService.instance.onTerminated = _finishNow;
+
     _restoreAttempt();
   }
 
@@ -272,6 +278,12 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     _fadeCtrl.dispose();
     for (final c in _controllers.values) {
       c.dispose();
+    }
+    // Only clear if we're still the registered callback — avoids a newly
+    // mounted TestEngine (e.g. next student) losing its own registration if
+    // this dispose happens to run after the new one's initState.
+    if (HeartbeatService.instance.onTerminated == _finishNow) {
+      HeartbeatService.instance.onTerminated = null;
     }
     if (!_finishing) {
       // Route popped/replaced without ever calling _finishNow() — the

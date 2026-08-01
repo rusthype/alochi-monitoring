@@ -51,13 +51,38 @@ Future<void> launchRunner(
 
   if (!context.mounted) return;
 
-  HeartbeatService.instance.startTest(
-    schoolCode: session.schoolCode,
-    name: '$firstName $lastName'.trim(),
-    variant: variant.toString(),
-    testKey: session.testKey,
-    studentCode: studentId,
-  );
+  // Best-effort concurrent-session check: block only if the backend
+  // explicitly confirms another device already holds an active session for
+  // this student+test within a short window. A slow/no connection must
+  // never block offline test-taking, so any timeout or failure here is
+  // treated as "safe to proceed" (see HeartbeatService.startTest).
+  var canProceed = true;
+  try {
+    canProceed = await HeartbeatService.instance
+        .startTest(
+          schoolCode: session.schoolCode,
+          name: '$firstName $lastName'.trim(),
+          variant: variant.toString(),
+          testKey: session.testKey,
+          studentCode: studentId,
+        )
+        .timeout(const Duration(seconds: 3));
+  } catch (_) {
+    canProceed = true;
+  }
+
+  if (!canProceed) {
+    // No session row was created server-side for this attempt — drop the
+    // ghost session id locally so idle-presence heartbeats fall back to the
+    // device-level id instead of pinging a session that doesn't exist.
+    HeartbeatService.instance.cancelTest();
+    if (context.mounted) {
+      ToastService.showError(context, AppLocalizations.of(context)!.sessionConflictOtherDevice);
+    }
+    return;
+  }
+
+  if (!context.mounted) return;
 
   await GoRouter.of(context).push('/engine_host',
       extra: {

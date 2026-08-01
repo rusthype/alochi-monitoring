@@ -1718,6 +1718,12 @@ abstract class AppLocalizations {
   /// **'Test keshda topilmadi. Qayta yuklab oling.'**
   String get testNotInCache;
 
+  /// No description provided for @sessionConflictOtherDevice.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu o\'quvchi boshqa qurilmada testni allaqachon boshlagan.'**
+  String get sessionConflictOtherDevice;
+
   /// No description provided for @schools.
   ///
   /// In uz, this message translates to:

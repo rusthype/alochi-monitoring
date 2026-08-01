@@ -39,6 +39,15 @@ class HeartbeatService with WidgetsBindingObserver {
   String? _cachedAppVersion;
   String? _cachedDeviceName;
 
+  /// Set by whichever screen is currently showing an active test
+  /// (`_TestEngineState.initState`), cleared on its `dispose`. Invoked when
+  /// a ping response comes back with `terminated: true` — i.e. an admin
+  /// ended this device's session remotely via the panel — so the active
+  /// test surface can force-exit exactly like a timeout auto-submit
+  /// (see `_TestEngineState._finishNow`). Null when no test is in progress;
+  /// the pre-test roster/catalog screens never set this.
+  VoidCallback? onTerminated;
+
   Future<void> _resolveDeviceInfoOnce() async {
     if (_cachedPlatform != null) return; // resolved once per process lifetime
     _cachedPlatform = Platform.isWindows
@@ -86,13 +95,21 @@ class HeartbeatService with WidgetsBindingObserver {
     unawaited(_ping('active'));
   }
 
-  void startTest({
+  /// Starts a new test session and fires its immediate ping, returning
+  /// whether it is safe to proceed to the test screen.
+  ///
+  /// Returns `false` ONLY when the ping succeeded and the backend
+  /// explicitly reported `conflict: true` (another device already holds an
+  /// active session for this student_code+test_key). Returns `true` both
+  /// when there is no conflict AND when the ping fails/throws — this check
+  /// is best-effort and must never block offline test-taking.
+  Future<bool> startTest({
     required String schoolCode,
     required String name,
     required String variant,
     required String testKey,
     String? studentCode,
-  }) {
+  }) async {
     _testSessionId = const Uuid().v4();
     _schoolCode = schoolCode;
     _name = name;
@@ -100,7 +117,27 @@ class HeartbeatService with WidgetsBindingObserver {
     _testKey = testKey;
     _studentCode = studentCode;
     _tabSwitchCount = 0;
-    unawaited(_ping('active'));
+    final response = await _ping('active');
+    return !(response != null && response['conflict'] == true);
+  }
+
+  /// Reverts local state after a [startTest] call whose immediate ping came
+  /// back with `conflict: true` — no MonitoringSession row was actually
+  /// created server-side for that session id, so it must not linger as
+  /// `_testSessionId`, or every subsequent idle-presence heartbeat (the
+  /// app-wide 30s timer from [start]) would keep targeting a session that
+  /// doesn't exist. Local-only, fires no network request. Callers must only
+  /// invoke this when they did NOT proceed to the test screen — once a test
+  /// is actually launched, `_testSessionId` must stay put for the rest of
+  /// the attempt regardless of how the conflict check resolved.
+  void cancelTest() {
+    _testSessionId = null;
+    _schoolCode = '';
+    _name = '';
+    _variant = '';
+    _testKey = '';
+    _studentCode = null;
+    _tabSwitchCount = 0;
   }
 
   void finishTest() {
@@ -125,12 +162,12 @@ class HeartbeatService with WidgetsBindingObserver {
     _questionTimes = questionTimes;
   }
 
-  Future<void> _ping(String status) async {
+  Future<Map<String, dynamic>?> _ping(String status) async {
     final id = _activeSessionId;
-    if (id == null) return;
+    if (id == null) return null;
     await _resolveDeviceInfoOnce();
     try {
-      await api.sessionPing(
+      final response = await api.sessionPing(
         sessionId: id,
         schoolCode: _schoolCode,
         name: _name,
@@ -146,7 +183,16 @@ class HeartbeatService with WidgetsBindingObserver {
         appVersion: _cachedAppVersion,
         deviceName: _cachedDeviceName,
       );
-    } catch (_) {}
+      // `terminated` is returned on every ping for a session an admin ended
+      // remotely via the panel (not just the one that caused it), so this
+      // check runs on every ping call site, not only the 30s heartbeat.
+      if (response['terminated'] == true) {
+        onTerminated?.call();
+      }
+      return response;
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
