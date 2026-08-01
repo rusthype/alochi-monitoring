@@ -1342,4 +1342,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get questionReportFailedMsg => 'Ошибка отправки. Попробуйте ещё раз.';
+
+  @override
+  String get loadStudentsError =>
+      'Не удалось загрузить список учеников. Проверьте интернет и попробуйте снова.';
+
+  @override
+  String get noStudentsInGroup => 'В этой группе нет активных учеников.';
 }

@@ -1349,4 +1349,11 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get questionReportFailedMsg =>
       'Yuborishda xato. Qayta urinib ko\'ring.';
+
+  @override
+  String get loadStudentsError =>
+      'O\'quvchilar ro\'yxatini yuklab bo\'lmadi. Internetni tekshirib, qayta urinib ko\'ring.';
+
+  @override
+  String get noStudentsInGroup => 'Bu guruhda faol o\'quvchi topilmadi.';
 }

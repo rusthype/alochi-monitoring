@@ -613,5 +613,7 @@
   "reportCommentHint": "Опишите проблему...",
   "reportSubmitBtn": "Отправить",
   "questionReportSentMsg": "Ваше сообщение отправлено",
-  "questionReportFailedMsg": "Ошибка отправки. Попробуйте ещё раз."
+  "questionReportFailedMsg": "Ошибка отправки. Попробуйте ещё раз.",
+  "loadStudentsError": "Не удалось загрузить список учеников. Проверьте интернет и попробуйте снова.",
+  "noStudentsInGroup": "В этой группе нет активных учеников."
 }
