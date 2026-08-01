@@ -651,5 +651,7 @@
   "reportCommentHint": "Muammoni tavsiflang...",
   "reportSubmitBtn": "Yuborish",
   "questionReportSentMsg": "Xabaringiz yuborildi",
-  "questionReportFailedMsg": "Yuborishda xato. Qayta urinib ko'ring."
+  "questionReportFailedMsg": "Yuborishda xato. Qayta urinib ko'ring.",
+  "loadStudentsError": "O'quvchilar ro'yxatini yuklab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.",
+  "noStudentsInGroup": "Bu guruhda faol o'quvchi topilmadi."
 }

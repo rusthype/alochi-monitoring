@@ -262,7 +262,7 @@ class MonitoringApi {
           .toList();
     } catch (e) {
       debugPrint('fetchStudents error: $e');
-      return [];
+      rethrow;
     }
   }
 

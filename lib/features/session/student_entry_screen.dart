@@ -100,18 +100,23 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       _loadingStudents = true;
       _students = [];
       _selectedStudent = null;
+      _err = null;
     });
     try {
       final s = await api.fetchStudents(groupId);
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
         _students = s;
         _loadingStudents = false;
+        _err = s.isEmpty ? l10n.noStudentsInGroup : null;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
         _loadingStudents = false;
+        _err = l10n.loadStudentsError;
       });
     }
   }
@@ -512,8 +517,20 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                 ),
                               );
                             } else {
-                              return const SliverToBoxAdapter(
-                                  child: SizedBox());
+                              return SliverToBoxAdapter(
+                                child: Center(
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 8),
+                                    child: TextButton.icon(
+                                      onPressed: _loadStudents,
+                                      icon: const Icon(Icons.refresh_rounded,
+                                          size: 16),
+                                      label: Text(l10n.retry),
+                                    ),
+                                  ),
+                                ),
+                              );
                             }
                           },
                         ),

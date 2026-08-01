@@ -2581,6 +2581,18 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Yuborishda xato. Qayta urinib ko\'ring.'**
   String get questionReportFailedMsg;
+
+  /// No description provided for @loadStudentsError.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'quvchilar ro\'yxatini yuklab bo\'lmadi. Internetni tekshirib, qayta urinib ko\'ring.'**
+  String get loadStudentsError;
+
+  /// No description provided for @noStudentsInGroup.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu guruhda faol o\'quvchi topilmadi.'**
+  String get noStudentsInGroup;
 }
 
 class _AppLocalizationsDelegate
