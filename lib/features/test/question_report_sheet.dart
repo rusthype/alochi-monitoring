@@ -19,6 +19,7 @@ import '../../core/api/api_client.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/sync/sync_service.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_radii.dart';
 
 /// Opens the "report a problem with this question" bottom sheet. All
 /// student/test context is captured by the caller — this widget only
@@ -155,9 +156,18 @@ class _QuestionReportSheetState extends State<_QuestionReportSheet> {
     final canSubmitOther = !_submitting && _commentCtrl.text.trim().isNotEmpty;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF0f172a),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadii.xl),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
       padding: EdgeInsets.fromLTRB(
         20,
@@ -175,19 +185,19 @@ class _QuestionReportSheetState extends State<_QuestionReportSheet> {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.slateDark,
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             const SizedBox(height: 16),
             Row(children: [
-              const Icon(Icons.flag_outlined, color: AppColors.mint, size: 20),
+              const Icon(Icons.flag_outlined, color: AppColors.brand, size: 20),
               const SizedBox(width: 8),
               Text(
                 l10n.reportQuestionSheetTitle,
                 style: const TextStyle(
-                  color: AppColors.muted,
+                  color: AppColors.ink1,
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
                 ),
@@ -227,15 +237,25 @@ class _QuestionReportSheetState extends State<_QuestionReportSheet> {
                 autofocus: true,
                 enabled: !_submitting,
                 onChanged: (_) => setState(() {}),
-                style: const TextStyle(color: AppColors.muted),
+                style: const TextStyle(color: AppColors.ink1),
                 decoration: InputDecoration(
                   hintText: l10n.reportCommentHint,
-                  hintStyle: const TextStyle(color: Color(0xFF64748b)),
+                  hintStyle: const TextStyle(color: AppColors.ink3),
                   filled: true,
-                  fillColor: const Color(0xFF1e293b),
+                  fillColor: AppColors.bg,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 12),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.md),
+                    borderSide: const BorderSide(color: AppColors.brand),
                   ),
                 ),
               ),
@@ -248,9 +268,12 @@ class _QuestionReportSheetState extends State<_QuestionReportSheet> {
                           comment: _commentCtrl.text.trim())
                       : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.mint,
-                    foregroundColor: Colors.black,
-                    disabledBackgroundColor: AppColors.slateDark,
+                    backgroundColor: AppColors.brand,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: AppColors.border,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.md),
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   child: Text(
@@ -282,27 +305,34 @@ class _ReasonRow extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: selected
-                ? AppColors.mint.withValues(alpha: .15)
-                : const Color(0xFF1e293b),
-            borderRadius: BorderRadius.circular(10),
+            color: selected ? AppColors.secondaryMuted : AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
             border: Border.all(
-              color: selected ? AppColors.mint : AppColors.slateDark,
+              color: selected ? AppColors.brand : AppColors.border,
             ),
+            boxShadow: selected
+                ? null
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
           ),
           child: Row(children: [
             Expanded(
               child: Text(
                 label,
                 style: const TextStyle(
-                  color: AppColors.muted,
+                  color: AppColors.ink1,
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
                 ),
               ),
             ),
             const Icon(Icons.chevron_right_rounded,
-                color: Color(0xFF64748b), size: 18),
+                color: AppColors.ink3, size: 18),
           ]),
         ),
       );
