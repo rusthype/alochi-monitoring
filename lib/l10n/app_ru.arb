@@ -388,6 +388,7 @@
   "studentNameStep": "Имя ученика",
   "testLocked": "Этот тест пока заблокирован.",
   "testNotInCache": "Тест не найден в кэше. Загрузите заново.",
+  "sessionConflictOtherDevice": "Этот ученик уже начал тест на другом устройстве.",
   "schools": "Школы",
   "otherSchools": "Другие школы",
   "schoolCodeOrName": "Код / название школы",

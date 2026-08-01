@@ -426,6 +426,7 @@
   "studentNameStep": "O'quvchi ismi",
   "testLocked": "Bu test hali qulflangan.",
   "testNotInCache": "Test keshda topilmadi. Qayta yuklab oling.",
+  "sessionConflictOtherDevice": "Bu o'quvchi boshqa qurilmada testni allaqachon boshlagan.",
   "schools": "Maktablar",
   "otherSchools": "Boshqa maktablar",
   "schoolCodeOrName": "Maktab kodi / nomi",

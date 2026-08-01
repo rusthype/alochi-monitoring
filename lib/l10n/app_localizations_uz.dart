@@ -888,6 +888,10 @@ class AppLocalizationsUz extends AppLocalizations {
   String get testNotInCache => 'Test keshda topilmadi. Qayta yuklab oling.';
 
   @override
+  String get sessionConflictOtherDevice =>
+      'Bu o\'quvchi boshqa qurilmada testni allaqachon boshlagan.';
+
+  @override
   String get schools => 'Maktablar';
 
   @override
