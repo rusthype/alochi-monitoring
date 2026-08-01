@@ -1314,4 +1314,32 @@ class AppLocalizationsRu extends AppLocalizations {
   String testLoadErrorMsg(String error) {
     return 'Тест не загружен: $error';
   }
+
+  @override
+  String get reportQuestionSheetTitle => 'Сообщить о проблеме с вопросом';
+
+  @override
+  String get reportReasonQuestionError => 'В вопросе есть ошибка';
+
+  @override
+  String get reportReasonWrongOptions => 'Варианты ответов неверны';
+
+  @override
+  String get reportReasonImageTextMissing =>
+      'Изображение/текст не отображается';
+
+  @override
+  String get reportReasonOther => 'Другое';
+
+  @override
+  String get reportCommentHint => 'Опишите проблему...';
+
+  @override
+  String get reportSubmitBtn => 'Отправить';
+
+  @override
+  String get questionReportSentMsg => 'Ваше сообщение отправлено';
+
+  @override
+  String get questionReportFailedMsg => 'Ошибка отправки. Попробуйте ещё раз.';
 }

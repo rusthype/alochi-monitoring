@@ -83,26 +83,48 @@ Widget _brokenImagePlaceholder(double height) => Container(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Numbered badge (1-based label, engine passes 0-based index).
+///
+/// [onReport], when non-null, renders a small "flag a problem with this
+/// question" icon as a sibling right after the badge — used by TestEngine
+/// (test_engine.dart) to open [question_report_sheet.dart]'s bottom sheet.
+/// Callers that don't pass it (none currently — all 7 question widgets
+/// thread it through) get the exact same badge-only output as before.
 class EngineQNum extends StatelessWidget {
   final int index;
-  const EngineQNum(this.index, {super.key});
+  final VoidCallback? onReport;
+  const EngineQNum(this.index, {super.key, this.onReport});
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-        decoration: BoxDecoration(
-          color: AppColors.brandLight,
-          borderRadius: BorderRadius.circular(20),
+  Widget build(BuildContext context) {
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.brandLight,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        '${index + 1}',
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: AppColors.brand,
         ),
-        child: Text(
-          '${index + 1}',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: AppColors.brand,
-          ),
+      ),
+    );
+    if (onReport == null) return badge;
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      badge,
+      const SizedBox(width: 4),
+      GestureDetector(
+        onTap: onReport,
+        behavior: HitTestBehavior.opaque,
+        child: const Padding(
+          padding: EdgeInsets.all(3),
+          child: Icon(Icons.flag_outlined, size: 16, color: AppColors.ink3),
         ),
-      );
+      ),
+    ]);
+  }
 }
 
 /// Option row used by text_choice and image_choice.
@@ -255,6 +277,7 @@ class TextChoiceWidget extends StatelessWidget {
   final Question question;
   final int? answer;
   final void Function(int) onSelect;
+  final VoidCallback? onReport;
 
   const TextChoiceWidget({
     super.key,
@@ -262,6 +285,7 @@ class TextChoiceWidget extends StatelessWidget {
     required this.question,
     required this.answer,
     required this.onSelect,
+    this.onReport,
   });
 
   @override
@@ -273,7 +297,7 @@ class TextChoiceWidget extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          EngineQNum(index),
+          EngineQNum(index, onReport: onReport),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -316,6 +340,7 @@ class ImageChoiceWidget extends StatelessWidget {
   final Question question;
   final int? answer;
   final void Function(int) onSelect;
+  final VoidCallback? onReport;
 
   const ImageChoiceWidget({
     super.key,
@@ -323,6 +348,7 @@ class ImageChoiceWidget extends StatelessWidget {
     required this.question,
     required this.answer,
     required this.onSelect,
+    this.onReport,
   });
 
   @override
@@ -334,7 +360,7 @@ class ImageChoiceWidget extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          EngineQNum(index),
+          EngineQNum(index, onReport: onReport),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -375,6 +401,7 @@ class SpellingWidget extends StatelessWidget {
   final Question question;
   final TextEditingController controller;
   final void Function(String) onChanged;
+  final VoidCallback? onReport;
 
   const SpellingWidget({
     super.key,
@@ -382,6 +409,7 @@ class SpellingWidget extends StatelessWidget {
     required this.question,
     required this.controller,
     required this.onChanged,
+    this.onReport,
   });
 
   @override
@@ -399,7 +427,7 @@ class SpellingWidget extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          EngineQNum(index),
+          EngineQNum(index, onReport: onReport),
           const SizedBox(width: 10),
           Text(
             AppLocalizations.of(context)!.arrangeLettersPrompt,
@@ -475,6 +503,7 @@ class SentenceOrderWidget extends StatefulWidget {
   final Question question;
   final TextEditingController controller;
   final void Function(String) onChanged;
+  final VoidCallback? onReport;
 
   const SentenceOrderWidget({
     super.key,
@@ -482,6 +511,7 @@ class SentenceOrderWidget extends StatefulWidget {
     required this.question,
     required this.controller,
     required this.onChanged,
+    this.onReport,
   });
 
   @override
@@ -593,7 +623,7 @@ class _SentenceOrderWidgetState extends State<SentenceOrderWidget> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          EngineQNum(widget.index),
+          EngineQNum(widget.index, onReport: widget.onReport),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -795,6 +825,7 @@ class SentenceFreeTextWidget extends StatelessWidget {
   final Question question;
   final TextEditingController controller;
   final void Function(String) onChanged;
+  final VoidCallback? onReport;
 
   const SentenceFreeTextWidget({
     super.key,
@@ -802,6 +833,7 @@ class SentenceFreeTextWidget extends StatelessWidget {
     required this.question,
     required this.controller,
     required this.onChanged,
+    this.onReport,
   });
 
   @override
@@ -835,7 +867,7 @@ class SentenceFreeTextWidget extends StatelessWidget {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          EngineQNum(index),
+          EngineQNum(index, onReport: onReport),
           const SizedBox(width: 10),
           Expanded(
             child: ValueListenableBuilder<TextEditingValue>(
@@ -936,6 +968,7 @@ class YesNoWidget extends StatelessWidget {
   final Question question;
   final String? answer;
   final void Function(String) onSelect;
+  final VoidCallback? onReport;
 
   const YesNoWidget({
     super.key,
@@ -943,6 +976,7 @@ class YesNoWidget extends StatelessWidget {
     required this.question,
     required this.answer,
     required this.onSelect,
+    this.onReport,
   });
 
   @override
@@ -959,7 +993,7 @@ class YesNoWidget extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Row(children: [
-        EngineQNum(index),
+        EngineQNum(index, onReport: onReport),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
@@ -1039,6 +1073,7 @@ class FillBlankWidget extends StatefulWidget {
   final Question question;
   final String initialValue;
   final void Function(String) onChanged;
+  final VoidCallback? onReport;
 
   const FillBlankWidget({
     super.key,
@@ -1046,6 +1081,7 @@ class FillBlankWidget extends StatefulWidget {
     required this.question,
     required this.initialValue,
     required this.onChanged,
+    this.onReport,
   });
 
   @override
@@ -1082,7 +1118,7 @@ class _FillBlankWidgetState extends State<FillBlankWidget> {
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          EngineQNum(widget.index),
+          EngineQNum(widget.index, onReport: widget.onReport),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -1148,12 +1184,19 @@ class ReadingBlockWidget extends StatelessWidget {
   /// lets display numbering run continuously across the parent section.
   final int indexOffset;
 
+  /// Called with the sub-question index (i.e. into [reading].qs, NOT the
+  /// display index) when its report-flag icon is tapped. The caller
+  /// (test_engine.dart) turns that back into the full "section/item/sub"
+  /// or "section/sub" slot key. Null → no report icon on any sub-question.
+  final void Function(int subIndex)? onReport;
+
   const ReadingBlockWidget({
     super.key,
     required this.reading,
     required this.answers,
     required this.onAnswer,
     this.indexOffset = 0,
+    this.onReport,
   });
 
   @override
@@ -1167,6 +1210,8 @@ class ReadingBlockWidget extends StatelessWidget {
           final ansKey = i.toString();
           final displayIndex = indexOffset + i;
 
+          final report = onReport == null ? null : () => onReport!(i);
+
           switch (q.type) {
             case QuestionType.yesNo:
               return YesNoWidget(
@@ -1174,6 +1219,7 @@ class ReadingBlockWidget extends StatelessWidget {
                 question: q,
                 answer: answers[ansKey] as String?,
                 onSelect: (v) => onAnswer(i, v),
+                onReport: report,
               );
 
             case QuestionType.textChoice:
@@ -1182,6 +1228,7 @@ class ReadingBlockWidget extends StatelessWidget {
                 question: q,
                 answer: answers[ansKey] as int?,
                 onSelect: (v) => onAnswer(i, v),
+                onReport: report,
               );
 
             case QuestionType.fillBlank:
@@ -1191,6 +1238,7 @@ class ReadingBlockWidget extends StatelessWidget {
                 initialValue:
                     answers[ansKey] is String ? answers[ansKey] as String : '',
                 onChanged: (v) => onAnswer(i, v),
+                onReport: report,
               );
 
             default:
@@ -1219,11 +1267,15 @@ class ReadingSectionWidget extends StatelessWidget {
   /// Called with (subIndex, value) — value is int for mc, String for yn/fill.
   final void Function(int subIndex, dynamic value) onAnswer;
 
+  /// See [ReadingBlockWidget.onReport].
+  final void Function(int subIndex)? onReport;
+
   const ReadingSectionWidget({
     super.key,
     required this.section,
     required this.answers,
     required this.onAnswer,
+    this.onReport,
   });
 
   @override
@@ -1234,6 +1286,7 @@ class ReadingSectionWidget extends StatelessWidget {
       reading: section.readingContainer!,
       answers: answers,
       onAnswer: onAnswer,
+      onReport: onReport,
     );
   }
 }

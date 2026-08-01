@@ -194,14 +194,18 @@ class MonitoringApi {
       'variant': variant,
       'test_key': testKey,
       'status': status,
-      if (studentCode != null && studentCode.isNotEmpty) 'student_code': studentCode,
+      if (studentCode != null && studentCode.isNotEmpty)
+        'student_code': studentCode,
       'tab_switch_count': tabSwitchCount,
-      if (currentQuestionIndex != null) 'current_question_index': currentQuestionIndex,
+      if (currentQuestionIndex != null)
+        'current_question_index': currentQuestionIndex,
       if (totalQuestions != null) 'total_questions': totalQuestions,
       if (questionTimes != null) 'question_times': questionTimes,
       if (platform != null && platform.isNotEmpty) 'platform': platform,
-      if (appVersion != null && appVersion.isNotEmpty) 'app_version': appVersion,
-      if (deviceName != null && deviceName.isNotEmpty) 'device_name': deviceName,
+      if (appVersion != null && appVersion.isNotEmpty)
+        'app_version': appVersion,
+      if (deviceName != null && deviceName.isNotEmpty)
+        'device_name': deviceName,
     });
   }
 
@@ -394,7 +398,8 @@ class MonitoringApi {
   /// `schoolCode` — berilsa, backend so'rovchi maktabni shu koddan aniqlaydi
   /// (anonim/token-siz oqimda auth token orqali aniqlanmaydi); maktabga
   /// bog'langan (school FK bor) testlar buni bermasa butunlay ko'rinmaydi.
-  Future<List<Map<String, dynamic>>> fetchTestCatalog({String? groupId, String? schoolCode}) async {
+  Future<List<Map<String, dynamic>>> fetchTestCatalog(
+      {String? groupId, String? schoolCode}) async {
     try {
       final gid = (groupId != null && groupId.isNotEmpty)
           ? '&group_id=${Uri.encodeComponent(groupId)}'
@@ -424,7 +429,8 @@ class MonitoringApi {
   /// `schoolCode` — berilsa, backend so'rovchi maktabni shu koddan aniqlaydi;
   /// maktabga bog'langan (school FK bor) test bermasa 404 qaytaradi.
   /// Xato holatida null qaytaradi, crash qilmaydi.
-  Future<Map<String, dynamic>?> fetchTest(String testKey, {String? groupId, String? schoolCode}) async {
+  Future<Map<String, dynamic>?> fetchTest(String testKey,
+      {String? groupId, String? schoolCode}) async {
     try {
       final gid = (groupId != null && groupId.isNotEmpty)
           ? '&group_id=${Uri.encodeComponent(groupId)}'
@@ -500,7 +506,8 @@ class MonitoringApi {
   /// caller retry qilmasligi kerak.
   Future<bool> uploadResultHtml(String clientToken, String htmlString) async {
     final req = http.MultipartRequest(
-      'POST', Uri.parse('$_base/result/pdf/$clientToken/'),
+      'POST',
+      Uri.parse('$_base/result/pdf/$clientToken/'),
     )..files.add(http.MultipartFile.fromBytes('file', utf8.encode(htmlString),
         filename: 'result.html'));
     try {
@@ -548,17 +555,64 @@ class MonitoringApi {
     }
   }
 
-
-
   /// Offline navbatdagi (online + lokal) natijalarni qayta yuborishga urinadi.
   /// Qaytaradi: muvaffaqiyatli yuborilgan jami yozuvlar soni.
   Future<int> flushOfflineQueue() async {
     final online = await OfflineQueue.flush(
       (r, token) => submitResultFull(r, idempotencyToken: token),
     );
-    final local = await OfflineQueue.flushLocal(submitLocalResultFull);
+    final local = await OfflineQueue.flushLocal(_dispatchLocalQueueItem);
     await OfflineQueue.purgeStale();
     return online + local;
+  }
+
+  /// POSTs a single offline-queued "flag a problem with this question"
+  /// report (question_report_sheet.dart). Same best-effort posture and
+  /// permanent/retryable classification as [submitLocalResultFull] — never
+  /// throws to the caller, since [OfflineQueue.flushLocal] expects a
+  /// `{'synced': bool, 'permanent': bool}` map back, not an exception.
+  Future<Map<String, dynamic>> submitQuestionReport(
+      Map<String, dynamic> payload, String token) async {
+    try {
+      final resp = await _send(() => http.post(
+            Uri.parse('$_base/question-report/'),
+            headers: {..._headers, 'Idempotency-Key': token},
+            body: jsonEncode(payload),
+          ));
+      if (resp.statusCode >= 400) {
+        debugPrint('submitQuestionReport non-2xx: ${resp.statusCode}');
+        // 429 is a rate limit, not a payload rejection — must stay
+        // retryable, same fix as submitResultFull/submitLocalResultFull.
+        final permanent = resp.statusCode != 429 && resp.statusCode < 500;
+        return {'synced': false, 'permanent': permanent};
+      }
+      return {'synced': true};
+    } on ApiException {
+      // Network/timeout — always retryable, never permanent.
+      return {'synced': false, 'permanent': false};
+    } catch (e) {
+      debugPrint('submitQuestionReport error: $e');
+      return {'synced': false, 'permanent': false};
+    }
+  }
+
+  /// Routes a `local_queue` row to the right endpoint. Every pre-existing
+  /// caller of [OfflineQueue.enqueueLocal] (engine_host_screen.dart,
+  /// unit1_runner.dart, interhouse_result_screen.dart, combined_runner.dart,
+  /// local_result_screen.dart) enqueues a full TestResult payload bound for
+  /// `/result/` and carries no `_offlineKind` key — that stays the default
+  /// so rows already sitting in the queue (or enqueued by unmodified call
+  /// sites) keep flushing exactly as before this feature. Only rows tagged
+  /// `_offlineKind: 'question_report'` (question_report_sheet.dart) are
+  /// routed to `/question-report/` instead; the tag itself is stripped
+  /// before either payload leaves the device.
+  Future<Map<String, dynamic>> _dispatchLocalQueueItem(
+      Map<String, dynamic> payload, String token) async {
+    if (payload['_offlineKind'] == 'question_report') {
+      final body = Map<String, dynamic>.from(payload)..remove('_offlineKind');
+      return submitQuestionReport(body, token);
+    }
+    return submitLocalResultFull(payload, token);
   }
 }
 

@@ -15,6 +15,7 @@ import 'test_models.dart';
 import 'test_scorer.dart';
 import 'question_widgets.dart';
 import '../services/heartbeat_service.dart';
+import '../../features/test/question_report_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TestEngine
@@ -495,6 +496,25 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     return '$last $first'.trim();
   }
 
+  /// Opens the "report a problem with this question" sheet (Task: question
+  /// report flagging). [slotKey] is the same "SectionName/i" /
+  /// "SectionName/itemIdx/subIdx" key used throughout this file for answers
+  /// — matches the backend's `slot_key` contract exactly. Best-effort only:
+  /// the sheet itself owns queueing/submission and never throws back here.
+  void _openReportSheet(String slotKey, Question q) {
+    showQuestionReportSheet(
+      context,
+      testKey: widget.spec.testKey,
+      variant: _variantKey,
+      slotKey: slotKey,
+      questionSnapshot: q.q ?? q.words ?? q.scramble ?? '',
+      studentCode: widget.studentId,
+      studentName: _studentName(),
+      schoolCode: widget.school,
+      sessionId: HeartbeatService.instance.activeSessionId ?? '',
+    );
+  }
+
   // ── Section body dispatch ──────────────────────────────────────────────────
 
   Widget _buildSectionBody(SectionData section) {
@@ -559,6 +579,8 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
         }
         _setAnswer(fullKey, value);
       },
+      onReport: (subIdx) =>
+          _openReportSheet('${section.name}/$subIdx', container.qs[subIdx]),
     );
   }
 
@@ -593,11 +615,14 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
         }
         _setAnswer(fullKey, value);
       },
+      onReport: (subIdx) => _openReportSheet(
+          '${section.name}/$itemIdx/$subIdx', reading.qs[subIdx]),
     );
   }
 
   Widget _buildQuestionWidget(
       Question q, int i, String key, String sectionName) {
+    void report() => _openReportSheet(key, q);
     switch (q.type) {
       case QuestionType.textChoice:
         return TextChoiceWidget(
@@ -605,6 +630,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
           question: q,
           answer: _answers[key] as int?,
           onSelect: (v) => _setAnswer(key, v),
+          onReport: report,
         );
 
       case QuestionType.imageChoice:
@@ -613,6 +639,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
           question: q,
           answer: _answers[key] as int?,
           onSelect: (v) => _setAnswer(key, v),
+          onReport: report,
         );
 
       case QuestionType.spelling:
@@ -621,6 +648,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
           question: q,
           controller: _ctrl(key),
           onChanged: (v) => _setAnswer(key, v),
+          onReport: report,
         );
 
       case QuestionType.sentenceOrder:
@@ -635,6 +663,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
             question: q,
             controller: _ctrl(key),
             onChanged: (v) => _setAnswer(key, v),
+            onReport: report,
           );
         }
         return SentenceOrderWidget(
@@ -642,6 +671,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
           question: q,
           controller: _ctrl(key),
           onChanged: (v) => _setAnswer(key, v),
+          onReport: report,
         );
 
       case QuestionType.yesNo:
@@ -650,6 +680,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
           question: q,
           answer: _answers[key] as String?,
           onSelect: (v) => _setAnswer(key, v),
+          onReport: report,
         );
 
       case QuestionType.fillBlank:
@@ -661,6 +692,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
             _ctrl(key).text = v;
             _setAnswer(key, v);
           },
+          onReport: report,
         );
 
       case QuestionType.reading:

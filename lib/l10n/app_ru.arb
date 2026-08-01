@@ -604,5 +604,14 @@
         "type": "String"
       }
     }
-  }
+  },
+  "reportQuestionSheetTitle": "Сообщить о проблеме с вопросом",
+  "reportReasonQuestionError": "В вопросе есть ошибка",
+  "reportReasonWrongOptions": "Варианты ответов неверны",
+  "reportReasonImageTextMissing": "Изображение/текст не отображается",
+  "reportReasonOther": "Другое",
+  "reportCommentHint": "Опишите проблему...",
+  "reportSubmitBtn": "Отправить",
+  "questionReportSentMsg": "Ваше сообщение отправлено",
+  "questionReportFailedMsg": "Ошибка отправки. Попробуйте ещё раз."
 }
