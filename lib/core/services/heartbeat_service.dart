@@ -25,6 +25,13 @@ class HeartbeatService with WidgetsBindingObserver {
   // apps/monitoring/models.py MonitoringSession.started_at, auto_now_add).
   String? _testSessionId;
   String? get _activeSessionId => _testSessionId ?? _deviceSessionId;
+
+  /// Public read-only surface for other features that need to tag their own
+  /// telemetry (e.g. question_report_sheet.dart) with the same session id
+  /// this service is already pinging under. Deliberately just a getter —
+  /// never call anything here that would mutate ping/conflict/terminated
+  /// state; that stays owned by [startTest]/[cancelTest]/[finishTest].
+  String? get activeSessionId => _activeSessionId;
   String _schoolCode = '';
   String _name = '';
   String _variant = '';

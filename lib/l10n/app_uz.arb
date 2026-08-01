@@ -642,5 +642,14 @@
         "type": "String"
       }
     }
-  }
+  },
+  "reportQuestionSheetTitle": "Savol haqida xabar berish",
+  "reportReasonQuestionError": "Savolda xatolik bor",
+  "reportReasonWrongOptions": "Javob variantlari noto'g'ri",
+  "reportReasonImageTextMissing": "Rasm/matn ko'rinmayapti",
+  "reportReasonOther": "Boshqa",
+  "reportCommentHint": "Muammoni tavsiflang...",
+  "reportSubmitBtn": "Yuborish",
+  "questionReportSentMsg": "Xabaringiz yuborildi",
+  "questionReportFailedMsg": "Yuborishda xato. Qayta urinib ko'ring."
 }

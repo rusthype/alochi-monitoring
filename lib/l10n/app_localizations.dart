@@ -2527,6 +2527,60 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Test yuklanmadi: {error}'**
   String testLoadErrorMsg(String error);
+
+  /// No description provided for @reportQuestionSheetTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Savol haqida xabar berish'**
+  String get reportQuestionSheetTitle;
+
+  /// No description provided for @reportReasonQuestionError.
+  ///
+  /// In uz, this message translates to:
+  /// **'Savolda xatolik bor'**
+  String get reportReasonQuestionError;
+
+  /// No description provided for @reportReasonWrongOptions.
+  ///
+  /// In uz, this message translates to:
+  /// **'Javob variantlari noto\'g\'ri'**
+  String get reportReasonWrongOptions;
+
+  /// No description provided for @reportReasonImageTextMissing.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rasm/matn ko\'rinmayapti'**
+  String get reportReasonImageTextMissing;
+
+  /// No description provided for @reportReasonOther.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqa'**
+  String get reportReasonOther;
+
+  /// No description provided for @reportCommentHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muammoni tavsiflang...'**
+  String get reportCommentHint;
+
+  /// No description provided for @reportSubmitBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuborish'**
+  String get reportSubmitBtn;
+
+  /// No description provided for @questionReportSentMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xabaringiz yuborildi'**
+  String get questionReportSentMsg;
+
+  /// No description provided for @questionReportFailedMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuborishda xato. Qayta urinib ko\'ring.'**
+  String get questionReportFailedMsg;
 }
 
 class _AppLocalizationsDelegate

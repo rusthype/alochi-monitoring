@@ -1321,4 +1321,32 @@ class AppLocalizationsUz extends AppLocalizations {
   String testLoadErrorMsg(String error) {
     return 'Test yuklanmadi: $error';
   }
+
+  @override
+  String get reportQuestionSheetTitle => 'Savol haqida xabar berish';
+
+  @override
+  String get reportReasonQuestionError => 'Savolda xatolik bor';
+
+  @override
+  String get reportReasonWrongOptions => 'Javob variantlari noto\'g\'ri';
+
+  @override
+  String get reportReasonImageTextMissing => 'Rasm/matn ko\'rinmayapti';
+
+  @override
+  String get reportReasonOther => 'Boshqa';
+
+  @override
+  String get reportCommentHint => 'Muammoni tavsiflang...';
+
+  @override
+  String get reportSubmitBtn => 'Yuborish';
+
+  @override
+  String get questionReportSentMsg => 'Xabaringiz yuborildi';
+
+  @override
+  String get questionReportFailedMsg =>
+      'Yuborishda xato. Qayta urinib ko\'ring.';
 }
