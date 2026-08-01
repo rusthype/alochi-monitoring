@@ -1032,6 +1032,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get updateBtn => 'Обновление';
 
   @override
+  String get updateDownloadFailedMsg =>
+      'Не удалось загрузить обновление. Проверьте интернет-соединение и попробуйте снова.';
+
+  @override
   String get okBtn => 'Хорошо';
 
   @override

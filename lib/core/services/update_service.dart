@@ -21,14 +21,116 @@
 // and docs/superpowers/specs/2026-07-16-monitoring-flutter-update-badge-design.md
 // (in the alochi monorepo) for the original link-out-only design — superseded
 // by the auto-install behavior below (commit 3f37a0b), which predates a spec.
+//
+// Production bug (fixed here): computer labs with slow/unreliable internet
+// would silently never learn an update existed — a single manifest-fetch
+// timeout with no retry, and an unbounded/unretried download stream, meant
+// some machines in the same lab stayed on old app versions indefinitely
+// while others on better wifi succeeded. Fix: generous timeouts + retry
+// with backoff on both the manifest fetch and the download stream (which
+// also now detects mid-transfer stalls, not just a slow initial connect),
+// a periodic re-check while idle at the login screen so a failed startup
+// check gets more chances without a full relaunch, and a visible in-app
+// failure signal (SnackBar with a retry action) instead of only a
+// silently-opened browser tab.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
+
+/// Timeout for the manifest HTTP GET itself. 20s (not the previous 5s)
+/// gives slow lab wifi a real chance to complete a tiny JSON fetch.
+const Duration _manifestTimeout = Duration(seconds: 20);
+
+/// Timeout applied between individual byte-stream events while downloading
+/// the installer/DMG — this is what catches a stalled/dropped connection
+/// mid-transfer, which a connect-only timeout would never see.
+const Duration _downloadChunkTimeout = Duration(seconds: 30);
+
+/// Total attempts (initial + retries) for both the manifest fetch and the
+/// download transfer.
+const int _maxAttempts = 3;
+
+/// Runs [action] up to [attempts] times with linear backoff (3s, 6s, ...)
+/// between attempts, returning the first successful result. Rethrows the
+/// last error if every attempt fails. A single slow/dropped response on
+/// unreliable lab wifi must not be treated as "no update available" or
+/// "download impossible" on the first try — it usually just needs another
+/// attempt a few seconds later.
+Future<T> _withRetry<T>(
+  Future<T> Function() action, {
+  int attempts = _maxAttempts,
+}) async {
+  Object? lastError;
+  for (var attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await action();
+    } catch (e) {
+      lastError = e;
+      if (attempt < attempts) {
+        await Future.delayed(Duration(seconds: 3 * attempt));
+      }
+    }
+  }
+  throw lastError!;
+}
+
+/// Downloads [url] to [savePath], retrying the whole transfer from scratch
+/// up to [_maxAttempts] times if the connection stalls or drops mid-stream.
+/// There is no partial-download resume — a fresh retry of a few-MB
+/// installer is cheap enough that resume isn't worth the added complexity.
+/// Any partial file from a failed attempt is deleted before the next try so
+/// a later successful attempt can't append to/mix with stale bytes.
+Future<void> _downloadWithRetry(
+  String url,
+  String savePath, {
+  Function(double)? onProgress,
+}) {
+  return _withRetry(() async {
+    final file = File(savePath);
+    if (await file.exists()) {
+      try {
+        await file.delete();
+      } catch (_) {}
+    }
+
+    final client = http.Client();
+    try {
+      final request = http.Request('GET', Uri.parse(url));
+      final response =
+          await client.send(request).timeout(const Duration(seconds: 20));
+      if (response.statusCode != 200) {
+        throw HttpException(
+          'Update download failed with status ${response.statusCode}',
+        );
+      }
+
+      final contentLength = response.contentLength;
+      var downloaded = 0;
+      final sink = file.openWrite();
+      try {
+        await for (final chunk
+            in response.stream.timeout(_downloadChunkTimeout)) {
+          sink.add(chunk);
+          downloaded += chunk.length;
+          if (contentLength != null && onProgress != null) {
+            onProgress(downloaded / contentLength);
+          }
+        }
+      } finally {
+        await sink.close();
+      }
+    } finally {
+      client.close();
+    }
+  });
+}
 
 /// True if [remote] is strictly newer than [local] (both "X.Y.Z" strings).
 /// Numeric comparison, not string comparison — "1.0.9" vs "1.0.10" must
@@ -93,12 +195,18 @@ class UpdateService {
   static const String _releasePageUrl =
       'https://github.com/rusthype/alochi-monitoring/releases/tag/latest';
 
-  /// Checks the static release-asset manifest once. Any failure (offline,
-  /// non-200, malformed JSON) is swallowed silently, matching
-  /// HeartbeatService's error-handling pattern
-  /// (lib/core/services/heartbeat_service.dart:62-71) — never throws, never
-  /// blocks app startup. Returns null when no update is available or the
-  /// check failed; callers must treat both cases identically (no badge).
+  Timer? _recheckTimer;
+
+  /// Checks the static release-asset manifest, retrying up to [_maxAttempts]
+  /// times (20s timeout per attempt, linear backoff) before giving up — see
+  /// [_withRetry]. Any failure that survives all attempts (offline, non-200,
+  /// malformed JSON) is swallowed silently, matching HeartbeatService's
+  /// error-handling pattern (lib/core/services/heartbeat_service.dart:62-71)
+  /// — never throws, never blocks app startup. Returns null when no update
+  /// is available or the check ultimately failed; callers must treat both
+  /// cases identically (no badge). Combine with [startPeriodicRecheck] for
+  /// callers that stay on-screen long enough to benefit from a later retry
+  /// beyond this method's own attempts.
   Future<UpdateInfo?> fetchUpdateInfo() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
@@ -106,9 +214,9 @@ class UpdateService {
 
       final manifestUrl =
           Platform.isMacOS ? _manifestUrlMacOS : _manifestUrlWindows;
-      final resp = await http
-          .get(Uri.parse(manifestUrl))
-          .timeout(const Duration(seconds: 5));
+      final resp = await _withRetry(
+        () => http.get(Uri.parse(manifestUrl)).timeout(_manifestTimeout),
+      );
       if (resp.statusCode != 200) return null;
 
       final decoded = jsonDecode(resp.body);
@@ -125,51 +233,70 @@ class UpdateService {
         currentVersion: currentVersion,
         downloadUrl: downloadUrl,
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint(
+          'UpdateService.fetchUpdateInfo: check failed after retries: $e');
       return null;
     }
   }
 
-  /// Downloads the update installer and executes it silently, then exits the app.
-  /// Falls back to opening the release page on any failure.
-  Future<void> downloadAndInstallUpdate(UpdateInfo info, {Function(double)? onProgress}) async {
+  /// Starts re-checking the manifest every [interval] while the caller
+  /// stays idle on-screen (e.g. sitting at the login/catalog screen between
+  /// test sessions). A machine whose very first check failed — even after
+  /// [fetchUpdateInfo]'s own internal retries — gets another chance without
+  /// needing a full app relaunch, which in practice is often the only thing
+  /// that would otherwise trigger a re-check. [onUpdateFound] is only
+  /// invoked when a newer version is actually found. Safe to call more than
+  /// once; each call replaces any previously running timer. Callers must
+  /// pair this with [stopPeriodicRecheck] (e.g. in `State.dispose()`).
+  void startPeriodicRecheck(
+    void Function(UpdateInfo info) onUpdateFound, {
+    Duration interval = const Duration(minutes: 30),
+  }) {
+    _recheckTimer?.cancel();
+    _recheckTimer = Timer.periodic(interval, (_) async {
+      final info = await fetchUpdateInfo();
+      if (info != null) onUpdateFound(info);
+    });
+  }
+
+  /// Stops any timer started by [startPeriodicRecheck]. No-op if none is
+  /// running.
+  void stopPeriodicRecheck() {
+    _recheckTimer?.cancel();
+    _recheckTimer = null;
+  }
+
+  /// Downloads the update installer and executes it silently, then exits
+  /// the app. Returns `true` only in the (practically unreachable, since a
+  /// successful install calls [exit]) success path; returns `false` when
+  /// auto-install failed after retries and the release page was opened as
+  /// a fallback — callers should surface a visible in-app failure signal
+  /// (e.g. a SnackBar with a retry action) in that case rather than relying
+  /// solely on the silently-opened browser tab.
+  Future<bool> downloadAndInstallUpdate(UpdateInfo info,
+      {Function(double)? onProgress}) async {
     try {
       if (Platform.isMacOS) {
-        await _updateMacOS(info, onProgress);
-        return;
+        return await _updateMacOS(info, onProgress);
       }
-      
+
       if (!Platform.isWindows) {
         // Auto-install is currently only supported on Windows and macOS
         await openReleasePage();
-        return;
+        return false;
       }
 
       final tempDir = await getTemporaryDirectory();
-      final savePath = '${tempDir.path}\\AlochiMonitoring-Setup-${info.latestVersion}.exe';
-      final file = File(savePath);
+      final savePath =
+          '${tempDir.path}\\AlochiMonitoring-Setup-${info.latestVersion}.exe';
 
-      final request = http.Request('GET', Uri.parse(info.downloadUrl));
-      final response = await http.Client().send(request);
-      
-      if (response.statusCode != 200) {
-        await openReleasePage();
-        return;
-      }
-      
-      final contentLength = response.contentLength;
-      int downloaded = 0;
-      
-      final sink = file.openWrite();
-      
-      await for (final chunk in response.stream) {
-        sink.add(chunk);
-        downloaded += chunk.length;
-        if (contentLength != null && onProgress != null) {
-          onProgress(downloaded / contentLength);
-        }
-      }
-      await sink.close();
+      // Retries the whole transfer (up to _maxAttempts times) on a stalled
+      // or dropped connection — see _downloadWithRetry. Throws on final
+      // failure, caught by the outer catch below which falls back to
+      // openReleasePage() and reports failure to the caller.
+      await _downloadWithRetry(info.downloadUrl, savePath,
+          onProgress: onProgress);
 
       // Launch installer with UAC elevation.
       // InnoSetup's installer.iss has PrivilegesRequired=admin, so the
@@ -223,46 +350,46 @@ try {
       }
 
       exit(0);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('UpdateService.downloadAndInstallUpdate (Windows) error: $e');
       await openReleasePage();
+      return false;
     }
   }
 
-  Future<void> _updateMacOS(UpdateInfo info, Function(double)? onProgress) async {
-    final tempDir = await getTemporaryDirectory();
-    final dmgPath = '${tempDir.path}/AlochiMonitoring-Update.dmg';
+  /// macOS install path: download the DMG, mount/copy/unmount via a shell
+  /// script, relaunch. Wrapped in its own try/catch (previously missing —
+  /// a bare exception here would have propagated up and only been caught by
+  /// [downloadAndInstallUpdate]'s outer handler with no macOS-specific
+  /// logging) so failures are logged with which step failed and reported
+  /// back to the caller as `false` rather than only being visible via the
+  /// browser-fallback tab.
+  Future<bool> _updateMacOS(
+      UpdateInfo info, Function(double)? onProgress) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final dmgPath = '${tempDir.path}/AlochiMonitoring-Update.dmg';
 
-    // Download DMG
-    final request = http.Request('GET', Uri.parse(info.downloadUrl));
-    final response = await http.Client().send(request);
-    if (response.statusCode != 200) {
-      await openReleasePage();
-      return;
-    }
+      // Retries the whole transfer (up to _maxAttempts times) on a stalled
+      // or dropped connection — see _downloadWithRetry.
+      await _downloadWithRetry(info.downloadUrl, dmgPath,
+          onProgress: onProgress);
 
-    final contentLength = response.contentLength;
-    int downloaded = 0;
-    final sink = File(dmgPath).openWrite();
-    await for (final chunk in response.stream) {
-      sink.add(chunk);
-      downloaded += chunk.length;
-      if (contentLength != null && onProgress != null) {
-        onProgress(downloaded / contentLength);
-      }
-    }
-    await sink.close();
-
-    // Create a shell script to mount, copy, unmount, and relaunch.
-    // Every step that can fail is checked explicitly and logged: silently
-    // continuing after a failed rm/cp would leave the OLD app in place (a
-    // failed `rm -rf` leaves the old .app directory sitting there, which
-    // makes the following `cp -R` copy INTO it as a nested subdirectory
-    // instead of replacing it — no error, just a wrong result) and then
-    // `open -a` would relaunch that stale app while looking like success.
-    // On any failure we fall back to openReleasePage(), matching the
-    // fallback philosophy used everywhere else in this file.
-    final scriptPath = '${tempDir.path}/update.sh';
-    final script = '''#!/bin/bash
+      // Create a shell script to mount, copy, unmount, and relaunch.
+      // Every step that can fail is checked explicitly and logged: silently
+      // continuing after a failed rm/cp would leave the OLD app in place (a
+      // failed `rm -rf` leaves the old .app directory sitting there, which
+      // makes the following `cp -R` copy INTO it as a nested subdirectory
+      // instead of replacing it — no error, just a wrong result) and then
+      // `open -a` would relaunch that stale app while looking like success.
+      // On any failure we fall back to openReleasePage(), matching the
+      // fallback philosophy used everywhere else in this file. Note this
+      // script runs detached AFTER this Dart process has already called
+      // exit(0) below, so a failure at this stage (as opposed to the
+      // network download above) can only surface via its own browser
+      // fallback and log file, not via the in-app retry banner.
+      final scriptPath = '${tempDir.path}/update.sh';
+      final script = '''#!/bin/bash
 LOG="\$HOME/Library/Logs/AlochiMonitoringUpdate.log"
 sleep 2
 MOUNT_PATH=\$(hdiutil attach "$dmgPath" -nobrowse | grep -o '/Volumes/.*' | tail -1 | xargs)
@@ -286,11 +413,16 @@ fi
 hdiutil detach "\$MOUNT_PATH" -force
 open -a "/Applications/alochi_monitoring.app"
 ''';
-    await File(scriptPath).writeAsString(script);
-    await Process.run('chmod', ['+x', scriptPath]);
+      await File(scriptPath).writeAsString(script);
+      await Process.run('chmod', ['+x', scriptPath]);
 
-    await Process.start(scriptPath, [], mode: ProcessStartMode.detached);
-    exit(0);
+      await Process.start(scriptPath, [], mode: ProcessStartMode.detached);
+      exit(0);
+    } catch (e) {
+      debugPrint('UpdateService._updateMacOS error: $e');
+      await openReleasePage();
+      return false;
+    }
   }
 
   /// Opens the GitHub release page in the system browser so the user can
