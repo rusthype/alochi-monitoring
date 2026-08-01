@@ -1038,6 +1038,10 @@ class AppLocalizationsUz extends AppLocalizations {
   String get updateBtn => 'Yangilanish';
 
   @override
+  String get updateDownloadFailedMsg =>
+      'Yangilanishni yuklab bo\'lmadi. Internet aloqasini tekshirib, qayta urining.';
+
+  @override
   String get okBtn => 'Yaxshi';
 
   @override

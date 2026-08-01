@@ -2006,6 +2006,12 @@ abstract class AppLocalizations {
   /// **'Yangilanish'**
   String get updateBtn;
 
+  /// No description provided for @updateDownloadFailedMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangilanishni yuklab bo\'lmadi. Internet aloqasini tekshirib, qayta urining.'**
+  String get updateDownloadFailedMsg;
+
   /// No description provided for @okBtn.
   ///
   /// In uz, this message translates to:

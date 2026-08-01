@@ -223,6 +223,13 @@ class _LoginScreenState extends State<LoginScreen> {
     UpdateService.instance.fetchUpdateInfo().then((info) {
       if (mounted && info != null) setState(() => _updateInfo = info);
     });
+    // The login screen is where a machine sits idle between test sessions,
+    // often for hours — re-check periodically so a machine whose startup
+    // check failed (slow/unreliable lab wifi) still learns about an update
+    // without needing a full app relaunch.
+    UpdateService.instance.startPeriodicRecheck((info) {
+      if (mounted) setState(() => _updateInfo = info);
+    });
     _loadAppVersion();
   }
 
@@ -269,6 +276,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    UpdateService.instance.stopPeriodicRecheck();
     _userCtrl.dispose();
     _passCtrl.dispose();
     _userFocus.dispose();
@@ -689,6 +697,46 @@ class _LoginScreenState extends State<LoginScreen> {
     ).whenComplete(_loadCatalog);
   }
 
+  /// Downloads+installs the current [_updateInfo], showing a persistent
+  /// SnackBar with a manual retry action if it ultimately fails (after
+  /// UpdateService's own internal retries) instead of relying solely on the
+  /// silently-opened browser fallback tab, which a distracted lab proctor
+  /// can easily miss. The SnackBar's retry action re-invokes this same
+  /// method, so tapping it starts a fresh download attempt.
+  Future<void> _attemptUpdateDownload() async {
+    if (_isDownloadingUpdate || _updateInfo == null) return;
+    setState(() {
+      _isDownloadingUpdate = true;
+      _updateProgress = 0.0;
+    });
+    final success = await UpdateService.instance.downloadAndInstallUpdate(
+      _updateInfo!,
+      onProgress: (progress) {
+        if (mounted) {
+          setState(() => _updateProgress = progress);
+        }
+      },
+    );
+    if (!mounted) return;
+    setState(() {
+      _isDownloadingUpdate = false;
+    });
+    if (!success) {
+      final l10n = AppLocalizations.of(context)!;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.updateDownloadFailedMsg),
+        backgroundColor: AppColors.err,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 10),
+        action: SnackBarAction(
+          label: l10n.retry,
+          textColor: Colors.white,
+          onPressed: _attemptUpdateDownload,
+        ),
+      ));
+    }
+  }
+
   Widget _updateBadge() {
     if (_updateInfo == null) return const SizedBox.shrink();
     return Semantics(
@@ -696,26 +744,7 @@ class _LoginScreenState extends State<LoginScreen> {
       label: _isDownloadingUpdate ? 'Yuklanmoqda...' : 'Yangilanish mavjud',
       child: HoverRegion(
         builder: (context, isHovered) => GestureDetector(
-          onTap: () async {
-            if (_isDownloadingUpdate) return;
-            setState(() {
-              _isDownloadingUpdate = true;
-              _updateProgress = 0.0;
-            });
-            await UpdateService.instance.downloadAndInstallUpdate(
-              _updateInfo!,
-              onProgress: (progress) {
-                if (mounted) {
-                  setState(() => _updateProgress = progress);
-                }
-              },
-            );
-            if (mounted) {
-              setState(() {
-                _isDownloadingUpdate = false;
-              });
-            }
-          },
+          onTap: _attemptUpdateDownload,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

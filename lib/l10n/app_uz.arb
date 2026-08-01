@@ -495,6 +495,7 @@
   "exitBtn": "Chiqish",
   "yesBtn": "Ha",
   "updateBtn": "Yangilanish",
+  "updateDownloadFailedMsg": "Yangilanishni yuklab bo'lmadi. Internet aloqasini tekshirib, qayta urining.",
   "okBtn": "Yaxshi",
   "yesOption": "YES",
   "noOption": "NO",
