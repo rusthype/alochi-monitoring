@@ -2,6 +2,7 @@
 // Login/parolni xavfsiz saqlash — offline login uchun
 // Windows DPAPI orqali shifrlangan (flutter_secure_storage)
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/models.dart';
 
@@ -20,63 +21,88 @@ class CredentialCache {
   static const _keyGroupName = 'cc_group_name';
 
   static Future<void> saveCredentials(String username, String password) async {
-    await _storage.write(key: _keyUsername, value: username);
-    await _storage.write(key: _keyPassword, value: password);
+    try {
+      await _storage.write(key: _keyUsername, value: username);
+      await _storage.write(key: _keyPassword, value: password);
+    } catch (e) {
+      debugPrint('CredentialCache.saveCredentials failed (non-fatal): $e');
+    }
   }
 
   static Future<void> saveSession(
       StudentSession session, String username, String password) async {
-    await _storage.write(key: _keyUsername, value: username);
-    await _storage.write(key: _keyPassword, value: password);
-    await _storage.write(key: _keyToken, value: session.token);
-    await _storage.write(key: _keyStudentId, value: session.studentId);
-    await _storage.write(key: _keyStudentName, value: session.studentName);
-    await _storage.write(key: _keyVariant, value: session.variant?.toString());
-    await _storage.write(key: _keyGrade, value: session.grade?.toString());
-    await _storage.write(key: _keyGroupName, value: session.groupName ?? '');
+    try {
+      await _storage.write(key: _keyUsername, value: username);
+      await _storage.write(key: _keyPassword, value: password);
+      await _storage.write(key: _keyToken, value: session.token);
+      await _storage.write(key: _keyStudentId, value: session.studentId);
+      await _storage.write(key: _keyStudentName, value: session.studentName);
+      await _storage.write(
+          key: _keyVariant, value: session.variant?.toString());
+      await _storage.write(key: _keyGrade, value: session.grade?.toString());
+      await _storage.write(key: _keyGroupName, value: session.groupName ?? '');
+    } catch (e) {
+      debugPrint('CredentialCache.saveSession failed (non-fatal): $e');
+    }
   }
 
   static Future<Map<String, String>?> loadCredentials() async {
-    final username = await _storage.read(key: _keyUsername);
-    final password = await _storage.read(key: _keyPassword);
-    if (username == null || password == null) return null;
-    return {'username': username, 'password': password};
+    try {
+      final username = await _storage.read(key: _keyUsername);
+      final password = await _storage.read(key: _keyPassword);
+      if (username == null || password == null) return null;
+      return {'username': username, 'password': password};
+    } catch (e) {
+      debugPrint('CredentialCache.loadCredentials failed (non-fatal): $e');
+      return null;
+    }
   }
 
   static Future<StudentSession?> loadOfflineSession(
       String username, String password) async {
-    final savedUsername = await _storage.read(key: _keyUsername);
-    final savedPassword = await _storage.read(key: _keyPassword);
-    // Login/parol bir xil bo'lsa offline sessiya beradi
-    if (savedUsername != username || savedPassword != password) return null;
+    try {
+      final savedUsername = await _storage.read(key: _keyUsername);
+      final savedPassword = await _storage.read(key: _keyPassword);
+      // Login/parol bir xil bo'lsa offline sessiya beradi
+      if (savedUsername != username || savedPassword != password) return null;
 
-    final token = await _storage.read(key: _keyToken);
-    final studentId = await _storage.read(key: _keyStudentId);
-    final studentName = await _storage.read(key: _keyStudentName);
-    final variant = await _storage.read(key: _keyVariant);
-    final grade = await _storage.read(key: _keyGrade);
-    final groupName = await _storage.read(key: _keyGroupName);
+      final token = await _storage.read(key: _keyToken);
+      final studentId = await _storage.read(key: _keyStudentId);
+      final studentName = await _storage.read(key: _keyStudentName);
+      final variant = await _storage.read(key: _keyVariant);
+      final grade = await _storage.read(key: _keyGrade);
+      final groupName = await _storage.read(key: _keyGroupName);
 
-    if (token == null || studentId == null || studentName == null) return null;
+      if (token == null || studentId == null || studentName == null) {
+        return null;
+      }
 
-    return StudentSession(
-      token: token,
-      studentId: studentId,
-      studentName: studentName,
-      variant: int.tryParse(variant ?? ''),
-      grade: int.tryParse(grade ?? ''),
-      groupName: (groupName?.isEmpty ?? true) ? null : groupName,
-    );
+      return StudentSession(
+        token: token,
+        studentId: studentId,
+        studentName: studentName,
+        variant: int.tryParse(variant ?? ''),
+        grade: int.tryParse(grade ?? ''),
+        groupName: (groupName?.isEmpty ?? true) ? null : groupName,
+      );
+    } catch (e) {
+      debugPrint('CredentialCache.loadOfflineSession failed (non-fatal): $e');
+      return null;
+    }
   }
 
   static Future<void> clear() async {
-    await _storage.delete(key: _keyUsername);
-    await _storage.delete(key: _keyPassword);
-    await _storage.delete(key: _keyToken);
-    await _storage.delete(key: _keyStudentId);
-    await _storage.delete(key: _keyStudentName);
-    await _storage.delete(key: _keyVariant);
-    await _storage.delete(key: _keyGrade);
-    await _storage.delete(key: _keyGroupName);
+    try {
+      await _storage.delete(key: _keyUsername);
+      await _storage.delete(key: _keyPassword);
+      await _storage.delete(key: _keyToken);
+      await _storage.delete(key: _keyStudentId);
+      await _storage.delete(key: _keyStudentName);
+      await _storage.delete(key: _keyVariant);
+      await _storage.delete(key: _keyGrade);
+      await _storage.delete(key: _keyGroupName);
+    } catch (e) {
+      debugPrint('CredentialCache.clear failed (non-fatal): $e');
+    }
   }
 }
