@@ -360,8 +360,18 @@ class _LoginScreenState extends State<LoginScreen> {
         try {
           final session = await api.login(username, password);
           api.setToken(session.token);
-          await CredentialCache.saveCredentials(username, password);
-          await CredentialCache.saveSession(session, username, password);
+          // Offline-cache write is a nice-to-have (lets the student log in
+          // again without internet later) — it must NOT block a student who
+          // already authenticated successfully with the server. A platform
+          // storage failure here (e.g. Windows DPAPI unavailable in a
+          // locked-down kiosk account) used to surface as a generic
+          // "Ulanishda xato" even though login had already succeeded.
+          try {
+            await CredentialCache.saveCredentials(username, password);
+            await CredentialCache.saveSession(session, username, password);
+          } catch (cacheError) {
+            debugPrint('CredentialCache write failed (non-fatal): $cacheError');
+          }
           if (!mounted) return;
           context.pushReplacement('/my_tests', extra: {'session': session});
           return;
