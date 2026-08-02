@@ -7,6 +7,7 @@ class StudentSession {
   final int? variant;
   final int? grade;
   final String? groupName;
+  final String schoolCode;
 
   const StudentSession({
     required this.token,
@@ -15,6 +16,7 @@ class StudentSession {
     this.variant,
     this.grade,
     this.groupName,
+    this.schoolCode = '',
   });
 
   bool get hasActiveExam => variant != null && grade != null;
@@ -26,6 +28,7 @@ class StudentSession {
         variant: j['variant'] == null ? null : int.tryParse(j['variant'].toString()),
         grade: j['grade'] == null ? null : int.tryParse(j['grade'].toString()),
         groupName: j['group_name'] as String?,
+        schoolCode: j['school_code']?.toString() ?? '',
       );
 }
 

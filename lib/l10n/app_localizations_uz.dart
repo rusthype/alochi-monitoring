@@ -64,6 +64,15 @@ class AppLocalizationsUz extends AppLocalizations {
   String get comingSoon => 'Tez kunda';
 
   @override
+  String get studentLoginButton => 'O\'quvchi sifatida kirish';
+
+  @override
+  String get myTestsTitle => 'Mening testlarim';
+
+  @override
+  String get myTestsEmpty => 'Sizga tegishli testlar topilmadi';
+
+  @override
   String get retryCheck => 'Qayta tekshirish';
 
   @override

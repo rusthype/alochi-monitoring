@@ -117,10 +117,11 @@ class MonitoringApi {
     return data;
   }
 
-  Future<dynamic> _get(String path) async {
+  Future<dynamic> _get(String path,
+      {Map<String, String> extraHeaders = const {}}) async {
     final resp = await _send(() => http.get(
           Uri.parse('$_base$path'),
-          headers: _headers,
+          headers: {..._headers, ...extraHeaders},
         ));
     if (resp.statusCode >= 400) {
       throw ApiException(resp.statusCode, _statusMessage(resp.statusCode));
@@ -130,10 +131,11 @@ class MonitoringApi {
 
   /// [_get] bilan bir xil, lekin katta javoblar (test katalog/kontent) uchun
   /// jsonDecode'ni alohida isolatda bajaradi — UI thread bloklanmaydi.
-  Future<dynamic> _getCompute(String path) async {
+  Future<dynamic> _getCompute(String path,
+      {Map<String, String> extraHeaders = const {}}) async {
     final resp = await _send(() => http.get(
           Uri.parse('$_base$path'),
-          headers: _headers,
+          headers: {..._headers, ...extraHeaders},
         ));
     if (resp.statusCode >= 400) {
       throw ApiException(resp.statusCode, _statusMessage(resp.statusCode));
@@ -398,8 +400,16 @@ class MonitoringApi {
   /// `schoolCode` — berilsa, backend so'rovchi maktabni shu koddan aniqlaydi
   /// (anonim/token-siz oqimda auth token orqali aniqlanmaydi); maktabga
   /// bog'langan (school FK bor) testlar buni bermasa butunlay ko'rinmaydi.
+  ///
+  /// `authToken` — berilsa, `Authorization: Bearer <token>` header sifatida
+  /// yuboriladi (o'quvchi self-login oqimi, MyTestsScreen). Backend bu holda
+  /// `groupId`/`schoolCode`ni e'tiborsiz qoldirib, guruhni JWT orqali
+  /// autentifikatsiya qilingan o'quvchining haqiqiy faol guruhidan aniqlaydi
+  /// — shuning uchun bu oqimda `groupId` umuman yuborilmaydi (chaqiruvchi
+  /// tomonda null qoldiriladi). Proctor oqimi (group_select_screen.dart)
+  /// `authToken` bermaydi — xatti-harakati o'zgarishsiz (orqaga moslik).
   Future<List<Map<String, dynamic>>> fetchTestCatalog(
-      {String? groupId, String? schoolCode}) async {
+      {String? groupId, String? schoolCode, String? authToken}) async {
     try {
       final gid = (groupId != null && groupId.isNotEmpty)
           ? '&group_id=${Uri.encodeComponent(groupId)}'
@@ -407,7 +417,10 @@ class MonitoringApi {
       final sc = (schoolCode != null && schoolCode.isNotEmpty)
           ? '&school_code=${Uri.encodeComponent(schoolCode)}'
           : '';
-      final data = await _getCompute('/tests/catalog/?client=3$gid$sc');
+      final data = await _getCompute('/tests/catalog/?client=3$gid$sc',
+          extraHeaders: (authToken != null && authToken.isNotEmpty)
+              ? {'Authorization': 'Bearer $authToken'}
+              : const {});
       if (data is! List) return [];
       if (data.isEmpty) return [];
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -429,8 +442,13 @@ class MonitoringApi {
   /// `schoolCode` — berilsa, backend so'rovchi maktabni shu koddan aniqlaydi;
   /// maktabga bog'langan (school FK bor) test bermasa 404 qaytaradi.
   /// Xato holatida null qaytaradi, crash qilmaydi.
+  ///
+  /// `authToken` — qarang [fetchTestCatalog] izohi: berilsa Bearer header
+  /// sifatida yuboriladi va backend `groupId`ni JWT'dagi o'quvchining faol
+  /// guruhidan aniqlaydi (self-login oqimi). Proctor chaqiruvlari
+  /// (group_select_screen.dart) bu param'ni bermaydi — o'zgarishsiz.
   Future<Map<String, dynamic>?> fetchTest(String testKey,
-      {String? groupId, String? schoolCode}) async {
+      {String? groupId, String? schoolCode, String? authToken}) async {
     try {
       final gid = (groupId != null && groupId.isNotEmpty)
           ? '&group_id=${Uri.encodeComponent(groupId)}'
@@ -438,7 +456,10 @@ class MonitoringApi {
       final sc = (schoolCode != null && schoolCode.isNotEmpty)
           ? '&school_code=${Uri.encodeComponent(schoolCode)}'
           : '';
-      final data = await _getCompute('/tests/$testKey/?client=3$gid$sc');
+      final data = await _getCompute('/tests/$testKey/?client=3$gid$sc',
+          extraHeaders: (authToken != null && authToken.isNotEmpty)
+              ? {'Authorization': 'Bearer $authToken'}
+              : const {});
       if (data is! Map) return null;
       return Map<String, dynamic>.from(data);
     } catch (e) {
