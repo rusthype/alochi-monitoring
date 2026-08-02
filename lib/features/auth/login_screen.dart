@@ -363,7 +363,7 @@ class _LoginScreenState extends State<LoginScreen> {
           await CredentialCache.saveCredentials(username, password);
           await CredentialCache.saveSession(session, username, password);
           if (!mounted) return;
-          context.pushReplacement('/package', extra: {'session': session});
+          context.pushReplacement('/my_tests', extra: {'session': session});
           return;
         } on ApiException catch (e) {
           // 400 = login/parol xato — offline ham urinma
@@ -385,7 +385,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (session != null) {
         api.setToken(session.token);
         if (!mounted) return;
-        context.pushReplacement('/package',
+        context.pushReplacement('/my_tests',
             extra: {'session': session, 'offline': !online});
         return;
       }
@@ -802,8 +802,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final l10n = AppLocalizations.of(context)!;
     final children = [
       _routeButton(
-        icon: Icons.monitor_rounded,
-        label: l10n.appTitle,
+        icon: Icons.badge_rounded,
+        label: l10n.studentLoginButton,
         active: _expanded,
         onTap: () => setState(() => _expanded = !_expanded),
       ),

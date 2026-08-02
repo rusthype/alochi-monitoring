@@ -63,6 +63,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get comingSoon => 'Скоро';
 
   @override
+  String get studentLoginButton => 'Войти как ученик';
+
+  @override
+  String get myTestsTitle => 'Мои тесты';
+
+  @override
+  String get myTestsEmpty => 'Для вас пока нет доступных тестов';
+
+  @override
   String get retryCheck => 'Проверить снова';
 
   @override

@@ -9,6 +9,7 @@ import '../widgets/error_screen.dart';
 import '../../features/session/session_setup_screen.dart';
 import '../../features/session/group_select_screen.dart';
 import '../../features/session/student_entry_screen.dart';
+import '../../features/session/my_tests_screen.dart';
 
 // Test screens
 import '../../features/test/package_screen.dart';
@@ -68,6 +69,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           path: '/package', builder: (context, state) {
              final extra = state.extra as Map<String, dynamic>? ?? {};
              return PackageScreen(
+               session: extra['session'],
+               offline: extra['offline'] ?? false,
+             );
+          }),
+      GoRoute(
+          path: '/my_tests', builder: (context, state) {
+             final extra = state.extra as Map<String, dynamic>? ?? {};
+             return MyTestsScreen(
                session: extra['session'],
                offline: extra['offline'] ?? false,
              );

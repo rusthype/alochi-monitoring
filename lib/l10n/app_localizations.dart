@@ -206,6 +206,24 @@ abstract class AppLocalizations {
   /// **'Tez kunda'**
   String get comingSoon;
 
+  /// No description provided for @studentLoginButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'quvchi sifatida kirish'**
+  String get studentLoginButton;
+
+  /// No description provided for @myTestsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mening testlarim'**
+  String get myTestsTitle;
+
+  /// No description provided for @myTestsEmpty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sizga tegishli testlar topilmadi'**
+  String get myTestsEmpty;
+
   /// No description provided for @retryCheck.
   ///
   /// In uz, this message translates to:
