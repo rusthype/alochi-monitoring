@@ -113,4 +113,22 @@ class TestCache {
     if (v == null) return null;
     return int.tryParse(v.toString());
   }
+
+  /// Berilgan test_key to'plamiga kirmagan barcha keshlangan yozuvlarni
+  /// o'chiradi. Faqat backenddan MUVAFFAQIYATLI (bo'sh bo'lsa ham) javob
+  /// olingandan keyin chaqirilishi kerak — tarmoq xatosida chaqirilmasin
+  /// (offline rejim buzilmasligi uchun).
+  static Future<void> pruneNotIn(Set<String> keepKeys) async {
+    final db = await _database;
+    if (keepKeys.isEmpty) {
+      await db.delete('cached_tests');
+      return;
+    }
+    final placeholders = List.filled(keepKeys.length, '?').join(',');
+    await db.delete(
+      'cached_tests',
+      where: 'test_key NOT IN ($placeholders)',
+      whereArgs: keepKeys.toList(),
+    );
+  }
 }
