@@ -135,16 +135,19 @@ class TestCatalogService {
 
     // Online urinish
     List<Map<String, dynamic>> catalog;
+    bool fetchFailed;
     try {
       catalog =
           await _api.fetchTestCatalog(groupId: groupId, schoolCode: schoolCode);
+      fetchFailed = false;
     } catch (e) {
       debugPrint('TestCatalogService.refresh: network error: $e');
       catalog = [];
+      fetchFailed = true;
     }
 
-    if (catalog.isEmpty) {
-      // Offline yoki katalog bo'sh — faqat keshdan ko'rsat
+    if (fetchFailed) {
+      // Tarmoq xatosi — faqat keshdan ko'rsat
       if (cachedRows.isEmpty) return [];
       return cachedRows.map((row) {
         final key = row['test_key']?.toString() ?? '';
@@ -215,6 +218,16 @@ class TestCatalogService {
         createdAt: DateTime.tryParse(item['created_at']?.toString() ?? ''),
       ));
     }
+
+    // Muvaffaqiyatli fetch — backend katalogida endi yo'q (masalan
+    // arxivlangan) testlarni keshdan tozalaymiz, best-effort (asosiy
+    // natijani bloklamasin).
+    try {
+      await TestCache.pruneNotIn(entries.map((e) => e.testKey).toSet());
+    } catch (e) {
+      debugPrint('TestCatalogService.refresh: cache prune error: $e');
+    }
+
     return entries;
   }
 
