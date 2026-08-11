@@ -200,7 +200,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isOnline = false;
   bool _checkingOnline = true;
   bool _autoLogging = true; // birinchi ochilganda auto-login urinish
-  String _statusMsg = 'Server tekshirilmoqda...';
+  // ponytail: tarjima matni state'da saqlanmaydi — checking/online/offline
+  // holati saqlanadi, matn build vaqtida l10n orqali hisoblanadi (til
+  // almashganda ham to'g'ri ko'rinishi uchun).
+  bool? _statusOnline; // null = tekshirilmoqda
   String? _error;
   bool _expanded = false; // accordion: login form revealed
 
@@ -311,7 +314,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _autoLogging = false;
       _isOnline = online;
       _checkingOnline = false;
-      _statusMsg = online ? 'Server bilan ulandi' : 'Offline rejim';
+      _statusOnline = online;
     });
   }
 
@@ -319,7 +322,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) {
       setState(() {
         _checkingOnline = true;
-        _statusMsg = 'Server tekshirilmoqda...';
+        _statusOnline = null;
       });
     }
 
@@ -329,7 +332,7 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isOnline = online;
         _checkingOnline = false;
-        _statusMsg = online ? 'Server bilan ulandi' : 'Offline rejim';
+        _statusOnline = online;
       });
     }
 
@@ -984,7 +987,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                         shape: BoxShape.circle,
                                         color: _statusColor)),
                             const SizedBox(width: 7),
-                            Text(_statusMsg,
+                            Text(
+                                _statusOnline == null
+                                    ? l10n.serverChecking
+                                    : (_statusOnline!
+                                        ? l10n.serverConnected
+                                        : l10n.offlineMode),
                                 style: AppTextStyles.labelMedium.copyWith(
                                     fontWeight: FontWeight.w600,
                                     color: _checkingOnline
