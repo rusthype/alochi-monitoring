@@ -34,8 +34,8 @@ import '../../core/api/api_client.dart';
 import '../../core/models/models.dart';
 import '../../core/session/logout.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/theme/student_palette.dart';
 import '../../shared/widgets/hover_region.dart';
-import '../../shared/widgets/new_badge.dart';
 import '../../shared/widgets/student_kpi_tile.dart';
 import '../../shared/widgets/student_shell.dart' show kStudentBranchPaths;
 import '../../shared/widgets/subject_badge.dart';
@@ -480,6 +480,7 @@ class _StudentProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     final letter = session.studentName.trim().isNotEmpty
         ? session.studentName.trim()[0].toUpperCase()
         : '?';
@@ -494,9 +495,9 @@ class _StudentProfileCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: pal.surface,
         borderRadius: AppRadii.roundedXl,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: pal.border),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
@@ -527,8 +528,8 @@ class _StudentProfileCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(session.studentName,
-                        style: AppTextStyles.titleMedium
-                            .copyWith(fontWeight: FontWeight.w700)),
+                        style: AppTextStyles.titleMedium.copyWith(
+                            fontWeight: FontWeight.w700, color: pal.ink1)),
                     const SizedBox(height: 2),
                     if (gradeGroup.isNotEmpty || schoolName.isNotEmpty)
                       Text(
@@ -536,7 +537,7 @@ class _StudentProfileCard extends StatelessWidget {
                             .where((s) => s.isNotEmpty)
                             .join(' · '),
                         style: AppTextStyles.bodyMedium
-                            .copyWith(color: AppColors.ink2),
+                            .copyWith(color: pal.ink2),
                       ),
                   ],
                 ),
@@ -679,6 +680,7 @@ class _FilterAndSearchRow extends StatelessWidget {
 
   Widget _chip(
       BuildContext context, String label, bool selected, VoidCallback onTap) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return HoverRegion(
       builder: (context, isHovered) => GestureDetector(
         onTap: onTap,
@@ -687,14 +689,13 @@ class _FilterAndSearchRow extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected
                 ? AppColors.brand
-                : (isHovered ? AppColors.hoverBg : AppColors.chipBg),
+                : (isHovered ? pal.hoverBg : pal.chipBg),
             borderRadius: AppRadii.roundedFull,
-            border: Border.all(
-                color: selected ? AppColors.brand : AppColors.chipBorder),
+            border: Border.all(color: selected ? AppColors.brand : pal.border),
           ),
           child: Text(label,
               style: AppTextStyles.labelMedium.copyWith(
-                  color: selected ? Colors.white : AppColors.ink2,
+                  color: selected ? Colors.white : pal.ink2,
                   fontWeight: FontWeight.w600)),
         ),
       ),
@@ -724,13 +725,14 @@ class _TestCardsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     if (tests.isEmpty) {
+      final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 32),
         child: Center(
           child: Text(
             totalCount == 0 ? l10n.myTestsEmpty : l10n.noFilterMatches,
             textAlign: TextAlign.center,
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3),
+            style: AppTextStyles.bodyMedium.copyWith(color: pal.ink3),
           ),
         ),
       );
@@ -776,57 +778,125 @@ class _StudentTestCard extends StatelessWidget {
     return '$from–$until';
   }
 
-  /// Single switch on `displayStatus` for icon/color/label — adding a 5th
-  /// status later only needs one edit site instead of three.
+  /// Single switch on `displayStatus` (+ `isNew`) for the header badge's
+  /// icon/color/label — adding a 5th status later only needs one edit site.
+  /// Reuses existing filter-tab copy (l10n.filterLocked/filterInProgress/
+  /// filterCompleted) rather than inventing new strings — no ARB changes.
   (IconData, Color, String) _statusVisuals(AppLocalizations l10n) {
     switch (test.displayStatus) {
       case 'locked':
-        return (Icons.lock_rounded, AppColors.error, l10n.stillLocked);
+        return (Icons.lock_rounded, AppColors.error, l10n.filterLocked);
       case 'in_progress':
-        return (
-          Icons.timelapse_rounded,
-          AppColors.amber,
-          l10n.filterInProgress
-        );
+        return (Icons.timelapse_rounded, AppColors.amber, l10n.filterInProgress);
       case 'completed':
         return (Icons.check_circle_rounded, AppColors.ok, l10n.filterCompleted);
       default:
-        return (Icons.check_circle_rounded, AppColors.ok, l10n.ready);
+        return test.isNew
+            ? (Icons.star_rounded, AppColors.secondary, l10n.newBadge)
+            : (Icons.check_circle_rounded, AppColors.ok, l10n.ready);
     }
   }
 
-  Widget? _metaRow(AppLocalizations l10n) {
+  Widget? _metaRow(AppLocalizations l10n, StudentPalette pal) {
     final chips = <Widget>[];
     if ((test.questionCount ?? 0) > 0) {
-      chips.add(
-          _metaChip(Icons.article_outlined, l10n.questionCountLabel(test.questionCount!)));
+      chips.add(_metaChip(Icons.article_outlined,
+          l10n.questionCountLabel(test.questionCount!), pal));
     }
     if ((test.durationMinutes ?? 0) > 0) {
-      chips.add(_metaChip(
-          Icons.access_time_rounded, l10n.durationMinutesLabel(test.durationMinutes!)));
+      chips.add(_metaChip(Icons.access_time_rounded,
+          l10n.durationMinutesLabel(test.durationMinutes!), pal));
     }
     if (test.availableUntil != null) {
       chips.add(_metaChip(Icons.calendar_today_rounded,
-          DateFormat('dd.MM.yyyy').format(test.availableUntil!.toLocal())));
+          DateFormat('dd.MM.yyyy').format(test.availableUntil!.toLocal()), pal));
     }
     if (chips.isEmpty) return null;
     return Wrap(spacing: 10, runSpacing: 2, children: chips);
   }
 
-  Widget _metaChip(IconData icon, String text) => Row(
+  Widget _metaChip(IconData icon, String text, StudentPalette pal) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.ink3),
+          Icon(icon, size: 14, color: pal.ink3),
           const SizedBox(width: 3),
-          Text(text, style: AppTextStyles.caption.copyWith(color: AppColors.ink3)),
+          Text(text, style: AppTextStyles.caption.copyWith(color: pal.ink3)),
         ],
       );
+
+  /// Inline top-right status chip (shot8.jpg: "Новый"/"В процессе"/
+  /// "Пройден"/"Заблокирован") — theme-independent semantic color, same as
+  /// subject-brand colors per the dark-mode retrofit scope.
+  Widget _statusBadge(IconData icon, Color color, String label) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: AppRadii.roundedFull,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
+            Text(label,
+                style: AppTextStyles.caption
+                    .copyWith(color: color, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      );
+
+  /// Full-width CTA button (shot8.jpg: "Начать тест"/"Продолжить"/
+  /// "Посмотреть результат"/"Заблокировано") — relies on the app's global
+  /// ElevatedButtonThemeData (brand-colored, full-width) for the primary
+  /// action; locked/completed use an explicit outlined style.
+  Widget _ctaButton(AppLocalizations l10n, StudentPalette pal) {
+    if (test.displayStatus == 'locked') {
+      return OutlinedButton.icon(
+        onPressed: null,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 44),
+          foregroundColor: pal.ink3,
+          side: BorderSide(color: pal.border),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        icon: const Icon(Icons.lock_rounded, size: 16),
+        label: Text(l10n.filterLocked),
+      );
+    }
+    if (test.displayStatus == 'completed') {
+      return OutlinedButton.icon(
+        onPressed: starting ? null : onTap,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 44),
+          foregroundColor: AppColors.success,
+          side: const BorderSide(color: AppColors.success),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        icon: const Icon(Icons.bar_chart_rounded, size: 16),
+        label: Text(l10n.viewResult),
+      );
+    }
+    return ElevatedButton.icon(
+      onPressed: starting ? null : onTap,
+      icon: starting
+          ? const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white),
+            )
+          : const Icon(Icons.arrow_forward_rounded, size: 16),
+      label: Text(
+          test.displayStatus == 'in_progress' ? l10n.continueTest : l10n.startTest),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     final locked = test.displayStatus == 'locked';
-    final metaWidget = _metaRow(l10n);
+    final metaWidget = _metaRow(l10n, pal);
     final (statusIcon, statusColor, statusLabel) = _statusVisuals(l10n);
 
     return Opacity(
@@ -837,128 +907,100 @@ class _StudentTestCard extends StatelessWidget {
           child: InkWell(
             borderRadius: AppRadii.roundedXl,
             onTap: (locked || starting) ? null : onTap,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: AppRadii.roundedXl,
-                    border: Border.all(
-                      color: isHovered && !locked
-                          ? AppColors.brand.withValues(alpha: 0.5)
-                          : AppColors.border,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 12,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: pal.surface,
+                borderRadius: AppRadii.roundedXl,
+                border: Border.all(
+                  color: isHovered && !locked
+                      ? AppColors.brand.withValues(alpha: 0.5)
+                      : pal.border,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       subjectBadge(test.subject),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              test.title,
-                              style: AppTextStyles.labelLarge.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.ink1,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                Icon(statusIcon, size: 14, color: statusColor),
-                                const SizedBox(width: 5),
-                                Text(
-                                  statusLabel,
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: statusColor,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                if (test.displayStatus == 'completed' &&
-                                    test.score != null) ...[
-                                  const SizedBox(width: 6),
-                                  Text('· ${test.score}%',
-                                      style: AppTextStyles.caption.copyWith(
-                                          color: AppColors.ink2,
-                                          fontWeight: FontWeight.w700)),
-                                ],
-                              ],
-                            ),
-                            if (test.displayStatus == 'in_progress' &&
-                                test.progressPct != null) ...[
-                              const SizedBox(height: 8),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value:
-                                      (test.progressPct!.clamp(0, 100)) / 100,
-                                  minHeight: 5,
-                                  backgroundColor: AppColors.gray100,
-                                  valueColor: const AlwaysStoppedAnimation(
-                                      AppColors.amber),
-                                ),
-                              ),
-                            ],
-                            if (locked &&
-                                test.lockedUntil != null &&
-                                test.availableUntil != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                _timeWindowLabel(),
-                                style: AppTextStyles.caption
-                                    .copyWith(color: AppColors.ink3),
-                              ),
-                            ],
-                            if (metaWidget != null) ...[
-                              const SizedBox(height: 4),
-                              metaWidget,
-                            ],
-                          ],
+                        child: Text(
+                          test.title,
+                          style: AppTextStyles.labelLarge
+                              .copyWith(fontWeight: FontWeight.w700, color: pal.ink1),
                         ),
                       ),
-                      if (starting)
-                        const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      else if (!locked)
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: isHovered
-                                ? AppColors.brand
-                                : AppColors.brandLight,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            test.displayStatus == 'completed'
-                                ? Icons.bar_chart_rounded
-                                : Icons.arrow_forward_rounded,
-                            color: isHovered ? Colors.white : AppColors.brand,
-                            size: 18,
-                          ),
-                        ),
+                      const SizedBox(width: 8),
+                      _statusBadge(statusIcon, statusColor, statusLabel),
                     ],
                   ),
-                ),
-                if (test.isNew && test.displayStatus == 'available')
-                  const Positioned(top: -6, right: -6, child: NewBadge()),
-              ],
+                  if (test.displayStatus == 'completed' && test.score != null) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(l10n.resultTitle,
+                            style: AppTextStyles.caption.copyWith(color: pal.ink3)),
+                        Text('${test.score}/100 (${test.score}%)',
+                            style: AppTextStyles.caption.copyWith(
+                                color: AppColors.success, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (test.score!.clamp(0, 100)) / 100,
+                        minHeight: 5,
+                        backgroundColor: pal.chipBg,
+                        valueColor: const AlwaysStoppedAnimation(AppColors.success),
+                      ),
+                    ),
+                  ],
+                  if (test.displayStatus == 'in_progress' && test.progressPct != null) ...[
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text('${test.progressPct}%',
+                          style: AppTextStyles.caption
+                              .copyWith(color: pal.ink2, fontWeight: FontWeight.w700)),
+                    ),
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (test.progressPct!.clamp(0, 100)) / 100,
+                        minHeight: 5,
+                        backgroundColor: pal.chipBg,
+                        valueColor: const AlwaysStoppedAnimation(AppColors.amber),
+                      ),
+                    ),
+                  ],
+                  if (locked && test.lockedUntil != null && test.availableUntil != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      _timeWindowLabel(),
+                      style: AppTextStyles.caption.copyWith(color: pal.ink3),
+                    ),
+                  ],
+                  if (metaWidget != null) ...[
+                    const SizedBox(height: 8),
+                    metaWidget,
+                  ],
+                  const SizedBox(height: 14),
+                  _ctaButton(l10n, pal),
+                ],
+              ),
             ),
           ),
         ),
@@ -981,14 +1023,15 @@ class _RecentResultsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     if (profile == null) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context)!;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     final results = profile!.recentResults;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: pal.surface,
         borderRadius: AppRadii.roundedXl,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: pal.border),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
@@ -1001,17 +1044,16 @@ class _RecentResultsPanel extends StatelessWidget {
         children: [
           Text(l10n.recentResultsTitle,
               style: AppTextStyles.labelLarge
-                  .copyWith(fontWeight: FontWeight.w700)),
+                  .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
           const SizedBox(height: 12),
           if (results.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(l10n.noResultsYet,
-                  style:
-                      AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3)),
+                  style: AppTextStyles.bodyMedium.copyWith(color: pal.ink3)),
             )
           else
-            for (final r in results.take(5)) _resultRow(r),
+            for (final r in results.take(5)) _resultRow(r, pal),
           if (results.isNotEmpty) ...[
             const SizedBox(height: 8),
             TextButton(onPressed: onViewAll, child: Text(l10n.viewAllResults)),
@@ -1021,7 +1063,7 @@ class _RecentResultsPanel extends StatelessWidget {
     );
   }
 
-  Widget _resultRow(RecentResult r) {
+  Widget _resultRow(RecentResult r, StudentPalette pal) {
     final dateStr = r.submittedAt != null
         ? DateFormat('dd.MM.yyyy').format(r.submittedAt!.toLocal())
         : '';
@@ -1037,11 +1079,10 @@ class _RecentResultsPanel extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.ink1, fontWeight: FontWeight.w600)),
+                        color: pal.ink1, fontWeight: FontWeight.w600)),
                 if (dateStr.isNotEmpty)
                   Text(dateStr,
-                      style: AppTextStyles.caption
-                          .copyWith(color: AppColors.ink3)),
+                      style: AppTextStyles.caption.copyWith(color: pal.ink3)),
               ],
             ),
           ),
