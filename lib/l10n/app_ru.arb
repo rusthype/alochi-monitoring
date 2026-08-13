@@ -9,6 +9,7 @@
   "serverChecking": "Проверка сервера...",
   "serverConnected": "Подключено к серверу",
   "offlineMode": "Оффлайн режим",
+  "onlineStatus": "Онлайн",
   "invalidCredentials": "Логин или пароль неверный",
   "tooManyAttempts": "Слишком много попыток. Подождите немного.",
   "serverErrorRetry": "Ошибка сервера. Попробуйте еще раз.",

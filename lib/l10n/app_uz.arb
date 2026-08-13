@@ -9,6 +9,7 @@
   "serverChecking": "Server tekshirilmoqda...",
   "serverConnected": "Server bilan ulandi",
   "offlineMode": "Offline rejim",
+  "onlineStatus": "Onlayn",
   "invalidCredentials": "Login yoki parol noto'g'ri",
   "tooManyAttempts": "Ko'p urinish. Biroz kuting.",
   "serverErrorRetry": "Server xatosi. Qayta urinib ko'ring.",

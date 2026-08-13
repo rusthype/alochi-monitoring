@@ -33,12 +33,12 @@ import 'package:intl/intl.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
+import '../../core/locale/locale_provider.dart';
 import '../../core/models/models.dart';
 import '../../core/network/connectivity_provider.dart';
 import '../../core/network/connectivity_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/hover_region.dart';
-import '../../shared/widgets/language_switcher.dart';
 import '../auth/login_screen.dart';
 
 /// Lightweight catalog row for the self-login flow — intentionally separate
@@ -643,7 +643,7 @@ class _TopHeaderBar extends ConsumerWidget {
     final isOnline = !signal.checking && signal.tier != SignalTier.none;
     final signalLabel = signal.checking
         ? l10n.serverChecking
-        : (isOnline ? l10n.serverConnected : l10n.offlineMode);
+        : (isOnline ? l10n.onlineStatus : l10n.offlineMode);
     final signalColor = signal.checking
         ? AppColors.brand
         : (isOnline ? AppColors.ok : AppColors.ink3);
@@ -657,22 +657,20 @@ class _TopHeaderBar extends ConsumerWidget {
                 style: AppTextStyles.titleLarge
                     .copyWith(fontWeight: FontWeight.w800)),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: signalColor,
-                    shape: BoxShape.circle,
-                  )),
-              const SizedBox(width: 6),
-              Text(signalLabel,
-                  style: AppTextStyles.caption.copyWith(color: signalColor)),
-            ],
-          ),
-          const SizedBox(width: 16),
+          _Pill(children: [
+            Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: signalColor,
+                  shape: BoxShape.circle,
+                )),
+            const SizedBox(width: 6),
+            Text(signalLabel,
+                style: AppTextStyles.caption
+                    .copyWith(color: signalColor, fontWeight: FontWeight.w600)),
+          ]),
+          const SizedBox(width: 8),
           if (onResultsTap != null) ...[
             IconButton(
               icon: const Icon(Icons.bar_chart_rounded, color: AppColors.ink2),
@@ -681,33 +679,76 @@ class _TopHeaderBar extends ConsumerWidget {
             ),
             const SizedBox(width: 4),
           ],
-          const LanguageSwitcher(),
+          const _LanguagePill(),
           const SizedBox(width: 8),
           HoverRegion(
             builder: (context, isHovered) => GestureDetector(
               onTap: onLogout,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isHovered ? AppColors.hoverBg : AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.logout_rounded,
-                        size: 16, color: AppColors.ink2),
-                    const SizedBox(width: 6),
-                    Text(l10n.logout,
-                        style: AppTextStyles.labelMedium
-                            .copyWith(color: AppColors.ink1)),
-                  ],
-                ),
+              child: _Pill(
+                color: isHovered ? AppColors.hoverBg : AppColors.surface,
+                children: [
+                  const Icon(Icons.logout_rounded,
+                      size: 16, color: AppColors.ink2),
+                  const SizedBox(width: 6),
+                  Text(l10n.logout,
+                      style: AppTextStyles.labelMedium
+                          .copyWith(color: AppColors.ink1)),
+                ],
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shared white-pill container used for the header's status/language/logout
+/// controls so all three share one radius/padding/border look.
+class _Pill extends StatelessWidget {
+  final List<Widget> children;
+  final Color? color;
+  const _Pill({required this.children, this.color});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: color ?? AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: children),
+      );
+}
+
+/// Local replacement for the shared `LanguageSwitcher` on this screen only —
+/// reads/writes the same `localeProvider`, styled to match `_Pill`. The
+/// shared widget (also used by login_screen.dart) is left untouched.
+class _LanguagePill extends ConsumerWidget {
+  const _LanguagePill();
+
+  static const _names = {'uz': 'O‘zbekcha', 'ru': 'Русский'};
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final code = ref.watch(localeProvider).languageCode;
+    return PopupMenuButton<String>(
+      offset: const Offset(0, 36),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (v) => ref.read(localeProvider.notifier).setLocale(Locale(v)),
+      itemBuilder: (context) => _names.entries
+          .map((e) => PopupMenuItem(value: e.key, child: Text(e.value)))
+          .toList(),
+      child: _Pill(
+        children: [
+          const Icon(Icons.language_rounded, size: 16, color: AppColors.ink2),
+          const SizedBox(width: 6),
+          Text(_names[code] ?? code.toUpperCase(),
+              style: AppTextStyles.labelMedium.copyWith(color: AppColors.ink1)),
+          const SizedBox(width: 4),
+          const Icon(Icons.keyboard_arrow_down_rounded,
+              size: 16, color: AppColors.ink3),
         ],
       ),
     );
@@ -797,6 +838,9 @@ class _StudentProfileCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: _kpiTile(
+                    Icons.assignment_turned_in_rounded,
+                    const Color(0xFF2E7D32),
+                    const Color(0xFFE8F5E9),
                     l10n.kpiTestsCompleted,
                     profile!.testsCompleted != null
                         ? '${profile!.testsCompleted}'
@@ -806,6 +850,9 @@ class _StudentProfileCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _kpiTile(
+                    Icons.star_rounded,
+                    const Color(0xFFF57F17),
+                    const Color(0xFFFFF8E1),
                     l10n.kpiAverageScore,
                     profile!.averageScore != null
                         ? '${profile!.averageScore}%'
@@ -815,6 +862,9 @@ class _StudentProfileCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _kpiTile(
+                    Icons.local_fire_department_rounded,
+                    const Color(0xFFE65100),
+                    const Color(0xFFFBE9E7),
                     l10n.kpiStreakDays,
                     profile!.streakDays != null
                         ? '${profile!.streakDays}'
@@ -829,20 +879,35 @@ class _StudentProfileCard extends StatelessWidget {
     );
   }
 
-  Widget _kpiTile(String label, String value) {
+  Widget _kpiTile(
+      IconData icon, Color iconColor, Color iconBg, String label, String value) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
       decoration: const BoxDecoration(
           color: AppColors.pageBg, borderRadius: AppRadii.roundedMd),
-      child: Column(
+      child: Row(
         children: [
-          Text(value,
-              style: AppTextStyles.titleLarge
-                  .copyWith(fontWeight: FontWeight.w800, fontSize: 18)),
-          const SizedBox(height: 2),
-          Text(label,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.caption.copyWith(color: AppColors.ink3)),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+            alignment: Alignment.center,
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(value,
+                    style: AppTextStyles.titleLarge
+                        .copyWith(fontWeight: FontWeight.w800, fontSize: 18)),
+                Text(label,
+                    style:
+                        AppTextStyles.caption.copyWith(color: AppColors.ink3)),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1053,22 +1118,62 @@ class _StudentTestCard extends StatelessWidget {
     }
   }
 
-  String? _metaLine(AppLocalizations l10n) {
-    final parts = <String>[];
+  Widget _subjectBadge() {
+    final subject = test.subject.toLowerCase();
+    if (subject == 'math') {
+      return const _SubjectBox(
+        bg: Color(0xFFEDE7F6),
+        child: Icon(Icons.calculate_rounded, color: Color(0xFF673AB7), size: 22),
+      );
+    }
+    if (subject == 'english') {
+      return const _SubjectBox(
+        bg: Color(0xFFE8F5E9),
+        child: Text('EN',
+            style: TextStyle(
+                color: Color(0xFF2E7D32),
+                fontWeight: FontWeight.w800,
+                fontSize: 13)),
+      );
+    }
+    return const _SubjectBox(
+      bg: Color(0xFFE3F2FD),
+      child: Icon(Icons.description_rounded, color: Color(0xFF1976D2), size: 22),
+    );
+  }
+
+  Widget? _metaRow(AppLocalizations l10n) {
+    final chips = <Widget>[];
     if ((test.questionCount ?? 0) > 0) {
-      parts.add(l10n.questionCountLabel(test.questionCount!));
+      chips.add(
+          _metaChip(Icons.article_outlined, l10n.questionCountLabel(test.questionCount!)));
     }
     if ((test.durationMinutes ?? 0) > 0) {
-      parts.add(l10n.durationMinutesLabel(test.durationMinutes!));
+      chips.add(_metaChip(
+          Icons.access_time_rounded, l10n.durationMinutesLabel(test.durationMinutes!)));
     }
-    return parts.isEmpty ? null : parts.join(' · ');
+    if (test.availableUntil != null) {
+      chips.add(_metaChip(Icons.calendar_today_rounded,
+          DateFormat('dd.MM.yyyy').format(test.availableUntil!.toLocal())));
+    }
+    if (chips.isEmpty) return null;
+    return Wrap(spacing: 10, runSpacing: 2, children: chips);
   }
+
+  Widget _metaChip(IconData icon, String text) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.ink3),
+          const SizedBox(width: 3),
+          Text(text, style: AppTextStyles.caption.copyWith(color: AppColors.ink3)),
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final locked = test.displayStatus == 'locked';
-    final meta = _metaLine(l10n);
+    final metaWidget = _metaRow(l10n);
     final (statusIcon, statusColor, statusLabel) = _statusVisuals(l10n);
 
     return Opacity(
@@ -1104,6 +1209,8 @@ class _StudentTestCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _subjectBadge(),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1162,11 +1269,9 @@ class _StudentTestCard extends StatelessWidget {
                                     .copyWith(color: AppColors.ink3),
                               ),
                             ],
-                            if (meta != null) ...[
+                            if (metaWidget != null) ...[
                               const SizedBox(height: 4),
-                              Text(meta,
-                                  style: AppTextStyles.caption
-                                      .copyWith(color: AppColors.ink3)),
+                              metaWidget,
                             ],
                           ],
                         ),
@@ -1207,6 +1312,24 @@ class _StudentTestCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 40x40 rounded-square leading icon box for the subject badge on each
+/// `_StudentTestCard` (math/english/other), shared to avoid repeating the
+/// same decoration three times.
+class _SubjectBox extends StatelessWidget {
+  final Color bg;
+  final Widget child;
+  const _SubjectBox({required this.bg, required this.child});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
+        alignment: Alignment.center,
+        child: child,
+      );
 }
 
 /// Minimal "NEW"/"Yangi" pill — same visual recipe as

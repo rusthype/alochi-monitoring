@@ -36,6 +36,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get offlineMode => 'Offline rejim';
 
   @override
+  String get onlineStatus => 'Onlayn';
+
+  @override
   String get invalidCredentials => 'Login yoki parol noto\'g\'ri';
 
   @override
