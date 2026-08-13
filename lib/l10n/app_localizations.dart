@@ -3235,6 +3235,144 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'O\'zgarishlar darhol qo\'llaniladi. Sozlamalar shu qurilmada saqlanadi.'**
   String get tipsBody;
+
+  /// No description provided for @certificatesScreenTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sertifikatlar va yutuqlar'**
+  String get certificatesScreenTitle;
+
+  /// No description provided for @certificatesHeroTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sizning yutuqlaringiz mukofotga loyiq!'**
+  String get certificatesHeroTitle;
+
+  /// No description provided for @certificatesHeroSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qishda davom eting, nishonlar to\'plang va a\'lo natijalar uchun sertifikat qo\'lga kiriting.'**
+  String get certificatesHeroSubtitle;
+
+  /// No description provided for @certificatesKpiCountLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Olingan sertifikatlar'**
+  String get certificatesKpiCountLabel;
+
+  /// No description provided for @certificatesKpiBadgesLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ochilgan nishonlar'**
+  String get certificatesKpiBadgesLabel;
+
+  /// No description provided for @badgeMathMasterTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Matematika ustasi'**
+  String get badgeMathMasterTitle;
+
+  /// No description provided for @badgePerfectScoreTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'100% natija'**
+  String get badgePerfectScoreTitle;
+
+  /// No description provided for @badgeStreakCount.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} kun ketma-ket'**
+  String badgeStreakCount(int count);
+
+  /// No description provided for @badgeEnglishMasterTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ingliz tili ustasi'**
+  String get badgeEnglishMasterTitle;
+
+  /// No description provided for @badgeActiveStudentTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faol o\'quvchi'**
+  String get badgeActiveStudentTitle;
+
+  /// No description provided for @badgeUnlockedLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ochilgan'**
+  String get badgeUnlockedLabel;
+
+  /// No description provided for @badgesAndAchievementsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nishonlar va yutuqlar'**
+  String get badgesAndAchievementsTitle;
+
+  /// No description provided for @progressPanelTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yutuqlar jarayoni'**
+  String get progressPanelTitle;
+
+  /// No description provided for @progressNoSubjectData.
+  ///
+  /// In uz, this message translates to:
+  /// **'Fanlar bo\'yicha ma\'lumot hali yo\'q'**
+  String get progressNoSubjectData;
+
+  /// No description provided for @progressClosestBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eng yaqin: «{title}» — {pct}%'**
+  String progressClosestBadge(String title, int pct);
+
+  /// No description provided for @certificatesSearchHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sertifikatlar bo\'yicha qidirish...'**
+  String get certificatesSearchHint;
+
+  /// No description provided for @filterBadgesLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nishonlar'**
+  String get filterBadgesLabel;
+
+  /// No description provided for @certificatesEmptyPrompt.
+  ///
+  /// In uz, this message translates to:
+  /// **'Birinchi sertifikatingizni olish uchun testni {minScore}%+ natija bilan yakunlang'**
+  String certificatesEmptyPrompt(int minScore);
+
+  /// No description provided for @certificateIssuedOn.
+  ///
+  /// In uz, this message translates to:
+  /// **'{date} sanasida berilgan'**
+  String certificateIssuedOn(String date);
+
+  /// No description provided for @certificateGeneratingLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tayyorlanmoqda...'**
+  String get certificateGeneratingLabel;
+
+  /// No description provided for @certificateThumbnailLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'SERTIFIKAT'**
+  String get certificateThumbnailLabel;
+
+  /// No description provided for @diplomaIssuedToLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'berildi'**
+  String get diplomaIssuedToLabel;
+
+  /// No description provided for @diplomaForTestResultLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'\"{title}\" testidagi natija uchun'**
+  String diplomaForTestResultLabel(String title);
 }
 
 class _AppLocalizationsDelegate

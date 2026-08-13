@@ -1701,4 +1701,84 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get tipsBody =>
       'O\'zgarishlar darhol qo\'llaniladi. Sozlamalar shu qurilmada saqlanadi.';
+
+  @override
+  String get certificatesScreenTitle => 'Sertifikatlar va yutuqlar';
+
+  @override
+  String get certificatesHeroTitle => 'Sizning yutuqlaringiz mukofotga loyiq!';
+
+  @override
+  String get certificatesHeroSubtitle =>
+      'O\'qishda davom eting, nishonlar to\'plang va a\'lo natijalar uchun sertifikat qo\'lga kiriting.';
+
+  @override
+  String get certificatesKpiCountLabel => 'Olingan sertifikatlar';
+
+  @override
+  String get certificatesKpiBadgesLabel => 'Ochilgan nishonlar';
+
+  @override
+  String get badgeMathMasterTitle => 'Matematika ustasi';
+
+  @override
+  String get badgePerfectScoreTitle => '100% natija';
+
+  @override
+  String badgeStreakCount(int count) {
+    return '$count kun ketma-ket';
+  }
+
+  @override
+  String get badgeEnglishMasterTitle => 'Ingliz tili ustasi';
+
+  @override
+  String get badgeActiveStudentTitle => 'Faol o\'quvchi';
+
+  @override
+  String get badgeUnlockedLabel => 'Ochilgan';
+
+  @override
+  String get badgesAndAchievementsTitle => 'Nishonlar va yutuqlar';
+
+  @override
+  String get progressPanelTitle => 'Yutuqlar jarayoni';
+
+  @override
+  String get progressNoSubjectData => 'Fanlar bo\'yicha ma\'lumot hali yo\'q';
+
+  @override
+  String progressClosestBadge(String title, int pct) {
+    return 'Eng yaqin: «$title» — $pct%';
+  }
+
+  @override
+  String get certificatesSearchHint => 'Sertifikatlar bo\'yicha qidirish...';
+
+  @override
+  String get filterBadgesLabel => 'Nishonlar';
+
+  @override
+  String certificatesEmptyPrompt(int minScore) {
+    return 'Birinchi sertifikatingizni olish uchun testni $minScore%+ natija bilan yakunlang';
+  }
+
+  @override
+  String certificateIssuedOn(String date) {
+    return '$date sanasida berilgan';
+  }
+
+  @override
+  String get certificateGeneratingLabel => 'Tayyorlanmoqda...';
+
+  @override
+  String get certificateThumbnailLabel => 'SERTIFIKAT';
+
+  @override
+  String get diplomaIssuedToLabel => 'berildi';
+
+  @override
+  String diplomaForTestResultLabel(String title) {
+    return '\"$title\" testidagi natija uchun';
+  }
 }

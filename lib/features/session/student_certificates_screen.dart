@@ -3,7 +3,7 @@
 // "Сертификаты и достижения" — self-login student cabinet screen, mockup:
 // /Users/max/.gemini/antigravity-cli/brain/d4e52b23-4089-4731-b0f9-b3d97e1e20f0/mock4.jpg
 //
-// NOT wired into routing yet (done centrally afterward, per task).
+// Wired into app_router.dart as the live `/certificates` route.
 //
 // REAL-DATA-ONLY (project rule — never fabricate): this app has no backend
 // certificate/achievement model, so every badge/certificate here is a
@@ -19,10 +19,9 @@
 // certificates/badge-qualifying attempts not reflected here. Fixing that
 // needs a new paginated endpoint, out of scope for this screen.
 //
-// ponytail: hardcoded Russian strings (matches the mockup, which is
-// Russian-only) instead of new AppLocalizations/ARB keys — this screen
-// isn't wired in yet, so no route currently needs it localized. Add uz/ru
-// ARB keys when centrally wired, same as every other student-cabinet screen.
+// Localized via AppLocalizations/ARB (app_uz.arb / app_ru.arb) — same
+// pattern as results_screen.dart/settings_screen.dart, now that this screen
+// is wired into a live sidebar route (/certificates).
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -34,13 +33,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
-import '../../core/db/credential_cache.dart';
 import '../../core/models/models.dart';
+import '../../core/session/logout.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/student_kpi_tile.dart';
 import '../../shared/widgets/student_shell.dart';
-import '../auth/login_screen.dart';
 
 /// Badge thresholds — documented here so they can be reviewed/adjusted in
 /// one place. All computed from real `RecentResult`/`stats` data, never
@@ -99,7 +98,11 @@ class _StudentCertificatesScreenState
   String _searchQuery = '';
   int _sectionFilter = 0; // 0=all, 1=certificates only, 2=badges only
 
-  String? _generatingCertKey;
+  // Identity-keyed (not RecentResult.testKey, which defaults to '' and can
+  // collide across multiple results missing that field — see finding #4).
+  // RecentResult doesn't override ==/hashCode, so Set membership here is
+  // already reference-identity, which is genuinely unique per card.
+  RecentResult? _generatingCertFor;
 
   @override
   void initState() {
@@ -138,37 +141,21 @@ class _StudentCertificatesScreenState
     }
   }
 
-  /// Same kiosk-security step as results_screen.dart's `_clearSession`.
-  Future<void> _clearSession() async {
-    api.clearToken();
-    await CredentialCache.clear();
-  }
-
-  void _goToLoginReplacingStack() {
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
-  }
-
-  Future<void> _logoutNow() async {
-    await _clearSession();
-    _goToLoginReplacingStack();
-  }
+  Future<void> _logoutNow() => logoutStudentSession(context);
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return StudentShell(
       currentRoute: '/certificates',
       session: widget.session,
-      title: 'Сертификаты и достижения',
+      title: l10n.certificatesScreenTitle,
       onLogout: _logoutNow,
-      child: _body(),
+      child: _body(l10n),
     );
   }
 
-  Widget _body() {
+  Widget _body(AppLocalizations l10n) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -182,13 +169,12 @@ class _StudentCertificatesScreenState
               const Icon(Icons.cloud_off_rounded,
                   color: AppColors.ink3, size: 28),
               const SizedBox(height: 12),
-              Text('Не удалось загрузить данные',
+              Text(l10n.loadFailed,
                   textAlign: TextAlign.center,
                   style:
                       AppTextStyles.bodyMedium.copyWith(color: AppColors.ink2)),
               const SizedBox(height: 16),
-              OutlinedButton(
-                  onPressed: _load, child: const Text('Повторить')),
+              OutlinedButton(onPressed: _load, child: Text(l10n.retryCheck)),
             ],
           ),
         ),
@@ -206,7 +192,7 @@ class _StudentCertificatesScreenState
       ..sort((a, b) => (b.submittedAt ?? DateTime(0))
           .compareTo(a.submittedAt ?? DateTime(0)));
 
-    final badges = _computeBadges(results, bestScore);
+    final badges = _computeBadges(l10n, results, bestScore);
     final unlockedCount = badges.where((b) => b.unlocked).length;
 
     final filteredCertificates = _searchQuery.isEmpty
@@ -225,6 +211,7 @@ class _StudentCertificatesScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _HeroBanner(
+              l10n: l10n,
               certificatesCount: certificates.length,
               unlockedBadges: unlockedCount,
               totalBadges: badges.length,
@@ -233,11 +220,16 @@ class _StudentCertificatesScreenState
             const SizedBox(height: 20),
             LayoutBuilder(builder: (context, c) {
               final narrow = c.maxWidth < 900;
-              final badgeSection = _BadgeGrid(badges: badges);
+              final badgeSection = _BadgeGrid(l10n: l10n, badges: badges);
               final progressPanel = _ProgressPanel(
+                l10n: l10n,
                 results: results,
                 badges: badges,
               );
+              // Symmetric with the certificates section's `!= 2` gate below:
+              // filter==1 ("Сертификаты" only) must hide badges/progress,
+              // exactly as filter==2 ("Бейджи" only) hides certificates.
+              if (_sectionFilter == 1) return const SizedBox.shrink();
               if (narrow) {
                 return Column(children: [
                   badgeSection,
@@ -256,6 +248,7 @@ class _StudentCertificatesScreenState
             }),
             const SizedBox(height: 20),
             _SearchAndFilterRow(
+              l10n: l10n,
               query: _searchQuery,
               filter: _sectionFilter,
               onQueryChanged: (v) => setState(() => _searchQuery = v),
@@ -263,21 +256,23 @@ class _StudentCertificatesScreenState
             ),
             const SizedBox(height: 20),
             if (_sectionFilter != 2) ...[
-              Text('Сертификаты',
+              Text(l10n.sidebarCertificates,
                   style: AppTextStyles.titleMedium
                       .copyWith(fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
               if (filteredCertificates.isEmpty)
-                _EmptyCertificates(hasQuery: _searchQuery.isNotEmpty)
+                _EmptyCertificates(
+                    l10n: l10n, hasQuery: _searchQuery.isNotEmpty)
               else
                 Wrap(
                   spacing: 16,
                   runSpacing: 16,
                   children: filteredCertificates
                       .map((c) => _CertificateCard(
+                            l10n: l10n,
                             session: widget.session,
                             result: c,
-                            generating: _generatingCertKey == c.testKey,
+                            generating: identical(_generatingCertFor, c),
                             onDownload: () => _downloadCertificate(c),
                           ))
                       .toList(),
@@ -289,7 +284,8 @@ class _StudentCertificatesScreenState
     );
   }
 
-  List<_Badge> _computeBadges(List<RecentResult> results, int bestScore) {
+  List<_Badge> _computeBadges(
+      AppLocalizations l10n, List<RecentResult> results, int bestScore) {
     double bestFor(bool Function(String subject) match) {
       final scores = results
           .where((r) => match(r.subject.toLowerCase()) && r.score != null)
@@ -304,76 +300,83 @@ class _StudentCertificatesScreenState
 
     return [
       _Badge(
-        title: 'Математика ustasi',
+        title: l10n.badgeMathMasterTitle,
         icon: Icons.calculate_rounded,
         color: AppColors.math,
         unlocked: mathBest >= _BadgeThresholds.mastery,
-        unlockedValueLabel: 'Открыт',
+        unlockedValueLabel: l10n.badgeUnlockedLabel,
         progress: (mathBest / _BadgeThresholds.mastery).clamp(0, 1),
       ),
       _Badge(
-        title: '100% Результат',
+        title: l10n.badgePerfectScoreTitle,
         icon: Icons.star_rounded,
         color: AppColors.gold,
         unlocked: bestScore >= 100,
-        unlockedValueLabel: 'Открыт',
+        unlockedValueLabel: l10n.badgeUnlockedLabel,
         progress: (bestScore / 100).clamp(0, 1),
       ),
       _Badge(
-        title: streak > 0 ? '$streak дней подряд' : 'Дней подряд',
+        title: streak > 0
+            ? l10n.badgeStreakCount(streak)
+            : l10n.kpiStreakDays,
         icon: Icons.local_fire_department_rounded,
         color: AppColors.flame,
         unlocked: streak >= _BadgeThresholds.streakDays,
-        unlockedValueLabel: 'Открыт',
+        unlockedValueLabel: l10n.badgeUnlockedLabel,
         progress: (streak / _BadgeThresholds.streakDays).clamp(0, 1),
       ),
       _Badge(
-        title: 'Знаток English',
+        title: l10n.badgeEnglishMasterTitle,
         icon: Icons.school_rounded,
         color: AppColors.eng,
         unlocked: engBest >= _BadgeThresholds.mastery,
-        unlockedValueLabel: 'Открыт',
+        unlockedValueLabel: l10n.badgeUnlockedLabel,
         progress: (engBest / _BadgeThresholds.mastery).clamp(0, 1),
       ),
       _Badge(
-        title: 'Активный ученик',
+        title: l10n.badgeActiveStudentTitle,
         icon: Icons.military_tech_rounded,
         color: AppColors.violet,
         unlocked: testsDone >= _BadgeThresholds.activeTests,
-        unlockedValueLabel: 'Открыт',
+        unlockedValueLabel: l10n.badgeUnlockedLabel,
         progress: (testsDone / _BadgeThresholds.activeTests).clamp(0, 1),
       ),
     ];
   }
 
   Future<void> _downloadCertificate(RecentResult result) async {
-    setState(() => _generatingCertKey = result.testKey);
+    if (identical(_generatingCertFor, result)) return;
+    setState(() => _generatingCertFor = result);
+    final l10n = AppLocalizations.of(context)!;
     try {
       final file = await _DiplomaPdf.generate(
         session: widget.session,
         result: result,
+        l10n: l10n,
       );
       if (!mounted) return;
       await OpenFilex.open(file.path);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('PDF yaratishda xatolik: $e'),
+        content: Text(l10n.pdfError(e.toString())),
         backgroundColor: AppColors.err,
       ));
     } finally {
-      if (mounted) setState(() => _generatingCertKey = null);
+      if (mounted) setState(() => _generatingCertFor = null);
     }
   }
 }
 
 class _HeroBanner extends StatelessWidget {
+  final AppLocalizations l10n;
   final int certificatesCount;
   final int unlockedBadges;
   final int totalBadges;
   final int bestScore;
 
   const _HeroBanner({
+    required this.l10n,
     required this.certificatesCount,
     required this.unlockedBadges,
     required this.totalBadges,
@@ -399,13 +402,11 @@ class _HeroBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Ваши успехи заслуживают награды!',
+                Text(l10n.certificatesHeroTitle,
                     style: AppTextStyles.titleLarge.copyWith(
                         color: Colors.white, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 4),
-                Text(
-                    'Продолжайте учиться, собирайте бейджи и получайте '
-                    'сертификаты за отличные результаты.',
+                Text(l10n.certificatesHeroSubtitle,
                     style: AppTextStyles.bodyMedium
                         .copyWith(color: Colors.white.withValues(alpha: 0.9))),
                 const SizedBox(height: 18),
@@ -419,7 +420,7 @@ class _HeroBanner extends StatelessWidget {
                         icon: Icons.workspace_premium_rounded,
                         iconColor: AppColors.secondary,
                         iconBg: AppColors.secondaryMuted,
-                        label: 'Получено сертификатов',
+                        label: l10n.certificatesKpiCountLabel,
                         value: '$certificatesCount',
                       ),
                     ),
@@ -429,7 +430,7 @@ class _HeroBanner extends StatelessWidget {
                         icon: Icons.military_tech_rounded,
                         iconColor: AppColors.violet,
                         iconBg: AppColors.violetMuted,
-                        label: 'Открыто бейджей',
+                        label: l10n.certificatesKpiBadgesLabel,
                         value: '$unlockedBadges/$totalBadges',
                       ),
                     ),
@@ -439,7 +440,7 @@ class _HeroBanner extends StatelessWidget {
                         icon: Icons.trending_up_rounded,
                         iconColor: AppColors.success,
                         iconBg: AppColors.successMuted,
-                        label: 'Лучший результат',
+                        label: l10n.kpiBestScore,
                         value: '$bestScore%',
                       ),
                     ),
@@ -458,8 +459,9 @@ class _HeroBanner extends StatelessWidget {
 }
 
 class _BadgeGrid extends StatelessWidget {
+  final AppLocalizations l10n;
   final List<_Badge> badges;
-  const _BadgeGrid({required this.badges});
+  const _BadgeGrid({required this.l10n, required this.badges});
 
   @override
   Widget build(BuildContext context) {
@@ -473,7 +475,7 @@ class _BadgeGrid extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Бейджи и достижения',
+          Text(l10n.badgesAndAchievementsTitle,
               style: AppTextStyles.titleMedium
                   .copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 14),
@@ -528,7 +530,7 @@ class _BadgeTile extends StatelessWidget {
                 color: AppColors.successMuted,
                 borderRadius: AppRadii.roundedFull,
               ),
-              child: Text('Открыт',
+              child: Text(badge.unlockedValueLabel!,
                   style: AppTextStyles.caption.copyWith(
                       color: AppColors.success, fontWeight: FontWeight.w700)),
             )
@@ -557,9 +559,11 @@ class _BadgeTile extends StatelessWidget {
 /// the locked badge closest to unlocking (real progress fraction, not a
 /// guessed "N tests left" count).
 class _ProgressPanel extends StatelessWidget {
+  final AppLocalizations l10n;
   final List<RecentResult> results;
   final List<_Badge> badges;
-  const _ProgressPanel({required this.results, required this.badges});
+  const _ProgressPanel(
+      {required this.l10n, required this.results, required this.badges});
 
   @override
   Widget build(BuildContext context) {
@@ -589,19 +593,19 @@ class _ProgressPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Прогресс достижений',
+          Text(l10n.progressPanelTitle,
               style: AppTextStyles.titleMedium
                   .copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 14),
           if (subjectAverages.isEmpty)
-            Text('Пока нет данных по предметам',
+            Text(l10n.progressNoSubjectData,
                 style:
                     AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3))
           else
             ...subjectAverages.map((e) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _SubjectProgressRow(
-                      subject: e.key, avgPct: e.value.round()),
+                      l10n: l10n, subject: e.key, avgPct: e.value.round()),
                 )),
           if (locked.isNotEmpty) ...[
             const SizedBox(height: 4),
@@ -618,8 +622,8 @@ class _ProgressPanel extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                        'Ближе всего: «${locked.first.title}» — '
-                        '${(locked.first.progress * 100).round()}%',
+                        l10n.progressClosestBadge(locked.first.title,
+                            (locked.first.progress * 100).round()),
                         style: AppTextStyles.caption
                             .copyWith(color: AppColors.amberInk)),
                   ),
@@ -634,13 +638,16 @@ class _ProgressPanel extends StatelessWidget {
 }
 
 class _SubjectProgressRow extends StatelessWidget {
+  final AppLocalizations l10n;
   final String subject;
   final int avgPct;
-  const _SubjectProgressRow({required this.subject, required this.avgPct});
+  const _SubjectProgressRow(
+      {required this.l10n, required this.subject, required this.avgPct});
 
   String get _label {
-    if (subject == 'math') return 'Математика';
-    if (subject == 'english') return 'English';
+    if (subject == 'math') return l10n.mathSubjectFull;
+    if (subject == 'english') return l10n.englishSubjectFull;
+    if (subject.isEmpty) return l10n.otherSubject;
     return subject;
   }
 
@@ -685,12 +692,14 @@ class _SubjectProgressRow extends StatelessWidget {
 /// decorative in the reference — skipped (search + all/certs/badges filter
 /// already cover the functional need); add if product wants real sorting.
 class _SearchAndFilterRow extends StatelessWidget {
+  final AppLocalizations l10n;
   final String query;
   final int filter;
   final ValueChanged<String> onQueryChanged;
   final ValueChanged<int> onFilterChanged;
 
   const _SearchAndFilterRow({
+    required this.l10n,
     required this.query,
     required this.filter,
     required this.onQueryChanged,
@@ -708,21 +717,25 @@ class _SearchAndFilterRow extends StatelessWidget {
           width: 260,
           child: TextField(
             onChanged: onQueryChanged,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               isDense: true,
-              prefixIcon: Icon(Icons.search_rounded, size: 18),
-              hintText: 'Поиск по сертификатам...',
+              prefixIcon: const Icon(Icons.search_rounded, size: 18),
+              hintText: l10n.certificatesSearchHint,
             ),
           ),
         ),
         _FilterChip(
-            label: 'Все', selected: filter == 0, onTap: () => onFilterChanged(0)),
+            label: l10n.filterAll,
+            selected: filter == 0,
+            onTap: () => onFilterChanged(0)),
         _FilterChip(
-            label: 'Сертификаты',
+            label: l10n.sidebarCertificates,
             selected: filter == 1,
             onTap: () => onFilterChanged(1)),
         _FilterChip(
-            label: 'Бейджи', selected: filter == 2, onTap: () => onFilterChanged(2)),
+            label: l10n.filterBadgesLabel,
+            selected: filter == 2,
+            onTap: () => onFilterChanged(2)),
       ],
     );
   }
@@ -758,8 +771,9 @@ class _FilterChip extends StatelessWidget {
 }
 
 class _EmptyCertificates extends StatelessWidget {
+  final AppLocalizations l10n;
   final bool hasQuery;
-  const _EmptyCertificates({required this.hasQuery});
+  const _EmptyCertificates({required this.l10n, required this.hasQuery});
 
   @override
   Widget build(BuildContext context) {
@@ -778,9 +792,9 @@ class _EmptyCertificates extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
               hasQuery
-                  ? 'Ничего не найдено'
-                  : 'Пройдите тест на ${_BadgeThresholds.certificateMinScore}%+, '
-                      'чтобы получить свой первый сертификат',
+                  ? l10n.helpFaqNoResults
+                  : l10n.certificatesEmptyPrompt(
+                      _BadgeThresholds.certificateMinScore),
               textAlign: TextAlign.center,
               style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3)),
         ],
@@ -790,12 +804,14 @@ class _EmptyCertificates extends StatelessWidget {
 }
 
 class _CertificateCard extends StatelessWidget {
+  final AppLocalizations l10n;
   final StudentSession session;
   final RecentResult result;
   final bool generating;
   final VoidCallback onDownload;
 
   const _CertificateCard({
+    required this.l10n,
     required this.session,
     required this.result,
     required this.generating,
@@ -825,7 +841,7 @@ class _CertificateCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _DiplomaThumbnail(subject: result.subject),
+          _DiplomaThumbnail(l10n: l10n, subject: result.subject),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -838,7 +854,7 @@ class _CertificateCard extends StatelessWidget {
                         .copyWith(fontWeight: FontWeight.w700)),
                 if (dateStr.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text('Выдан $dateStr',
+                  Text(l10n.certificateIssuedOn(dateStr),
                       style: AppTextStyles.caption
                           .copyWith(color: AppColors.ink3)),
                 ],
@@ -857,7 +873,10 @@ class _CertificateCard extends StatelessWidget {
                             height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.download_rounded, size: 16),
-                    label: Text(generating ? 'Готовим...' : 'Скачать PDF',
+                    label: Text(
+                        generating
+                            ? l10n.certificateGeneratingLabel
+                            : l10n.downloadPdfButton,
                         style: AppTextStyles.labelMedium),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -879,8 +898,9 @@ class _CertificateCard extends StatelessWidget {
 }
 
 class _DiplomaThumbnail extends StatelessWidget {
+  final AppLocalizations l10n;
   final String subject;
-  const _DiplomaThumbnail({required this.subject});
+  const _DiplomaThumbnail({required this.l10n, required this.subject});
 
   Color get _color {
     final s = subject.toLowerCase();
@@ -905,7 +925,7 @@ class _DiplomaThumbnail extends StatelessWidget {
         children: [
           Icon(Icons.workspace_premium_rounded, color: _color, size: 22),
           const SizedBox(height: 4),
-          Text('СЕРТИФИКАТ',
+          Text(l10n.certificateThumbnailLabel,
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 6.5,
@@ -934,6 +954,7 @@ class _DiplomaPdf {
   static Future<File> generate({
     required StudentSession session,
     required RecentResult result,
+    required AppLocalizations l10n,
   }) async {
     final doc = pw.Document(title: 'Sertifikat - ${session.studentName}');
 
@@ -975,14 +996,15 @@ class _DiplomaPdf {
                       fontWeight: pw.FontWeight.bold,
                       letterSpacing: 3)),
               pw.SizedBox(height: 16),
-              pw.Text('СЕРТИФИКАТ',
+              pw.Text(l10n.certificateThumbnailLabel,
                   style: pw.TextStyle(
                       fontSize: 32,
                       color: _ink1,
                       fontWeight: pw.FontWeight.bold,
                       letterSpacing: 4)),
               pw.SizedBox(height: 24),
-              pw.Text('выдан', style: const pw.TextStyle(color: _ink2, fontSize: 12)),
+              pw.Text(l10n.diplomaIssuedToLabel,
+                  style: const pw.TextStyle(color: _ink2, fontSize: 12)),
               pw.SizedBox(height: 6),
               pw.Text(session.studentName,
                   style: pw.TextStyle(
@@ -990,7 +1012,7 @@ class _DiplomaPdf {
                       color: _ink1,
                       fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 18),
-              pw.Text('за результат по тесту "${result.title}"',
+              pw.Text(l10n.diplomaForTestResultLabel(result.title),
                   style: const pw.TextStyle(color: _ink2, fontSize: 13)),
               pw.SizedBox(height: 10),
               pw.Text('${result.score}/100',

@@ -785,5 +785,66 @@
   "logoutAccountHint": "Joriy hisobdan chiqishni amalga oshiring",
   "summarySectionTitle": "Qisqacha ko'rinish",
   "tipsSectionTitle": "Maslahatlar",
-  "tipsBody": "O'zgarishlar darhol qo'llaniladi. Sozlamalar shu qurilmada saqlanadi."
+  "tipsBody": "O'zgarishlar darhol qo'llaniladi. Sozlamalar shu qurilmada saqlanadi.",
+  "certificatesScreenTitle": "Sertifikatlar va yutuqlar",
+  "certificatesHeroTitle": "Sizning yutuqlaringiz mukofotga loyiq!",
+  "certificatesHeroSubtitle": "O'qishda davom eting, nishonlar to'plang va a'lo natijalar uchun sertifikat qo'lga kiriting.",
+  "certificatesKpiCountLabel": "Olingan sertifikatlar",
+  "certificatesKpiBadgesLabel": "Ochilgan nishonlar",
+  "badgeMathMasterTitle": "Matematika ustasi",
+  "badgePerfectScoreTitle": "100% natija",
+  "badgeStreakCount": "{count} kun ketma-ket",
+  "@badgeStreakCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "badgeEnglishMasterTitle": "Ingliz tili ustasi",
+  "badgeActiveStudentTitle": "Faol o'quvchi",
+  "badgeUnlockedLabel": "Ochilgan",
+  "badgesAndAchievementsTitle": "Nishonlar va yutuqlar",
+  "progressPanelTitle": "Yutuqlar jarayoni",
+  "progressNoSubjectData": "Fanlar bo'yicha ma'lumot hali yo'q",
+  "progressClosestBadge": "Eng yaqin: «{title}» — {pct}%",
+  "@progressClosestBadge": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "certificatesSearchHint": "Sertifikatlar bo'yicha qidirish...",
+  "filterBadgesLabel": "Nishonlar",
+  "certificatesEmptyPrompt": "Birinchi sertifikatingizni olish uchun testni {minScore}%+ natija bilan yakunlang",
+  "@certificatesEmptyPrompt": {
+    "placeholders": {
+      "minScore": {
+        "type": "int"
+      }
+    }
+  },
+  "certificateIssuedOn": "{date} sanasida berilgan",
+  "@certificateIssuedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "certificateGeneratingLabel": "Tayyorlanmoqda...",
+  "certificateThumbnailLabel": "SERTIFIKAT",
+  "diplomaIssuedToLabel": "berildi",
+  "diplomaForTestResultLabel": "\"{title}\" testidagi natija uchun",
+  "@diplomaForTestResultLabel": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  }
 }

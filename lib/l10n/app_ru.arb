@@ -747,5 +747,66 @@
   "logoutAccountHint": "Выполнить выход из текущего аккаунта",
   "summarySectionTitle": "Краткий обзор",
   "tipsSectionTitle": "Советы",
-  "tipsBody": "Изменения применяются сразу. Настройки сохраняются на этом устройстве."
+  "tipsBody": "Изменения применяются сразу. Настройки сохраняются на этом устройстве.",
+  "certificatesScreenTitle": "Сертификаты и достижения",
+  "certificatesHeroTitle": "Ваши успехи заслуживают награды!",
+  "certificatesHeroSubtitle": "Продолжайте учиться, собирайте бейджи и получайте сертификаты за отличные результаты.",
+  "certificatesKpiCountLabel": "Получено сертификатов",
+  "certificatesKpiBadgesLabel": "Открыто бейджей",
+  "badgeMathMasterTitle": "Мастер математики",
+  "badgePerfectScoreTitle": "100% результат",
+  "badgeStreakCount": "{count} дней подряд",
+  "@badgeStreakCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "badgeEnglishMasterTitle": "Знаток английского",
+  "badgeActiveStudentTitle": "Активный ученик",
+  "badgeUnlockedLabel": "Открыт",
+  "badgesAndAchievementsTitle": "Бейджи и достижения",
+  "progressPanelTitle": "Прогресс достижений",
+  "progressNoSubjectData": "Пока нет данных по предметам",
+  "progressClosestBadge": "Ближе всего: «{title}» — {pct}%",
+  "@progressClosestBadge": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "certificatesSearchHint": "Поиск по сертификатам...",
+  "filterBadgesLabel": "Бейджи",
+  "certificatesEmptyPrompt": "Пройдите тест на {minScore}%+, чтобы получить свой первый сертификат",
+  "@certificatesEmptyPrompt": {
+    "placeholders": {
+      "minScore": {
+        "type": "int"
+      }
+    }
+  },
+  "certificateIssuedOn": "Выдан {date}",
+  "@certificateIssuedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "certificateGeneratingLabel": "Готовим...",
+  "certificateThumbnailLabel": "СЕРТИФИКАТ",
+  "diplomaIssuedToLabel": "выдан",
+  "diplomaForTestResultLabel": "за результат по тесту \"{title}\"",
+  "@diplomaForTestResultLabel": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  }
 }

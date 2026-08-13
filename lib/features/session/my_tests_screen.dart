@@ -31,15 +31,14 @@ import 'package:intl/intl.dart';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
-import '../../core/db/credential_cache.dart';
 import '../../core/models/models.dart';
+import '../../core/session/logout.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/hover_region.dart';
 import '../../shared/widgets/new_badge.dart';
 import '../../shared/widgets/student_kpi_tile.dart';
 import '../../shared/widgets/student_shell.dart';
 import '../../shared/widgets/subject_badge.dart';
-import '../auth/login_screen.dart';
 
 /// Lightweight catalog row for the self-login flow — intentionally separate
 /// from services/test_catalog_service.dart's `CatalogEntry` (which tracks
@@ -241,28 +240,20 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
   }
 
   /// Mandatory kiosk-security step: this machine is shared between students,
-  /// so a self-login session must never survive past its own use. Mirrors
-  /// the proven pattern in features/test/package_screen.dart's
-  /// _confirmLogout (api.clearToken + CredentialCache.clear).
-  Future<void> _clearSession() async {
-    api.clearToken();
-    await CredentialCache.clear();
-  }
+  /// so a self-login session must never survive past its own use. Thin
+  /// wrapper over the shared `clearStudentSession()`
+  /// (core/session/logout.dart) — kept as a local name since `_startTest`
+  /// below needs to clear the session WITHOUT navigating (see its comment).
+  Future<void> _clearSession() => clearStudentSession();
 
   /// Hard-resets to a fresh LoginScreen so back-navigation can never reach
   /// this (now stale) authenticated screen again.
   void _goToLoginReplacingStack() {
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
+    goToLoginReplacingStack(context);
   }
 
-  Future<void> _logoutNow() async {
-    await _clearSession();
-    _goToLoginReplacingStack();
-  }
+  Future<void> _logoutNow() => logoutStudentSession(context);
 
   /// Starts (or "continues") a test. NOTE — known limitation, documented
   /// honestly per plan: MonitoringSession is a live-proctoring heartbeat

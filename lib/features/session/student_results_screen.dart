@@ -35,13 +35,12 @@ import 'package:pdf/widgets.dart' as pw;
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
-import '../../core/db/credential_cache.dart';
 import '../../core/models/models.dart';
+import '../../core/session/logout.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/student_kpi_tile.dart';
 import '../../shared/widgets/student_shell.dart';
 import '../../shared/widgets/subject_badge.dart';
-import '../auth/login_screen.dart';
 
 enum _SortMode { newest, oldest, highestScore }
 
@@ -97,7 +96,11 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
   String _query = '';
   String? _subjectFilter; // null = all subjects
   _SortMode _sort = _SortMode.newest;
-  final Set<String> _pdfKeys = {}; // testKeys currently generating a PDF
+  // Identity-keyed (not RecentResult.testKey, which defaults to '' and can
+  // collide across multiple results missing that field). RecentResult
+  // doesn't override ==/hashCode, so Set membership here is already
+  // reference-identity, which is genuinely unique per card.
+  final Set<RecentResult> _pdfKeys = {}; // results currently generating a PDF
 
   @override
   void initState() {
@@ -141,17 +144,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
     }
   }
 
-  /// Mirrors my_tests_screen.dart's `_clearSession`/`_logoutNow` — a
-  /// shared kiosk machine must never leave a self-login session behind.
-  Future<void> _logoutNow() async {
-    api.clearToken();
-    await CredentialCache.clear();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
-  }
+  Future<void> _logoutNow() => logoutStudentSession(context);
 
   List<String> get _subjects {
     final set = <String>{};
@@ -194,8 +187,8 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
   }
 
   Future<void> _downloadPdf(RecentResult r) async {
-    if (_pdfKeys.contains(r.testKey)) return;
-    setState(() => _pdfKeys.add(r.testKey));
+    if (_pdfKeys.contains(r)) return;
+    setState(() => _pdfKeys.add(r));
     final l10n = AppLocalizations.of(context)!;
     try {
       final file = await _ResultPdf.generate(
@@ -212,7 +205,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
         backgroundColor: AppColors.error,
       ));
     } finally {
-      if (mounted) setState(() => _pdfKeys.remove(r.testKey));
+      if (mounted) setState(() => _pdfKeys.remove(r));
     }
   }
 
@@ -260,6 +253,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
     final subjectsCard = _SubjectBreakdownCard(results: results);
     final grid = _ResultsGrid(
       results: filtered,
+      hasAnyResults: results.isNotEmpty,
       pdfKeys: _pdfKeys,
       onDownloadPdf: _downloadPdf,
     );
@@ -762,11 +756,18 @@ class _FilterBar extends StatelessWidget {
 
 class _ResultsGrid extends StatelessWidget {
   final List<RecentResult> results;
-  final Set<String> pdfKeys;
+  // Whether the student has any results at all, before search/subject
+  // filtering — distinguishes a brand-new student (genuine empty state)
+  // from a filter/search that simply matched nothing (see finding #5).
+  final bool hasAnyResults;
+  final Set<RecentResult> pdfKeys;
   final ValueChanged<RecentResult> onDownloadPdf;
 
   const _ResultsGrid(
-      {required this.results, required this.pdfKeys, required this.onDownloadPdf});
+      {required this.results,
+      required this.hasAnyResults,
+      required this.pdfKeys,
+      required this.onDownloadPdf});
 
   @override
   Widget build(BuildContext context) {
@@ -776,7 +777,7 @@ class _ResultsGrid extends StatelessWidget {
         padding: const EdgeInsets.all(32),
         alignment: Alignment.center,
         decoration: _cardDecoration,
-        child: Text(l10n.noFilterMatches,
+        child: Text(hasAnyResults ? l10n.noFilterMatches : l10n.noResultsYet,
             style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3)),
       );
     }
@@ -793,7 +794,7 @@ class _ResultsGrid extends StatelessWidget {
               width: cardWidth,
               child: _ResultCard(
                 result: r,
-                generatingPdf: pdfKeys.contains(r.testKey),
+                generatingPdf: pdfKeys.contains(r),
                 onDownloadPdf: () => onDownloadPdf(r),
               ),
             ),
@@ -919,7 +920,7 @@ class _ResultCard extends StatelessWidget {
 /// than wired to a fabricated bulk-export/duplicate view; see file header.
 class _SidePanel extends StatelessWidget {
   final List<RecentResult> results;
-  final Set<String> pdfKeys;
+  final Set<RecentResult> pdfKeys;
   final ValueChanged<RecentResult> onDownloadPdf;
   final VoidCallback onRefresh;
 
@@ -1004,7 +1005,7 @@ class _SidePanel extends StatelessWidget {
   Widget _reportRow(RecentResult r) {
     final dateStr =
         r.submittedAt != null ? DateFormat('dd.MM.yyyy').format(r.submittedAt!.toLocal()) : '';
-    final generating = pdfKeys.contains(r.testKey);
+    final generating = pdfKeys.contains(r);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
