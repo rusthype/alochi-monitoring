@@ -17,11 +17,20 @@
 //     same honest scope as the old screen, not a fabricated full history.
 //
 // Deliberately NOT sourced (no such field exists anywhere in this app's
-// API/model layer — see core/models/models.dart's RecentResult): average
-// time-taken KPI, per-subject correct/total counts (vocab_cor/tot etc.),
-// per-question "Подробный разбор" breakdown, and a bulk "download all as
-// ZIP" quick action. Rather than fabricate any of these, they're omitted;
-// see PR notes for the full scoping rationale.
+// API/model layer — see core/models/models.dart's RecentResult): per-subject
+// correct/total counts (vocab_cor/tot etc.), per-question "Подробный разбор"
+// breakdown, and a bulk "download all as ZIP" quick action. Rather than
+// fabricate any of these, they're omitted; see PR notes for the full
+// scoping rationale.
+//
+// Re-checked 2026-08-13: `MonitoringResult.time_taken` IS a real column
+// (apps/monitoring/models.py:385, written on submit), but
+// `StudentProfileSummaryView.get()` — the server code behind `/my-profile/`,
+// the only endpoint this screen calls — never puts it in `stats` or
+// `recent_results` (apps/monitoring/views.py ~line 1160). Nothing this
+// client receives carries a time value, so an "average time" 4th KPI still
+// can't be computed without a backend change, which is out of scope for
+// this Flutter-only pass (still 3 tiles).
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -37,15 +46,16 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/theme/student_palette.dart';
 import '../../shared/widgets/student_kpi_tile.dart';
 import '../../shared/widgets/subject_badge.dart';
 
 enum _SortMode { newest, oldest, highestScore }
 
-BoxDecoration get _cardDecoration => BoxDecoration(
-      color: AppColors.surface,
+BoxDecoration _cardDecoration(StudentPalette pal) => BoxDecoration(
+      color: pal.surface,
       borderRadius: AppRadii.roundedXl,
-      border: Border.all(color: AppColors.border),
+      border: Border.all(color: pal.border),
       boxShadow: [
         BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -213,6 +223,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
   }
 
   Widget _body(AppLocalizations l10n, bool isSmall) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -223,12 +234,11 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_off_rounded, color: AppColors.ink3, size: 28),
+              Icon(Icons.cloud_off_rounded, color: pal.ink3, size: 28),
               const SizedBox(height: 12),
               Text(l10n.loadFailed,
                   textAlign: TextAlign.center,
-                  style:
-                      AppTextStyles.bodyMedium.copyWith(color: AppColors.ink2)),
+                  style: AppTextStyles.bodyMedium.copyWith(color: pal.ink2)),
               const SizedBox(height: 16),
               OutlinedButton(onPressed: _load, child: Text(l10n.retryCheck)),
             ],
@@ -402,34 +412,35 @@ class _TrendChartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     final points = _points;
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: _cardDecoration,
+      decoration: _cardDecoration(pal),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l10n.resultsTrendTitle,
-              style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700)),
+              style: AppTextStyles.labelLarge
+                  .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
           const SizedBox(height: 2),
           Text(l10n.resultsTrendSubtitle(points.length),
-              style: AppTextStyles.caption.copyWith(color: AppColors.ink3)),
+              style: AppTextStyles.caption.copyWith(color: pal.ink3)),
           const SizedBox(height: 16),
           SizedBox(
             height: 220,
             child: points.length < 2
                 ? Center(
                     child: Text(l10n.noResultsYet,
-                        style: AppTextStyles.bodyMedium
-                            .copyWith(color: AppColors.ink3)))
-                : LineChart(_chartData(points)),
+                        style: AppTextStyles.bodyMedium.copyWith(color: pal.ink3)))
+                : LineChart(_chartData(points, pal)),
           ),
         ],
       ),
     );
   }
 
-  LineChartData _chartData(List<({DateTime date, int score})> points) {
+  LineChartData _chartData(List<({DateTime date, int score})> points, StudentPalette pal) {
     final spots = [
       for (var i = 0; i < points.length; i++)
         FlSpot(i.toDouble(), points[i].score.toDouble()),
@@ -440,8 +451,7 @@ class _TrendChartCard extends StatelessWidget {
       gridData: FlGridData(
         drawVerticalLine: false,
         horizontalInterval: 25,
-        getDrawingHorizontalLine: (_) =>
-            const FlLine(color: AppColors.border, strokeWidth: 1),
+        getDrawingHorizontalLine: (_) => FlLine(color: pal.border, strokeWidth: 1),
       ),
       titlesData: FlTitlesData(
         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -451,8 +461,8 @@ class _TrendChartCard extends StatelessWidget {
             showTitles: true,
             reservedSize: 36,
             interval: 25,
-            getTitlesWidget: (v, meta) =>
-                Text('${v.toInt()}%', style: AppTextStyles.caption),
+            getTitlesWidget: (v, meta) => Text('${v.toInt()}%',
+                style: AppTextStyles.caption.copyWith(color: pal.ink3)),
           ),
         ),
         bottomTitles: AxisTitles(
@@ -465,7 +475,7 @@ class _TrendChartCard extends StatelessWidget {
               return Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(DateFormat('dd.MM').format(points[i].date.toLocal()),
-                    style: AppTextStyles.caption),
+                    style: AppTextStyles.caption.copyWith(color: pal.ink3)),
               );
             },
           ),
@@ -527,20 +537,22 @@ class _SubjectBreakdownCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     final bySubject = _bySubject;
     final subjects = bySubject.keys.toList()..sort();
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: _cardDecoration,
+      decoration: _cardDecoration(pal),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l10n.subjectPerformanceTitle,
-              style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700)),
+              style: AppTextStyles.labelLarge
+                  .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
           const SizedBox(height: 16),
           if (subjects.isEmpty)
             Text(l10n.noResultsYet,
-                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3))
+                style: AppTextStyles.bodyMedium.copyWith(color: pal.ink3))
           else
             for (final s in subjects) ...[
               _SubjectRow(
@@ -568,6 +580,7 @@ class _SubjectRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     final color = _gradeColor(avgScore);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -583,9 +596,10 @@ class _SubjectRow extends StatelessWidget {
                   Expanded(
                       child: Text(label,
                           style: AppTextStyles.bodyMedium.copyWith(
-                              color: AppColors.ink1, fontWeight: FontWeight.w600))),
+                              color: pal.ink1, fontWeight: FontWeight.w600))),
                   Text('$avgScore%',
-                      style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w800)),
+                      style: AppTextStyles.labelLarge
+                          .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
                 ],
               ),
               const SizedBox(height: 6),
@@ -594,7 +608,7 @@ class _SubjectRow extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: avgScore / 100,
                   minHeight: 6,
-                  backgroundColor: AppColors.muted,
+                  backgroundColor: pal.border,
                   valueColor: AlwaysStoppedAnimation(color),
                 ),
               ),
@@ -617,13 +631,14 @@ class _ScoreRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return SizedBox(
       width: size,
       height: size,
       child: CircularProgressIndicator(
         value: pct.clamp(0, 1),
         strokeWidth: size * 0.12,
-        backgroundColor: AppColors.muted,
+        backgroundColor: pal.border,
         valueColor: AlwaysStoppedAnimation(color),
       ),
     );
@@ -655,6 +670,7 @@ class _FilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -665,21 +681,20 @@ class _FilterBar extends StatelessWidget {
           height: 42,
           child: TextField(
             onChanged: onQueryChanged,
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink1),
+            style: AppTextStyles.bodyMedium.copyWith(color: pal.ink1),
             decoration: InputDecoration(
               isDense: true,
-              prefixIcon:
-                  const Icon(Icons.search_rounded, size: 18, color: AppColors.ink3),
+              prefixIcon: Icon(Icons.search_rounded, size: 18, color: pal.ink3),
               hintText: l10n.searchResultsHint,
-              hintStyle: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3),
+              hintStyle: AppTextStyles.bodyMedium.copyWith(color: pal.ink3),
               filled: true,
-              fillColor: AppColors.surface,
+              fillColor: pal.surface,
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.border)),
+                  borderSide: BorderSide(color: pal.border)),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.border)),
+                  borderSide: BorderSide(color: pal.border)),
               focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: AppColors.secondary)),
@@ -687,48 +702,50 @@ class _FilterBar extends StatelessWidget {
             ),
           ),
         ),
-        _subjectChip(context, null, l10n.allSubjects),
-        for (final s in subjects) _subjectChip(context, s, _subjectLabel(l10n, s)),
-        _sortDropdown(l10n),
+        _subjectChip(context, pal, null, l10n.allSubjects),
+        for (final s in subjects) _subjectChip(context, pal, s, _subjectLabel(l10n, s)),
+        _sortDropdown(l10n, pal),
       ],
     );
   }
 
-  Widget _subjectChip(BuildContext context, String? value, String label) {
+  Widget _subjectChip(
+      BuildContext context, StudentPalette pal, String? value, String label) {
     final active = subjectFilter == value;
     return GestureDetector(
       onTap: () => onSubjectChanged(value),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: active ? AppColors.secondaryMuted : AppColors.surface,
+          color: active ? AppColors.secondaryMuted : pal.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: active ? AppColors.secondary : AppColors.border),
+          border: Border.all(color: active ? AppColors.secondary : pal.border),
         ),
         child: Text(label,
             style: AppTextStyles.labelMedium.copyWith(
-                color: active ? AppColors.secondary : AppColors.ink2,
+                color: active ? AppColors.secondary : pal.ink2,
                 fontWeight: active ? FontWeight.w700 : FontWeight.w500)),
       ),
     );
   }
 
-  Widget _sortDropdown(AppLocalizations l10n) {
+  Widget _sortDropdown(AppLocalizations l10n, StudentPalette pal) {
     return Container(
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: pal.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: pal.border),
       ),
       alignment: Alignment.center,
       child: DropdownButtonHideUnderline(
         child: DropdownButton<_SortMode>(
           value: sort,
           isDense: true,
-          icon: const Icon(Icons.unfold_more_rounded, size: 16, color: AppColors.ink3),
-          style: AppTextStyles.labelMedium.copyWith(color: AppColors.ink1),
+          icon: Icon(Icons.unfold_more_rounded, size: 16, color: pal.ink3),
+          style: AppTextStyles.labelMedium.copyWith(color: pal.ink1),
+          dropdownColor: pal.surface,
           items: [
             DropdownMenuItem(value: _SortMode.newest, child: Text(l10n.sortNewestFirst)),
             DropdownMenuItem(value: _SortMode.oldest, child: Text(l10n.sortOldestFirst)),
@@ -763,12 +780,13 @@ class _ResultsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     if (results.isEmpty) {
+      final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
       return Container(
         padding: const EdgeInsets.all(32),
         alignment: Alignment.center,
-        decoration: _cardDecoration,
+        decoration: _cardDecoration(pal),
         child: Text(hasAnyResults ? l10n.noFilterMatches : l10n.noResultsYet,
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3)),
+            style: AppTextStyles.bodyMedium.copyWith(color: pal.ink3)),
       );
     }
     return LayoutBuilder(builder: (context, constraints) {
@@ -809,6 +827,7 @@ class _ResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     final score = result.score;
     final dateStr = result.submittedAt != null
         ? DateFormat('dd.MM.yyyy').format(result.submittedAt!.toLocal())
@@ -818,7 +837,7 @@ class _ResultCard extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: _cardDecoration,
+      decoration: _cardDecoration(pal),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -834,12 +853,12 @@ class _ResultCard extends StatelessWidget {
                     Text(result.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                            AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w700)),
+                        style: AppTextStyles.bodyLarge
+                            .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
                     if (metaLine.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(metaLine,
-                          style: AppTextStyles.caption.copyWith(color: AppColors.ink3)),
+                          style: AppTextStyles.caption.copyWith(color: pal.ink3)),
                     ],
                   ],
                 ),
@@ -847,7 +866,8 @@ class _ResultCard extends StatelessWidget {
               if (score != null) ...[
                 const SizedBox(width: 8),
                 Text('$score%',
-                    style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                    style: AppTextStyles.titleMedium
+                        .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
                 const SizedBox(width: 8),
                 _ScoreRing(pct: score / 100, color: _gradeColor(score), size: 36),
               ],
@@ -860,7 +880,7 @@ class _ResultCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: score / 100,
                 minHeight: 6,
-                backgroundColor: AppColors.muted,
+                backgroundColor: pal.border,
                 valueColor: AlwaysStoppedAnimation(_gradeColor(score)),
               ),
             ),
@@ -887,10 +907,11 @@ class _ResultCard extends StatelessWidget {
                         height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.file_download_outlined, size: 16),
-                label: Text(l10n.downloadPdfButton, style: AppTextStyles.labelMedium),
+                label: Text(l10n.downloadPdfButton,
+                    style: AppTextStyles.labelMedium.copyWith(color: pal.ink1)),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.ink1,
-                  side: const BorderSide(color: AppColors.border),
+                  foregroundColor: pal.ink1,
+                  side: BorderSide(color: pal.border),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -924,17 +945,19 @@ class _SidePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: _cardDecoration,
+          decoration: _cardDecoration(pal),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(l10n.quickActionsTitle,
-                  style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700)),
+                  style: AppTextStyles.labelLarge
+                      .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
               const SizedBox(height: 10),
               InkWell(
                 borderRadius: AppRadii.roundedMd,
@@ -957,9 +980,10 @@ class _SidePanel extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(l10n.refreshResultsAction, style: AppTextStyles.labelLarge),
+                            Text(l10n.refreshResultsAction,
+                                style: AppTextStyles.labelLarge.copyWith(color: pal.ink1)),
                             Text(l10n.refreshResultsActionDesc,
-                                style: AppTextStyles.caption.copyWith(color: AppColors.ink3)),
+                                style: AppTextStyles.caption.copyWith(color: pal.ink3)),
                           ],
                         ),
                       ),
@@ -973,18 +997,19 @@ class _SidePanel extends StatelessWidget {
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: _cardDecoration,
+          decoration: _cardDecoration(pal),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(l10n.recentResultsTitle,
-                  style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700)),
+                  style: AppTextStyles.labelLarge
+                      .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
               const SizedBox(height: 12),
               if (results.isEmpty)
                 Text(l10n.noResultsYet,
-                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3))
+                    style: AppTextStyles.bodyMedium.copyWith(color: pal.ink3))
               else
-                for (final r in results.take(5)) _reportRow(r),
+                for (final r in results.take(5)) _reportRow(r, pal),
             ],
           ),
         ),
@@ -992,7 +1017,7 @@ class _SidePanel extends StatelessWidget {
     );
   }
 
-  Widget _reportRow(RecentResult r) {
+  Widget _reportRow(RecentResult r, StudentPalette pal) {
     final dateStr =
         r.submittedAt != null ? DateFormat('dd.MM.yyyy').format(r.submittedAt!.toLocal()) : '';
     final generating = pdfKeys.contains(r);
@@ -1008,9 +1033,9 @@ class _SidePanel extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.ink1, fontWeight: FontWeight.w600)),
+                        .copyWith(color: pal.ink1, fontWeight: FontWeight.w600)),
                 if (dateStr.isNotEmpty)
-                  Text(dateStr, style: AppTextStyles.caption.copyWith(color: AppColors.ink3)),
+                  Text(dateStr, style: AppTextStyles.caption.copyWith(color: pal.ink3)),
               ],
             ),
           ),
@@ -1018,7 +1043,7 @@ class _SidePanel extends StatelessWidget {
             icon: generating
                 ? const SizedBox(
                     width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.file_download_outlined, size: 18, color: AppColors.ink2),
+                : Icon(Icons.file_download_outlined, size: 18, color: pal.ink2),
             onPressed: generating ? null : () => onDownloadPdf(r),
           ),
         ],
