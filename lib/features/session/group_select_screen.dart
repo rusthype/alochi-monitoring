@@ -19,6 +19,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/widgets/new_badge.dart';
 import 'student_entry_screen.dart';
 import 'test_session.dart';
 
@@ -37,30 +38,6 @@ String _newBadgeDateLabel(BuildContext context, CatalogEntry entry) {
   return AppLocalizations.of(context)!.newBadgeAddedOn(date);
 }
 
-/// "NEW"/"Yangi" pill badge — home ekrandagi "Tez kunda" badge bilan bir
-/// xil vizual retsept (login_screen.dart _routeButton()).
-class _NewBadge extends StatelessWidget {
-  const _NewBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        AppLocalizations.of(context)!.newBadge,
-        style: AppTextStyles.caption.copyWith(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          fontSize: 9.5,
-        ),
-      ),
-    );
-  }
-}
 
 class GroupSelectScreen extends StatefulWidget {
   final String schoolCode;
@@ -579,7 +556,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
               ),
             ),
             if (entry.isNew)
-              const Positioned(top: -6, right: -6, child: _NewBadge()),
+              const Positioned(top: -6, right: -6, child: NewBadge()),
           ],
         ),
       );
@@ -884,7 +861,7 @@ class _HoverableTestCardState extends State<_HoverableTestCard> {
                   ),
                 ),
                 if (widget.entry.isNew)
-                  const Positioned(top: -6, right: -6, child: _NewBadge()),
+                  const Positioned(top: -6, right: -6, child: NewBadge()),
               ],
             ),
           ),
