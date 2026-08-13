@@ -218,12 +218,6 @@ abstract class AppLocalizations {
   /// **'O\'quvchi sifatida kirish'**
   String get studentLoginButton;
 
-  /// No description provided for @teacherProctorLogin.
-  ///
-  /// In uz, this message translates to:
-  /// **'O\'qituvchi / Proktor'**
-  String get teacherProctorLogin;
-
   /// No description provided for @myTestsTitle.
   ///
   /// In uz, this message translates to:

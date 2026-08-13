@@ -70,9 +70,6 @@ class AppLocalizationsUz extends AppLocalizations {
   String get studentLoginButton => 'O\'quvchi sifatida kirish';
 
   @override
-  String get teacherProctorLogin => 'O\'qituvchi / Proktor';
-
-  @override
   String get myTestsTitle => 'Mening testlarim';
 
   @override
