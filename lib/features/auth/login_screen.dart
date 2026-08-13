@@ -13,9 +13,7 @@ import '../../core/network/connectivity_provider.dart';
 import '../../core/network/connectivity_service.dart' show SignalTier;
 import '../../shared/widgets/signal_strength_indicator.dart';
 import '../../shared/theme/app_theme.dart';
-import '../../shared/theme/student_palette.dart';
 import '../../shared/widgets/hover_region.dart';
-import '../../shared/widgets/segmented_tabs.dart';
 
 import '../local_test/sync_images_button.dart';
 
@@ -207,10 +205,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // almashganda ham to'g'ri ko'rinishi uchun).
   bool? _statusOnline; // null = tekshirilmoqda
   String? _error;
-  // Accordion: login form revealed. Starts expanded — the "Войти как ученик"
-  // segment is pre-selected/active per the pixel-perfect mockup (shot12.png),
-  // so the form is visible on first paint instead of requiring a tap.
-  bool _expanded = true;
+  bool _expanded = false; // accordion: login form revealed
 
   // ── Test katalog banner holati ─────────────────────────────────────────────
   List<CatalogEntry> _catalogEntries = [];
@@ -433,12 +428,12 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
+    final isSmall = MediaQuery.of(context).size.width < 800;
 
     // Auto-login urinayotganda spinner
     if (_autoLogging) {
       return Scaffold(
-        backgroundColor: pal.chipBg,
+        backgroundColor: AppColors.bg,
         body: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
           const SizedBox(
@@ -448,7 +443,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   strokeWidth: 3, color: AppColors.brand)),
           const SizedBox(height: 16),
           Text(l10n.loggingIn,
-              style: AppTextStyles.bodyMedium.copyWith(color: pal.ink3)),
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3)),
         ])),
       );
     }
@@ -464,7 +459,8 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Scaffold(
           body: Stack(
             children: [
-              Positioned.fill(child: ColoredBox(color: pal.chipBg)),
+              const Positioned.fill(
+                  child: ColoredBox(color: Color(0xFFF5F0E8))),
               const Positioned.fill(child: _NetworkBg()),
               Positioned.fill(
                 child: SafeArea(
@@ -474,183 +470,127 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Align(
                       alignment: Alignment.topCenter,
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 460),
-                        child: Container(
-                          // Single pixel-perfect card (shot12.png): logo,
-                          // title, status, tab switcher, form and bottom
-                          // sync/history row all live inside this one shell
-                          // instead of floating separately over the network
-                          // background.
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: pal.surface,
-                            borderRadius: AppRadii.roundedXl2,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.06),
-                                blurRadius: 30,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // Logo in rounded box
-                              Center(
-                                child: Container(
-                                  padding: const EdgeInsets.all(14),
-                                  decoration: BoxDecoration(
-                                    color: pal.surface,
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(color: pal.border),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color:
-                                            Colors.black.withValues(alpha: .10),
-                                        blurRadius: 16,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Image.asset('assets/logo.png',
-                                      width: 56,
-                                      height: 56,
-                                      fit: BoxFit.contain),
-                                ),
-                              ),
-                              const SizedBox(height: 18),
-                              Text(l10n.appTitle,
-                                  textAlign: TextAlign.center,
-                                  style: AppTextStyles.titleLarge.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: pal.ink1)),
-                              const SizedBox(height: 4),
-                              Text(l10n.appSubtitle,
-                                  textAlign: TextAlign.center,
-                                  style: AppTextStyles.bodyMedium
-                                      .copyWith(color: pal.ink2)),
-                              const SizedBox(height: 10),
-                              // Always-visible online/offline + signal-strength
-                              // indicator. Sourced purely from signalProvider —
-                              // independent of _isOnline/_statusMsg (accordion
-                              // dot) and the retry-based
-                              // checkOnlineWithRetry()/_checkOnline() flow.
-                              Consumer(
-                                builder: (context, ref, _) {
-                                  final signal = ref.watch(signalProvider);
-                                  final isOnline = !signal.checking &&
-                                      signal.tier != SignalTier.none;
-                                  final label = signal.checking
-                                      ? l10n.serverChecking
-                                      : (isOnline
-                                          ? l10n.serverConnected
-                                          : l10n.offlineMode);
-                                  final dotColor = signal.checking
-                                      ? AppColors.brand
-                                      : (isOnline ? AppColors.ok : pal.ink3);
-                                  return Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      signal.checking
-                                          ? SizedBox(
-                                              width: 8,
-                                              height: 8,
-                                              child: CircularProgressIndicator(
-                                                  strokeWidth: 1.5,
-                                                  color: dotColor),
-                                            )
-                                          : Container(
-                                              width: 7,
-                                              height: 7,
-                                              decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: dotColor),
-                                            ),
-                                      const SizedBox(width: 6),
-                                      Text(label,
-                                          style: AppTextStyles.caption
-                                              .copyWith(color: dotColor)),
-                                      const SizedBox(width: 10),
-                                      SignalStrengthIndicator(
-                                          tier: signal.tier),
-                                    ],
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 20),
-                              // 3-segment tab switcher (shot12.png): student
-                              // login is the only functional segment, the
-                              // other two are locked "coming soon" chips —
-                              // see lib/shared/widgets/segmented_tabs.dart.
-                              SegmentedTabsRow(
-                                pal: pal,
-                                items: [
-                                  SegmentedTabItem(
-                                    icon: Icons.desktop_windows_rounded,
-                                    label: l10n.studentLoginButton,
-                                    selected: _expanded,
-                                    onTap: () => setState(
-                                        () => _expanded = !_expanded),
-                                  ),
-                                  SegmentedTabItem(
-                                    icon: Icons.lock_outline_rounded,
-                                    label: l10n.teacherProctorLogin,
-                                    disabled: true,
-                                    badge: l10n.comingSoon,
-                                  ),
-                                  SegmentedTabItem(
-                                    icon: Icons.quiz_rounded,
-                                    label: l10n.testsRoute,
-                                    disabled: true,
-                                    badge: l10n.comingSoon,
-                                  ),
-                                ],
-                              ),
-                              _accordion(pal),
-                              const SizedBox(height: 16),
-                              // Bottom card: offline-image sync + offline
-                              // history, each row with a trailing chevron.
-                              Container(
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Logo in white rounded box
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: pal.border),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6),
-                                      child: Row(
-                                        children: [
-                                          const Expanded(
-                                            child: Align(
-                                              alignment:
-                                                  Alignment.centerLeft,
-                                              child: SyncImagesButton(),
-                                            ),
-                                          ),
-                                          Icon(Icons.chevron_right_rounded,
-                                              size: 18, color: pal.ink3),
-                                          const SizedBox(width: 6),
-                                        ],
-                                      ),
-                                    ),
-                                    Divider(height: 1, color: pal.border),
-                                    _bottomActionRow(
-                                      icon: Icons.history_rounded,
-                                      label: l10n.offlineHistory,
-                                      pal: pal,
-                                      onTap: () => context
-                                          .push('/history', extra: {}),
+                                  color: AppColors.surface,
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(color: AppColors.border),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          Colors.black.withValues(alpha: .10),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 6),
                                     ),
                                   ],
                                 ),
+                                child: Image.asset('assets/logo.png',
+                                    width: 56, height: 56, fit: BoxFit.contain),
                               ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(height: 18),
+                            Text(l10n.appTitle,
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.titleLarge
+                                    .copyWith(fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 4),
+                            Text(l10n.appSubtitle,
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.bodyMedium
+                                    .copyWith(color: AppColors.ink2)),
+                            const SizedBox(height: 8),
+                            // Always-visible online/offline + signal-strength
+                            // indicator. Sourced purely from signalProvider —
+                            // independent of _isOnline/_statusMsg (accordion
+                            // dot, lines ~858-880) and the retry-based
+                            // checkOnlineWithRetry()/_checkOnline() flow.
+                            Consumer(
+                              builder: (context, ref, _) {
+                                final signal = ref.watch(signalProvider);
+                                final isOnline = !signal.checking &&
+                                    signal.tier != SignalTier.none;
+                                final label = signal.checking
+                                    ? l10n.serverChecking
+                                    : (isOnline
+                                        ? l10n.serverConnected
+                                        : l10n.offlineMode);
+                                final dotColor = signal.checking
+                                    ? AppColors.brand
+                                    : (isOnline
+                                        ? AppColors.ok
+                                        : AppColors.ink3);
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    signal.checking
+                                        ? SizedBox(
+                                            width: 8,
+                                            height: 8,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 1.5,
+                                                color: dotColor),
+                                          )
+                                        : Container(
+                                            width: 7,
+                                            height: 7,
+                                            decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: dotColor),
+                                          ),
+                                    const SizedBox(width: 6),
+                                    Text(label,
+                                        style: AppTextStyles.caption
+                                            .copyWith(color: dotColor)),
+                                    const SizedBox(width: 10),
+                                    SignalStrengthIndicator(tier: signal.tier),
+                                  ],
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            const Align(
+                              alignment: Alignment.centerRight,
+                              child: Padding(
+                                padding:
+                                    EdgeInsets.only(bottom: 8.0, right: 4.0),
+                                child: LanguageSwitcher(),
+                              ),
+                            ),
+                            _routeButtons(isSmall),
+                            _accordion(),
+                            const SizedBox(height: 16),
+                            // Bottom row: sync + history
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 4,
+                              runSpacing: 4,
+                              children: [
+                                const SyncImagesButton(),
+                                TextButton.icon(
+                                  onPressed: () =>
+                                      context.push('/history', extra: {}),
+                                  icon: const Icon(Icons.history_rounded,
+                                      size: 16),
+                                  label: Text(l10n.offlineHistory),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppColors.ink2,
+                                    textStyle: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -673,16 +613,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: SafeArea(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _languagePill(pal),
-                        if (_updateInfo != null) ...[
-                          const SizedBox(height: 8),
-                          _updateBadge(),
-                        ],
-                      ],
-                    ),
+                    child: _updateBadge(),
                   ),
                 ),
               ),
@@ -703,73 +634,20 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Top-right pill wrapping the shared [LanguageSwitcher] dropdown so it
-  /// reads as a pill button per the mockup, matching the "Школы" pill's
-  /// visual weight without touching the shared widget itself.
-  Widget _languagePill(StudentPalette pal) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: pal.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: pal.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: .12),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: const LanguageSwitcher(),
-      );
-
-  /// One row of the bottom sync/history card: icon + label + trailing
-  /// chevron, matching shot12.png.
-  Widget _bottomActionRow({
-    required IconData icon,
-    required String label,
-    required StudentPalette pal,
-    required VoidCallback onTap,
-  }) =>
-      HoverRegion(
-        builder: (context, isHovered) => GestureDetector(
-          onTap: onTap,
-          child: Container(
-            color: isHovered ? pal.hoverBg : Colors.transparent,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: pal.ink2),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(label,
-                      style: AppTextStyles.labelLarge
-                          .copyWith(color: pal.ink1, fontWeight: FontWeight.w600)),
-                ),
-                Icon(Icons.chevron_right_rounded, size: 18, color: pal.ink3),
-              ],
-            ),
-          ),
-        ),
-      );
-
   Widget _appVersionBadge() {
     if (_appVersion.isEmpty) return const SizedBox.shrink();
-    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Text(
       'v$_appVersion',
       style: TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w500,
-        color: pal.ink3.withValues(alpha: .45),
+        color: AppColors.ink3.withValues(alpha: .45),
       ),
     );
   }
 
   Widget _newTestsButton() {
     final l10n = AppLocalizations.of(context)!;
-    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     final downloadable = _catalogEntries
         .where((e) =>
             e.status == CatalogStatus.notDownloaded ||
@@ -789,10 +667,10 @@ class _LoginScreenState extends State<LoginScreen> {
             decoration: BoxDecoration(
               color: hasNew
                   ? (isHovered ? AppColors.brand : AppColors.primary)
-                  : (isHovered ? pal.hoverBg : pal.surface),
+                  : (isHovered ? AppColors.hoverBg : AppColors.surface),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: hasNew ? AppColors.primary : pal.border,
+                color: hasNew ? AppColors.primary : AppColors.border,
               ),
               boxShadow: [
                 BoxShadow(
@@ -808,13 +686,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 Icon(
                   Icons.school_rounded,
                   size: 16,
-                  color: hasNew ? Colors.white : pal.ink2,
+                  color: hasNew ? Colors.white : AppColors.ink2,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   l10n.schools,
                   style: AppTextStyles.labelMedium.copyWith(
-                    color: hasNew ? Colors.white : pal.ink1,
+                    color: hasNew ? Colors.white : AppColors.ink1,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -940,8 +818,142 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  Widget _routeButtons(bool isSmall) {
+    final l10n = AppLocalizations.of(context)!;
+    final children = [
+      _routeButton(
+        icon: Icons.desktop_windows_rounded,
+        label: l10n.studentLoginButton,
+        active: _expanded,
+        onTap: () => setState(() => _expanded = !_expanded),
+      ),
+      if (isSmall) const SizedBox(height: 12) else const SizedBox(width: 12),
+      _routeButton(
+        icon: Icons.quiz_rounded,
+        label: l10n.testsRoute,
+        active: false,
+        disabled: true,
+        badge: l10n.comingSoon,
+        onTap: null,
+      ),
+    ];
 
-  Widget _accordion(StudentPalette pal) {
+    if (isSmall) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      );
+    }
+
+    return IntrinsicHeight(
+        child: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: children[0]),
+        children[1],
+        Expanded(child: children[2]),
+      ],
+    ));
+  }
+
+  Widget _routeButton({
+    required IconData icon,
+    required String label,
+    required bool active,
+    VoidCallback? onTap,
+    bool disabled = false,
+    String? badge,
+  }) {
+    final iconColor =
+        disabled ? AppColors.ink3 : (active ? Colors.white : AppColors.ink2);
+    final labelColor =
+        disabled ? AppColors.ink3 : (active ? Colors.white : AppColors.ink1);
+
+    Widget cardChild = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 28, color: iconColor),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.labelLarge.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: labelColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (badge != null)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.secondary,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                badge,
+                style: AppTextStyles.caption.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 9.5,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+
+    return disabled
+        ? Opacity(
+            opacity: .6,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.muted,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: cardChild,
+            ))
+        : Semantics(
+            button: true,
+            label: label,
+            child: HoverRegion(
+              builder: (context, isHovered) => GestureDetector(
+                onTap: onTap,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  decoration: BoxDecoration(
+                    color: active
+                        ? AppColors.brand
+                        : (isHovered ? AppColors.hoverBg : AppColors.surface),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: active
+                          ? AppColors.brand
+                          : (isHovered
+                              ? AppColors.border.withValues(alpha: 0.8)
+                              : AppColors.border),
+                      width: active ? 2 : 1,
+                    ),
+                  ),
+                  child: cardChild,
+                ),
+              ),
+            ),
+          );
+  }
+
+  Widget _accordion() {
     final l10n = AppLocalizations.of(context)!;
     return ClipRect(
       child: AnimatedSize(
@@ -951,11 +963,15 @@ class _LoginScreenState extends State<LoginScreen> {
         child: !_expanded
             ? const SizedBox(width: double.infinity)
             : Padding(
-                // No nested card chrome here — the outer white card (build())
-                // already frames this content per shot12.png, so this is just
-                // the login form itself, not a second box-in-a-box.
                 padding: const EdgeInsets.only(top: 16),
-                child: Form(
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Form(
                     key: _formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -970,14 +986,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                     width: 10,
                                     height: 10,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: _statusColor(pal)))
+                                        strokeWidth: 2, color: _statusColor))
                                 : Container(
                                     width: 7,
                                     height: 7,
                                     decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: _statusColor(pal))),
+                                        color: _statusColor)),
                             const SizedBox(width: 7),
                             Text(
                                 _statusOnline == null
@@ -991,7 +1006,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ? AppColors.brand
                                         : (_isOnline
                                             ? AppColors.ok
-                                            : pal.ink2))),
+                                            : AppColors.ink2))),
                             if (!_checkingOnline && !_isOnline) ...[
                               const Spacer(),
                               TextButton(
@@ -1011,15 +1026,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(l10n.loginTitle,
-                            style: AppTextStyles.titleMedium.copyWith(
-                                fontWeight: FontWeight.w800, color: pal.ink1)),
+                            style: AppTextStyles.titleMedium
+                                .copyWith(fontWeight: FontWeight.w800)),
                         const SizedBox(height: 2),
                         Text(l10n.loginInstruction,
                             style: AppTextStyles.labelMedium
-                                .copyWith(color: pal.ink2)),
+                                .copyWith(color: AppColors.ink2)),
                         const SizedBox(height: 16),
                         _field(
-                          pal: pal,
                           controller: _userCtrl,
                           focusNode: _userFocus,
                           label: l10n.usernameLabel,
@@ -1032,7 +1046,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 14),
                         _field(
-                          pal: pal,
                           controller: _passCtrl,
                           focusNode: _passFocus,
                           label: l10n.passwordLabel,
@@ -1051,7 +1064,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 size: 18),
                             onPressed: () =>
                                 setState(() => _showPass = !_showPass),
-                            color: pal.ink3,
+                            color: AppColors.ink3,
                           ),
                         ),
                         // Error box
@@ -1156,12 +1169,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
+              ),
       ),
     );
   }
 
   Widget _field({
-    required StudentPalette pal,
     required TextEditingController controller,
     FocusNode? focusNode,
     required String label,
@@ -1180,23 +1193,23 @@ class _LoginScreenState extends State<LoginScreen> {
         textInputAction: action,
         onFieldSubmitted: onSubmit,
         validator: validator,
-        style: AppTextStyles.bodyMedium.copyWith(color: pal.ink1),
+        style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink1),
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
           prefixIcon: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Icon(icon, size: 18, color: pal.ink3)),
+              child: Icon(icon, size: 18, color: AppColors.ink3)),
           prefixIconConstraints: const BoxConstraints(minWidth: 46),
           suffixIcon: suffix,
           filled: true,
-          fillColor: pal.surface,
+          fillColor: AppColors.surface,
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(13),
-              borderSide: BorderSide(color: pal.border)),
+              borderSide: const BorderSide(color: AppColors.border)),
           enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(13),
-              borderSide: BorderSide(color: pal.border)),
+              borderSide: const BorderSide(color: AppColors.border)),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(13),
               borderSide: const BorderSide(color: AppColors.brand, width: 2)),
@@ -1205,16 +1218,265 @@ class _LoginScreenState extends State<LoginScreen> {
               borderSide: const BorderSide(color: AppColors.err)),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-          labelStyle: TextStyle(color: pal.ink2, fontSize: 13),
+          labelStyle: const TextStyle(color: AppColors.ink2, fontSize: 13),
         ),
       );
 
-  Color _statusColor(StudentPalette pal) {
+  Color get _statusColor {
     if (_checkingOnline) return AppColors.brand;
-    return _isOnline ? AppColors.ok : pal.ink3;
+    return _isOnline ? AppColors.ok : AppColors.ink3;
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _LaunchArgs — result of the launch dialog
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LaunchArgs {
+  final int variant;
+  final String firstName;
+  final String lastName;
+  final String school;
+  final String? group;
+
+  const _LaunchArgs({
+    required this.variant,
+    required this.firstName,
+    required this.lastName,
+    required this.school,
+    this.group,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _LaunchDialog — variant selector + student info form (2-step)
+// Follows the same step pattern as CombinedScreen.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LaunchDialog extends StatefulWidget {
+  final CatalogEntry entry;
+  const _LaunchDialog({required this.entry});
+
+  @override
+  State<_LaunchDialog> createState() => _LaunchDialogState();
+}
+
+class _LaunchDialogState extends State<_LaunchDialog> {
+  int _step = 0; // 0 = variant, 1 = student info
+  int? _variant;
+
+  final _firstCtrl = TextEditingController();
+  final _lastCtrl = TextEditingController();
+  final _schoolCtrl = TextEditingController();
+  final _groupCtrl = TextEditingController();
+
+  final _firstFocus = FocusNode();
+  final _lastFocus = FocusNode();
+  final _schoolFocus = FocusNode();
+  final _groupFocus = FocusNode();
+
+  String? _err;
+
+  @override
+  void dispose() {
+    _firstCtrl.dispose();
+    _lastCtrl.dispose();
+    _schoolCtrl.dispose();
+    _groupCtrl.dispose();
+    _firstFocus.dispose();
+    _lastFocus.dispose();
+    _schoolFocus.dispose();
+    _groupFocus.dispose();
+    super.dispose();
+  }
+
+  void _start() {
+    final first = _firstCtrl.text.trim();
+    final last = _lastCtrl.text.trim();
+    final school = _schoolCtrl.text.trim();
+    final l10n = AppLocalizations.of(context)!;
+    if (first.isEmpty || last.isEmpty) {
+      setState(() => _err = l10n.enterNameError);
+      return;
+    }
+    if (school.isEmpty) {
+      setState(() => _err = l10n.enterSchoolError);
+      return;
+    }
+
+    context.pop(
+      _LaunchArgs(
+        variant: _variant!,
+        firstName: first,
+        lastName: last,
+        school: school,
+        group: _groupCtrl.text.trim().isEmpty ? null : _groupCtrl.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Row(
+              children: [
+                if (_step == 1)
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      _step = 0;
+                      _err = null;
+                    }),
+                    child: const Icon(Icons.arrow_back_rounded,
+                        size: 20, color: AppColors.ink2),
+                  )
+                else
+                  const SizedBox(width: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _step == 0
+                        ? AppLocalizations.of(context)!.selectVariant
+                        : AppLocalizations.of(context)!.studentInfoTitle,
+                    style: AppTextStyles.titleMedium,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => context.pop(),
+                  child: const Icon(Icons.close_rounded,
+                      size: 20, color: AppColors.ink2),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 4),
+            Text(
+              widget.entry.title,
+              style: AppTextStyles.bodyMedium,
+            ),
+
+            const SizedBox(height: 16),
+
+            if (_step == 0) _buildVariantStep() else _buildStudentStep(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVariantStep() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 5,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 1.1,
+      ),
+      itemCount: 15,
+      itemBuilder: (_, i) {
+        final v = i + 1;
+        final selected = _variant == v;
+        return GestureDetector(
+          onTap: () => setState(() {
+            _variant = v;
+            _step = 1;
+            _err = null;
+          }),
+          child: Container(
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primary : AppColors.muted,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected ? AppColors.primary : AppColors.border,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '$v',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : AppColors.ink1,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStudentStep() {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_err != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.errorMuted,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              _err!,
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.err),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        TextField(
+          controller: _lastCtrl,
+          focusNode: _lastFocus,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _firstFocus.requestFocus(),
+          decoration: InputDecoration(labelText: l10n.lastName),
+          textCapitalization: TextCapitalization.words,
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _firstCtrl,
+          focusNode: _firstFocus,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _schoolFocus.requestFocus(),
+          decoration: InputDecoration(labelText: l10n.firstName),
+          textCapitalization: TextCapitalization.words,
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _schoolCtrl,
+          focusNode: _schoolFocus,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => _groupFocus.requestFocus(),
+          decoration: InputDecoration(labelText: l10n.schoolCodeOrName),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _groupCtrl,
+          focusNode: _groupFocus,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _start(),
+          decoration: InputDecoration(labelText: l10n.groupOptional),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: _start,
+          child: Text('${l10n.variant} $_variant · ${l10n.start}'),
+        ),
+      ],
+    );
+  }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // _CatalogBottomSheet — "Yangi testlar" modal panel
 // ─────────────────────────────────────────────────────────────────────────────
