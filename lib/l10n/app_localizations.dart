@@ -2779,6 +2779,612 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Bu guruhda faol o\'quvchi topilmadi.'**
   String get noStudentsInGroup;
+
+  /// No description provided for @helpScreenTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yordam va qo\'llab-quvvatlash'**
+  String get helpScreenTitle;
+
+  /// No description provided for @helpBannerTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yordam kerak bo\'lsa, biz yoningizdamiz'**
+  String get helpBannerTitle;
+
+  /// No description provided for @helpBannerSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tez-tez so\'raladigan savollarga javob toping, yo\'riqnomalarni ko\'ring va bir necha bosishda qo\'llab-quvvatlash bilan bog\'laning.'**
+  String get helpBannerSubtitle;
+
+  /// No description provided for @helpKpiFaqLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'FAQ'**
+  String get helpKpiFaqLabel;
+
+  /// No description provided for @helpKpiFaqValue.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} ta maqola'**
+  String helpKpiFaqValue(int count);
+
+  /// No description provided for @helpKpiSupportLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qo\'llab-quvvatlash'**
+  String get helpKpiSupportLabel;
+
+  /// No description provided for @helpKpiVersionLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Versiya'**
+  String get helpKpiVersionLabel;
+
+  /// No description provided for @helpFaqSectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tez-tez so\'raladigan savollar'**
+  String get helpFaqSectionTitle;
+
+  /// No description provided for @helpFaqSearchHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Savollar bo\'yicha qidirish...'**
+  String get helpFaqSearchHint;
+
+  /// No description provided for @helpFaqNoResults.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hech narsa topilmadi'**
+  String get helpFaqNoResults;
+
+  /// No description provided for @helpFaqQ1.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testni qanday boshlash mumkin?'**
+  String get helpFaqQ1;
+
+  /// No description provided for @helpFaqA1.
+  ///
+  /// In uz, this message translates to:
+  /// **'«Mening testlarim» bo\'limiga o\'ting, kerakli testni tanlang va «Boshlash» tugmasini bosing. Boshlashdan oldin internet aloqasi barqaror ekanligiga ishonch hosil qiling.'**
+  String get helpFaqA1;
+
+  /// No description provided for @helpFaqQ2.
+  ///
+  /// In uz, this message translates to:
+  /// **'Internet uzilib qolsa nima qilish kerak?'**
+  String get helpFaqQ2;
+
+  /// No description provided for @helpFaqA2.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xavotir olmang — javoblaringiz qurilmada saqlanadi. Internet tiklangach, dastur avtomatik ravishda serverga ulanadi va testni davom ettirishingiz mumkin.'**
+  String get helpFaqA2;
+
+  /// No description provided for @helpFaqQ3.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'z natijalarimni qanday ko\'raman?'**
+  String get helpFaqQ3;
+
+  /// No description provided for @helpFaqA3.
+  ///
+  /// In uz, this message translates to:
+  /// **'Chap menyudagi «Natijalar» bo\'limiga o\'ting — u yerda barcha topshirilgan testlar bo\'yicha ball va statistikangizni ko\'rishingiz mumkin.'**
+  String get helpFaqA3;
+
+  /// No description provided for @helpFaqQ4.
+  ///
+  /// In uz, this message translates to:
+  /// **'Parolni unutib qo\'ydim, nima qilaman?'**
+  String get helpFaqQ4;
+
+  /// No description provided for @helpFaqA4.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'quvchi login-parolini sinf rahbari yoki maktab administratori beradi. Parolni unutgan bo\'lsangiz, o\'qituvchingizga murojaat qiling — u sizga yangi ma\'lumotlarni tiklab beradi.'**
+  String get helpFaqA4;
+
+  /// No description provided for @helpFaqQ5.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sertifikatni qanday olsam bo\'ladi?'**
+  String get helpFaqQ5;
+
+  /// No description provided for @helpFaqA5.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sertifikatlar bo\'limi tez orada ishga tushiriladi. Test natijalaringiz saqlanib boryapti — sertifikat funksiyasi qo\'shilgach, ular avtomatik hisoblab chiqiladi.'**
+  String get helpFaqA5;
+
+  /// No description provided for @helpVideoSectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Video-yo\'riqnomalar'**
+  String get helpVideoSectionTitle;
+
+  /// No description provided for @helpVideoComingSoonDesc.
+  ///
+  /// In uz, this message translates to:
+  /// **'Video-qo\'llanmalar hozircha mavjud emas. Ular platformaga qo\'shilgach, bu yerda paydo bo\'ladi.'**
+  String get helpVideoComingSoonDesc;
+
+  /// No description provided for @helpTroubleshootSectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muammo yuzaga kelsa'**
+  String get helpTroubleshootSectionTitle;
+
+  /// No description provided for @helpTroubleshootInternetTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Internetni tekshiring'**
+  String get helpTroubleshootInternetTitle;
+
+  /// No description provided for @helpTroubleshootInternetDesc.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qurilma barqaror tarmoqqa ulanganiga ishonch hosil qiling.'**
+  String get helpTroubleshootInternetDesc;
+
+  /// No description provided for @helpTroubleshootRestartTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Dasturni qayta ishga tushiring'**
+  String get helpTroubleshootRestartTitle;
+
+  /// No description provided for @helpTroubleshootRestartDesc.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muammo davom etsa, dasturni yoping va qaytadan oching.'**
+  String get helpTroubleshootRestartDesc;
+
+  /// No description provided for @helpTroubleshootTeacherTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchingizga murojaat qiling'**
+  String get helpTroubleshootTeacherTitle;
+
+  /// No description provided for @helpTroubleshootTeacherDesc.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muammo hal bo\'lmasa, tezroq yechim uchun o\'qituvchingizga xabar bering.'**
+  String get helpTroubleshootTeacherDesc;
+
+  /// No description provided for @helpAboutSectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ilova haqida'**
+  String get helpAboutSectionTitle;
+
+  /// No description provided for @helpAboutVersionLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ilova versiyasi'**
+  String get helpAboutVersionLabel;
+
+  /// No description provided for @helpAboutServerLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Server'**
+  String get helpAboutServerLabel;
+
+  /// No description provided for @helpNoAnswerTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Javob topa olmadingizmi?'**
+  String get helpNoAnswerTitle;
+
+  /// No description provided for @helpNoAnswerDesc.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchingiz yoki maktab administratoriga murojaat qiling — ular sizga yordam berishadi.'**
+  String get helpNoAnswerDesc;
+
+  /// No description provided for @kpiBestScore.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eng yuqori natija'**
+  String get kpiBestScore;
+
+  /// No description provided for @resultsTrendTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijalar dinamikasi'**
+  String get resultsTrendTitle;
+
+  /// No description provided for @resultsTrendSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oxirgi {count} ta natija'**
+  String resultsTrendSubtitle(Object count);
+
+  /// No description provided for @subjectPerformanceTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Fanlar bo\'yicha natija'**
+  String get subjectPerformanceTitle;
+
+  /// No description provided for @searchResultsHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test nomi bo\'yicha qidirish...'**
+  String get searchResultsHint;
+
+  /// No description provided for @sortNewestFirst.
+  ///
+  /// In uz, this message translates to:
+  /// **'Avval yangi'**
+  String get sortNewestFirst;
+
+  /// No description provided for @sortOldestFirst.
+  ///
+  /// In uz, this message translates to:
+  /// **'Avval eski'**
+  String get sortOldestFirst;
+
+  /// No description provided for @sortHighestScore.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuqori ball bo\'yicha'**
+  String get sortHighestScore;
+
+  /// No description provided for @gradeWeak.
+  ///
+  /// In uz, this message translates to:
+  /// **'Past'**
+  String get gradeWeak;
+
+  /// No description provided for @downloadPdfButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'PDF hisobot'**
+  String get downloadPdfButton;
+
+  /// No description provided for @quickActionsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tezkor amallar'**
+  String get quickActionsTitle;
+
+  /// No description provided for @refreshResultsAction.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangilash'**
+  String get refreshResultsAction;
+
+  /// No description provided for @refreshResultsActionDesc.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ro\'yxatni qayta yuklash'**
+  String get refreshResultsActionDesc;
+
+  /// No description provided for @settingsHeroTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ilovani o\'zingizga moslang'**
+  String get settingsHeroTitle;
+
+  /// No description provided for @settingsHeroSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ko\'rinish, til, bildirishnomalar va hisob xavfsizligini boshqaring.'**
+  String get settingsHeroSubtitle;
+
+  /// No description provided for @settingsHeroCurrentLanguage.
+  ///
+  /// In uz, this message translates to:
+  /// **'Joriy til'**
+  String get settingsHeroCurrentLanguage;
+
+  /// No description provided for @themeLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mavzu'**
+  String get themeLabel;
+
+  /// No description provided for @themeLight.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yorug\''**
+  String get themeLight;
+
+  /// No description provided for @themeDark.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qorong\'i'**
+  String get themeDark;
+
+  /// No description provided for @notificationsStatusOn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yoqilgan'**
+  String get notificationsStatusOn;
+
+  /// No description provided for @notificationsStatusOff.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'chirilgan'**
+  String get notificationsStatusOff;
+
+  /// No description provided for @accountSectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hisob'**
+  String get accountSectionTitle;
+
+  /// No description provided for @classLabelCaption.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinf'**
+  String get classLabelCaption;
+
+  /// No description provided for @groupLabelCaption.
+  ///
+  /// In uz, this message translates to:
+  /// **'Guruh'**
+  String get groupLabelCaption;
+
+  /// No description provided for @personalizationSectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Shaxsiylashtirish'**
+  String get personalizationSectionTitle;
+
+  /// No description provided for @fontSizeLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Shrift o\'lchami'**
+  String get fontSizeLabel;
+
+  /// No description provided for @fontSizeNormal.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oddiy'**
+  String get fontSizeNormal;
+
+  /// No description provided for @fontSizeLarge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Katta'**
+  String get fontSizeLarge;
+
+  /// No description provided for @languageRegionSectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Til va hudud'**
+  String get languageRegionSectionTitle;
+
+  /// No description provided for @interfaceLanguageLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Interfeys tili'**
+  String get interfaceLanguageLabel;
+
+  /// No description provided for @notificationsSectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bildirishnomalar'**
+  String get notificationsSectionTitle;
+
+  /// No description provided for @notifSoundOnComplete.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test tugaganda tovush'**
+  String get notifSoundOnComplete;
+
+  /// No description provided for @notifRemindersNewTests.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi testlar haqida eslatmalar'**
+  String get notifRemindersNewTests;
+
+  /// No description provided for @notifHelperText.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bildirishnomalar muhim testlar va muddatlarni o\'tkazib yubormasligingizga yordam beradi.'**
+  String get notifHelperText;
+
+  /// No description provided for @securitySectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xavfsizlik va sessiya'**
+  String get securitySectionTitle;
+
+  /// No description provided for @resetPasswordLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Parolni tiklash'**
+  String get resetPasswordLabel;
+
+  /// No description provided for @resetPasswordHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Parolni tiklash uchun o\'qituvchingiz yoki maktab administratoriga murojaat qiling.'**
+  String get resetPasswordHint;
+
+  /// No description provided for @logoutAllDevicesLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barcha qurilmalardan chiqish'**
+  String get logoutAllDevicesLabel;
+
+  /// No description provided for @logoutAllDevicesHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu turdagi kirish uchun mavjud emas'**
+  String get logoutAllDevicesHint;
+
+  /// No description provided for @logoutAccountLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hisobdan chiqish'**
+  String get logoutAccountLabel;
+
+  /// No description provided for @logoutAccountHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Joriy hisobdan chiqishni amalga oshiring'**
+  String get logoutAccountHint;
+
+  /// No description provided for @summarySectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qisqacha ko\'rinish'**
+  String get summarySectionTitle;
+
+  /// No description provided for @tipsSectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maslahatlar'**
+  String get tipsSectionTitle;
+
+  /// No description provided for @tipsBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'zgarishlar darhol qo\'llaniladi. Sozlamalar shu qurilmada saqlanadi.'**
+  String get tipsBody;
+
+  /// No description provided for @certificatesScreenTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sertifikatlar va yutuqlar'**
+  String get certificatesScreenTitle;
+
+  /// No description provided for @certificatesHeroTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sizning yutuqlaringiz mukofotga loyiq!'**
+  String get certificatesHeroTitle;
+
+  /// No description provided for @certificatesHeroSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qishda davom eting, nishonlar to\'plang va a\'lo natijalar uchun sertifikat qo\'lga kiriting.'**
+  String get certificatesHeroSubtitle;
+
+  /// No description provided for @certificatesKpiCountLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Olingan sertifikatlar'**
+  String get certificatesKpiCountLabel;
+
+  /// No description provided for @certificatesKpiBadgesLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ochilgan nishonlar'**
+  String get certificatesKpiBadgesLabel;
+
+  /// No description provided for @badgeMathMasterTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Matematika ustasi'**
+  String get badgeMathMasterTitle;
+
+  /// No description provided for @badgePerfectScoreTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'100% natija'**
+  String get badgePerfectScoreTitle;
+
+  /// No description provided for @badgeStreakCount.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} kun ketma-ket'**
+  String badgeStreakCount(int count);
+
+  /// No description provided for @badgeEnglishMasterTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ingliz tili ustasi'**
+  String get badgeEnglishMasterTitle;
+
+  /// No description provided for @badgeActiveStudentTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faol o\'quvchi'**
+  String get badgeActiveStudentTitle;
+
+  /// No description provided for @badgeUnlockedLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ochilgan'**
+  String get badgeUnlockedLabel;
+
+  /// No description provided for @badgesAndAchievementsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nishonlar va yutuqlar'**
+  String get badgesAndAchievementsTitle;
+
+  /// No description provided for @progressPanelTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yutuqlar jarayoni'**
+  String get progressPanelTitle;
+
+  /// No description provided for @progressNoSubjectData.
+  ///
+  /// In uz, this message translates to:
+  /// **'Fanlar bo\'yicha ma\'lumot hali yo\'q'**
+  String get progressNoSubjectData;
+
+  /// No description provided for @progressClosestBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eng yaqin: «{title}» — {pct}%'**
+  String progressClosestBadge(String title, int pct);
+
+  /// No description provided for @certificatesSearchHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sertifikatlar bo\'yicha qidirish...'**
+  String get certificatesSearchHint;
+
+  /// No description provided for @filterBadgesLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nishonlar'**
+  String get filterBadgesLabel;
+
+  /// No description provided for @certificatesEmptyPrompt.
+  ///
+  /// In uz, this message translates to:
+  /// **'Birinchi sertifikatingizni olish uchun testni {minScore}%+ natija bilan yakunlang'**
+  String certificatesEmptyPrompt(int minScore);
+
+  /// No description provided for @certificateIssuedOn.
+  ///
+  /// In uz, this message translates to:
+  /// **'{date} sanasida berilgan'**
+  String certificateIssuedOn(String date);
+
+  /// No description provided for @certificateGeneratingLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tayyorlanmoqda...'**
+  String get certificateGeneratingLabel;
+
+  /// No description provided for @certificateThumbnailLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'SERTIFIKAT'**
+  String get certificateThumbnailLabel;
+
+  /// No description provided for @diplomaIssuedToLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'berildi'**
+  String get diplomaIssuedToLabel;
+
+  /// No description provided for @diplomaForTestResultLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'\"{title}\" testidagi natija uchun'**
+  String diplomaForTestResultLabel(String title);
 }
 
 class _AppLocalizationsDelegate

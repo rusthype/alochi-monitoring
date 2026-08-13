@@ -102,4 +102,17 @@ class AppColors {
   static const Color textSecondary = ink2;
   static const Color textMuted     = ink3;
   static const Color background    = bg;
+
+  // ── Dark theme tokens ──────────────────────────────────────────────────────
+  // Adapted from the light palette above (same brand accent, inverted
+  // surfaces/text) — used by AppTheme.darkTheme and by screens that opt in
+  // to reading Theme.of(context).brightness directly (most existing screens
+  // still use the static light AppColors constants above and do not yet
+  // respond to dark mode — see student_settings_screen.dart file header).
+  static const Color darkBg      = Color(0xFF14161B);
+  static const Color darkSurface = Color(0xFF1D2027);
+  static const Color darkBorder  = Color(0xFF2E323C);
+  static const Color darkInk1    = Color(0xFFF3F4F6);
+  static const Color darkInk2    = Color(0xFFA0A6B4);
+  static const Color darkInk3    = Color(0xFF71767F);
 }

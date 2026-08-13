@@ -1448,4 +1448,337 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get noStudentsInGroup => 'В этой группе нет активных учеников.';
+
+  @override
+  String get helpScreenTitle => 'Помощь и поддержка';
+
+  @override
+  String get helpBannerTitle => 'Мы рядом, если нужна помощь';
+
+  @override
+  String get helpBannerSubtitle =>
+      'Найдите ответы на частые вопросы, посмотрите инструкции и свяжитесь с поддержкой в один клик.';
+
+  @override
+  String get helpKpiFaqLabel => 'FAQ';
+
+  @override
+  String helpKpiFaqValue(int count) {
+    return '$count статей';
+  }
+
+  @override
+  String get helpKpiSupportLabel => 'Поддержка';
+
+  @override
+  String get helpKpiVersionLabel => 'Версия';
+
+  @override
+  String get helpFaqSectionTitle => 'Часто задаваемые вопросы';
+
+  @override
+  String get helpFaqSearchHint => 'Поиск по вопросам...';
+
+  @override
+  String get helpFaqNoResults => 'Ничего не найдено';
+
+  @override
+  String get helpFaqQ1 => 'Как начать тест?';
+
+  @override
+  String get helpFaqA1 =>
+      'Перейдите в раздел «Мои тесты», выберите нужный тест и нажмите кнопку «Начать». Перед началом убедитесь, что интернет подключён стабильно.';
+
+  @override
+  String get helpFaqQ2 => 'Что делать при обрыве интернета?';
+
+  @override
+  String get helpFaqA2 =>
+      'Не переживайте — ваши ответы сохраняются на устройстве. Как только интернет восстановится, приложение автоматически подключится к серверу, и вы сможете продолжить тест.';
+
+  @override
+  String get helpFaqQ3 => 'Как посмотреть свои результаты?';
+
+  @override
+  String get helpFaqA3 =>
+      'Перейдите в раздел «Результаты» в боковом меню — там вы увидите баллы и статистику по всем пройденным тестам.';
+
+  @override
+  String get helpFaqQ4 => 'Забыл пароль, что делать?';
+
+  @override
+  String get helpFaqA4 =>
+      'Логин и пароль ученика выдаёт классный руководитель или администратор школы. Если вы забыли пароль, обратитесь к своему учителю — он поможет восстановить доступ.';
+
+  @override
+  String get helpFaqQ5 => 'Как получить сертификат?';
+
+  @override
+  String get helpFaqA5 =>
+      'Раздел сертификатов скоро заработает. Ваши результаты тестов уже сохраняются — как только функция появится, сертификаты будут рассчитаны автоматически.';
+
+  @override
+  String get helpVideoSectionTitle => 'Видео-инструкции';
+
+  @override
+  String get helpVideoComingSoonDesc =>
+      'Видеоинструкции пока недоступны. Как только они появятся на платформе, вы увидите их здесь.';
+
+  @override
+  String get helpTroubleshootSectionTitle => 'Если возникла проблема';
+
+  @override
+  String get helpTroubleshootInternetTitle => 'Проверьте интернет';
+
+  @override
+  String get helpTroubleshootInternetDesc =>
+      'Убедитесь, что устройство подключено к стабильной сети.';
+
+  @override
+  String get helpTroubleshootRestartTitle => 'Перезапустите приложение';
+
+  @override
+  String get helpTroubleshootRestartDesc =>
+      'Если проблема не исчезает, закройте приложение и откройте его снова.';
+
+  @override
+  String get helpTroubleshootTeacherTitle => 'Свяжитесь с учителем';
+
+  @override
+  String get helpTroubleshootTeacherDesc =>
+      'Сообщите учителю о проблеме для быстрого решения.';
+
+  @override
+  String get helpAboutSectionTitle => 'О приложении';
+
+  @override
+  String get helpAboutVersionLabel => 'Версия приложения';
+
+  @override
+  String get helpAboutServerLabel => 'Сервер';
+
+  @override
+  String get helpNoAnswerTitle => 'Не нашли ответ?';
+
+  @override
+  String get helpNoAnswerDesc =>
+      'Обратитесь к своему учителю или администратору школы — они вам помогут.';
+
+  @override
+  String get kpiBestScore => 'Высший результат';
+
+  @override
+  String get resultsTrendTitle => 'Динамика успеваемости';
+
+  @override
+  String resultsTrendSubtitle(Object count) {
+    return 'Последние $count тестов';
+  }
+
+  @override
+  String get subjectPerformanceTitle => 'Успеваемость по предметам';
+
+  @override
+  String get searchResultsHint => 'Поиск по названию теста...';
+
+  @override
+  String get sortNewestFirst => 'Сначала свежие';
+
+  @override
+  String get sortOldestFirst => 'Сначала старые';
+
+  @override
+  String get sortHighestScore => 'По высокому баллу';
+
+  @override
+  String get gradeWeak => 'Низкий';
+
+  @override
+  String get downloadPdfButton => 'Скачать PDF отчет';
+
+  @override
+  String get quickActionsTitle => 'Быстрые действия';
+
+  @override
+  String get refreshResultsAction => 'Обновить';
+
+  @override
+  String get refreshResultsActionDesc => 'Обновить список результатов';
+
+  @override
+  String get settingsHeroTitle => 'Настройте приложение под себя';
+
+  @override
+  String get settingsHeroSubtitle =>
+      'Управляйте внешним видом, языком, уведомлениями и безопасностью аккаунта.';
+
+  @override
+  String get settingsHeroCurrentLanguage => 'Текущий язык';
+
+  @override
+  String get themeLabel => 'Тема';
+
+  @override
+  String get themeLight => 'Светлая';
+
+  @override
+  String get themeDark => 'Тёмная';
+
+  @override
+  String get notificationsStatusOn => 'Вкл';
+
+  @override
+  String get notificationsStatusOff => 'Выкл';
+
+  @override
+  String get accountSectionTitle => 'Учетная запись';
+
+  @override
+  String get classLabelCaption => 'Класс';
+
+  @override
+  String get groupLabelCaption => 'Группа';
+
+  @override
+  String get personalizationSectionTitle => 'Персонализация';
+
+  @override
+  String get fontSizeLabel => 'Размер шрифта';
+
+  @override
+  String get fontSizeNormal => 'Обычный';
+
+  @override
+  String get fontSizeLarge => 'Крупный';
+
+  @override
+  String get languageRegionSectionTitle => 'Язык и регион';
+
+  @override
+  String get interfaceLanguageLabel => 'Язык интерфейса';
+
+  @override
+  String get notificationsSectionTitle => 'Уведомления';
+
+  @override
+  String get notifSoundOnComplete => 'Звук при завершении теста';
+
+  @override
+  String get notifRemindersNewTests => 'Напоминания о новых тестах';
+
+  @override
+  String get notifHelperText =>
+      'Уведомления помогут вам не пропустить важные тесты и дедлайны.';
+
+  @override
+  String get securitySectionTitle => 'Безопасность и сессия';
+
+  @override
+  String get resetPasswordLabel => 'Сбросить пароль';
+
+  @override
+  String get resetPasswordHint =>
+      'Для сброса пароля обратитесь к своему учителю или администратору школы.';
+
+  @override
+  String get logoutAllDevicesLabel => 'Выйти со всех устройств';
+
+  @override
+  String get logoutAllDevicesHint => 'Недоступно для этого типа входа';
+
+  @override
+  String get logoutAccountLabel => 'Выйти из аккаунта';
+
+  @override
+  String get logoutAccountHint => 'Выполнить выход из текущего аккаунта';
+
+  @override
+  String get summarySectionTitle => 'Краткий обзор';
+
+  @override
+  String get tipsSectionTitle => 'Советы';
+
+  @override
+  String get tipsBody =>
+      'Изменения применяются сразу. Настройки сохраняются на этом устройстве.';
+
+  @override
+  String get certificatesScreenTitle => 'Сертификаты и достижения';
+
+  @override
+  String get certificatesHeroTitle => 'Ваши успехи заслуживают награды!';
+
+  @override
+  String get certificatesHeroSubtitle =>
+      'Продолжайте учиться, собирайте бейджи и получайте сертификаты за отличные результаты.';
+
+  @override
+  String get certificatesKpiCountLabel => 'Получено сертификатов';
+
+  @override
+  String get certificatesKpiBadgesLabel => 'Открыто бейджей';
+
+  @override
+  String get badgeMathMasterTitle => 'Мастер математики';
+
+  @override
+  String get badgePerfectScoreTitle => '100% результат';
+
+  @override
+  String badgeStreakCount(int count) {
+    return '$count дней подряд';
+  }
+
+  @override
+  String get badgeEnglishMasterTitle => 'Знаток английского';
+
+  @override
+  String get badgeActiveStudentTitle => 'Активный ученик';
+
+  @override
+  String get badgeUnlockedLabel => 'Открыт';
+
+  @override
+  String get badgesAndAchievementsTitle => 'Бейджи и достижения';
+
+  @override
+  String get progressPanelTitle => 'Прогресс достижений';
+
+  @override
+  String get progressNoSubjectData => 'Пока нет данных по предметам';
+
+  @override
+  String progressClosestBadge(String title, int pct) {
+    return 'Ближе всего: «$title» — $pct%';
+  }
+
+  @override
+  String get certificatesSearchHint => 'Поиск по сертификатам...';
+
+  @override
+  String get filterBadgesLabel => 'Бейджи';
+
+  @override
+  String certificatesEmptyPrompt(int minScore) {
+    return 'Пройдите тест на $minScore%+, чтобы получить свой первый сертификат';
+  }
+
+  @override
+  String certificateIssuedOn(String date) {
+    return 'Выдан $date';
+  }
+
+  @override
+  String get certificateGeneratingLabel => 'Готовим...';
+
+  @override
+  String get certificateThumbnailLabel => 'СЕРТИФИКАТ';
+
+  @override
+  String get diplomaIssuedToLabel => 'выдан';
+
+  @override
+  String diplomaForTestResultLabel(String title) {
+    return 'за результат по тесту \"$title\"';
+  }
 }
