@@ -36,6 +36,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get offlineMode => 'Оффлайн режим';
 
   @override
+  String get onlineStatus => 'Онлайн';
+
+  @override
   String get invalidCredentials => 'Логин или пароль неверный';
 
   @override

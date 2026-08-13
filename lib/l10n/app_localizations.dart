@@ -152,6 +152,12 @@ abstract class AppLocalizations {
   /// **'Offline rejim'**
   String get offlineMode;
 
+  /// No description provided for @onlineStatus.
+  ///
+  /// In uz, this message translates to:
+  /// **'Onlayn'**
+  String get onlineStatus;
+
   /// No description provided for @invalidCredentials.
   ///
   /// In uz, this message translates to:
