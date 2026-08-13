@@ -816,5 +816,48 @@
         "type": "String"
       }
     }
-  }
+  },
+  "messagesBannerTitle": "Будьте в курсе важного! 👋",
+  "messagesBannerSubtitle": "Здесь вы найдете сообщения от учителей, уведомления о тестах и системные оповещения.",
+  "messagesKpiUnreadLabel": "Непрочитанные",
+  "messagesKpiNewTestsLabel": "Новые тесты",
+  "messagesKpiReviewedLabel": "Проверено результатов",
+  "messagesFilterAll": "Все",
+  "messagesFilterTeacher": "От учителей",
+  "messagesFilterTests": "Уведомления о тестах",
+  "messagesFilterSystem": "Системные",
+  "messagesSearchHint": "Поиск по сообщениям...",
+  "messagesEmptyListTitle": "Сообщений не найдено",
+  "messagesNoSelectionTitle": "Выберите сообщение",
+  "messagesNoSelectionSubtitle": "Нажмите на сообщение слева, чтобы посмотреть подробности.",
+  "messagesTypeTeacher": "Учитель",
+  "messagesTypeTest": "Тест",
+  "messagesTypeSystem": "Система",
+  "messagesSenderLabel": "От",
+  "messagesSenderTeacher": "Учитель",
+  "messagesSenderTestSystem": "Система тестирования",
+  "messagesSenderSystem": "Система",
+  "messagesGoToTestButton": "Перейти к тесту",
+  "messagesMarkReadButton": "Отметить как прочитанное",
+  "messagesMarkAllReadTitle": "Все прочитать",
+  "messagesMarkAllReadSubtitle": "Отметить все сообщения как прочитанные",
+  "messagesNotificationSettingsTitle": "Настройки уведомлений",
+  "messagesNotificationSettingsSubtitle": "Управляйте способами получения уведомлений",
+  "messagesArchiveTitle": "Архив сообщений",
+  "messagesArchiveSubtitle": "Просмотреть архивные сообщения",
+  "messagesQuickActionsTitle": "Быстрые действия",
+  "messagesSystemEmptyTitle": "Нет новых системных сообщений",
+  "messagesSystemEmptySubtitle": "Когда появятся новые уведомления, они будут отображаться здесь.",
+  "messagesSystemUnreadCount": "Новых системных сообщений: {count}",
+  "@messagesSystemUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesTipAssigned": "Удачи! Покажите свои лучшие знания и получите отличный результат.",
+  "messagesToday": "Сегодня",
+  "messagesYesterday": "Вчера",
+  "messagesMarkReadError": "Не удалось отметить как прочитанное"
 }

@@ -491,6 +491,42 @@ class MonitoringApi {
     }
   }
 
+  /// GET /messages/ — talaba uchun xabarlar ro'yxati (o'qituvchi/tizim
+  /// yozuvlari + backend so'rov vaqtida sintez qiladigan
+  /// test_assigned/test_reviewed yozuvlari), eng yangisi birinchi, 50 tagacha.
+  /// Xato holatida `[]` qaytaradi (fetchCatalogSchools bilan bir xil naqsh) —
+  /// chaqiruvchi buni bo'sh ro'yxat deb ko'rsatishi kerak, crash emas.
+  Future<List<Map<String, dynamic>>> fetchMessages(
+      {required String authToken}) async {
+    if (authToken.isEmpty) return [];
+    try {
+      final data = await _get('/messages/',
+          extraHeaders: {'Authorization': 'Bearer $authToken'});
+      if (data is! List) return [];
+      return data.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (e) {
+      debugPrint('fetchMessages error: $e');
+      return [];
+    }
+  }
+
+  /// PATCH /messages/<id>/read/ — xabarni o'qilgan deb belgilaydi. Faqat
+  /// haqiqiy saqlangan yozuvlar (`type` teacher/system, UUID `id`) uchun
+  /// chaqiriladi — sintez qilingan test_assigned/test_reviewed yozuvlar
+  /// bazada mavjud emas va bu endpoint ularda 404 qaytaradi (chaqiruvchi
+  /// oldindan filtrlaydi). Muvaffaqiyatsizlikda [ApiException] tashlaydi —
+  /// UI optimistik yangilanishni shu asosda qaytarib oladi.
+  Future<void> markMessageRead(
+      {required String authToken, required String messageId}) async {
+    final resp = await _send(() => http.patch(
+          Uri.parse('$_base/messages/$messageId/read/'),
+          headers: {..._headers, 'Authorization': 'Bearer $authToken'},
+        ));
+    if (resp.statusCode >= 400) {
+      throw ApiException(resp.statusCode, _statusMessage(resp.statusCode));
+    }
+  }
+
   /// Nashr qilingan testi bor barcha maktablar ro'yxati (kod+nom, kontentsiz).
   /// Anonim katalog (`fetchTestCatalog`, school_code'siz) faqat guruhsiz
   /// global testlarni ko'rsatadi — bu endpoint esa maktabni PIN oqimiga
