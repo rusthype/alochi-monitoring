@@ -30,6 +30,8 @@ const kStudentBranchPaths = [
   '/settings',
   '/help',
   '/certificates',
+  '/home',
+  '/messages',
 ];
 
 const _kResultsBranchIndex = 1; // kStudentBranchPaths.indexOf('/results')
@@ -40,6 +42,8 @@ final List<String Function(AppLocalizations)> _branchTitles = [
   (l10n) => l10n.sidebarSettings,
   (l10n) => l10n.helpScreenTitle,
   (l10n) => l10n.certificatesScreenTitle,
+  (l10n) => l10n.sidebarHome,
+  (l10n) => l10n.sidebarMessages,
 ];
 
 class StudentShell extends ConsumerWidget {
