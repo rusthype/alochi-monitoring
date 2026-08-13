@@ -20,6 +20,7 @@
   "testsRoute": "Testlar",
   "comingSoon": "Tez kunda",
   "studentLoginButton": "O'quvchi sifatida kirish",
+  "teacherProctorLogin": "O'qituvchi / Proktor",
   "myTestsTitle": "Mening testlarim",
   "myTestsEmpty": "Sizga tegishli testlar topilmadi",
   "retryCheck": "Qayta tekshirish",
