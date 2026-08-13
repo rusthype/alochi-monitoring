@@ -9,6 +9,7 @@ import 'core/sync/sync_service.dart';
 import 'core/services/heartbeat_service.dart';
 import 'core/network/connectivity_service.dart';
 import 'core/locale/locale_provider.dart';
+import 'core/theme/app_prefs_provider.dart';
 import 'l10n/app_localizations.dart';
 import 'shared/theme/app_theme.dart';
 import 'core/router/app_router.dart';
@@ -211,6 +212,8 @@ class AlochiMonitoringApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeProvider);
     final router = ref.watch(goRouterProvider);
+    final themeMode = ref.watch(themeModeProvider);
+    final fontScale = ref.watch(fontScaleProvider);
     return InactivityWrapper(
       child: MaterialApp.router(
         // ROOT CAUSE of the v1.0.58/v1.0.59 "solid gray screen on launch"
@@ -236,29 +239,35 @@ class AlochiMonitoringApp extends ConsumerWidget {
             AppLocalizations.of(context)!.appNameTitle,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.theme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: themeMode,
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: router,
         builder: (context, child) {
-          return Shortcuts(
-            shortcuts: <ShortcutActivator, Intent>{
-              LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyK):
-                  const CommandPaletteIntent(),
-              LogicalKeySet(
-                      LogicalKeyboardKey.control, LogicalKeyboardKey.keyK):
-                  const CommandPaletteIntent(),
-            },
-            child: Actions(
-              actions: <Type, Action<Intent>>{
-                CommandPaletteIntent: CallbackAction<CommandPaletteIntent>(
-                  onInvoke: (CommandPaletteIntent intent) {
-                    CommandPalette.show(context);
-                    return null;
-                  },
-                ),
+          return MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(fontScale)),
+            child: Shortcuts(
+              shortcuts: <ShortcutActivator, Intent>{
+                LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyK):
+                    const CommandPaletteIntent(),
+                LogicalKeySet(
+                        LogicalKeyboardKey.control, LogicalKeyboardKey.keyK):
+                    const CommandPaletteIntent(),
               },
-              child: child!,
+              child: Actions(
+                actions: <Type, Action<Intent>>{
+                  CommandPaletteIntent: CallbackAction<CommandPaletteIntent>(
+                    onInvoke: (CommandPaletteIntent intent) {
+                      CommandPalette.show(context);
+                      return null;
+                    },
+                  ),
+                },
+                child: child!,
+              ),
             ),
           );
         },

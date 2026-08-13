@@ -1455,4 +1455,338 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get noStudentsInGroup => 'Bu guruhda faol o\'quvchi topilmadi.';
+
+  @override
+  String get helpScreenTitle => 'Yordam va qo\'llab-quvvatlash';
+
+  @override
+  String get helpBannerTitle => 'Yordam kerak bo\'lsa, biz yoningizdamiz';
+
+  @override
+  String get helpBannerSubtitle =>
+      'Tez-tez so\'raladigan savollarga javob toping, yo\'riqnomalarni ko\'ring va bir necha bosishda qo\'llab-quvvatlash bilan bog\'laning.';
+
+  @override
+  String get helpKpiFaqLabel => 'FAQ';
+
+  @override
+  String helpKpiFaqValue(int count) {
+    return '$count ta maqola';
+  }
+
+  @override
+  String get helpKpiSupportLabel => 'Qo\'llab-quvvatlash';
+
+  @override
+  String get helpKpiVersionLabel => 'Versiya';
+
+  @override
+  String get helpFaqSectionTitle => 'Tez-tez so\'raladigan savollar';
+
+  @override
+  String get helpFaqSearchHint => 'Savollar bo\'yicha qidirish...';
+
+  @override
+  String get helpFaqNoResults => 'Hech narsa topilmadi';
+
+  @override
+  String get helpFaqQ1 => 'Testni qanday boshlash mumkin?';
+
+  @override
+  String get helpFaqA1 =>
+      '«Mening testlarim» bo\'limiga o\'ting, kerakli testni tanlang va «Boshlash» tugmasini bosing. Boshlashdan oldin internet aloqasi barqaror ekanligiga ishonch hosil qiling.';
+
+  @override
+  String get helpFaqQ2 => 'Internet uzilib qolsa nima qilish kerak?';
+
+  @override
+  String get helpFaqA2 =>
+      'Xavotir olmang — javoblaringiz qurilmada saqlanadi. Internet tiklangach, dastur avtomatik ravishda serverga ulanadi va testni davom ettirishingiz mumkin.';
+
+  @override
+  String get helpFaqQ3 => 'O\'z natijalarimni qanday ko\'raman?';
+
+  @override
+  String get helpFaqA3 =>
+      'Chap menyudagi «Natijalar» bo\'limiga o\'ting — u yerda barcha topshirilgan testlar bo\'yicha ball va statistikangizni ko\'rishingiz mumkin.';
+
+  @override
+  String get helpFaqQ4 => 'Parolni unutib qo\'ydim, nima qilaman?';
+
+  @override
+  String get helpFaqA4 =>
+      'O\'quvchi login-parolini sinf rahbari yoki maktab administratori beradi. Parolni unutgan bo\'lsangiz, o\'qituvchingizga murojaat qiling — u sizga yangi ma\'lumotlarni tiklab beradi.';
+
+  @override
+  String get helpFaqQ5 => 'Sertifikatni qanday olsam bo\'ladi?';
+
+  @override
+  String get helpFaqA5 =>
+      'Sertifikatlar bo\'limi tez orada ishga tushiriladi. Test natijalaringiz saqlanib boryapti — sertifikat funksiyasi qo\'shilgach, ular avtomatik hisoblab chiqiladi.';
+
+  @override
+  String get helpVideoSectionTitle => 'Video-yo\'riqnomalar';
+
+  @override
+  String get helpVideoComingSoonDesc =>
+      'Video-qo\'llanmalar hozircha mavjud emas. Ular platformaga qo\'shilgach, bu yerda paydo bo\'ladi.';
+
+  @override
+  String get helpTroubleshootSectionTitle => 'Muammo yuzaga kelsa';
+
+  @override
+  String get helpTroubleshootInternetTitle => 'Internetni tekshiring';
+
+  @override
+  String get helpTroubleshootInternetDesc =>
+      'Qurilma barqaror tarmoqqa ulanganiga ishonch hosil qiling.';
+
+  @override
+  String get helpTroubleshootRestartTitle => 'Dasturni qayta ishga tushiring';
+
+  @override
+  String get helpTroubleshootRestartDesc =>
+      'Muammo davom etsa, dasturni yoping va qaytadan oching.';
+
+  @override
+  String get helpTroubleshootTeacherTitle =>
+      'O\'qituvchingizga murojaat qiling';
+
+  @override
+  String get helpTroubleshootTeacherDesc =>
+      'Muammo hal bo\'lmasa, tezroq yechim uchun o\'qituvchingizga xabar bering.';
+
+  @override
+  String get helpAboutSectionTitle => 'Ilova haqida';
+
+  @override
+  String get helpAboutVersionLabel => 'Ilova versiyasi';
+
+  @override
+  String get helpAboutServerLabel => 'Server';
+
+  @override
+  String get helpNoAnswerTitle => 'Javob topa olmadingizmi?';
+
+  @override
+  String get helpNoAnswerDesc =>
+      'O\'qituvchingiz yoki maktab administratoriga murojaat qiling — ular sizga yordam berishadi.';
+
+  @override
+  String get kpiBestScore => 'Eng yuqori natija';
+
+  @override
+  String get resultsTrendTitle => 'Natijalar dinamikasi';
+
+  @override
+  String resultsTrendSubtitle(Object count) {
+    return 'Oxirgi $count ta natija';
+  }
+
+  @override
+  String get subjectPerformanceTitle => 'Fanlar bo\'yicha natija';
+
+  @override
+  String get searchResultsHint => 'Test nomi bo\'yicha qidirish...';
+
+  @override
+  String get sortNewestFirst => 'Avval yangi';
+
+  @override
+  String get sortOldestFirst => 'Avval eski';
+
+  @override
+  String get sortHighestScore => 'Yuqori ball bo\'yicha';
+
+  @override
+  String get gradeWeak => 'Past';
+
+  @override
+  String get downloadPdfButton => 'PDF hisobot';
+
+  @override
+  String get quickActionsTitle => 'Tezkor amallar';
+
+  @override
+  String get refreshResultsAction => 'Yangilash';
+
+  @override
+  String get refreshResultsActionDesc => 'Ro\'yxatni qayta yuklash';
+
+  @override
+  String get settingsHeroTitle => 'Ilovani o\'zingizga moslang';
+
+  @override
+  String get settingsHeroSubtitle =>
+      'Ko\'rinish, til, bildirishnomalar va hisob xavfsizligini boshqaring.';
+
+  @override
+  String get settingsHeroCurrentLanguage => 'Joriy til';
+
+  @override
+  String get themeLabel => 'Mavzu';
+
+  @override
+  String get themeLight => 'Yorug\'';
+
+  @override
+  String get themeDark => 'Qorong\'i';
+
+  @override
+  String get notificationsStatusOn => 'Yoqilgan';
+
+  @override
+  String get notificationsStatusOff => 'O\'chirilgan';
+
+  @override
+  String get accountSectionTitle => 'Hisob';
+
+  @override
+  String get classLabelCaption => 'Sinf';
+
+  @override
+  String get groupLabelCaption => 'Guruh';
+
+  @override
+  String get personalizationSectionTitle => 'Shaxsiylashtirish';
+
+  @override
+  String get fontSizeLabel => 'Shrift o\'lchami';
+
+  @override
+  String get fontSizeNormal => 'Oddiy';
+
+  @override
+  String get fontSizeLarge => 'Katta';
+
+  @override
+  String get languageRegionSectionTitle => 'Til va hudud';
+
+  @override
+  String get interfaceLanguageLabel => 'Interfeys tili';
+
+  @override
+  String get notificationsSectionTitle => 'Bildirishnomalar';
+
+  @override
+  String get notifSoundOnComplete => 'Test tugaganda tovush';
+
+  @override
+  String get notifRemindersNewTests => 'Yangi testlar haqida eslatmalar';
+
+  @override
+  String get notifHelperText =>
+      'Bildirishnomalar muhim testlar va muddatlarni o\'tkazib yubormasligingizga yordam beradi.';
+
+  @override
+  String get securitySectionTitle => 'Xavfsizlik va sessiya';
+
+  @override
+  String get resetPasswordLabel => 'Parolni tiklash';
+
+  @override
+  String get resetPasswordHint =>
+      'Parolni tiklash uchun o\'qituvchingiz yoki maktab administratoriga murojaat qiling.';
+
+  @override
+  String get logoutAllDevicesLabel => 'Barcha qurilmalardan chiqish';
+
+  @override
+  String get logoutAllDevicesHint => 'Bu turdagi kirish uchun mavjud emas';
+
+  @override
+  String get logoutAccountLabel => 'Hisobdan chiqish';
+
+  @override
+  String get logoutAccountHint => 'Joriy hisobdan chiqishni amalga oshiring';
+
+  @override
+  String get summarySectionTitle => 'Qisqacha ko\'rinish';
+
+  @override
+  String get tipsSectionTitle => 'Maslahatlar';
+
+  @override
+  String get tipsBody =>
+      'O\'zgarishlar darhol qo\'llaniladi. Sozlamalar shu qurilmada saqlanadi.';
+
+  @override
+  String get certificatesScreenTitle => 'Sertifikatlar va yutuqlar';
+
+  @override
+  String get certificatesHeroTitle => 'Sizning yutuqlaringiz mukofotga loyiq!';
+
+  @override
+  String get certificatesHeroSubtitle =>
+      'O\'qishda davom eting, nishonlar to\'plang va a\'lo natijalar uchun sertifikat qo\'lga kiriting.';
+
+  @override
+  String get certificatesKpiCountLabel => 'Olingan sertifikatlar';
+
+  @override
+  String get certificatesKpiBadgesLabel => 'Ochilgan nishonlar';
+
+  @override
+  String get badgeMathMasterTitle => 'Matematika ustasi';
+
+  @override
+  String get badgePerfectScoreTitle => '100% natija';
+
+  @override
+  String badgeStreakCount(int count) {
+    return '$count kun ketma-ket';
+  }
+
+  @override
+  String get badgeEnglishMasterTitle => 'Ingliz tili ustasi';
+
+  @override
+  String get badgeActiveStudentTitle => 'Faol o\'quvchi';
+
+  @override
+  String get badgeUnlockedLabel => 'Ochilgan';
+
+  @override
+  String get badgesAndAchievementsTitle => 'Nishonlar va yutuqlar';
+
+  @override
+  String get progressPanelTitle => 'Yutuqlar jarayoni';
+
+  @override
+  String get progressNoSubjectData => 'Fanlar bo\'yicha ma\'lumot hali yo\'q';
+
+  @override
+  String progressClosestBadge(String title, int pct) {
+    return 'Eng yaqin: «$title» — $pct%';
+  }
+
+  @override
+  String get certificatesSearchHint => 'Sertifikatlar bo\'yicha qidirish...';
+
+  @override
+  String get filterBadgesLabel => 'Nishonlar';
+
+  @override
+  String certificatesEmptyPrompt(int minScore) {
+    return 'Birinchi sertifikatingizni olish uchun testni $minScore%+ natija bilan yakunlang';
+  }
+
+  @override
+  String certificateIssuedOn(String date) {
+    return '$date sanasida berilgan';
+  }
+
+  @override
+  String get certificateGeneratingLabel => 'Tayyorlanmoqda...';
+
+  @override
+  String get certificateThumbnailLabel => 'SERTIFIKAT';
+
+  @override
+  String get diplomaIssuedToLabel => 'berildi';
+
+  @override
+  String diplomaForTestResultLabel(String title) {
+    return '\"$title\" testidagi natija uchun';
+  }
 }
