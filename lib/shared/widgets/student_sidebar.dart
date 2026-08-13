@@ -149,8 +149,21 @@ class StudentSidebar extends StatelessWidget {
       ),
     );
 
+    // `go` (not `push`) — these are sibling top-level tabs, not a
+    // push-drill-down flow. `push` left every previously-visited tab's
+    // screen instance (and its own data-fetching state) stacked underneath,
+    // growing the Navigator stack unboundedly as a student bounced between
+    // tabs. `go` replaces the current location instead, matching the
+    // existing "hard reset" pattern this app already uses elsewhere
+    // (my_tests_screen.dart's "Bosh sahifa" exit calls `context.go('/')`).
+    // Safe here: with this app's flat (non-nested) route table, `go` swaps
+    // the whole match list via GoRouter's declarative Page diffing, not an
+    // imperative Navigator.pop() — so it does NOT trigger the PopScope
+    // (canPop: false) back-button interception my_tests_screen.dart relies
+    // on, which only fires on an actual pop attempt (hardware back, appbar
+    // back), never on a declarative page-list change from `go()`.
     final onTap = (enabled && !active)
-        ? () => context.push(item.path!, extra: {'session': session})
+        ? () => context.go(item.path!, extra: {'session': session})
         : null;
 
     return Padding(

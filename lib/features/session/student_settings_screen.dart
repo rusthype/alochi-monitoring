@@ -35,10 +35,10 @@
 // investigation): "Сбросить пароль" is a static informational row (contact
 // teacher/admin), not a fake reset flow. "Выйти со всех устройств" is shown
 // per the mockup layout but disabled with an honest subtitle — only this
-// device's local logout is real. "Выйти из аккаунта" reuses the exact same
-// kiosk-security clear-session + hard-navigation-reset pattern as
-// my_tests_screen.dart's `_clearSession`/`_goToLoginReplacingStack`/
-// `_logoutNow`.
+// device's local logout is real. "Выйти из аккаунта" calls the shared
+// `logoutStudentSession()` (core/session/logout.dart) — the same
+// kiosk-security clear-session + hard-navigation-reset every student-cabinet
+// screen uses, not a per-screen reimplementation.
 //
 // OMITTED vs mock5.jpg (would require fabricating data/flows that don't
 // exist — see "never fabricate" rule): avatar upload, "Редактировать
@@ -49,15 +49,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
-import '../../core/api/api_client.dart';
-import '../../core/db/credential_cache.dart';
 import '../../core/locale/locale_provider.dart';
 import '../../core/models/models.dart';
+import '../../core/session/logout.dart';
 import '../../core/theme/app_prefs_provider.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/hover_region.dart';
 import '../../shared/widgets/student_shell.dart';
-import '../auth/login_screen.dart';
 
 /// Palette that switches with Theme.of(context).brightness — see file
 /// header for why only this screen's own body opts in.
@@ -80,26 +78,7 @@ class StudentSettingsScreen extends ConsumerWidget {
 
   const StudentSettingsScreen({super.key, required this.session});
 
-  /// Mirrors my_tests_screen.dart's _clearSession/_goToLoginReplacingStack/
-  /// _logoutNow — same kiosk-security pattern, not reimplemented.
-  Future<void> _clearSession() async {
-    api.clearToken();
-    await CredentialCache.clear();
-  }
-
-  void _goToLoginReplacingStack(BuildContext context) {
-    if (!context.mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
-  }
-
-  Future<void> _logoutNow(BuildContext context) async {
-    await _clearSession();
-    if (!context.mounted) return;
-    _goToLoginReplacingStack(context);
-  }
+  Future<void> _logoutNow(BuildContext context) => logoutStudentSession(context);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

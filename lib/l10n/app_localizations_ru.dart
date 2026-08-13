@@ -1693,4 +1693,84 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get tipsBody =>
       'Изменения применяются сразу. Настройки сохраняются на этом устройстве.';
+
+  @override
+  String get certificatesScreenTitle => 'Сертификаты и достижения';
+
+  @override
+  String get certificatesHeroTitle => 'Ваши успехи заслуживают награды!';
+
+  @override
+  String get certificatesHeroSubtitle =>
+      'Продолжайте учиться, собирайте бейджи и получайте сертификаты за отличные результаты.';
+
+  @override
+  String get certificatesKpiCountLabel => 'Получено сертификатов';
+
+  @override
+  String get certificatesKpiBadgesLabel => 'Открыто бейджей';
+
+  @override
+  String get badgeMathMasterTitle => 'Мастер математики';
+
+  @override
+  String get badgePerfectScoreTitle => '100% результат';
+
+  @override
+  String badgeStreakCount(int count) {
+    return '$count дней подряд';
+  }
+
+  @override
+  String get badgeEnglishMasterTitle => 'Знаток английского';
+
+  @override
+  String get badgeActiveStudentTitle => 'Активный ученик';
+
+  @override
+  String get badgeUnlockedLabel => 'Открыт';
+
+  @override
+  String get badgesAndAchievementsTitle => 'Бейджи и достижения';
+
+  @override
+  String get progressPanelTitle => 'Прогресс достижений';
+
+  @override
+  String get progressNoSubjectData => 'Пока нет данных по предметам';
+
+  @override
+  String progressClosestBadge(String title, int pct) {
+    return 'Ближе всего: «$title» — $pct%';
+  }
+
+  @override
+  String get certificatesSearchHint => 'Поиск по сертификатам...';
+
+  @override
+  String get filterBadgesLabel => 'Бейджи';
+
+  @override
+  String certificatesEmptyPrompt(int minScore) {
+    return 'Пройдите тест на $minScore%+, чтобы получить свой первый сертификат';
+  }
+
+  @override
+  String certificateIssuedOn(String date) {
+    return 'Выдан $date';
+  }
+
+  @override
+  String get certificateGeneratingLabel => 'Готовим...';
+
+  @override
+  String get certificateThumbnailLabel => 'СЕРТИФИКАТ';
+
+  @override
+  String get diplomaIssuedToLabel => 'выдан';
+
+  @override
+  String diplomaForTestResultLabel(String title) {
+    return 'за результат по тесту \"$title\"';
+  }
 }

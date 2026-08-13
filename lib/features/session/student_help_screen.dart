@@ -2,8 +2,8 @@
 //
 // "Помощь и поддержка" (Help & Support) screen for the self-login student
 // cabinet — reuses StudentShell/sidebar/header exactly like
-// results_screen.dart and my_tests_screen.dart. NOT yet wired into
-// app_router.dart (done centrally afterward, per plan).
+// results_screen.dart and my_tests_screen.dart. Wired into app_router.dart
+// as the live `/help` route.
 //
 // Real-data policy (never fabricate):
 // - App version: PackageInfo.fromPlatform(), same pattern as
@@ -33,14 +33,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
-import '../../core/api/api_client.dart';
-import '../../core/db/credential_cache.dart';
 import '../../core/models/models.dart';
 import '../../core/network/connectivity_provider.dart';
 import '../../core/network/connectivity_service.dart';
+import '../../core/session/logout.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/student_shell.dart';
-import '../auth/login_screen.dart';
 
 class _FaqItem {
   final IconData icon;
@@ -111,18 +109,7 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
     }
   }
 
-  /// Same mandatory kiosk-security logout as results_screen.dart /
-  /// my_tests_screen.dart — a shared self-login session must never survive
-  /// past its own use.
-  Future<void> _logoutNow() async {
-    api.clearToken();
-    await CredentialCache.clear();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
-  }
+  Future<void> _logoutNow() => logoutStudentSession(context);
 
   List<_FaqItem> _filteredFaq(AppLocalizations l10n) {
     if (_query.isEmpty) return _faqItems;
@@ -262,6 +249,12 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
                     children: [
                       for (var i = 0; i < items.length; i++)
                         ExpansionTile(
+                          // Keyed on the FAQ item's own (stable, module-level
+                          // singleton) identity, not the loop index — so
+                          // Flutter doesn't reuse expanded/collapsed state
+                          // across different questions when search
+                          // filtering changes the list's size/order.
+                          key: ObjectKey(items[i]),
                           initiallyExpanded: i == 0 && _query.isEmpty,
                           tilePadding: EdgeInsets.zero,
                           childrenPadding:
