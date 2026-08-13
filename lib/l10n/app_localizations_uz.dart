@@ -1566,6 +1566,21 @@ class AppLocalizationsUz extends AppLocalizations {
   String get helpAboutServerLabel => 'Server';
 
   @override
+  String get helpContactSectionTitle => 'Qo\'llab-quvvatlash bilan bog\'lanish';
+
+  @override
+  String get helpOpenTelegramBot => 'Telegram Botni ochish';
+
+  @override
+  String get helpSupportContactLabel => 'Alochi Support';
+
+  @override
+  String get helpSupportContactHandle => '@AlochiSupport';
+
+  @override
+  String get helpLinkOpenError => 'Havolani ochib bo\'lmadi';
+
+  @override
   String get helpNoAnswerTitle => 'Javob topa olmadingizmi?';
 
   @override

@@ -701,6 +701,11 @@
   "helpAboutSectionTitle": "О приложении",
   "helpAboutVersionLabel": "Версия приложения",
   "helpAboutServerLabel": "Сервер",
+  "helpContactSectionTitle": "Связаться с поддержкой",
+  "helpOpenTelegramBot": "Открыть Telegram Bot",
+  "helpSupportContactLabel": "Alochi Support",
+  "helpSupportContactHandle": "@AlochiSupport",
+  "helpLinkOpenError": "Не удалось открыть ссылку",
   "helpNoAnswerTitle": "Не нашли ответ?",
   "helpNoAnswerDesc": "Обратитесь к своему учителю или администратору школы — они вам помогут.",
 
