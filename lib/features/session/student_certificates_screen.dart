@@ -36,10 +36,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/models/models.dart';
-import '../../core/session/logout.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/student_kpi_tile.dart';
-import '../../shared/widgets/student_shell.dart';
 
 /// Badge thresholds — documented here so they can be reviewed/adjusted in
 /// one place. All computed from real `RecentResult`/`stats` data, never
@@ -141,18 +139,10 @@ class _StudentCertificatesScreenState
     }
   }
 
-  Future<void> _logoutNow() => logoutStudentSession(context);
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return StudentShell(
-      currentRoute: '/certificates',
-      session: widget.session,
-      title: l10n.certificatesScreenTitle,
-      onLogout: _logoutNow,
-      child: _body(l10n),
-    );
+    return _body(l10n);
   }
 
   Widget _body(AppLocalizations l10n) {

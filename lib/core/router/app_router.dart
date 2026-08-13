@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/login_screen.dart';
+import '../../features/session/session_providers.dart';
 import '../widgets/error_screen.dart';
 import '../../features/session/session_setup_screen.dart';
 import '../../features/session/group_select_screen.dart';
@@ -14,6 +15,8 @@ import '../../features/session/results_screen.dart';
 import '../../features/session/student_settings_screen.dart';
 import '../../features/session/student_help_screen.dart';
 import '../../features/session/student_certificates_screen.dart';
+import '../../shared/widgets/student_shell.dart';
+import '../models/models.dart';
 
 // Test screens
 import '../../features/test/package_screen.dart';
@@ -30,6 +33,12 @@ import '../../features/test/confirm_screen.dart';
 import '../../features/local_test/local_result_screen.dart';
 import '../../features/local_test/local_test_screen.dart';
 import '../../features/unit1/unit1_screen.dart';
+
+/// Reads the Riverpod container from a leaf `GoRoute.builder`'s own
+/// [BuildContext] (not the outer `goRouterProvider`'s `ref`, which is only
+/// valid at router-construction time) — same pattern login_screen.dart uses
+/// to write [currentStudentSessionProvider].
+ProviderContainer _ref(BuildContext context) => ProviderScope.containerOf(context);
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -78,39 +87,81 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               offline: extra['offline'] ?? false,
             );
           }),
-      GoRoute(
-          path: '/my_tests',
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {};
-            return MyTestsScreen(
-              session: extra['session'],
-              offline: extra['offline'] ?? false,
-            );
-          }),
-      GoRoute(
-          path: '/results',
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {};
-            return ResultsScreen(session: extra['session']);
-          }),
-      GoRoute(
-          path: '/settings',
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {};
-            return StudentSettingsScreen(session: extra['session']);
-          }),
-      GoRoute(
-          path: '/help',
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {};
-            return StudentHelpScreen(session: extra['session']);
-          }),
-      GoRoute(
-          path: '/certificates',
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {};
-            return StudentCertificatesScreen(session: extra['session']);
-          }),
+      // The 5 student-cabinet screens (kStudentBranchPaths order —
+      // student_shell.dart/student_sidebar.dart index into this by path).
+      // IndexedStack branches: switching tabs no longer rebuilds the shell
+      // or triggers a GoRouter page transition, and each branch keeps its
+      // own scroll/data-fetch state alive in the background (was the nav
+      // "slайд" bug — see student_shell.dart's file header).
+      //
+      // `extra['session']` is only present on the FIRST navigation into a
+      // branch (e.g. straight from login) — `goBranch` (sidebar taps) does
+      // not carry `extra`, so every leaf here falls back to
+      // [currentStudentSessionProvider] (written by login_screen.dart)
+      // when `extra` doesn't have it, instead of crashing on a null
+      // required `session` param.
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            StudentShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/my_tests',
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>? ?? {};
+                  return MyTestsScreen(
+                    session: extra['session'] as StudentSession? ??
+                        _ref(context).read(currentStudentSessionProvider)!,
+                    offline: extra['offline'] ?? false,
+                  );
+                }),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/results',
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>? ?? {};
+                  return ResultsScreen(
+                    session: extra['session'] as StudentSession? ??
+                        _ref(context).read(currentStudentSessionProvider)!,
+                  );
+                }),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/settings',
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>? ?? {};
+                  return StudentSettingsScreen(
+                    session: extra['session'] as StudentSession? ??
+                        _ref(context).read(currentStudentSessionProvider)!,
+                  );
+                }),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/help',
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>? ?? {};
+                  return StudentHelpScreen(
+                    session: extra['session'] as StudentSession? ??
+                        _ref(context).read(currentStudentSessionProvider)!,
+                  );
+                }),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/certificates',
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>? ?? {};
+                  return StudentCertificatesScreen(
+                    session: extra['session'] as StudentSession? ??
+                        _ref(context).read(currentStudentSessionProvider)!,
+                  );
+                }),
+          ]),
+        ],
+      ),
       GoRoute(
           path: '/history',
           builder: (context, state) {

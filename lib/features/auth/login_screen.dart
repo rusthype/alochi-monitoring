@@ -376,6 +376,9 @@ class _LoginScreenState extends State<LoginScreen> {
             debugPrint('CredentialCache write failed (non-fatal): $cacheError');
           }
           if (!mounted) return;
+          ProviderScope.containerOf(context)
+              .read(currentStudentSessionProvider.notifier)
+              .state = session;
           context.pushReplacement('/my_tests', extra: {'session': session});
           return;
         } on ApiException catch (e) {
@@ -398,6 +401,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (session != null) {
         api.setToken(session.token);
         if (!mounted) return;
+        ProviderScope.containerOf(context)
+            .read(currentStudentSessionProvider.notifier)
+            .state = session;
         context.pushReplacement('/my_tests',
             extra: {'session': session, 'offline': !online});
         return;

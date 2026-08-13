@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/models/models.dart';
 import '../../core/services/test_catalog_service.dart';
 import 'test_session.dart';
 
@@ -14,6 +15,14 @@ final selectedSchoolCodeProvider = StateProvider<String?>((ref) => null);
 
 /// The current test session
 final currentSessionProvider = StateProvider<TestSession?>((ref) => null);
+
+/// The logged-in student's [StudentSession], written by login_screen.dart
+/// right before navigating to `/my_tests`. Centralized source of truth for
+/// the student-cabinet shell/sidebar (and, later, Home/Messages screens) —
+/// StatefulShellRoute branches don't reliably carry GoRouter's `extra` past
+/// their first navigation, so screens that can't rely on `extra` fall back
+/// to reading this provider instead.
+final currentStudentSessionProvider = StateProvider<StudentSession?>((ref) => null);
 
 /// The selected group
 final selectedGroupProvider = StateProvider<Map<String, dynamic>?>((ref) => null);

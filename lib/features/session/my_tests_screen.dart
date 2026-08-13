@@ -37,7 +37,7 @@ import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/hover_region.dart';
 import '../../shared/widgets/new_badge.dart';
 import '../../shared/widgets/student_kpi_tile.dart';
-import '../../shared/widgets/student_shell.dart';
+import '../../shared/widgets/student_shell.dart' show kStudentBranchPaths;
 import '../../shared/widgets/subject_badge.dart';
 
 /// Lightweight catalog row for the self-login flow — intentionally separate
@@ -328,7 +328,15 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
   }
 
   void _viewResults() {
-    context.push('/results', extra: {'session': widget.session});
+    // `goBranch`, not `context.push` — `/results` is now a sibling branch of
+    // this screen's own StatefulShellRoute (app_router.dart), not a
+    // standalone route. Each branch has its own independent Navigator, so
+    // pushing a different branch's route from here wouldn't stack a "back to
+    // Мои тесты" page the way it used to; goBranch is the supported way to
+    // switch branches from any descendant of the shell (same call the
+    // sidebar/header results-shortcut make).
+    StatefulNavigationShell.of(context)
+        .goBranch(kStudentBranchPaths.indexOf('/results'));
   }
 
   List<_StudentTest> get _filteredTests {
@@ -364,13 +372,7 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
         if (didPop) return;
         _logoutNow();
       },
-      child: StudentShell(
-        currentRoute: '/my_tests',
-        session: widget.session,
-        title: l10n.myTestsTitle,
-        onLogout: _logoutNow,
-        child: _body(l10n, isSmall),
-      ),
+      child: _body(l10n, isSmall),
     );
   }
 

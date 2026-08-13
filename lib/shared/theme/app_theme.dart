@@ -136,5 +136,43 @@ class AppTheme {
           errorStyle: const TextStyle(color: AppColors.err, fontSize: 12),
         ),
         dividerTheme: const DividerThemeData(color: AppColors.darkBorder, space: 0),
+        dropdownMenuTheme: DropdownMenuThemeData(
+          menuStyle: MenuStyle(
+            backgroundColor:
+                const WidgetStatePropertyAll(AppColors.darkSurface),
+            shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: AppColors.darkBorder),
+            )),
+          ),
+        ),
+        popupMenuTheme: PopupMenuThemeData(
+          color: AppColors.darkSurface,
+          textStyle: const TextStyle(color: AppColors.darkInk1, fontSize: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: const BorderSide(color: AppColors.darkBorder),
+          ),
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: AppColors.darkSurface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: AppColors.darkBorder),
+          ),
+          titleTextStyle: const TextStyle(
+              color: AppColors.darkInk1,
+              fontSize: 18,
+              fontWeight: FontWeight.w700),
+          contentTextStyle:
+              const TextStyle(color: AppColors.darkInk2, fontSize: 14),
+        ),
+        bottomSheetTheme: const BottomSheetThemeData(
+          backgroundColor: AppColors.darkSurface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            side: BorderSide(color: AppColors.darkBorder),
+          ),
+        ),
       );
 }
