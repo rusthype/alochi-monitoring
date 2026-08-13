@@ -36,9 +36,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/models/models.dart';
 import '../../core/network/connectivity_provider.dart';
 import '../../core/network/connectivity_service.dart';
-import '../../core/session/logout.dart';
 import '../../shared/theme/app_theme.dart';
-import '../../shared/widgets/student_shell.dart';
 
 class _FaqItem {
   final IconData icon;
@@ -109,8 +107,6 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
     }
   }
 
-  Future<void> _logoutNow() => logoutStudentSession(context);
-
   List<_FaqItem> _filteredFaq(AppLocalizations l10n) {
     if (_query.isEmpty) return _faqItems;
     return _faqItems
@@ -123,13 +119,7 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return StudentShell(
-      currentRoute: '/help',
-      session: widget.session,
-      title: l10n.helpScreenTitle,
-      onLogout: _logoutNow,
-      child: _body(l10n),
-    );
+    return _body(l10n);
   }
 
   Widget _body(AppLocalizations l10n) {

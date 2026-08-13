@@ -54,24 +54,8 @@ import '../../core/models/models.dart';
 import '../../core/session/logout.dart';
 import '../../core/theme/app_prefs_provider.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/theme/student_palette.dart';
 import '../../shared/widgets/hover_region.dart';
-import '../../shared/widgets/student_shell.dart';
-
-/// Palette that switches with Theme.of(context).brightness — see file
-/// header for why only this screen's own body opts in.
-class _Palette {
-  final bool isDark;
-  const _Palette(this.isDark);
-
-  Color get surface => isDark ? AppColors.darkSurface : AppColors.surface;
-  Color get border => isDark ? AppColors.darkBorder : AppColors.border;
-  Color get ink1 => isDark ? AppColors.darkInk1 : AppColors.ink1;
-  Color get ink2 => isDark ? AppColors.darkInk2 : AppColors.ink2;
-  Color get ink3 => isDark ? AppColors.darkInk3 : AppColors.ink3;
-  Color get chipBg => isDark ? AppColors.darkBg : AppColors.pageBg;
-  Color get hoverBg =>
-      isDark ? AppColors.darkBorder.withValues(alpha: 0.5) : AppColors.hoverBg;
-}
 
 class StudentSettingsScreen extends ConsumerWidget {
   final StudentSession session;
@@ -83,45 +67,39 @@ class StudentSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final pal = _Palette(Theme.of(context).brightness == Brightness.dark);
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
 
-    return StudentShell(
-      currentRoute: '/settings',
-      session: session,
-      title: l10n.sidebarSettings,
-      onLogout: () => _logoutNow(context),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 900;
-            final left = _leftColumn(l10n, pal);
-            final right = _rightColumn(context, l10n, pal);
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _Hero(l10n: l10n),
-                const SizedBox(height: 16),
-                if (isNarrow)
-                  Column(children: [left, const SizedBox(height: 16), right])
-                else
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 2, child: left),
-                      const SizedBox(width: 16),
-                      Expanded(child: right),
-                    ],
-                  ),
-              ],
-            );
-          },
-        ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 900;
+          final left = _leftColumn(l10n, pal);
+          final right = _rightColumn(context, l10n, pal);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Hero(l10n: l10n),
+              const SizedBox(height: 16),
+              if (isNarrow)
+                Column(children: [left, const SizedBox(height: 16), right])
+              else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 2, child: left),
+                    const SizedBox(width: 16),
+                    Expanded(child: right),
+                  ],
+                ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _leftColumn(AppLocalizations l10n, _Palette pal) {
+  Widget _leftColumn(AppLocalizations l10n, StudentPalette pal) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -136,7 +114,7 @@ class StudentSettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _rightColumn(BuildContext context, AppLocalizations l10n, _Palette pal) {
+  Widget _rightColumn(BuildContext context, AppLocalizations l10n, StudentPalette pal) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -154,7 +132,7 @@ class StudentSettingsScreen extends ConsumerWidget {
 
 class _Card extends StatelessWidget {
   final String title;
-  final _Palette pal;
+  final StudentPalette pal;
   final List<Widget> children;
   const _Card({required this.title, required this.pal, required this.children});
 
@@ -186,7 +164,7 @@ class _Card extends StatelessWidget {
 class _SegmentedRow extends StatelessWidget {
   final String label;
   final List<(String, bool, VoidCallback)> options; // (text, selected, onTap)
-  final _Palette pal;
+  final StudentPalette pal;
   const _SegmentedRow(
       {required this.label, required this.options, required this.pal});
 
@@ -222,7 +200,7 @@ class _SegmentButton extends StatelessWidget {
   final String text;
   final bool selected;
   final VoidCallback onTap;
-  final _Palette pal;
+  final StudentPalette pal;
   const _SegmentButton(
       {required this.text,
       required this.selected,
@@ -367,7 +345,7 @@ class _HeroChip extends StatelessWidget {
 class _AccountCard extends StatelessWidget {
   final StudentSession session;
   final AppLocalizations l10n;
-  final _Palette pal;
+  final StudentPalette pal;
   const _AccountCard(
       {required this.session, required this.l10n, required this.pal});
 
@@ -436,7 +414,7 @@ class _InfoTile extends StatelessWidget {
   final IconData icon;
   final String caption;
   final String value;
-  final _Palette pal;
+  final StudentPalette pal;
   const _InfoTile(
       {required this.icon,
       required this.caption,
@@ -470,7 +448,7 @@ class _InfoTile extends StatelessWidget {
 
 class _PersonalizationCard extends ConsumerWidget {
   final AppLocalizations l10n;
-  final _Palette pal;
+  final StudentPalette pal;
   const _PersonalizationCard({required this.l10n, required this.pal});
 
   @override
@@ -507,7 +485,7 @@ class _PersonalizationCard extends ConsumerWidget {
 
 class _LanguageCard extends ConsumerWidget {
   final AppLocalizations l10n;
-  final _Palette pal;
+  final StudentPalette pal;
   const _LanguageCard({required this.l10n, required this.pal});
 
   @override
@@ -532,7 +510,7 @@ class _LanguageCard extends ConsumerWidget {
 
 class _NotificationsCard extends ConsumerWidget {
   final AppLocalizations l10n;
-  final _Palette pal;
+  final StudentPalette pal;
   const _NotificationsCard({required this.l10n, required this.pal});
 
   @override
@@ -578,7 +556,7 @@ class _SwitchRow extends StatelessWidget {
   final String label;
   final bool value;
   final ValueChanged<bool> onChanged;
-  final _Palette pal;
+  final StudentPalette pal;
   const _SwitchRow(
       {required this.label,
       required this.value,
@@ -610,7 +588,7 @@ class _SwitchRow extends StatelessWidget {
 
 class _SecurityCard extends StatelessWidget {
   final AppLocalizations l10n;
-  final _Palette pal;
+  final StudentPalette pal;
   final VoidCallback onLogout;
   const _SecurityCard(
       {required this.l10n, required this.pal, required this.onLogout});
@@ -663,7 +641,7 @@ class _SecurityRow extends StatelessWidget {
   final Color iconBg;
   final String title;
   final String subtitle;
-  final _Palette pal;
+  final StudentPalette pal;
   final bool enabled;
   final Color? titleColor;
   final VoidCallback? onTap;
@@ -734,7 +712,7 @@ class _SecurityRow extends StatelessWidget {
 
 class _SummaryCard extends ConsumerWidget {
   final AppLocalizations l10n;
-  final _Palette pal;
+  final StudentPalette pal;
   const _SummaryCard({required this.l10n, required this.pal});
 
   @override
@@ -775,7 +753,7 @@ class _SummaryRow extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
-  final _Palette pal;
+  final StudentPalette pal;
   const _SummaryRow(
       {required this.label,
       required this.value,
@@ -812,7 +790,7 @@ class _SummaryRow extends StatelessWidget {
 
 class _TipsCard extends StatelessWidget {
   final AppLocalizations l10n;
-  final _Palette pal;
+  final StudentPalette pal;
   const _TipsCard({required this.l10n, required this.pal});
 
   @override

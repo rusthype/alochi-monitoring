@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/student_palette.dart';
 
 class KpiTile extends StatelessWidget {
   final IconData icon;
@@ -25,10 +26,10 @@ class KpiTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-      decoration: const BoxDecoration(
-          color: AppColors.pageBg, borderRadius: AppRadii.roundedMd),
+      decoration: BoxDecoration(color: pal.chipBg, borderRadius: AppRadii.roundedMd),
       child: Row(
         children: [
           Container(
@@ -44,11 +45,12 @@ class KpiTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(value,
-                    style: AppTextStyles.titleLarge
-                        .copyWith(fontWeight: FontWeight.w800, fontSize: 18)),
+                    style: AppTextStyles.titleLarge.copyWith(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        color: pal.ink1)),
                 Text(label,
-                    style:
-                        AppTextStyles.caption.copyWith(color: AppColors.ink3)),
+                    style: AppTextStyles.caption.copyWith(color: pal.ink3)),
               ],
             ),
           ),

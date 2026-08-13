@@ -2,66 +2,78 @@
 //
 // Shared chrome for the student-cabinet screens (self-login flow):
 // Scaffold > SafeArea > Row(StudentSidebar, Column(StudentTopHeaderBar,
-// Expanded(child))) — the exact structure my_tests_screen.dart's `build()`
-// used to build inline (see git history), now shared so every screen looks
-// consistent instead of each reinventing its own chrome.
+// Expanded(navigationShell))).
 //
-// Deliberately does NOT wrap in PopScope — that's kiosk-security behavior
-// specific to my_tests_screen.dart (blocks all back-navigation there); a
-// shared PopScope(canPop: false) here would also block results_screen.dart's
-// own back button, which must keep working. Screens that need it wrap
-// StudentShell in their own PopScope, same as before.
+// Now the single `builder` of app_router.dart's StatefulShellRoute.indexedStack
+// (5 branches: my_tests/results/settings/help/certificates) instead of being
+// instantiated fresh inside each of those 5 screens — so it's built ONCE and
+// the sidebar/header no longer flash/rebuild when switching tabs (that was
+// the nav "slайд" bug: every screen used to wrap itself in its own
+// StudentShell, so GoRouter saw each tab switch as a brand-new Page).
+//
+// [kStudentBranchPaths] is the single source of truth for branch order/index
+// — MUST match the branch registration order in app_router.dart exactly.
+// Shared with student_sidebar.dart so both stay in sync without duplicating
+// the list.
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/models/models.dart';
-import '../theme/app_theme.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import '../../core/session/logout.dart';
 import 'student_sidebar.dart';
 import 'student_top_bar.dart';
 
-class StudentShell extends StatelessWidget {
-  final String currentRoute;
-  final StudentSession session;
-  final String title;
-  final VoidCallback onLogout;
-  final Widget child;
+const kStudentBranchPaths = [
+  '/my_tests',
+  '/results',
+  '/settings',
+  '/help',
+  '/certificates',
+];
 
-  const StudentShell({
-    super.key,
-    required this.currentRoute,
-    required this.session,
-    required this.title,
-    required this.onLogout,
-    required this.child,
-  });
+const _kResultsBranchIndex = 1; // kStudentBranchPaths.indexOf('/results')
+
+final List<String Function(AppLocalizations)> _branchTitles = [
+  (l10n) => l10n.myTestsTitle,
+  (l10n) => l10n.resultsScreenTitle,
+  (l10n) => l10n.sidebarSettings,
+  (l10n) => l10n.helpScreenTitle,
+  (l10n) => l10n.certificatesScreenTitle,
+];
+
+class StudentShell extends ConsumerWidget {
+  final StatefulNavigationShell navigationShell;
+
+  const StudentShell({super.key, required this.navigationShell});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final isSmall = MediaQuery.of(context).size.width < 800;
+    final currentIndex = navigationShell.currentIndex;
     // Sidebar is the normal way to reach `/results`; when it's hidden
     // (narrow viewport) the header shows a results shortcut instead — but
     // not while already on `/results`, same as the sidebar suppresses its
     // own "Результаты" tap when already active.
-    final onResultsTap = (isSmall && currentRoute != '/results')
-        ? () => context.push('/results', extra: {'session': session})
+    final onResultsTap = (isSmall && currentIndex != _kResultsBranchIndex)
+        ? () => navigationShell.goBranch(_kResultsBranchIndex)
         : null;
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Row(
           children: [
-            if (!isSmall)
-              StudentSidebar(currentRoute: currentRoute, session: session),
+            if (!isSmall) StudentSidebar(navigationShell: navigationShell),
             Expanded(
               child: Column(
                 children: [
                   StudentTopHeaderBar(
-                    title: title,
-                    onLogout: onLogout,
+                    title: _branchTitles[currentIndex](l10n),
+                    onLogout: () => logoutStudentSession(context),
                     onResultsTap: onResultsTap,
                   ),
-                  Expanded(child: child),
+                  Expanded(child: navigationShell),
                 ],
               ),
             ),

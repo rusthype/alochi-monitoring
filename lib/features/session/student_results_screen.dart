@@ -36,10 +36,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/models/models.dart';
-import '../../core/session/logout.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/student_kpi_tile.dart';
-import '../../shared/widgets/student_shell.dart';
 import '../../shared/widgets/subject_badge.dart';
 
 enum _SortMode { newest, oldest, highestScore }
@@ -144,8 +142,6 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
     }
   }
 
-  Future<void> _logoutNow() => logoutStudentSession(context);
-
   List<String> get _subjects {
     final set = <String>{};
     for (final r in _results ?? const <RecentResult>[]) {
@@ -213,13 +209,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isSmall = MediaQuery.of(context).size.width < 900;
-    return StudentShell(
-      currentRoute: '/results',
-      session: widget.session,
-      title: l10n.resultsScreenTitle,
-      onLogout: _logoutNow,
-      child: _body(l10n, isSmall),
-    );
+    return _body(l10n, isSmall);
   }
 
   Widget _body(AppLocalizations l10n, bool isSmall) {

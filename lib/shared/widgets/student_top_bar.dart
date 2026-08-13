@@ -20,6 +20,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/network/connectivity_provider.dart';
 import '../../core/network/connectivity_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/student_palette.dart';
 import 'hover_region.dart';
 import 'student_pill.dart';
 
@@ -38,6 +39,7 @@ class StudentTopHeaderBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     final signal = ref.watch(signalProvider);
     final isOnline = !signal.checking && signal.tier != SignalTier.none;
     final signalLabel = signal.checking
@@ -45,7 +47,7 @@ class StudentTopHeaderBar extends ConsumerWidget {
         : (isOnline ? l10n.onlineStatus : l10n.offlineMode);
     final signalColor = signal.checking
         ? AppColors.brand
-        : (isOnline ? AppColors.ok : AppColors.ink3);
+        : (isOnline ? AppColors.ok : pal.ink3);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
@@ -54,7 +56,7 @@ class StudentTopHeaderBar extends ConsumerWidget {
           Expanded(
             child: Text(title,
                 style: AppTextStyles.titleLarge
-                    .copyWith(fontWeight: FontWeight.w800)),
+                    .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
           ),
           Pill(children: [
             Container(
@@ -72,7 +74,7 @@ class StudentTopHeaderBar extends ConsumerWidget {
           const SizedBox(width: 8),
           if (onResultsTap != null) ...[
             IconButton(
-              icon: const Icon(Icons.bar_chart_rounded, color: AppColors.ink2),
+              icon: Icon(Icons.bar_chart_rounded, color: pal.ink2),
               tooltip: l10n.sidebarResults,
               onPressed: onResultsTap,
             ),
@@ -84,14 +86,13 @@ class StudentTopHeaderBar extends ConsumerWidget {
             builder: (context, isHovered) => GestureDetector(
               onTap: onLogout,
               child: Pill(
-                color: isHovered ? AppColors.hoverBg : AppColors.surface,
+                color: isHovered ? pal.hoverBg : pal.surface,
                 children: [
-                  const Icon(Icons.logout_rounded,
-                      size: 16, color: AppColors.ink2),
+                  Icon(Icons.logout_rounded, size: 16, color: pal.ink2),
                   const SizedBox(width: 6),
                   Text(l10n.logout,
-                      style: AppTextStyles.labelMedium
-                          .copyWith(color: AppColors.ink1)),
+                      style:
+                          AppTextStyles.labelMedium.copyWith(color: pal.ink1)),
                 ],
               ),
             ),

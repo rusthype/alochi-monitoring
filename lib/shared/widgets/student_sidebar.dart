@@ -6,20 +6,21 @@
 // `_routeButton`. Extracted so every student-cabinet screen (via
 // StudentShell) shares one sidebar instead of re-declaring it.
 //
-// NEW: the 7-item route table is centralized here as [_items] — a screen
-// now just passes its own route path as [currentRoute] and the matching
-// item lights up as active, instead of the old hardcoded
-// "Мои тесты is always active" + single `onResultsTap` callback. Only
-// `/my_tests` and `/results` are real routes today; the other 5 stay
-// `enabled: false` with the "Скоро" badge exactly as before — do not enable
-// them here, that happens screen-by-screen later.
+// The 7-item route table is centralized here as [_items] — 5 of them
+// (`/my_tests`, `/results`, `/certificates`, `/settings`, `/help`) are real
+// `StatefulShellRoute` branches (see app_router.dart + student_shell.dart's
+// [kStudentBranchPaths]); tapping one now calls `navigationShell.goBranch`
+// instead of `context.go`, so switching tabs swaps the IndexedStack branch
+// in place (no GoRouter page transition, scroll/state preserved). The other
+// 2 stay `enabled: false` with the "Скоро" badge.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
-import '../../core/models/models.dart';
 import '../theme/app_theme.dart';
+import '../theme/student_palette.dart';
 import 'hover_region.dart';
+import 'student_shell.dart' show kStudentBranchPaths;
 
 class _SidebarItem {
   final String? path; // null = no real route yet (disabled placeholder)
@@ -65,26 +66,20 @@ final List<_SidebarItem> _items = [
 ];
 
 class StudentSidebar extends StatelessWidget {
-  /// The route path of the screen currently showing this sidebar (e.g.
-  /// `/my_tests`, `/results`) — the matching item renders active.
-  final String currentRoute;
-  final StudentSession session;
+  final StatefulNavigationShell navigationShell;
 
-  const StudentSidebar({
-    super.key,
-    required this.currentRoute,
-    required this.session,
-  });
+  const StudentSidebar({super.key, required this.navigationShell});
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Container(
       width: 220,
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(right: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: pal.surface,
+        border: Border(right: BorderSide(color: pal.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -101,24 +96,28 @@ class StudentSidebar extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.labelLarge
-                          .copyWith(fontWeight: FontWeight.w800)),
+                          .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
           for (final item in _items)
-            _item(context, item, active: item.path == currentRoute),
+            _item(context, item, pal,
+                active: item.path != null &&
+                    kStudentBranchPaths.indexOf(item.path!) ==
+                        navigationShell.currentIndex),
         ],
       ),
     );
   }
 
-  Widget _item(BuildContext context, _SidebarItem item, {required bool active}) {
+  Widget _item(BuildContext context, _SidebarItem item, StudentPalette pal,
+      {required bool active}) {
     final l10n = AppLocalizations.of(context)!;
     final enabled = item.enabled;
     final color =
-        !enabled ? AppColors.ink3 : (active ? AppColors.brand : AppColors.ink2);
+        !enabled ? pal.ink3 : (active ? AppColors.brand : pal.ink2);
     final child = Padding(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       child: Row(
@@ -149,21 +148,14 @@ class StudentSidebar extends StatelessWidget {
       ),
     );
 
-    // `go` (not `push`) — these are sibling top-level tabs, not a
-    // push-drill-down flow. `push` left every previously-visited tab's
-    // screen instance (and its own data-fetching state) stacked underneath,
-    // growing the Navigator stack unboundedly as a student bounced between
-    // tabs. `go` replaces the current location instead, matching the
-    // existing "hard reset" pattern this app already uses elsewhere
-    // (my_tests_screen.dart's "Bosh sahifa" exit calls `context.go('/')`).
-    // Safe here: with this app's flat (non-nested) route table, `go` swaps
-    // the whole match list via GoRouter's declarative Page diffing, not an
-    // imperative Navigator.pop() — so it does NOT trigger the PopScope
-    // (canPop: false) back-button interception my_tests_screen.dart relies
-    // on, which only fires on an actual pop attempt (hardware back, appbar
-    // back), never on a declarative page-list change from `go()`.
+    // `goBranch` (not `go`/`push`) — these are branches of the same
+    // StatefulShellRoute (see app_router.dart), each with its own preserved
+    // Navigator stack. goBranch swaps which branch's IndexedStack child is
+    // visible without rebuilding it or triggering a page-transition
+    // animation, which is exactly the "no slайд, content just switches"
+    // behavior this sidebar needs.
     final onTap = (enabled && !active)
-        ? () => context.go(item.path!, extra: {'session': session})
+        ? () => navigationShell.goBranch(kStudentBranchPaths.indexOf(item.path!))
         : null;
 
     return Padding(
@@ -174,7 +166,7 @@ class StudentSidebar extends StatelessWidget {
               builder: (context, isHovered) => Material(
                 color: active
                     ? AppColors.brandLight
-                    : (isHovered ? AppColors.hoverBg : Colors.transparent),
+                    : (isHovered ? pal.hoverBg : Colors.transparent),
                 borderRadius: BorderRadius.circular(10),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(10),
