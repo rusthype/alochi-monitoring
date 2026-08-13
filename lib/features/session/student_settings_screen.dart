@@ -163,10 +163,14 @@ class _Card extends StatelessWidget {
 /// Two-option segmented toggle row (theme / font size / interface language).
 class _SegmentedRow extends StatelessWidget {
   final String label;
-  final List<(String, bool, VoidCallback)> options; // (text, selected, onTap)
+  final IconData? labelIcon;
+  final List<(String, bool, VoidCallback, IconData?)> options; // (text, selected, onTap, icon)
   final StudentPalette pal;
   const _SegmentedRow(
-      {required this.label, required this.options, required this.pal});
+      {required this.label,
+      this.labelIcon,
+      required this.options,
+      required this.pal});
 
   @override
   Widget build(BuildContext context) {
@@ -179,15 +183,31 @@ class _SegmentedRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 160,
-            child: Text(label,
-                style: AppTextStyles.bodyLarge.copyWith(color: pal.ink1)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (labelIcon != null) ...[
+                  Icon(labelIcon, size: 18, color: pal.ink2),
+                  const SizedBox(width: 8),
+                ],
+                Flexible(
+                  child: Text(label,
+                      style:
+                          AppTextStyles.bodyLarge.copyWith(color: pal.ink1)),
+                ),
+              ],
+            ),
           ),
           Wrap(
             spacing: 8,
             children: [
-              for (final (text, selected, onTap) in options)
+              for (final (text, selected, onTap, icon) in options)
                 _SegmentButton(
-                    text: text, selected: selected, onTap: onTap, pal: pal),
+                    text: text,
+                    icon: icon,
+                    selected: selected,
+                    onTap: onTap,
+                    pal: pal),
             ],
           ),
         ],
@@ -198,17 +218,20 @@ class _SegmentedRow extends StatelessWidget {
 
 class _SegmentButton extends StatelessWidget {
   final String text;
+  final IconData? icon;
   final bool selected;
   final VoidCallback onTap;
   final StudentPalette pal;
   const _SegmentButton(
       {required this.text,
+      this.icon,
       required this.selected,
       required this.onTap,
       required this.pal});
 
   @override
   Widget build(BuildContext context) {
+    final color = selected ? AppColors.brand : pal.ink2;
     return HoverRegion(
       builder: (context, isHovered) => GestureDetector(
         onTap: onTap,
@@ -223,11 +246,20 @@ class _SegmentButton extends StatelessWidget {
                 color: selected ? AppColors.brand : pal.border,
                 width: selected ? 1.5 : 1),
           ),
-          child: Text(text,
-              style: AppTextStyles.labelMedium.copyWith(
-                color: selected ? AppColors.brand : pal.ink2,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              )),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 15, color: color),
+                const SizedBox(width: 6),
+              ],
+              Text(text,
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: color,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  )),
+            ],
+          ),
         ),
       ),
     );
@@ -459,22 +491,40 @@ class _PersonalizationCard extends ConsumerWidget {
     return _Card(title: l10n.personalizationSectionTitle, pal: pal, children: [
       _SegmentedRow(
         label: l10n.themeLabel,
+        labelIcon: Icons.palette_outlined,
         pal: pal,
         options: [
-          (l10n.themeLight, !isDark,
-              () => ref.read(themeModeProvider.notifier).setDark(false)),
-          (l10n.themeDark, isDark,
-              () => ref.read(themeModeProvider.notifier).setDark(true)),
+          (
+            l10n.themeLight,
+            !isDark,
+            () => ref.read(themeModeProvider.notifier).setDark(false),
+            Icons.light_mode_rounded
+          ),
+          (
+            l10n.themeDark,
+            isDark,
+            () => ref.read(themeModeProvider.notifier).setDark(true),
+            Icons.dark_mode_rounded
+          ),
         ],
       ),
       _SegmentedRow(
         label: l10n.fontSizeLabel,
+        labelIcon: Icons.text_fields_rounded,
         pal: pal,
         options: [
-          (l10n.fontSizeNormal, !isLarge,
-              () => ref.read(fontScaleProvider.notifier).setLarge(false)),
-          (l10n.fontSizeLarge, isLarge,
-              () => ref.read(fontScaleProvider.notifier).setLarge(true)),
+          (
+            l10n.fontSizeNormal,
+            !isLarge,
+            () => ref.read(fontScaleProvider.notifier).setLarge(false),
+            null
+          ),
+          (
+            l10n.fontSizeLarge,
+            isLarge,
+            () => ref.read(fontScaleProvider.notifier).setLarge(true),
+            null
+          ),
         ],
       ),
     ]);
@@ -494,12 +544,21 @@ class _LanguageCard extends ConsumerWidget {
     return _Card(title: l10n.languageRegionSectionTitle, pal: pal, children: [
       _SegmentedRow(
         label: l10n.interfaceLanguageLabel,
+        labelIcon: Icons.language_rounded,
         pal: pal,
         options: [
-          (l10n.languageUzbek, code == 'uz',
-              () => ref.read(localeProvider.notifier).setLocale(const Locale('uz'))),
-          (l10n.languageRussian, code == 'ru',
-              () => ref.read(localeProvider.notifier).setLocale(const Locale('ru'))),
+          (
+            l10n.languageUzbek,
+            code == 'uz',
+            () => ref.read(localeProvider.notifier).setLocale(const Locale('uz')),
+            null
+          ),
+          (
+            l10n.languageRussian,
+            code == 'ru',
+            () => ref.read(localeProvider.notifier).setLocale(const Locale('ru')),
+            null
+          ),
         ],
       ),
     ]);
@@ -521,6 +580,7 @@ class _NotificationsCard extends ConsumerWidget {
     return _Card(title: l10n.notificationsSectionTitle, pal: pal, children: [
       _SwitchRow(
         label: l10n.notifSoundOnComplete,
+        icon: Icons.notifications_none_rounded,
         value: soundOn,
         pal: pal,
         onChanged: (v) => ref.read(soundOnCompleteProvider.notifier).set(v),
@@ -528,6 +588,7 @@ class _NotificationsCard extends ConsumerWidget {
       const SizedBox(height: 4),
       _SwitchRow(
         label: l10n.notifRemindersNewTests,
+        icon: Icons.calendar_today_rounded,
         value: remindersOn,
         pal: pal,
         onChanged: (v) => ref.read(testReminderProvider.notifier).set(v),
@@ -554,11 +615,13 @@ class _NotificationsCard extends ConsumerWidget {
 
 class _SwitchRow extends StatelessWidget {
   final String label;
+  final IconData? icon;
   final bool value;
   final ValueChanged<bool> onChanged;
   final StudentPalette pal;
   const _SwitchRow(
       {required this.label,
+      this.icon,
       required this.value,
       required this.onChanged,
       required this.pal});
@@ -569,6 +632,10 @@ class _SwitchRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
+          if (icon != null) ...[
+            Icon(icon, size: 18, color: pal.ink2),
+            const SizedBox(width: 10),
+          ],
           Expanded(
             child: Text(label,
                 style: AppTextStyles.bodyLarge.copyWith(color: pal.ink1)),
