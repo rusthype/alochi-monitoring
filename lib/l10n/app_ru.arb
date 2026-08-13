@@ -198,6 +198,8 @@
   "mathSubjectFull": "Математика",
   "englishSubjectFull": "Английский язык",
   "finishConfirmTitle": "Завершить?",
+  "finishConfirmAllAnsweredPrompt": "Все ответы отмечены. Завершить тест?",
+  "testAutoSubmittedNotice": "Время теста истекло, ваши сохранённые ответы были отправлены автоматически.",
   "unansweredWarning": "Без ответа: {unanswered}. Все равно завершить?",
   "mathSectionLabel": "Раздел: Математика",
   "engSectionLabel": "Раздел: Английский",
