@@ -8,13 +8,15 @@
 // capped at 10 server-side) — deliberately NOT paginated, per plan: "start
 // simple, unpaginated".
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/db/credential_cache.dart';
 import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/widgets/student_shell.dart';
+import '../auth/login_screen.dart';
 
 class ResultsScreen extends StatefulWidget {
   final StudentSession session;
@@ -58,33 +60,36 @@ class _ResultsScreenState extends State<ResultsScreen> {
     }
   }
 
+  /// Mandatory kiosk-security step, same pattern as MyTestsScreen's
+  /// `_clearSession` — a shared self-login session must never survive past
+  /// its own use.
+  Future<void> _clearSession() async {
+    api.clearToken();
+    await CredentialCache.clear();
+  }
+
+  void _goToLoginReplacingStack() {
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
+  }
+
+  Future<void> _logoutNow() async {
+    await _clearSession();
+    _goToLoginReplacingStack();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 20, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_rounded,
-                        color: AppColors.ink1),
-                    onPressed: () => context.pop(),
-                  ),
-                  Text(l10n.resultsScreenTitle,
-                      style: AppTextStyles.titleLarge
-                          .copyWith(fontWeight: FontWeight.w800)),
-                ],
-              ),
-            ),
-            Expanded(child: _body(l10n)),
-          ],
-        ),
-      ),
+    return StudentShell(
+      currentRoute: '/results',
+      session: widget.session,
+      title: l10n.resultsScreenTitle,
+      onLogout: _logoutNow,
+      child: _body(l10n),
     );
   }
 

@@ -26,19 +26,19 @@
 // the app is offline, the whole KPI/profile-extras/recent-results UI is
 // hidden rather than showing zeros (see _profile == null checks below).
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
-import '../../core/locale/locale_provider.dart';
 import '../../core/models/models.dart';
-import '../../core/network/connectivity_provider.dart';
-import '../../core/network/connectivity_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/hover_region.dart';
+import '../../shared/widgets/new_badge.dart';
+import '../../shared/widgets/student_kpi_tile.dart';
+import '../../shared/widgets/student_shell.dart';
+import '../../shared/widgets/subject_badge.dart';
 import '../auth/login_screen.dart';
 
 /// Lightweight catalog row for the self-login flow — intentionally separate
@@ -373,26 +373,12 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
         if (didPop) return;
         _logoutNow();
       },
-      child: Scaffold(
-        backgroundColor: AppColors.bg,
-        body: SafeArea(
-          child: Row(
-            children: [
-              if (!isSmall) _SidebarNavigation(onResultsTap: _viewResults),
-              Expanded(
-                child: Column(
-                  children: [
-                    _TopHeaderBar(
-                      onLogout: _logoutNow,
-                      onResultsTap: isSmall ? _viewResults : null,
-                    ),
-                    Expanded(child: _body(l10n, isSmall)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+      child: StudentShell(
+        currentRoute: '/my_tests',
+        session: widget.session,
+        title: l10n.myTestsTitle,
+        onLogout: _logoutNow,
+        child: _body(l10n, isSmall),
       ),
     );
   }
@@ -487,274 +473,6 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
   }
 }
 
-/// Vertical sidebar nav. Only "Мои тесты" (this screen, always active) and
-/// "Результаты" (new /results route, F4) are functional — the rest render
-/// disabled + `comingSoon` badge, same visual language as login_screen.dart's
-/// disabled `_routeButton` (private there, so re-created here rather than
-/// imported/shared).
-class _SidebarNavigation extends StatelessWidget {
-  final VoidCallback onResultsTap;
-
-  const _SidebarNavigation({required this.onResultsTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Container(
-      width: 220,
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(right: BorderSide(color: AppColors.border)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              children: [
-                const Icon(Icons.school_rounded,
-                    color: AppColors.brand, size: 24),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(l10n.appTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.labelLarge
-                          .copyWith(fontWeight: FontWeight.w800)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          _item(context,
-              icon: Icons.home_rounded,
-              label: l10n.sidebarHome,
-              enabled: false),
-          _item(context,
-              icon: Icons.assignment_rounded,
-              label: l10n.myTestsTitle,
-              active: true),
-          _item(context,
-              icon: Icons.bar_chart_rounded,
-              label: l10n.sidebarResults,
-              onTap: onResultsTap),
-          _item(context,
-              icon: Icons.mail_rounded,
-              label: l10n.sidebarMessages,
-              enabled: false),
-          _item(context,
-              icon: Icons.workspace_premium_rounded,
-              label: l10n.sidebarCertificates,
-              enabled: false),
-          _item(context,
-              icon: Icons.settings_rounded,
-              label: l10n.sidebarSettings,
-              enabled: false),
-          _item(context,
-              icon: Icons.help_rounded,
-              label: l10n.sidebarHelp,
-              enabled: false),
-        ],
-      ),
-    );
-  }
-
-  Widget _item(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    bool active = false,
-    bool enabled = true,
-    VoidCallback? onTap,
-  }) {
-    final l10n = AppLocalizations.of(context)!;
-    final color =
-        !enabled ? AppColors.ink3 : (active ? AppColors.brand : AppColors.ink2);
-    final child = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(label,
-                style: AppTextStyles.labelLarge.copyWith(
-                  color: color,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                )),
-          ),
-          if (!enabled)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.secondary,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(l10n.comingSoon,
-                  style: AppTextStyles.caption.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 9)),
-            ),
-        ],
-      ),
-    );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: !enabled
-          ? Opacity(opacity: 0.6, child: child)
-          : HoverRegion(
-              builder: (context, isHovered) => Material(
-                color: active
-                    ? AppColors.brandLight
-                    : (isHovered ? AppColors.hoverBg : Colors.transparent),
-                borderRadius: BorderRadius.circular(10),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: active ? null : onTap,
-                  child: child,
-                ),
-              ),
-            ),
-    );
-  }
-}
-
-/// Top bar: title, online/offline signal indicator (same `signalProvider`
-/// source as login_screen.dart), language switcher, logout.
-///
-/// [onResultsTap] is only passed when the sidebar (the normal way to reach
-/// `/results`) is hidden — narrow viewport — so `/results` always has at
-/// least one reachable entry point even when the recent-results panel's
-/// "view all" button is also hidden (no profile/results data yet).
-class _TopHeaderBar extends ConsumerWidget {
-  final VoidCallback onLogout;
-  final VoidCallback? onResultsTap;
-
-  const _TopHeaderBar({required this.onLogout, this.onResultsTap});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context)!;
-    final signal = ref.watch(signalProvider);
-    final isOnline = !signal.checking && signal.tier != SignalTier.none;
-    final signalLabel = signal.checking
-        ? l10n.serverChecking
-        : (isOnline ? l10n.onlineStatus : l10n.offlineMode);
-    final signalColor = signal.checking
-        ? AppColors.brand
-        : (isOnline ? AppColors.ok : AppColors.ink3);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(l10n.myTestsTitle,
-                style: AppTextStyles.titleLarge
-                    .copyWith(fontWeight: FontWeight.w800)),
-          ),
-          _Pill(children: [
-            Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: signalColor,
-                  shape: BoxShape.circle,
-                )),
-            const SizedBox(width: 6),
-            Text(signalLabel,
-                style: AppTextStyles.caption
-                    .copyWith(color: signalColor, fontWeight: FontWeight.w600)),
-          ]),
-          const SizedBox(width: 8),
-          if (onResultsTap != null) ...[
-            IconButton(
-              icon: const Icon(Icons.bar_chart_rounded, color: AppColors.ink2),
-              tooltip: l10n.sidebarResults,
-              onPressed: onResultsTap,
-            ),
-            const SizedBox(width: 4),
-          ],
-          const _LanguagePill(),
-          const SizedBox(width: 8),
-          HoverRegion(
-            builder: (context, isHovered) => GestureDetector(
-              onTap: onLogout,
-              child: _Pill(
-                color: isHovered ? AppColors.hoverBg : AppColors.surface,
-                children: [
-                  const Icon(Icons.logout_rounded,
-                      size: 16, color: AppColors.ink2),
-                  const SizedBox(width: 6),
-                  Text(l10n.logout,
-                      style: AppTextStyles.labelMedium
-                          .copyWith(color: AppColors.ink1)),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Shared white-pill container used for the header's status/language/logout
-/// controls so all three share one radius/padding/border look.
-class _Pill extends StatelessWidget {
-  final List<Widget> children;
-  final Color? color;
-  const _Pill({required this.children, this.color});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: color ?? AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: children),
-      );
-}
-
-/// Local replacement for the shared `LanguageSwitcher` on this screen only —
-/// reads/writes the same `localeProvider`, styled to match `_Pill`. The
-/// shared widget (also used by login_screen.dart) is left untouched.
-class _LanguagePill extends ConsumerWidget {
-  const _LanguagePill();
-
-  static const _names = {'uz': 'O‘zbekcha', 'ru': 'Русский'};
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final code = ref.watch(localeProvider).languageCode;
-    return PopupMenuButton<String>(
-      offset: const Offset(0, 36),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (v) => ref.read(localeProvider.notifier).setLocale(Locale(v)),
-      itemBuilder: (context) => _names.entries
-          .map((e) => PopupMenuItem(value: e.key, child: Text(e.value)))
-          .toList(),
-      child: _Pill(
-        children: [
-          const Icon(Icons.language_rounded, size: 16, color: AppColors.ink2),
-          const SizedBox(width: 6),
-          Text(_names[code] ?? code.toUpperCase(),
-              style: AppTextStyles.labelMedium.copyWith(color: AppColors.ink1)),
-          const SizedBox(width: 4),
-          const Icon(Icons.keyboard_arrow_down_rounded,
-              size: 16, color: AppColors.ink3),
-        ],
-      ),
-    );
-  }
-}
-
 /// Student avatar/name/grade/group + school name (real, from /my-profile/
 /// or the login-time `schoolCode` fallback — never a fabricated string) and
 /// the 3-stat KPI row. The KPI row is entirely omitted (not zeroed) when
@@ -837,36 +555,36 @@ class _StudentProfileCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: _kpiTile(
-                    Icons.assignment_turned_in_rounded,
-                    const Color(0xFF2E7D32),
-                    const Color(0xFFE8F5E9),
-                    l10n.kpiTestsCompleted,
-                    profile!.testsCompleted != null
+                  child: KpiTile(
+                    icon: Icons.assignment_turned_in_rounded,
+                    iconColor: const Color(0xFF2E7D32),
+                    iconBg: const Color(0xFFE8F5E9),
+                    label: l10n.kpiTestsCompleted,
+                    value: profile!.testsCompleted != null
                         ? '${profile!.testsCompleted}'
                         : '—',
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _kpiTile(
-                    Icons.star_rounded,
-                    const Color(0xFFF57F17),
-                    const Color(0xFFFFF8E1),
-                    l10n.kpiAverageScore,
-                    profile!.averageScore != null
+                  child: KpiTile(
+                    icon: Icons.star_rounded,
+                    iconColor: const Color(0xFFF57F17),
+                    iconBg: const Color(0xFFFFF8E1),
+                    label: l10n.kpiAverageScore,
+                    value: profile!.averageScore != null
                         ? '${profile!.averageScore}%'
                         : '—',
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _kpiTile(
-                    Icons.local_fire_department_rounded,
-                    const Color(0xFFE65100),
-                    const Color(0xFFFBE9E7),
-                    l10n.kpiStreakDays,
-                    profile!.streakDays != null
+                  child: KpiTile(
+                    icon: Icons.local_fire_department_rounded,
+                    iconColor: const Color(0xFFE65100),
+                    iconBg: const Color(0xFFFBE9E7),
+                    label: l10n.kpiStreakDays,
+                    value: profile!.streakDays != null
                         ? '${profile!.streakDays}'
                         : '—',
                   ),
@@ -874,40 +592,6 @@ class _StudentProfileCard extends StatelessWidget {
               ],
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _kpiTile(
-      IconData icon, Color iconColor, Color iconBg, String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-      decoration: const BoxDecoration(
-          color: AppColors.pageBg, borderRadius: AppRadii.roundedMd),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
-            alignment: Alignment.center,
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value,
-                    style: AppTextStyles.titleLarge
-                        .copyWith(fontWeight: FontWeight.w800, fontSize: 18)),
-                Text(label,
-                    style:
-                        AppTextStyles.caption.copyWith(color: AppColors.ink3)),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -1118,30 +802,6 @@ class _StudentTestCard extends StatelessWidget {
     }
   }
 
-  Widget _subjectBadge() {
-    final subject = test.subject.toLowerCase();
-    if (subject == 'math') {
-      return const _SubjectBox(
-        bg: Color(0xFFEDE7F6),
-        child: Icon(Icons.calculate_rounded, color: Color(0xFF673AB7), size: 22),
-      );
-    }
-    if (subject == 'english') {
-      return const _SubjectBox(
-        bg: Color(0xFFE8F5E9),
-        child: Text('EN',
-            style: TextStyle(
-                color: Color(0xFF2E7D32),
-                fontWeight: FontWeight.w800,
-                fontSize: 13)),
-      );
-    }
-    return const _SubjectBox(
-      bg: Color(0xFFE3F2FD),
-      child: Icon(Icons.description_rounded, color: Color(0xFF1976D2), size: 22),
-    );
-  }
-
   Widget? _metaRow(AppLocalizations l10n) {
     final chips = <Widget>[];
     if ((test.questionCount ?? 0) > 0) {
@@ -1209,7 +869,7 @@ class _StudentTestCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _subjectBadge(),
+                      subjectBadge(test.subject),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -1304,54 +964,10 @@ class _StudentTestCard extends StatelessWidget {
                   ),
                 ),
                 if (test.isNew && test.displayStatus == 'available')
-                  const Positioned(top: -6, right: -6, child: _NewBadge()),
+                  const Positioned(top: -6, right: -6, child: NewBadge()),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 40x40 rounded-square leading icon box for the subject badge on each
-/// `_StudentTestCard` (math/english/other), shared to avoid repeating the
-/// same decoration three times.
-class _SubjectBox extends StatelessWidget {
-  final Color bg;
-  final Widget child;
-  const _SubjectBox({required this.bg, required this.child});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-        alignment: Alignment.center,
-        child: child,
-      );
-}
-
-/// Minimal "NEW"/"Yangi" pill — same visual recipe as
-/// group_select_screen.dart's private `_NewBadge` (can't be imported, that
-/// class is private to that file; recreated here rather than modifying it).
-class _NewBadge extends StatelessWidget {
-  const _NewBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        AppLocalizations.of(context)!.newBadge,
-        style: AppTextStyles.caption.copyWith(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          fontSize: 9.5,
         ),
       ),
     );
