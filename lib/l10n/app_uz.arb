@@ -854,5 +854,95 @@
         "type": "String"
       }
     }
-  }
+  },
+  "messagesBannerTitle": "Muhim yangiliklardan xabardor bo'ling! 👋",
+  "messagesBannerSubtitle": "Bu yerda o'qituvchilardan xabarlar, testlar haqida bildirishnomalar va tizim ogohlantirishlarini topasiz.",
+  "messagesKpiUnreadLabel": "O'qilmagan",
+  "messagesKpiNewTestsLabel": "Yangi testlar",
+  "messagesKpiReviewedLabel": "Tekshirilgan natijalar",
+  "messagesFilterAll": "Barchasi",
+  "messagesFilterTeacher": "O'qituvchilardan",
+  "messagesFilterTests": "Testlar haqida bildirishnomalar",
+  "messagesFilterSystem": "Tizim xabarlari",
+  "messagesSearchHint": "Xabarlar bo'yicha qidiruv...",
+  "messagesEmptyListTitle": "Xabarlar topilmadi",
+  "messagesNoSelectionTitle": "Xabarni tanlang",
+  "messagesNoSelectionSubtitle": "Tafsilotlarni ko'rish uchun chapdagi xabarni bosing.",
+  "messagesTypeTeacher": "O'qituvchi",
+  "messagesTypeTest": "Test",
+  "messagesTypeSystem": "Tizim",
+  "messagesSenderLabel": "Kimdan",
+  "messagesSenderTeacher": "O'qituvchi",
+  "messagesSenderTestSystem": "Test tizimi",
+  "messagesSenderSystem": "Tizim",
+  "messagesGoToTestButton": "Testga o'tish",
+  "messagesMarkReadButton": "O'qilgan deb belgilash",
+  "messagesMarkAllReadTitle": "Barchasini o'qilgan qilish",
+  "messagesMarkAllReadSubtitle": "Barcha xabarlarni o'qilgan deb belgilash",
+  "messagesNotificationSettingsTitle": "Bildirishnoma sozlamalari",
+  "messagesNotificationSettingsSubtitle": "Bildirishnoma olish usullarini boshqaring",
+  "messagesArchiveTitle": "Xabarlar arxivi",
+  "messagesArchiveSubtitle": "Arxivlangan xabarlarni ko'rish",
+  "messagesQuickActionsTitle": "Tezkor amallar",
+  "messagesSystemEmptyTitle": "Yangi tizim xabarlari yo'q",
+  "messagesSystemEmptySubtitle": "Yangi bildirishnomalar paydo bo'lganda, ular shu yerda ko'rinadi.",
+  "messagesSystemUnreadCount": "Yangi tizim xabarlari: {count}",
+  "@messagesSystemUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesTipAssigned": "Omad! Eng yaxshi bilimingizni ko'rsating va zo'r natija oling.",
+  "messagesToday": "Bugun",
+  "messagesYesterday": "Kecha",
+  "messagesMarkReadError": "O'qilgan deb belgilab bo'lmadi",
+
+  "homeHeroWelcome": "Xush kelibsiz, {name}!",
+  "@homeHeroWelcome": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHeroSubtitle": "Har kungi kichik ilg'or qadam katta natijalarga olib keladi.",
+  "homeUrgentTestsTitle": "Shoshilinch va yaqinlashayotgan testlar",
+  "homeViewAllTests": "Barchasini ko'rish",
+  "homeDeadlineHours": "{hours} soatdan keyin",
+  "@homeDeadlineHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "homeDeadlineTomorrow": "Ertagacha",
+  "homeDeadlineDaysLeft": "{days} kun qoldi",
+  "@homeDeadlineDaysLeft": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "homeAnnouncementsTitle": "E'lonlar va yangiliklar",
+  "homeAnnouncementsEmpty": "Hozircha e'lonlar yo'q",
+  "homeActivityStreakTitle": "Faollik va seriya",
+  "homeAttendanceLabel": "Davomat",
+  "homeNextLessonTitle": "Yaqin dars",
+  "homeLastResultTitle": "Oxirgi natija",
+  "homeQuickActionTestsDesc": "Testni tanlang va hoziroq boshlang",
+  "homeQuickActionResultsDesc": "O'z natijalaringizni ko'ring",
+  "homeQuickActionContactTeacher": "O'qituvchi bilan bog'lanish",
+  "homeQuickActionContactTeacherDesc": "Savol bering yoki xabar yuboring",
+  "homeToResultsLink": "Natijalarga",
+  "weekdayMonShort": "Du",
+  "weekdayTueShort": "Se",
+  "weekdayWedShort": "Ch",
+  "weekdayThuShort": "Pa",
+  "weekdayFriShort": "Ju",
+  "weekdaySatShort": "Sh",
+  "weekdaySunShort": "Ya"
 }

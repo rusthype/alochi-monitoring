@@ -69,6 +69,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get studentLoginButton => 'Войти как ученик';
 
   @override
+  String get teacherProctorLogin => 'Учителя / Прокторы';
+
+  @override
   String get myTestsTitle => 'Мои тесты';
 
   @override
@@ -1796,4 +1799,203 @@ class AppLocalizationsRu extends AppLocalizations {
   String diplomaForTestResultLabel(String title) {
     return 'за результат по тесту \"$title\"';
   }
+
+  @override
+  String get messagesBannerTitle => 'Будьте в курсе важного! 👋';
+
+  @override
+  String get messagesBannerSubtitle =>
+      'Здесь вы найдете сообщения от учителей, уведомления о тестах и системные оповещения.';
+
+  @override
+  String get messagesKpiUnreadLabel => 'Непрочитанные';
+
+  @override
+  String get messagesKpiNewTestsLabel => 'Новые тесты';
+
+  @override
+  String get messagesKpiReviewedLabel => 'Проверено результатов';
+
+  @override
+  String get messagesFilterAll => 'Все';
+
+  @override
+  String get messagesFilterTeacher => 'От учителей';
+
+  @override
+  String get messagesFilterTests => 'Уведомления о тестах';
+
+  @override
+  String get messagesFilterSystem => 'Системные';
+
+  @override
+  String get messagesSearchHint => 'Поиск по сообщениям...';
+
+  @override
+  String get messagesEmptyListTitle => 'Сообщений не найдено';
+
+  @override
+  String get messagesNoSelectionTitle => 'Выберите сообщение';
+
+  @override
+  String get messagesNoSelectionSubtitle =>
+      'Нажмите на сообщение слева, чтобы посмотреть подробности.';
+
+  @override
+  String get messagesTypeTeacher => 'Учитель';
+
+  @override
+  String get messagesTypeTest => 'Тест';
+
+  @override
+  String get messagesTypeSystem => 'Система';
+
+  @override
+  String get messagesSenderLabel => 'От';
+
+  @override
+  String get messagesSenderTeacher => 'Учитель';
+
+  @override
+  String get messagesSenderTestSystem => 'Система тестирования';
+
+  @override
+  String get messagesSenderSystem => 'Система';
+
+  @override
+  String get messagesGoToTestButton => 'Перейти к тесту';
+
+  @override
+  String get messagesMarkReadButton => 'Отметить как прочитанное';
+
+  @override
+  String get messagesMarkAllReadTitle => 'Все прочитать';
+
+  @override
+  String get messagesMarkAllReadSubtitle =>
+      'Отметить все сообщения как прочитанные';
+
+  @override
+  String get messagesNotificationSettingsTitle => 'Настройки уведомлений';
+
+  @override
+  String get messagesNotificationSettingsSubtitle =>
+      'Управляйте способами получения уведомлений';
+
+  @override
+  String get messagesArchiveTitle => 'Архив сообщений';
+
+  @override
+  String get messagesArchiveSubtitle => 'Просмотреть архивные сообщения';
+
+  @override
+  String get messagesQuickActionsTitle => 'Быстрые действия';
+
+  @override
+  String get messagesSystemEmptyTitle => 'Нет новых системных сообщений';
+
+  @override
+  String get messagesSystemEmptySubtitle =>
+      'Когда появятся новые уведомления, они будут отображаться здесь.';
+
+  @override
+  String messagesSystemUnreadCount(int count) {
+    return 'Новых системных сообщений: $count';
+  }
+
+  @override
+  String get messagesTipAssigned =>
+      'Удачи! Покажите свои лучшие знания и получите отличный результат.';
+
+  @override
+  String get messagesToday => 'Сегодня';
+
+  @override
+  String get messagesYesterday => 'Вчера';
+
+  @override
+  String get messagesMarkReadError => 'Не удалось отметить как прочитанное';
+
+  @override
+  String homeHeroWelcome(String name) {
+    return 'Добро пожаловать обратно, $name!';
+  }
+
+  @override
+  String get homeHeroSubtitle =>
+      'Маленький прогресс каждый день приводит к большим результатам.';
+
+  @override
+  String get homeUrgentTestsTitle => 'Срочные и предстоящие тесты';
+
+  @override
+  String get homeViewAllTests => 'Посмотреть все';
+
+  @override
+  String homeDeadlineHours(int hours) {
+    return 'Через $hours ч';
+  }
+
+  @override
+  String get homeDeadlineTomorrow => 'До завтра';
+
+  @override
+  String homeDeadlineDaysLeft(int days) {
+    return 'Осталось $days дн.';
+  }
+
+  @override
+  String get homeAnnouncementsTitle => 'Объявления и новости';
+
+  @override
+  String get homeAnnouncementsEmpty => 'Пока нет объявлений';
+
+  @override
+  String get homeActivityStreakTitle => 'Активность и серия';
+
+  @override
+  String get homeAttendanceLabel => 'Посещаемость';
+
+  @override
+  String get homeNextLessonTitle => 'Ближайший урок';
+
+  @override
+  String get homeLastResultTitle => 'Последний результат';
+
+  @override
+  String get homeQuickActionTestsDesc => 'Выберите тест и начните сейчас';
+
+  @override
+  String get homeQuickActionResultsDesc => 'Посмотрите свою успеваемость';
+
+  @override
+  String get homeQuickActionContactTeacher => 'Связаться с учителем';
+
+  @override
+  String get homeQuickActionContactTeacherDesc =>
+      'Задайте вопрос или отправьте сообщение';
+
+  @override
+  String get homeToResultsLink => 'К результатам';
+
+  @override
+  String get weekdayMonShort => 'Пн';
+
+  @override
+  String get weekdayTueShort => 'Вт';
+
+  @override
+  String get weekdayWedShort => 'Ср';
+
+  @override
+  String get weekdayThuShort => 'Чт';
+
+  @override
+  String get weekdayFriShort => 'Пт';
+
+  @override
+  String get weekdaySatShort => 'Сб';
+
+  @override
+  String get weekdaySunShort => 'Вс';
 }

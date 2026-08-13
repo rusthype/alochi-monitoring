@@ -218,6 +218,12 @@ abstract class AppLocalizations {
   /// **'O\'quvchi sifatida kirish'**
   String get studentLoginButton;
 
+  /// No description provided for @teacherProctorLogin.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi / Proktor'**
+  String get teacherProctorLogin;
+
   /// No description provided for @myTestsTitle.
   ///
   /// In uz, this message translates to:
@@ -3415,6 +3421,372 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'\"{title}\" testidagi natija uchun'**
   String diplomaForTestResultLabel(String title);
+
+  /// No description provided for @messagesBannerTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Muhim yangiliklardan xabardor bo\'ling! 👋'**
+  String get messagesBannerTitle;
+
+  /// No description provided for @messagesBannerSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu yerda o\'qituvchilardan xabarlar, testlar haqida bildirishnomalar va tizim ogohlantirishlarini topasiz.'**
+  String get messagesBannerSubtitle;
+
+  /// No description provided for @messagesKpiUnreadLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qilmagan'**
+  String get messagesKpiUnreadLabel;
+
+  /// No description provided for @messagesKpiNewTestsLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi testlar'**
+  String get messagesKpiNewTestsLabel;
+
+  /// No description provided for @messagesKpiReviewedLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tekshirilgan natijalar'**
+  String get messagesKpiReviewedLabel;
+
+  /// No description provided for @messagesFilterAll.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barchasi'**
+  String get messagesFilterAll;
+
+  /// No description provided for @messagesFilterTeacher.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchilardan'**
+  String get messagesFilterTeacher;
+
+  /// No description provided for @messagesFilterTests.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testlar haqida bildirishnomalar'**
+  String get messagesFilterTests;
+
+  /// No description provided for @messagesFilterSystem.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tizim xabarlari'**
+  String get messagesFilterSystem;
+
+  /// No description provided for @messagesSearchHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xabarlar bo\'yicha qidiruv...'**
+  String get messagesSearchHint;
+
+  /// No description provided for @messagesEmptyListTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xabarlar topilmadi'**
+  String get messagesEmptyListTitle;
+
+  /// No description provided for @messagesNoSelectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xabarni tanlang'**
+  String get messagesNoSelectionTitle;
+
+  /// No description provided for @messagesNoSelectionSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tafsilotlarni ko\'rish uchun chapdagi xabarni bosing.'**
+  String get messagesNoSelectionSubtitle;
+
+  /// No description provided for @messagesTypeTeacher.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi'**
+  String get messagesTypeTeacher;
+
+  /// No description provided for @messagesTypeTest.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test'**
+  String get messagesTypeTest;
+
+  /// No description provided for @messagesTypeSystem.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tizim'**
+  String get messagesTypeSystem;
+
+  /// No description provided for @messagesSenderLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kimdan'**
+  String get messagesSenderLabel;
+
+  /// No description provided for @messagesSenderTeacher.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi'**
+  String get messagesSenderTeacher;
+
+  /// No description provided for @messagesSenderTestSystem.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test tizimi'**
+  String get messagesSenderTestSystem;
+
+  /// No description provided for @messagesSenderSystem.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tizim'**
+  String get messagesSenderSystem;
+
+  /// No description provided for @messagesGoToTestButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testga o\'tish'**
+  String get messagesGoToTestButton;
+
+  /// No description provided for @messagesMarkReadButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qilgan deb belgilash'**
+  String get messagesMarkReadButton;
+
+  /// No description provided for @messagesMarkAllReadTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barchasini o\'qilgan qilish'**
+  String get messagesMarkAllReadTitle;
+
+  /// No description provided for @messagesMarkAllReadSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barcha xabarlarni o\'qilgan deb belgilash'**
+  String get messagesMarkAllReadSubtitle;
+
+  /// No description provided for @messagesNotificationSettingsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bildirishnoma sozlamalari'**
+  String get messagesNotificationSettingsTitle;
+
+  /// No description provided for @messagesNotificationSettingsSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bildirishnoma olish usullarini boshqaring'**
+  String get messagesNotificationSettingsSubtitle;
+
+  /// No description provided for @messagesArchiveTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xabarlar arxivi'**
+  String get messagesArchiveTitle;
+
+  /// No description provided for @messagesArchiveSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Arxivlangan xabarlarni ko\'rish'**
+  String get messagesArchiveSubtitle;
+
+  /// No description provided for @messagesQuickActionsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tezkor amallar'**
+  String get messagesQuickActionsTitle;
+
+  /// No description provided for @messagesSystemEmptyTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi tizim xabarlari yo\'q'**
+  String get messagesSystemEmptyTitle;
+
+  /// No description provided for @messagesSystemEmptySubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi bildirishnomalar paydo bo\'lganda, ular shu yerda ko\'rinadi.'**
+  String get messagesSystemEmptySubtitle;
+
+  /// No description provided for @messagesSystemUnreadCount.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi tizim xabarlari: {count}'**
+  String messagesSystemUnreadCount(int count);
+
+  /// No description provided for @messagesTipAssigned.
+  ///
+  /// In uz, this message translates to:
+  /// **'Omad! Eng yaxshi bilimingizni ko\'rsating va zo\'r natija oling.'**
+  String get messagesTipAssigned;
+
+  /// No description provided for @messagesToday.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bugun'**
+  String get messagesToday;
+
+  /// No description provided for @messagesYesterday.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kecha'**
+  String get messagesYesterday;
+
+  /// No description provided for @messagesMarkReadError.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qilgan deb belgilab bo\'lmadi'**
+  String get messagesMarkReadError;
+
+  /// No description provided for @homeHeroWelcome.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xush kelibsiz, {name}!'**
+  String homeHeroWelcome(String name);
+
+  /// No description provided for @homeHeroSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Har kungi kichik ilg\'or qadam katta natijalarga olib keladi.'**
+  String get homeHeroSubtitle;
+
+  /// No description provided for @homeUrgentTestsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Shoshilinch va yaqinlashayotgan testlar'**
+  String get homeUrgentTestsTitle;
+
+  /// No description provided for @homeViewAllTests.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barchasini ko\'rish'**
+  String get homeViewAllTests;
+
+  /// No description provided for @homeDeadlineHours.
+  ///
+  /// In uz, this message translates to:
+  /// **'{hours} soatdan keyin'**
+  String homeDeadlineHours(int hours);
+
+  /// No description provided for @homeDeadlineTomorrow.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ertagacha'**
+  String get homeDeadlineTomorrow;
+
+  /// No description provided for @homeDeadlineDaysLeft.
+  ///
+  /// In uz, this message translates to:
+  /// **'{days} kun qoldi'**
+  String homeDeadlineDaysLeft(int days);
+
+  /// No description provided for @homeAnnouncementsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'E\'lonlar va yangiliklar'**
+  String get homeAnnouncementsTitle;
+
+  /// No description provided for @homeAnnouncementsEmpty.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozircha e\'lonlar yo\'q'**
+  String get homeAnnouncementsEmpty;
+
+  /// No description provided for @homeActivityStreakTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faollik va seriya'**
+  String get homeActivityStreakTitle;
+
+  /// No description provided for @homeAttendanceLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Davomat'**
+  String get homeAttendanceLabel;
+
+  /// No description provided for @homeNextLessonTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yaqin dars'**
+  String get homeNextLessonTitle;
+
+  /// No description provided for @homeLastResultTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oxirgi natija'**
+  String get homeLastResultTitle;
+
+  /// No description provided for @homeQuickActionTestsDesc.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testni tanlang va hoziroq boshlang'**
+  String get homeQuickActionTestsDesc;
+
+  /// No description provided for @homeQuickActionResultsDesc.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'z natijalaringizni ko\'ring'**
+  String get homeQuickActionResultsDesc;
+
+  /// No description provided for @homeQuickActionContactTeacher.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi bilan bog\'lanish'**
+  String get homeQuickActionContactTeacher;
+
+  /// No description provided for @homeQuickActionContactTeacherDesc.
+  ///
+  /// In uz, this message translates to:
+  /// **'Savol bering yoki xabar yuboring'**
+  String get homeQuickActionContactTeacherDesc;
+
+  /// No description provided for @homeToResultsLink.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijalarga'**
+  String get homeToResultsLink;
+
+  /// No description provided for @weekdayMonShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Du'**
+  String get weekdayMonShort;
+
+  /// No description provided for @weekdayTueShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Se'**
+  String get weekdayTueShort;
+
+  /// No description provided for @weekdayWedShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ch'**
+  String get weekdayWedShort;
+
+  /// No description provided for @weekdayThuShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Pa'**
+  String get weekdayThuShort;
+
+  /// No description provided for @weekdayFriShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ju'**
+  String get weekdayFriShort;
+
+  /// No description provided for @weekdaySatShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sh'**
+  String get weekdaySatShort;
+
+  /// No description provided for @weekdaySunShort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ya'**
+  String get weekdaySunShort;
 }
 
 class _AppLocalizationsDelegate

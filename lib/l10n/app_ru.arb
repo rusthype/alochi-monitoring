@@ -816,5 +816,95 @@
         "type": "String"
       }
     }
-  }
+  },
+  "messagesBannerTitle": "Будьте в курсе важного! 👋",
+  "messagesBannerSubtitle": "Здесь вы найдете сообщения от учителей, уведомления о тестах и системные оповещения.",
+  "messagesKpiUnreadLabel": "Непрочитанные",
+  "messagesKpiNewTestsLabel": "Новые тесты",
+  "messagesKpiReviewedLabel": "Проверено результатов",
+  "messagesFilterAll": "Все",
+  "messagesFilterTeacher": "От учителей",
+  "messagesFilterTests": "Уведомления о тестах",
+  "messagesFilterSystem": "Системные",
+  "messagesSearchHint": "Поиск по сообщениям...",
+  "messagesEmptyListTitle": "Сообщений не найдено",
+  "messagesNoSelectionTitle": "Выберите сообщение",
+  "messagesNoSelectionSubtitle": "Нажмите на сообщение слева, чтобы посмотреть подробности.",
+  "messagesTypeTeacher": "Учитель",
+  "messagesTypeTest": "Тест",
+  "messagesTypeSystem": "Система",
+  "messagesSenderLabel": "От",
+  "messagesSenderTeacher": "Учитель",
+  "messagesSenderTestSystem": "Система тестирования",
+  "messagesSenderSystem": "Система",
+  "messagesGoToTestButton": "Перейти к тесту",
+  "messagesMarkReadButton": "Отметить как прочитанное",
+  "messagesMarkAllReadTitle": "Все прочитать",
+  "messagesMarkAllReadSubtitle": "Отметить все сообщения как прочитанные",
+  "messagesNotificationSettingsTitle": "Настройки уведомлений",
+  "messagesNotificationSettingsSubtitle": "Управляйте способами получения уведомлений",
+  "messagesArchiveTitle": "Архив сообщений",
+  "messagesArchiveSubtitle": "Просмотреть архивные сообщения",
+  "messagesQuickActionsTitle": "Быстрые действия",
+  "messagesSystemEmptyTitle": "Нет новых системных сообщений",
+  "messagesSystemEmptySubtitle": "Когда появятся новые уведомления, они будут отображаться здесь.",
+  "messagesSystemUnreadCount": "Новых системных сообщений: {count}",
+  "@messagesSystemUnreadCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesTipAssigned": "Удачи! Покажите свои лучшие знания и получите отличный результат.",
+  "messagesToday": "Сегодня",
+  "messagesYesterday": "Вчера",
+  "messagesMarkReadError": "Не удалось отметить как прочитанное",
+
+  "homeHeroWelcome": "Добро пожаловать обратно, {name}!",
+  "@homeHeroWelcome": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHeroSubtitle": "Маленький прогресс каждый день приводит к большим результатам.",
+  "homeUrgentTestsTitle": "Срочные и предстоящие тесты",
+  "homeViewAllTests": "Посмотреть все",
+  "homeDeadlineHours": "Через {hours} ч",
+  "@homeDeadlineHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "homeDeadlineTomorrow": "До завтра",
+  "homeDeadlineDaysLeft": "Осталось {days} дн.",
+  "@homeDeadlineDaysLeft": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "homeAnnouncementsTitle": "Объявления и новости",
+  "homeAnnouncementsEmpty": "Пока нет объявлений",
+  "homeActivityStreakTitle": "Активность и серия",
+  "homeAttendanceLabel": "Посещаемость",
+  "homeNextLessonTitle": "Ближайший урок",
+  "homeLastResultTitle": "Последний результат",
+  "homeQuickActionTestsDesc": "Выберите тест и начните сейчас",
+  "homeQuickActionResultsDesc": "Посмотрите свою успеваемость",
+  "homeQuickActionContactTeacher": "Связаться с учителем",
+  "homeQuickActionContactTeacherDesc": "Задайте вопрос или отправьте сообщение",
+  "homeToResultsLink": "К результатам",
+  "weekdayMonShort": "Пн",
+  "weekdayTueShort": "Вт",
+  "weekdayWedShort": "Ср",
+  "weekdayThuShort": "Чт",
+  "weekdayFriShort": "Пт",
+  "weekdaySatShort": "Сб",
+  "weekdaySunShort": "Вс"
 }
