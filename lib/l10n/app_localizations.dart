@@ -2972,6 +2972,36 @@ abstract class AppLocalizations {
   /// **'Server'**
   String get helpAboutServerLabel;
 
+  /// No description provided for @helpContactSectionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qo\'llab-quvvatlash bilan bog\'lanish'**
+  String get helpContactSectionTitle;
+
+  /// No description provided for @helpOpenTelegramBot.
+  ///
+  /// In uz, this message translates to:
+  /// **'Telegram Botni ochish'**
+  String get helpOpenTelegramBot;
+
+  /// No description provided for @helpSupportContactLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Alochi Support'**
+  String get helpSupportContactLabel;
+
+  /// No description provided for @helpSupportContactHandle.
+  ///
+  /// In uz, this message translates to:
+  /// **'@AlochiSupport'**
+  String get helpSupportContactHandle;
+
+  /// No description provided for @helpLinkOpenError.
+  ///
+  /// In uz, this message translates to:
+  /// **'Havolani ochib bo\'lmadi'**
+  String get helpLinkOpenError;
+
   /// No description provided for @helpNoAnswerTitle.
   ///
   /// In uz, this message translates to:
