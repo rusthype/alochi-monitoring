@@ -1558,6 +1558,21 @@ class AppLocalizationsRu extends AppLocalizations {
   String get helpAboutServerLabel => 'Сервер';
 
   @override
+  String get helpContactSectionTitle => 'Связаться с поддержкой';
+
+  @override
+  String get helpOpenTelegramBot => 'Открыть Telegram Bot';
+
+  @override
+  String get helpSupportContactLabel => 'Alochi Support';
+
+  @override
+  String get helpSupportContactHandle => '@AlochiSupport';
+
+  @override
+  String get helpLinkOpenError => 'Не удалось открыть ссылку';
+
+  @override
   String get helpNoAnswerTitle => 'Не нашли ответ?';
 
   @override

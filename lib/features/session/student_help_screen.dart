@@ -22,21 +22,25 @@
 //   (`comingSoon`, same key/visual language as student_sidebar.dart's
 //   disabled-item badge) placeholder block instead of fabricated
 //   thumbnails/durations.
-// - Telegram-bot button + named admin contact card: no real support bot
-//   username or admin contact record exists anywhere in this codebase
-//   (checked l10n, api client, docs) — omitted entirely rather than
-//   inventing one. Replaced with a "didn't find an answer? contact your
-//   teacher/school admin" callout, consistent with FAQ A4's real guidance
-//   (login/password issues already route through the teacher today).
+// - Telegram-bot button: real, live deep-link to the school bot
+//   (`https://t.me/alochipoll_bot`, `@alochipoll_bot`) via url_launcher.
+// - Support contact card: no named admin contact record exists in this
+//   codebase, so instead of a fabricated person (name/phone/email) it links
+//   to the real, live generic support account `@AlochiSupport`.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/models/models.dart';
 import '../../core/network/connectivity_provider.dart';
 import '../../core/network/connectivity_service.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/theme/student_palette.dart';
+
+const _kTelegramBotUrl = 'https://t.me/alochipoll_bot';
+const _kSupportTelegramUrl = 'https://t.me/AlochiSupport';
 
 class _FaqItem {
   final IconData icon;
@@ -116,13 +120,40 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
         .toList();
   }
 
+  /// Opens [url] in the system browser/app, matching update_service.dart's
+  /// try/catch convention but surfacing failure via a SnackBar (same
+  /// pattern as sync_images_button.dart) instead of swallowing it, since
+  /// this is a user-initiated tap, not a background operation.
+  Future<void> _launchUrl(String url, AppLocalizations l10n) async {
+    try {
+      final ok = await launchUrl(Uri.parse(url),
+          mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(l10n.helpLinkOpenError),
+              backgroundColor: AppColors.err),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(l10n.helpLinkOpenError),
+              backgroundColor: AppColors.err),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return _body(l10n);
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
+    return _body(l10n, pal);
   }
 
-  Widget _body(AppLocalizations l10n) {
+  Widget _body(AppLocalizations l10n, StudentPalette pal) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       child: Column(
@@ -132,8 +163,8 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
           const SizedBox(height: AppSpacing.xl),
           LayoutBuilder(builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 900;
-            final left = _leftColumn(l10n);
-            final right = _rightColumn(l10n);
+            final left = _leftColumn(l10n, pal);
+            final right = _rightColumn(l10n, pal);
             if (!isWide) {
               return Column(children: [left, const SizedBox(height: 20), right]);
             }
@@ -199,11 +230,12 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
     );
   }
 
-  Widget _leftColumn(AppLocalizations l10n) {
+  Widget _leftColumn(AppLocalizations l10n, StudentPalette pal) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _card(
+          pal: pal,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -215,8 +247,8 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: l10n.helpFaqSearchHint,
-                  prefixIcon: const Icon(Icons.search_rounded,
-                      color: AppColors.ink3, size: 20),
+                  prefixIcon: Icon(Icons.search_rounded,
+                      color: pal.ink3, size: 20),
                 ),
               ),
               const SizedBox(height: 8),
@@ -228,7 +260,7 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
                     child: Center(
                       child: Text(l10n.helpFaqNoResults,
                           style: AppTextStyles.bodyMedium
-                              .copyWith(color: AppColors.ink3)),
+                              .copyWith(color: pal.ink3)),
                     ),
                   );
                 }
@@ -271,6 +303,7 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
         ),
         const SizedBox(height: 20),
         _card(
+          pal: pal,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -299,19 +332,19 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppColors.pageBg,
+                  color: pal.chipBg,
                   borderRadius: AppRadii.roundedMd,
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: pal.border),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.smart_display_outlined,
-                        color: AppColors.ink3, size: 32),
+                    Icon(Icons.smart_display_outlined,
+                        color: pal.ink3, size: 32),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(l10n.helpVideoComingSoonDesc,
                           style: AppTextStyles.bodyMedium
-                              .copyWith(color: AppColors.ink2)),
+                              .copyWith(color: pal.ink2)),
                     ),
                   ],
                 ),
@@ -321,6 +354,7 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
         ),
         const SizedBox(height: 20),
         _card(
+          pal: pal,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -336,16 +370,19 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
                     icon: Icons.wifi_rounded,
                     title: l10n.helpTroubleshootInternetTitle,
                     desc: l10n.helpTroubleshootInternetDesc,
+                    pal: pal,
                   ),
                   _TipTile(
                     icon: Icons.refresh_rounded,
                     title: l10n.helpTroubleshootRestartTitle,
                     desc: l10n.helpTroubleshootRestartDesc,
+                    pal: pal,
                   ),
                   _TipTile(
                     icon: Icons.person_outline_rounded,
                     title: l10n.helpTroubleshootTeacherTitle,
                     desc: l10n.helpTroubleshootTeacherDesc,
+                    pal: pal,
                   ),
                 ],
               ),
@@ -356,11 +393,14 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
     );
   }
 
-  Widget _rightColumn(AppLocalizations l10n) {
+  Widget _rightColumn(AppLocalizations l10n, StudentPalette pal) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _contactCard(l10n, pal),
+        const SizedBox(height: 20),
         _card(
+          pal: pal,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -369,7 +409,7 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
                       .copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
               _infoRow(l10n.helpAboutVersionLabel,
-                  _appVersion != null ? 'v$_appVersion' : '—'),
+                  _appVersion != null ? 'v$_appVersion' : '—', pal),
               const Divider(height: 20),
               Consumer(builder: (context, ref, _) {
                 final signal = ref.watch(signalProvider);
@@ -380,8 +420,8 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
                     : (isOnline ? l10n.onlineStatus : l10n.offlineMode);
                 final color = signal.checking
                     ? AppColors.brand
-                    : (isOnline ? AppColors.ok : AppColors.ink3);
-                return _infoRow(l10n.helpAboutServerLabel, label,
+                    : (isOnline ? AppColors.ok : pal.ink3);
+                return _infoRow(l10n.helpAboutServerLabel, label, pal,
                     valueColor: color);
               }),
             ],
@@ -389,6 +429,7 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
         ),
         const SizedBox(height: 20),
         _card(
+          pal: pal,
           color: AppColors.secondaryMuted,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -407,26 +448,102 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
     );
   }
 
-  Widget _infoRow(String label, String value, {Color? valueColor}) {
+  /// "Связаться с поддержкой" card (dark6.jpg) — the real Telegram bot
+  /// deep-link + generic support contact row (no fabricated personal
+  /// name/phone/email, see file-header note).
+  Widget _contactCard(AppLocalizations l10n, StudentPalette pal) {
+    return _card(
+      pal: pal,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.helpContactSectionTitle,
+              style:
+                  AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _launchUrl(_kTelegramBotUrl, l10n),
+              icon: const Icon(Icons.send_rounded, size: 18),
+              label: Text(l10n.helpOpenTelegramBot),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.brand,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: const RoundedRectangleBorder(
+                    borderRadius: AppRadii.roundedMd),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _launchUrl(_kSupportTelegramUrl, l10n),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: pal.chipBg,
+                borderRadius: AppRadii.roundedMd,
+                border: Border.all(color: pal.border),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                        color: AppColors.secondaryMuted, shape: BoxShape.circle),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.support_agent_rounded,
+                        color: AppColors.brand, size: 18),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l10n.helpSupportContactLabel,
+                            style: AppTextStyles.labelLarge.copyWith(
+                                fontWeight: FontWeight.w700, color: pal.ink1)),
+                        Text(l10n.helpSupportContactHandle,
+                            style: AppTextStyles.caption
+                                .copyWith(color: pal.ink3)),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: pal.ink3),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value, StudentPalette pal,
+      {Color? valueColor}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label,
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink2)),
+            style: AppTextStyles.bodyMedium.copyWith(color: pal.ink2)),
         Text(value,
             style: AppTextStyles.labelLarge.copyWith(
-                color: valueColor ?? AppColors.ink1, fontWeight: FontWeight.w700)),
+                color: valueColor ?? pal.ink1, fontWeight: FontWeight.w700)),
       ],
     );
   }
 
-  Widget _card({required Widget child, Color? color}) {
+  Widget _card(
+      {required Widget child, required StudentPalette pal, Color? color}) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: color ?? AppColors.surface,
+        color: color ?? pal.surface,
         borderRadius: AppRadii.roundedXl,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: pal.border),
       ),
       child: child,
     );
@@ -488,9 +605,13 @@ class _TipTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String desc;
+  final StudentPalette pal;
 
   const _TipTile(
-      {required this.icon, required this.title, required this.desc});
+      {required this.icon,
+      required this.title,
+      required this.desc,
+      required this.pal});
 
   @override
   Widget build(BuildContext context) {
@@ -498,9 +619,9 @@ class _TipTile extends StatelessWidget {
       width: 220,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.pageBg,
+        color: pal.chipBg,
         borderRadius: AppRadii.roundedMd,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: pal.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -508,10 +629,11 @@ class _TipTile extends StatelessWidget {
           Icon(icon, color: AppColors.brand, size: 20),
           const SizedBox(height: 8),
           Text(title,
-              style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.w700)),
+              style: AppTextStyles.labelLarge.copyWith(
+                  fontWeight: FontWeight.w700, color: pal.ink1)),
           const SizedBox(height: 4),
           Text(desc,
-              style: AppTextStyles.caption.copyWith(color: AppColors.ink2)),
+              style: AppTextStyles.caption.copyWith(color: pal.ink2)),
         ],
       ),
     );
