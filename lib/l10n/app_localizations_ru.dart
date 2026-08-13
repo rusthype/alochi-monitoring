@@ -392,6 +392,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get finishConfirmTitle => 'Завершить?';
 
   @override
+  String get finishConfirmAllAnsweredPrompt =>
+      'Все ответы отмечены. Завершить тест?';
+
+  @override
+  String get testAutoSubmittedNotice =>
+      'Время теста истекло, ваши сохранённые ответы были отправлены автоматически.';
+
+  @override
   String unansweredWarning(int unanswered) {
     return 'Без ответа: $unanswered. Все равно завершить?';
   }

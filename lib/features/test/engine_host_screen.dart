@@ -116,6 +116,11 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   ScoredResult? _completedResult;
   String? _completedToken;
 
+  // Set by TestEngine.onExpiredAutoSubmit when a relaunch found the
+  // deadline already passed and auto-submitted without the student seeing
+  // it happen. _EngineResultScreen shows a one-time notice for this.
+  bool _expiredAutoSubmit = false;
+
   @override
   void initState() {
     super.initState();
@@ -313,6 +318,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
         result: _completedResult!,
         clientToken: _completedToken!,
         subject: _spec?.subject,
+        expiredAutoSubmit: _expiredAutoSubmit,
       );
     }
 
@@ -326,6 +332,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       studentId: widget.studentId,
       duration: _effectiveDuration(_spec!),
       onComplete: _handleComplete,
+      onExpiredAutoSubmit: () => _expiredAutoSubmit = true,
     );
   }
 }
@@ -491,6 +498,11 @@ class _EngineResultScreen extends StatefulWidget {
   /// legacy tests without a subject field — see _resolveMathEngSections.
   final String? subject;
 
+  /// True when TestEngine auto-submitted this result on relaunch because
+  /// the persisted deadline had already passed — the student never saw a
+  /// countdown or a confirm dialog, so this screen shows a one-time notice.
+  final bool expiredAutoSubmit;
+
   const _EngineResultScreen({
     required this.firstName,
     required this.lastName,
@@ -501,6 +513,7 @@ class _EngineResultScreen extends StatefulWidget {
     required this.result,
     required this.clientToken,
     this.subject,
+    this.expiredAutoSubmit = false,
   });
 
   @override
@@ -529,6 +542,19 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     )..forward();
     _fade = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _loadAiSummary().then((_) => _autoUploadPdfForBot());
+
+    if (widget.expiredAutoSubmit) {
+      // Informational only — the submit already happened, so this must
+      // not block on a user response. Scheduled post-frame so the
+      // Scaffold/ScaffoldMessenger this screen just mounted is ready.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(AppLocalizations.of(context)!.testAutoSubmittedNotice),
+          duration: const Duration(seconds: 6),
+        ));
+      });
+    }
   }
 
   /// Generates the HTML report and uploads it silently so the

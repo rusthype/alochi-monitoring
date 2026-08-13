@@ -198,6 +198,8 @@
   "mathSubjectFull": "Matematika",
   "englishSubjectFull": "Ingliz tili",
   "finishConfirmTitle": "Tugatish?",
+  "finishConfirmAllAnsweredPrompt": "Barcha javoblar belgilandi. Testni yakunlaysizmi?",
+  "testAutoSubmittedNotice": "Test vaqti tugadi, saqlangan javoblaringiz avtomatik yuborildi.",
   "unansweredWarning": "{unanswered} ta savol javobsiz qoldi. Shunga qaramay tugatmoqchimisiz?",
   "@unansweredWarning": {
     "placeholders": {

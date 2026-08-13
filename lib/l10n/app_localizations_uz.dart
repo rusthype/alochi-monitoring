@@ -393,6 +393,14 @@ class AppLocalizationsUz extends AppLocalizations {
   String get finishConfirmTitle => 'Tugatish?';
 
   @override
+  String get finishConfirmAllAnsweredPrompt =>
+      'Barcha javoblar belgilandi. Testni yakunlaysizmi?';
+
+  @override
+  String get testAutoSubmittedNotice =>
+      'Test vaqti tugadi, saqlangan javoblaringiz avtomatik yuborildi.';
+
+  @override
   String unansweredWarning(int unanswered) {
     return '$unanswered ta savol javobsiz qoldi. Shunga qaramay tugatmoqchimisiz?';
   }

@@ -806,6 +806,18 @@ abstract class AppLocalizations {
   /// **'Tugatish?'**
   String get finishConfirmTitle;
 
+  /// No description provided for @finishConfirmAllAnsweredPrompt.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barcha javoblar belgilandi. Testni yakunlaysizmi?'**
+  String get finishConfirmAllAnsweredPrompt;
+
+  /// No description provided for @testAutoSubmittedNotice.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test vaqti tugadi, saqlangan javoblaringiz avtomatik yuborildi.'**
+  String get testAutoSubmittedNotice;
+
   /// No description provided for @unansweredWarning.
   ///
   /// In uz, this message translates to:

@@ -41,6 +41,13 @@ class TestEngine extends StatefulWidget {
   /// from inside this callback.
   final void Function(ScoredResult result) onComplete;
 
+  /// Called once, right before [onComplete], when the app was relaunched
+  /// after its persisted deadline had already passed — the student never
+  /// saw a countdown hit zero, so the host screen should surface a
+  /// one-time "your saved answers were auto-submitted" notice on the
+  /// result screen it navigates to.
+  final VoidCallback? onExpiredAutoSubmit;
+
   const TestEngine({
     super.key,
     required this.spec,
@@ -52,6 +59,7 @@ class TestEngine extends StatefulWidget {
     this.studentId = '',
     required this.duration,
     required this.onComplete,
+    this.onExpiredAutoSubmit,
   });
 
   @override
@@ -195,6 +203,9 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     final remainingMs = _deadlineMs! - nowMs;
     if (remainingMs <= 0) {
       // Deadline already passed while the app was closed — auto-submit.
+      // The student never saw this happen (no countdown, no confirm), so
+      // let the host screen know it should tell them on the result screen.
+      widget.onExpiredAutoSubmit?.call();
       setState(() => _secs = 0);
       _finishNow();
       return;
@@ -344,40 +355,41 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     _timer?.cancel();
 
     final unanswered = _totalQuestions - _answeredCount;
-    if (unanswered > 0) {
-      final l10n = AppLocalizations.of(context)!;
-      final ok = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(
-            l10n.finishConfirmTitle,
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
-          content: Text('$unanswered ${l10n.questionsUnansweredPrompt}'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _startTimer();
-                Navigator.pop(context, false);
-              },
-              child: Text(l10n.back),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.brand,
-                minimumSize: const Size(100, 40),
-              ),
-              child: Text(l10n.finish),
-            ),
-          ],
+    // Always confirm before submitting — even when every question is
+    // answered, a stray/misclick tap on Finish must not submit silently.
+    final l10n = AppLocalizations.of(context)!;
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          l10n.finishConfirmTitle,
+          style: const TextStyle(fontWeight: FontWeight.w800),
         ),
-      );
-      if (ok != true) return;
-    }
+        content: Text(unanswered > 0
+            ? '$unanswered ${l10n.questionsUnansweredPrompt}'
+            : l10n.finishConfirmAllAnsweredPrompt),
+        actions: [
+          TextButton(
+            onPressed: () {
+              _startTimer();
+              Navigator.pop(context, false);
+            },
+            child: Text(l10n.back),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.brand,
+              minimumSize: const Size(100, 40),
+            ),
+            child: Text(l10n.finish),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
 
     _finishNow();
   }
