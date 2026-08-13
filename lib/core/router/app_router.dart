@@ -11,6 +11,9 @@ import '../../features/session/group_select_screen.dart';
 import '../../features/session/student_entry_screen.dart';
 import '../../features/session/my_tests_screen.dart';
 import '../../features/session/results_screen.dart';
+import '../../features/session/student_settings_screen.dart';
+import '../../features/session/student_help_screen.dart';
+import '../../features/session/student_certificates_screen.dart';
 
 // Test screens
 import '../../features/test/package_screen.dart';
@@ -89,6 +92,24 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             return ResultsScreen(session: extra['session']);
+          }),
+      GoRoute(
+          path: '/settings',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return StudentSettingsScreen(session: extra['session']);
+          }),
+      GoRoute(
+          path: '/help',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return StudentHelpScreen(session: extra['session']);
+          }),
+      GoRoute(
+          path: '/certificates',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return StudentCertificatesScreen(session: extra['session']);
           }),
       GoRoute(
           path: '/history',
