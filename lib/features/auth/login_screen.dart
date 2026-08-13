@@ -752,9 +752,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _updateBadge() {
     if (_updateInfo == null) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context)!;
     return Semantics(
       button: true,
-      label: _isDownloadingUpdate ? 'Yuklanmoqda...' : 'Yangilanish mavjud',
+      label: _isDownloadingUpdate ? l10n.loadingLabelDots : l10n.newVersionAvailable,
       child: HoverRegion(
         builder: (context, isHovered) => GestureDetector(
           onTap: _attemptUpdateDownload,
@@ -796,8 +797,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(width: 6),
                 Text(
                   _isDownloadingUpdate
-                      ? 'Yuklanmoqda... ${(_updateProgress * 100).toInt()}%'
-                      : 'Yangilanish mavjud',
+                      ? '${l10n.loadingLabelDots} ${(_updateProgress * 100).toInt()}%'
+                      : l10n.newVersionAvailable,
                   style: AppTextStyles.labelMedium.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
@@ -815,7 +816,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final l10n = AppLocalizations.of(context)!;
     final children = [
       _routeButton(
-        icon: Icons.badge_rounded,
+        icon: Icons.desktop_windows_rounded,
         label: l10n.studentLoginButton,
         active: _expanded,
         onTap: () => setState(() => _expanded = !_expanded),
@@ -1965,7 +1966,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                               : isUpdatable && !isDownloading
                                   ? l10n.newVersionAvailable
                                   : isDownloading
-                                      ? 'Yuklab olinmoqda'
+                                      ? l10n.downloading
                                       : isDone
                                           ? l10n.downloaded
                                           : l10n.notDownloaded,

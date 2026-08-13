@@ -17,7 +17,16 @@
 // cache, keyed only by test_key and shared across schools/groups) — this
 // screen fetches the full test JSON live, right when the student taps a
 // card, and hands it straight to EngineHostScreen (unchanged, per plan).
+//
+// Dashboard redesign (2026-08): sidebar + profile/KPI card + filter/search
+// + status-aware test cards + "recent results" panel. All of the extra data
+// (status/score/progress, school name, stats, recent results) comes from
+// real backend fields — GET /tests/catalog/ additive keys and the new
+// GET /my-profile/ endpoint — never fabricated. If /my-profile/ fails or
+// the app is offline, the whole KPI/profile-extras/recent-results UI is
+// hidden rather than showing zeros (see _profile == null checks below).
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -25,8 +34,11 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
 import '../../core/models/models.dart';
+import '../../core/network/connectivity_provider.dart';
+import '../../core/network/connectivity_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/hover_region.dart';
+import '../../shared/widgets/language_switcher.dart';
 import '../auth/login_screen.dart';
 
 /// Lightweight catalog row for the self-login flow — intentionally separate
@@ -39,6 +51,15 @@ class _StudentTest {
   final DateTime? lockedUntil;
   final DateTime? availableUntil;
   final DateTime? createdAt;
+  final String subject;
+  final int? durationMinutes;
+  final int? questionCount;
+  // Backend-resolved (JWT student.code match) — 'completed'/'in_progress',
+  // or null when the backend didn't resolve one (e.g. an older cached
+  // catalog payload from before this field existed).
+  final String? status;
+  final int? score; // only set when status == 'completed'
+  final int? progressPct; // only set when status == 'in_progress'
 
   const _StudentTest({
     required this.testKey,
@@ -47,6 +68,12 @@ class _StudentTest {
     this.lockedUntil,
     this.availableUntil,
     this.createdAt,
+    this.subject = '',
+    this.durationMinutes,
+    this.questionCount,
+    this.status,
+    this.score,
+    this.progressPct,
   });
 
   bool get isLocked =>
@@ -57,6 +84,20 @@ class _StudentTest {
       createdAt != null &&
       DateTime.now().difference(createdAt!) < _newThreshold;
 
+  /// Effective display status: `isLocked` wins first — a teacher can
+  /// re-lock a schedule (push `lockedUntil` into the future) after a
+  /// student already started/completed the test, and a locked test must
+  /// render as locked regardless of prior student activity. Otherwise the
+  /// backend-resolved `status` takes priority (real, computed from
+  /// MonitoringResult/MonitoringSession); falls back to the existing
+  /// date-based "available" default when the backend didn't send one —
+  /// keeps offline/cached-catalog behavior unchanged.
+  String get displayStatus {
+    if (isLocked) return 'locked';
+    if (status == 'completed' || status == 'in_progress') return status!;
+    return 'available';
+  }
+
   factory _StudentTest.fromJson(Map<String, dynamic> j) => _StudentTest(
         testKey: j['test_key']?.toString() ?? '',
         title: j['title']?.toString() ?? '',
@@ -64,11 +105,51 @@ class _StudentTest {
         lockedUntil: _tryParse(j['locked_until']),
         availableUntil: _tryParse(j['available_until']),
         createdAt: _tryParse(j['created_at']),
+        subject: j['subject']?.toString() ?? '',
+        durationMinutes: (j['duration_minutes'] as num?)?.toInt(),
+        questionCount: (j['question_count'] as num?)?.toInt(),
+        status: (j['status'] is String && (j['status'] as String).isNotEmpty)
+            ? j['status'] as String
+            : null,
+        score: (j['score'] as num?)?.toInt(),
+        progressPct: (j['progress_pct'] as num?)?.toInt(),
       );
 
   static DateTime? _tryParse(dynamic raw) {
     if (raw is! String || raw.isEmpty) return null;
     return DateTime.tryParse(raw);
+  }
+}
+
+/// Parsed `GET /my-profile/` response — school name, real stats, recent
+/// results. Kept private to this screen (unlike [RecentResult], which is
+/// shared with results_screen.dart via core/models/models.dart).
+class _ProfileSummary {
+  final String schoolName;
+  final int? testsCompleted; // null = missing/malformed, NEVER shown as 0
+  final int? averageScore; // null = no results yet, NEVER rendered as 0%
+  final int? streakDays; // null = missing/malformed, NEVER shown as 0
+  final List<RecentResult> recentResults;
+
+  const _ProfileSummary({
+    required this.schoolName,
+    required this.testsCompleted,
+    required this.averageScore,
+    required this.streakDays,
+    required this.recentResults,
+  });
+
+  factory _ProfileSummary.fromJson(Map<String, dynamic> j) {
+    final stats = (j['stats'] is Map)
+        ? Map<String, dynamic>.from(j['stats'] as Map)
+        : <String, dynamic>{};
+    return _ProfileSummary(
+      schoolName: j['school_name']?.toString() ?? '',
+      testsCompleted: (stats['tests_completed'] as num?)?.toInt(),
+      averageScore: (stats['average_score'] as num?)?.toInt(),
+      streakDays: (stats['streak_days'] as num?)?.toInt(),
+      recentResults: RecentResult.listFromJson(j['recent_results']),
+    );
   }
 }
 
@@ -82,11 +163,21 @@ class MyTestsScreen extends StatefulWidget {
   State<MyTestsScreen> createState() => _MyTestsScreenState();
 }
 
+/// Status-tab filter values for _FilterAndSearchRow.
+enum _StatusFilter { all, inProgress, completed, locked }
+
 class _MyTestsScreenState extends State<MyTestsScreen> {
   bool _loading = true;
   String? _error;
   List<_StudentTest> _tests = [];
+  List<String> _subjects =
+      []; // distinct, sorted — recomputed only in _loadCatalog
+  _ProfileSummary? _profile; // null = fetch failed/offline — UI hides KPIs
   final Set<String> _startingKeys = {};
+
+  String _searchQuery = '';
+  String? _subjectFilter; // null = all subjects
+  _StatusFilter _statusFilter = _StatusFilter.all;
 
   @override
   void initState() {
@@ -102,7 +193,15 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
     try {
       // No groupId/schoolCode — the backend resolves the student's own
       // active group from the Authorization header (see file header).
-      final raw = await api.fetchTestCatalog(authToken: widget.session.token);
+      // fetchTestCatalog/fetchMyProfile both swallow their own errors
+      // (return [] / null) — run them in parallel, neither blocks the other.
+      final results = await Future.wait([
+        api.fetchTestCatalog(authToken: widget.session.token),
+        api.fetchMyProfile(authToken: widget.session.token),
+      ]);
+      if (!mounted) return;
+      final raw = results[0] as List<Map<String, dynamic>>;
+      final profileRaw = results[1] as Map<String, dynamic>?;
       final entries = raw
           .map(_StudentTest.fromJson)
           .where((t) => t.testKey.isNotEmpty)
@@ -112,6 +211,12 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
       if (!mounted) return;
       setState(() {
         _tests = entries;
+        _subjects = entries.map((t) => t.subject).toSet().toList()..sort();
+        // profileRaw == null (offline/401/network fail) → _profile stays
+        // null → KPI row, school-name-from-profile, recent-results panel
+        // all hide themselves rather than showing 0/blank as if real.
+        _profile =
+            profileRaw != null ? _ProfileSummary.fromJson(profileRaw) : null;
         _loading = false;
       });
     } catch (e) {
@@ -159,6 +264,13 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
     _goToLoginReplacingStack();
   }
 
+  /// Starts (or "continues") a test. NOTE — known limitation, documented
+  /// honestly per plan: MonitoringSession is a live-proctoring heartbeat
+  /// model, not a resumable-answers store. Tapping "Continue" on an
+  /// in_progress card re-enters the test from question 1 server-side; any
+  /// in-progress answers only survive if the local on-device AttemptStore
+  /// (SQLite, engine-side) still has them from the same session on the same
+  /// machine. True cross-device/server-side resume is out of scope here.
   Future<void> _startTest(_StudentTest test) async {
     if (_startingKeys.contains(test.testKey)) return;
     setState(() => _startingKeys.add(test.testKey));
@@ -224,9 +336,34 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
     _goToLoginReplacingStack();
   }
 
+  void _viewResults() {
+    context.push('/results', extra: {'session': widget.session});
+  }
+
+  List<_StudentTest> get _filteredTests {
+    final query = _searchQuery.toLowerCase();
+    return _tests.where((t) {
+      if (query.isNotEmpty && !t.title.toLowerCase().contains(query)) {
+        return false;
+      }
+      if (_subjectFilter != null && t.subject != _subjectFilter) return false;
+      switch (_statusFilter) {
+        case _StatusFilter.all:
+          return true;
+        case _StatusFilter.inProgress:
+          return t.displayStatus == 'in_progress';
+        case _StatusFilter.completed:
+          return t.displayStatus == 'completed';
+        case _StatusFilter.locked:
+          return t.displayStatus == 'locked';
+      }
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isSmall = MediaQuery.of(context).size.width < 800;
     return PopScope(
       // A shared kiosk machine must never leave this screen "abandoned" via
       // hardware/gesture back — route every exit through the same
@@ -239,10 +376,20 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
       child: Scaffold(
         backgroundColor: AppColors.bg,
         body: SafeArea(
-          child: Column(
+          child: Row(
             children: [
-              _header(l10n),
-              Expanded(child: _body(l10n)),
+              if (!isSmall) _SidebarNavigation(onResultsTap: _viewResults),
+              Expanded(
+                child: Column(
+                  children: [
+                    _TopHeaderBar(
+                      onLogout: _logoutNow,
+                      onResultsTap: isSmall ? _viewResults : null,
+                    ),
+                    Expanded(child: _body(l10n, isSmall)),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -250,58 +397,7 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
     );
   }
 
-  Widget _header(AppLocalizations l10n) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.myTestsTitle,
-                    style: AppTextStyles.titleLarge
-                        .copyWith(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 2),
-                Text(
-                  widget.session.studentName,
-                  style:
-                      AppTextStyles.bodyMedium.copyWith(color: AppColors.ink2),
-                ),
-              ],
-            ),
-          ),
-          HoverRegion(
-            builder: (context, isHovered) => GestureDetector(
-              onTap: _logoutNow,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isHovered ? AppColors.hoverBg : AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.logout_rounded,
-                        size: 16, color: AppColors.ink2),
-                    const SizedBox(width: 6),
-                    Text(l10n.logout,
-                        style: AppTextStyles.labelMedium
-                            .copyWith(color: AppColors.ink1)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _body(AppLocalizations l10n) {
+  Widget _body(AppLocalizations l10n, bool isSmall) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -329,29 +425,590 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
         ),
       );
     }
-    if (_tests.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(l10n.myTestsEmpty,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3)),
-        ),
-      );
-    }
+
+    final filtered = _filteredTests;
     return RefreshIndicator(
       onRefresh: _loadCatalog,
-      child: ListView(
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _StudentProfileCard(session: widget.session, profile: _profile),
+            const SizedBox(height: 20),
+            _FilterAndSearchRow(
+              subjects: _subjects,
+              statusFilter: _statusFilter,
+              subjectFilter: _subjectFilter,
+              onSearchChanged: (v) => setState(() => _searchQuery = v),
+              onStatusChanged: (v) => setState(() => _statusFilter = v),
+              onSubjectChanged: (v) => setState(() => _subjectFilter = v),
+            ),
+            const SizedBox(height: 16),
+            if (isSmall) ...[
+              _TestCardsGrid(
+                tests: filtered,
+                totalCount: _tests.length,
+                startingKeys: _startingKeys,
+                onStart: _startTest,
+                onViewResult: (_) => _viewResults(),
+              ),
+              const SizedBox(height: 20),
+              _RecentResultsPanel(profile: _profile, onViewAll: _viewResults),
+            ] else
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: _TestCardsGrid(
+                        tests: filtered,
+                        totalCount: _tests.length,
+                        startingKeys: _startingKeys,
+                        onStart: _startTest,
+                        onViewResult: (_) => _viewResults(),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      flex: 1,
+                      child: _RecentResultsPanel(
+                          profile: _profile, onViewAll: _viewResults),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Vertical sidebar nav. Only "Мои тесты" (this screen, always active) and
+/// "Результаты" (new /results route, F4) are functional — the rest render
+/// disabled + `comingSoon` badge, same visual language as login_screen.dart's
+/// disabled `_routeButton` (private there, so re-created here rather than
+/// imported/shared).
+class _SidebarNavigation extends StatelessWidget {
+  final VoidCallback onResultsTap;
+
+  const _SidebarNavigation({required this.onResultsTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      width: 220,
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(right: BorderSide(color: AppColors.border)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final test in _tests)
-            _StudentTestCard(
-              test: test,
-              starting: _startingKeys.contains(test.testKey),
-              onTap: () => _startTest(test),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.school_rounded,
+                    color: AppColors.brand, size: 24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(l10n.appTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.labelLarge
+                          .copyWith(fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _item(context,
+              icon: Icons.home_rounded,
+              label: l10n.sidebarHome,
+              enabled: false),
+          _item(context,
+              icon: Icons.assignment_rounded,
+              label: l10n.myTestsTitle,
+              active: true),
+          _item(context,
+              icon: Icons.bar_chart_rounded,
+              label: l10n.sidebarResults,
+              onTap: onResultsTap),
+          _item(context,
+              icon: Icons.mail_rounded,
+              label: l10n.sidebarMessages,
+              enabled: false),
+          _item(context,
+              icon: Icons.workspace_premium_rounded,
+              label: l10n.sidebarCertificates,
+              enabled: false),
+          _item(context,
+              icon: Icons.settings_rounded,
+              label: l10n.sidebarSettings,
+              enabled: false),
+          _item(context,
+              icon: Icons.help_rounded,
+              label: l10n.sidebarHelp,
+              enabled: false),
+        ],
+      ),
+    );
+  }
+
+  Widget _item(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    bool active = false,
+    bool enabled = true,
+    VoidCallback? onTap,
+  }) {
+    final l10n = AppLocalizations.of(context)!;
+    final color =
+        !enabled ? AppColors.ink3 : (active ? AppColors.brand : AppColors.ink2);
+    final child = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(label,
+                style: AppTextStyles.labelLarge.copyWith(
+                  color: color,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                )),
+          ),
+          if (!enabled)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.secondary,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(l10n.comingSoon,
+                  style: AppTextStyles.caption.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 9)),
             ),
         ],
       ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: !enabled
+          ? Opacity(opacity: 0.6, child: child)
+          : HoverRegion(
+              builder: (context, isHovered) => Material(
+                color: active
+                    ? AppColors.brandLight
+                    : (isHovered ? AppColors.hoverBg : Colors.transparent),
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: active ? null : onTap,
+                  child: child,
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+/// Top bar: title, online/offline signal indicator (same `signalProvider`
+/// source as login_screen.dart), language switcher, logout.
+///
+/// [onResultsTap] is only passed when the sidebar (the normal way to reach
+/// `/results`) is hidden — narrow viewport — so `/results` always has at
+/// least one reachable entry point even when the recent-results panel's
+/// "view all" button is also hidden (no profile/results data yet).
+class _TopHeaderBar extends ConsumerWidget {
+  final VoidCallback onLogout;
+  final VoidCallback? onResultsTap;
+
+  const _TopHeaderBar({required this.onLogout, this.onResultsTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
+    final signal = ref.watch(signalProvider);
+    final isOnline = !signal.checking && signal.tier != SignalTier.none;
+    final signalLabel = signal.checking
+        ? l10n.serverChecking
+        : (isOnline ? l10n.serverConnected : l10n.offlineMode);
+    final signalColor = signal.checking
+        ? AppColors.brand
+        : (isOnline ? AppColors.ok : AppColors.ink3);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(l10n.myTestsTitle,
+                style: AppTextStyles.titleLarge
+                    .copyWith(fontWeight: FontWeight.w800)),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: signalColor,
+                    shape: BoxShape.circle,
+                  )),
+              const SizedBox(width: 6),
+              Text(signalLabel,
+                  style: AppTextStyles.caption.copyWith(color: signalColor)),
+            ],
+          ),
+          const SizedBox(width: 16),
+          if (onResultsTap != null) ...[
+            IconButton(
+              icon: const Icon(Icons.bar_chart_rounded, color: AppColors.ink2),
+              tooltip: l10n.sidebarResults,
+              onPressed: onResultsTap,
+            ),
+            const SizedBox(width: 4),
+          ],
+          const LanguageSwitcher(),
+          const SizedBox(width: 8),
+          HoverRegion(
+            builder: (context, isHovered) => GestureDetector(
+              onTap: onLogout,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isHovered ? AppColors.hoverBg : AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.logout_rounded,
+                        size: 16, color: AppColors.ink2),
+                    const SizedBox(width: 6),
+                    Text(l10n.logout,
+                        style: AppTextStyles.labelMedium
+                            .copyWith(color: AppColors.ink1)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Student avatar/name/grade/group + school name (real, from /my-profile/
+/// or the login-time `schoolCode` fallback — never a fabricated string) and
+/// the 3-stat KPI row. The KPI row is entirely omitted (not zeroed) when
+/// [profile] is null — offline or fetch failure, per the "never fabricate
+/// data" rule.
+class _StudentProfileCard extends StatelessWidget {
+  final StudentSession session;
+  final _ProfileSummary? profile;
+
+  const _StudentProfileCard({required this.session, required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final letter = session.studentName.trim().isNotEmpty
+        ? session.studentName.trim()[0].toUpperCase()
+        : '?';
+    final schoolName = (profile != null && profile!.schoolName.isNotEmpty)
+        ? profile!.schoolName
+        : session.schoolCode;
+    final gradeGroup = [
+      if (session.grade != null) '${session.grade}-${l10n.gradeShort}',
+      if ((session.groupName ?? '').isNotEmpty) session.groupName!,
+    ].join(' · ');
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadii.roundedXl,
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 12,
+              offset: const Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: const BoxDecoration(
+                    color: AppColors.brand, shape: BoxShape.circle),
+                alignment: Alignment.center,
+                child: Text(letter,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(session.studentName,
+                        style: AppTextStyles.titleMedium
+                            .copyWith(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    if (gradeGroup.isNotEmpty || schoolName.isNotEmpty)
+                      Text(
+                        [gradeGroup, schoolName]
+                            .where((s) => s.isNotEmpty)
+                            .join(' · '),
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: AppColors.ink2),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (profile != null) ...[
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: _kpiTile(
+                    l10n.kpiTestsCompleted,
+                    profile!.testsCompleted != null
+                        ? '${profile!.testsCompleted}'
+                        : '—',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _kpiTile(
+                    l10n.kpiAverageScore,
+                    profile!.averageScore != null
+                        ? '${profile!.averageScore}%'
+                        : '—',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _kpiTile(
+                    l10n.kpiStreakDays,
+                    profile!.streakDays != null
+                        ? '${profile!.streakDays}'
+                        : '—',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _kpiTile(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+      decoration: const BoxDecoration(
+          color: AppColors.pageBg, borderRadius: AppRadii.roundedMd),
+      child: Column(
+        children: [
+          Text(value,
+              style: AppTextStyles.titleLarge
+                  .copyWith(fontWeight: FontWeight.w800, fontSize: 18)),
+          const SizedBox(height: 2),
+          Text(label,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.caption.copyWith(color: AppColors.ink3)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Status tabs + search + subject chips — pure client-side filtering over
+/// the already-fetched catalog, no extra endpoint. Subject chips are built
+/// dynamically from whatever real `subject` values are present in [tests]
+/// (empty subject groups under [AppLocalizations.otherSubject], never
+/// hidden).
+class _FilterAndSearchRow extends StatelessWidget {
+  final List<String> subjects;
+  final _StatusFilter statusFilter;
+  final String? subjectFilter;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<_StatusFilter> onStatusChanged;
+  final ValueChanged<String?> onSubjectChanged;
+
+  const _FilterAndSearchRow({
+    required this.subjects,
+    required this.statusFilter,
+    required this.subjectFilter,
+    required this.onSearchChanged,
+    required this.onStatusChanged,
+    required this.onSubjectChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          onChanged: onSearchChanged,
+          decoration: InputDecoration(
+            hintText: l10n.searchTestsHint,
+            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+            isDense: true,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _chip(context, l10n.filterAll, statusFilter == _StatusFilter.all,
+                () => onStatusChanged(_StatusFilter.all)),
+            _chip(
+                context,
+                l10n.filterInProgress,
+                statusFilter == _StatusFilter.inProgress,
+                () => onStatusChanged(_StatusFilter.inProgress)),
+            _chip(
+                context,
+                l10n.filterCompleted,
+                statusFilter == _StatusFilter.completed,
+                () => onStatusChanged(_StatusFilter.completed)),
+            _chip(
+                context,
+                l10n.filterLocked,
+                statusFilter == _StatusFilter.locked,
+                () => onStatusChanged(_StatusFilter.locked)),
+          ],
+        ),
+        if (subjects.length > 1) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _chip(context, l10n.allSubjects, subjectFilter == null,
+                  () => onSubjectChanged(null)),
+              for (final s in subjects)
+                _chip(
+                  context,
+                  s.isEmpty ? l10n.otherSubject : _capitalize(s),
+                  subjectFilter == s,
+                  () => onSubjectChanged(s),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  static String _capitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+  Widget _chip(
+      BuildContext context, String label, bool selected, VoidCallback onTap) {
+    return HoverRegion(
+      builder: (context, isHovered) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.brand
+                : (isHovered ? AppColors.hoverBg : AppColors.chipBg),
+            borderRadius: AppRadii.roundedFull,
+            border: Border.all(
+                color: selected ? AppColors.brand : AppColors.chipBorder),
+          ),
+          child: Text(label,
+              style: AppTextStyles.labelMedium.copyWith(
+                  color: selected ? Colors.white : AppColors.ink2,
+                  fontWeight: FontWeight.w600)),
+        ),
+      ),
+    );
+  }
+}
+
+/// Responsive card grid — a `Wrap` of fixed-width cards reflows into columns
+/// on its own as the available width changes, no manual crossAxisCount math
+/// needed.
+class _TestCardsGrid extends StatelessWidget {
+  final List<_StudentTest> tests;
+  final int totalCount;
+  final Set<String> startingKeys;
+  final ValueChanged<_StudentTest> onStart;
+  final ValueChanged<_StudentTest> onViewResult;
+
+  const _TestCardsGrid({
+    required this.tests,
+    required this.totalCount,
+    required this.startingKeys,
+    required this.onStart,
+    required this.onViewResult,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    if (tests.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Center(
+          child: Text(
+            totalCount == 0 ? l10n.myTestsEmpty : l10n.noFilterMatches,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3),
+          ),
+        ),
+      );
+    }
+    return Wrap(
+      spacing: 14,
+      runSpacing: 14,
+      children: [
+        for (final test in tests)
+          SizedBox(
+            width: 320,
+            child: _StudentTestCard(
+              test: test,
+              starting: startingKeys.contains(test.testKey),
+              onTap: () => test.displayStatus == 'completed'
+                  ? onViewResult(test)
+                  : onStart(test),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -377,121 +1034,173 @@ class _StudentTestCard extends StatelessWidget {
     return '$from–$until';
   }
 
+  /// Single switch on `displayStatus` for icon/color/label — adding a 5th
+  /// status later only needs one edit site instead of three.
+  (IconData, Color, String) _statusVisuals(AppLocalizations l10n) {
+    switch (test.displayStatus) {
+      case 'locked':
+        return (Icons.lock_rounded, AppColors.error, l10n.stillLocked);
+      case 'in_progress':
+        return (
+          Icons.timelapse_rounded,
+          AppColors.amber,
+          l10n.filterInProgress
+        );
+      case 'completed':
+        return (Icons.check_circle_rounded, AppColors.ok, l10n.filterCompleted);
+      default:
+        return (Icons.check_circle_rounded, AppColors.ok, l10n.ready);
+    }
+  }
+
+  String? _metaLine(AppLocalizations l10n) {
+    final parts = <String>[];
+    if ((test.questionCount ?? 0) > 0) {
+      parts.add(l10n.questionCountLabel(test.questionCount!));
+    }
+    if ((test.durationMinutes ?? 0) > 0) {
+      parts.add(l10n.durationMinutesLabel(test.durationMinutes!));
+    }
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final locked = test.isLocked;
+    final locked = test.displayStatus == 'locked';
+    final meta = _metaLine(l10n);
+    final (statusIcon, statusColor, statusLabel) = _statusVisuals(l10n);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Opacity(
-        opacity: locked ? 0.6 : 1,
-        child: HoverRegion(
-          builder: (context, isHovered) => Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: (locked || starting) ? null : onTap,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isHovered && !locked
-                            ? AppColors.brand.withValues(alpha: 0.5)
-                            : AppColors.border,
+    return Opacity(
+      opacity: locked ? 0.6 : 1,
+      child: HoverRegion(
+        builder: (context, isHovered) => Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: AppRadii.roundedXl,
+            onTap: (locked || starting) ? null : onTap,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: AppRadii.roundedXl,
+                    border: Border.all(
+                      color: isHovered && !locked
+                          ? AppColors.brand.withValues(alpha: 0.5)
+                          : AppColors.border,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 12,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                test.title,
-                                style: AppTextStyles.labelLarge.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.ink1,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  Icon(
-                                    locked
-                                        ? Icons.lock_rounded
-                                        : Icons.check_circle_rounded,
-                                    size: 14,
-                                    color:
-                                        locked ? AppColors.error : AppColors.ok,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    locked ? l10n.stillLocked : l10n.ready,
-                                    style: AppTextStyles.caption.copyWith(
-                                      color: locked
-                                          ? AppColors.error
-                                          : AppColors.ok,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (locked &&
-                                  test.lockedUntil != null &&
-                                  test.availableUntil != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  _timeWindowLabel(),
-                                  style: AppTextStyles.caption
-                                      .copyWith(color: AppColors.ink3),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                        if (starting)
-                          const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        else if (!locked)
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: isHovered
-                                  ? AppColors.brand
-                                  : AppColors.brandLight,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.arrow_forward_rounded,
-                              color: isHovered ? Colors.white : AppColors.brand,
-                              size: 18,
-                            ),
-                          ),
-                      ],
-                    ),
+                    ],
                   ),
-                  if (test.isNew && !locked)
-                    const Positioned(top: -6, right: -6, child: _NewBadge()),
-                ],
-              ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              test.title,
+                              style: AppTextStyles.labelLarge.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.ink1,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Icon(statusIcon, size: 14, color: statusColor),
+                                const SizedBox(width: 5),
+                                Text(
+                                  statusLabel,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: statusColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (test.displayStatus == 'completed' &&
+                                    test.score != null) ...[
+                                  const SizedBox(width: 6),
+                                  Text('· ${test.score}%',
+                                      style: AppTextStyles.caption.copyWith(
+                                          color: AppColors.ink2,
+                                          fontWeight: FontWeight.w700)),
+                                ],
+                              ],
+                            ),
+                            if (test.displayStatus == 'in_progress' &&
+                                test.progressPct != null) ...[
+                              const SizedBox(height: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value:
+                                      (test.progressPct!.clamp(0, 100)) / 100,
+                                  minHeight: 5,
+                                  backgroundColor: AppColors.gray100,
+                                  valueColor: const AlwaysStoppedAnimation(
+                                      AppColors.amber),
+                                ),
+                              ),
+                            ],
+                            if (locked &&
+                                test.lockedUntil != null &&
+                                test.availableUntil != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                _timeWindowLabel(),
+                                style: AppTextStyles.caption
+                                    .copyWith(color: AppColors.ink3),
+                              ),
+                            ],
+                            if (meta != null) ...[
+                              const SizedBox(height: 4),
+                              Text(meta,
+                                  style: AppTextStyles.caption
+                                      .copyWith(color: AppColors.ink3)),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (starting)
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else if (!locked)
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: isHovered
+                                ? AppColors.brand
+                                : AppColors.brandLight,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            test.displayStatus == 'completed'
+                                ? Icons.bar_chart_rounded
+                                : Icons.arrow_forward_rounded,
+                            color: isHovered ? Colors.white : AppColors.brand,
+                            size: 18,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (test.isNew && test.displayStatus == 'available')
+                  const Positioned(top: -6, right: -6, child: _NewBadge()),
+              ],
             ),
           ),
         ),
@@ -521,6 +1230,93 @@ class _NewBadge extends StatelessWidget {
           fontWeight: FontWeight.w700,
           fontSize: 9.5,
         ),
+      ),
+    );
+  }
+}
+
+/// "So'nggi natijalar" side panel — sourced entirely from
+/// `profile.recentResults` (real `GET /my-profile/` data). Hidden entirely
+/// when [profile] is null (fetch failed/offline) rather than showing an
+/// empty/fake panel.
+class _RecentResultsPanel extends StatelessWidget {
+  final _ProfileSummary? profile;
+  final VoidCallback onViewAll;
+
+  const _RecentResultsPanel({required this.profile, required this.onViewAll});
+
+  @override
+  Widget build(BuildContext context) {
+    if (profile == null) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context)!;
+    final results = profile!.recentResults;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadii.roundedXl,
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 12,
+              offset: const Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.recentResultsTitle,
+              style: AppTextStyles.labelLarge
+                  .copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          if (results.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(l10n.noResultsYet,
+                  style:
+                      AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3)),
+            )
+          else
+            for (final r in results.take(5)) _resultRow(r),
+          if (results.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            TextButton(onPressed: onViewAll, child: Text(l10n.viewAllResults)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _resultRow(RecentResult r) {
+    final dateStr = r.submittedAt != null
+        ? DateFormat('dd.MM.yyyy').format(r.submittedAt!.toLocal())
+        : '';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(r.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.ink1, fontWeight: FontWeight.w600)),
+                if (dateStr.isNotEmpty)
+                  Text(dateStr,
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.ink3)),
+              ],
+            ),
+          ),
+          Text(r.score != null ? '${r.score}%' : '—',
+              style: AppTextStyles.labelLarge.copyWith(
+                  color: AppColors.success, fontWeight: FontWeight.w800)),
+        ],
       ),
     );
   }

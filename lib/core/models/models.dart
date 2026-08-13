@@ -25,7 +25,8 @@ class StudentSession {
         token: j['token'] as String? ?? '',
         studentId: j['student_id']?.toString() ?? '',
         studentName: j['student_name'] as String? ?? '',
-        variant: j['variant'] == null ? null : int.tryParse(j['variant'].toString()),
+        variant:
+            j['variant'] == null ? null : int.tryParse(j['variant'].toString()),
         grade: j['grade'] == null ? null : int.tryParse(j['grade'].toString()),
         groupName: j['group_name'] as String?,
         schoolCode: j['school_code']?.toString() ?? '',
@@ -166,6 +167,47 @@ class WrongAnswer {
         correctText: j['correct_text']?.toString() ?? '',
         image: _fixUrl(j['image'] as String?),
       );
+}
+
+/// `GET /my-profile/`ning `recent_results` elementi — self-login talaba
+/// dashboard'idagi "so'nggi natijalar" paneli (my_tests_screen.dart) va
+/// to'liq ro'yxat ekrani (results_screen.dart) ikkalasida ham ishlatiladi,
+/// shuning uchun umumiy models.dart'da.
+class RecentResult {
+  final String testKey;
+  final String title;
+  final String subject;
+  final int? score; // null = missing/malformed, NEVER rendered as a fake 0%
+  final DateTime? submittedAt;
+
+  const RecentResult({
+    required this.testKey,
+    required this.title,
+    required this.subject,
+    required this.score,
+    this.submittedAt,
+  });
+
+  factory RecentResult.fromJson(Map<String, dynamic> j) => RecentResult(
+        testKey: j['test_key']?.toString() ?? '',
+        title: j['title']?.toString() ?? '',
+        subject: j['subject']?.toString() ?? '',
+        score: (j['score'] as num?)?.toInt(),
+        submittedAt: j['submitted_at'] is String
+            ? DateTime.tryParse(j['submitted_at'] as String)
+            : null,
+      );
+
+  /// Shared `recent_results` list parser — used by both `_ProfileSummary`
+  /// (my_tests_screen.dart) and `ResultsScreen._load()`, so the two never
+  /// drift and both inherit the same error-handling treatment from their
+  /// respective call sites' try/catch.
+  static List<RecentResult> listFromJson(dynamic raw) {
+    if (raw is! List || raw.isEmpty) return const [];
+    return raw
+        .map((e) => RecentResult.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
 }
 
 /// Image URL'ni absolute'ga o'giradi
