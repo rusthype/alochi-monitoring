@@ -70,6 +70,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get studentLoginButton => 'O\'quvchi sifatida kirish';
 
   @override
+  String get teacherProctorLogin => 'O\'qituvchi / Proktor';
+
+  @override
   String get myTestsTitle => 'Mening testlarim';
 
   @override
@@ -1804,4 +1807,121 @@ class AppLocalizationsUz extends AppLocalizations {
   String diplomaForTestResultLabel(String title) {
     return '\"$title\" testidagi natija uchun';
   }
+
+  @override
+  String get messagesBannerTitle =>
+      'Muhim yangiliklardan xabardor bo\'ling! 👋';
+
+  @override
+  String get messagesBannerSubtitle =>
+      'Bu yerda o\'qituvchilardan xabarlar, testlar haqida bildirishnomalar va tizim ogohlantirishlarini topasiz.';
+
+  @override
+  String get messagesKpiUnreadLabel => 'O\'qilmagan';
+
+  @override
+  String get messagesKpiNewTestsLabel => 'Yangi testlar';
+
+  @override
+  String get messagesKpiReviewedLabel => 'Tekshirilgan natijalar';
+
+  @override
+  String get messagesFilterAll => 'Barchasi';
+
+  @override
+  String get messagesFilterTeacher => 'O\'qituvchilardan';
+
+  @override
+  String get messagesFilterTests => 'Testlar haqida bildirishnomalar';
+
+  @override
+  String get messagesFilterSystem => 'Tizim xabarlari';
+
+  @override
+  String get messagesSearchHint => 'Xabarlar bo\'yicha qidiruv...';
+
+  @override
+  String get messagesEmptyListTitle => 'Xabarlar topilmadi';
+
+  @override
+  String get messagesNoSelectionTitle => 'Xabarni tanlang';
+
+  @override
+  String get messagesNoSelectionSubtitle =>
+      'Tafsilotlarni ko\'rish uchun chapdagi xabarni bosing.';
+
+  @override
+  String get messagesTypeTeacher => 'O\'qituvchi';
+
+  @override
+  String get messagesTypeTest => 'Test';
+
+  @override
+  String get messagesTypeSystem => 'Tizim';
+
+  @override
+  String get messagesSenderLabel => 'Kimdan';
+
+  @override
+  String get messagesSenderTeacher => 'O\'qituvchi';
+
+  @override
+  String get messagesSenderTestSystem => 'Test tizimi';
+
+  @override
+  String get messagesSenderSystem => 'Tizim';
+
+  @override
+  String get messagesGoToTestButton => 'Testga o\'tish';
+
+  @override
+  String get messagesMarkReadButton => 'O\'qilgan deb belgilash';
+
+  @override
+  String get messagesMarkAllReadTitle => 'Barchasini o\'qilgan qilish';
+
+  @override
+  String get messagesMarkAllReadSubtitle =>
+      'Barcha xabarlarni o\'qilgan deb belgilash';
+
+  @override
+  String get messagesNotificationSettingsTitle => 'Bildirishnoma sozlamalari';
+
+  @override
+  String get messagesNotificationSettingsSubtitle =>
+      'Bildirishnoma olish usullarini boshqaring';
+
+  @override
+  String get messagesArchiveTitle => 'Xabarlar arxivi';
+
+  @override
+  String get messagesArchiveSubtitle => 'Arxivlangan xabarlarni ko\'rish';
+
+  @override
+  String get messagesQuickActionsTitle => 'Tezkor amallar';
+
+  @override
+  String get messagesSystemEmptyTitle => 'Yangi tizim xabarlari yo\'q';
+
+  @override
+  String get messagesSystemEmptySubtitle =>
+      'Yangi bildirishnomalar paydo bo\'lganda, ular shu yerda ko\'rinadi.';
+
+  @override
+  String messagesSystemUnreadCount(int count) {
+    return 'Yangi tizim xabarlari: $count';
+  }
+
+  @override
+  String get messagesTipAssigned =>
+      'Omad! Eng yaxshi bilimingizni ko\'rsating va zo\'r natija oling.';
+
+  @override
+  String get messagesToday => 'Bugun';
+
+  @override
+  String get messagesYesterday => 'Kecha';
+
+  @override
+  String get messagesMarkReadError => 'O\'qilgan deb belgilab bo\'lmadi';
 }
