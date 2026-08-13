@@ -51,15 +51,17 @@ final List<_SidebarItem> _items = [
       label: (l10n) => l10n.sidebarMessages,
       enabled: false),
   _SidebarItem(
+      path: '/certificates',
       icon: Icons.workspace_premium_rounded,
-      label: (l10n) => l10n.sidebarCertificates,
-      enabled: false),
+      label: (l10n) => l10n.sidebarCertificates),
   _SidebarItem(
+      path: '/settings',
       icon: Icons.settings_rounded,
-      label: (l10n) => l10n.sidebarSettings,
-      enabled: false),
+      label: (l10n) => l10n.sidebarSettings),
   _SidebarItem(
-      icon: Icons.help_rounded, label: (l10n) => l10n.sidebarHelp, enabled: false),
+      path: '/help',
+      icon: Icons.help_rounded,
+      label: (l10n) => l10n.sidebarHelp),
 ];
 
 class StudentSidebar extends StatelessWidget {
