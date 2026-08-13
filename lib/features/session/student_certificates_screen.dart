@@ -37,6 +37,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/models/models.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/theme/student_palette.dart';
 import '../../shared/widgets/student_kpi_tile.dart';
 
 /// Badge thresholds — documented here so they can be reviewed/adjusted in
@@ -146,6 +147,7 @@ class _StudentCertificatesScreenState
   }
 
   Widget _body(AppLocalizations l10n) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -156,13 +158,11 @@ class _StudentCertificatesScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_off_rounded,
-                  color: AppColors.ink3, size: 28),
+              Icon(Icons.cloud_off_rounded, color: pal.ink3, size: 28),
               const SizedBox(height: 12),
               Text(l10n.loadFailed,
                   textAlign: TextAlign.center,
-                  style:
-                      AppTextStyles.bodyMedium.copyWith(color: AppColors.ink2)),
+                  style: AppTextStyles.bodyMedium.copyWith(color: pal.ink2)),
               const SizedBox(height: 16),
               OutlinedButton(onPressed: _load, child: Text(l10n.retryCheck)),
             ],
@@ -248,7 +248,7 @@ class _StudentCertificatesScreenState
             if (_sectionFilter != 2) ...[
               Text(l10n.sidebarCertificates,
                   style: AppTextStyles.titleMedium
-                      .copyWith(fontWeight: FontWeight.w800)),
+                      .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
               const SizedBox(height: 12),
               if (filteredCertificates.isEmpty)
                 _EmptyCertificates(
@@ -455,19 +455,20 @@ class _BadgeGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: pal.surface,
         borderRadius: AppRadii.roundedXl,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: pal.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l10n.badgesAndAchievementsTitle,
               style: AppTextStyles.titleMedium
-                  .copyWith(fontWeight: FontWeight.w800)),
+                  .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
           const SizedBox(height: 14),
           Wrap(
             spacing: 12,
@@ -486,14 +487,15 @@ class _BadgeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = badge.unlocked ? badge.color : AppColors.ink3;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
+    final color = badge.unlocked ? badge.color : pal.ink3;
     return Container(
       width: 150,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.pageBg,
+        color: pal.chipBg,
         borderRadius: AppRadii.roundedLg,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: pal.border),
       ),
       child: Column(
         children: [
@@ -501,7 +503,7 @@ class _BadgeTile extends StatelessWidget {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: badge.unlocked ? color.withValues(alpha: 0.14) : AppColors.chipBg,
+              color: badge.unlocked ? color.withValues(alpha: 0.14) : pal.chipBg,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
@@ -511,7 +513,7 @@ class _BadgeTile extends StatelessWidget {
           Text(badge.title,
               textAlign: TextAlign.center,
               style: AppTextStyles.labelMedium
-                  .copyWith(fontWeight: FontWeight.w700, color: AppColors.ink1)),
+                  .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
           const SizedBox(height: 8),
           if (badge.unlocked)
             Container(
@@ -530,13 +532,13 @@ class _BadgeTile extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: badge.progress,
                 minHeight: 6,
-                backgroundColor: AppColors.chipBg,
+                backgroundColor: pal.chipBg,
                 valueColor: const AlwaysStoppedAnimation(AppColors.secondary),
               ),
             ),
             const SizedBox(height: 6),
             Text('${(badge.progress * 100).round()}%',
-                style: AppTextStyles.caption.copyWith(color: AppColors.ink3)),
+                style: AppTextStyles.caption.copyWith(color: pal.ink3)),
           ],
         ],
       ),
@@ -573,24 +575,24 @@ class _ProgressPanel extends StatelessWidget {
     final locked = badges.where((b) => !b.unlocked).toList()
       ..sort((a, b) => b.progress.compareTo(a.progress));
 
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: pal.surface,
         borderRadius: AppRadii.roundedXl,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: pal.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l10n.progressPanelTitle,
               style: AppTextStyles.titleMedium
-                  .copyWith(fontWeight: FontWeight.w800)),
+                  .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
           const SizedBox(height: 14),
           if (subjectAverages.isEmpty)
             Text(l10n.progressNoSubjectData,
-                style:
-                    AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3))
+                style: AppTextStyles.bodyMedium.copyWith(color: pal.ink3))
           else
             ...subjectAverages.map((e) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -649,6 +651,7 @@ class _SubjectProgressRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -657,10 +660,10 @@ class _SubjectProgressRow extends StatelessWidget {
             Expanded(
                 child: Text(_label,
                     style: AppTextStyles.bodyMedium
-                        .copyWith(color: AppColors.ink1))),
+                        .copyWith(color: pal.ink1))),
             Text('$avgPct%',
                 style: AppTextStyles.labelMedium
-                    .copyWith(fontWeight: FontWeight.w700)),
+                    .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
           ],
         ),
         const SizedBox(height: 6),
@@ -669,7 +672,7 @@ class _SubjectProgressRow extends StatelessWidget {
           child: LinearProgressIndicator(
             value: (avgPct / 100).clamp(0, 1),
             minHeight: 6,
-            backgroundColor: AppColors.chipBg,
+            backgroundColor: pal.chipBg,
             valueColor: AlwaysStoppedAnimation(_color),
           ),
         ),
@@ -740,19 +743,20 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppColors.secondary : AppColors.surface,
+          color: selected ? AppColors.secondary : pal.surface,
           borderRadius: AppRadii.roundedMd,
           border: Border.all(
-              color: selected ? AppColors.secondary : AppColors.border),
+              color: selected ? AppColors.secondary : pal.border),
         ),
         child: Text(label,
             style: AppTextStyles.labelMedium.copyWith(
-              color: selected ? Colors.white : AppColors.ink2,
+              color: selected ? Colors.white : pal.ink2,
               fontWeight: FontWeight.w700,
             )),
       ),
@@ -767,18 +771,18 @@ class _EmptyCertificates extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: pal.surface,
         borderRadius: AppRadii.roundedXl,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: pal.border),
       ),
       child: Column(
         children: [
-          const Icon(Icons.workspace_premium_outlined,
-              color: AppColors.ink3, size: 32),
+          Icon(Icons.workspace_premium_outlined, color: pal.ink3, size: 32),
           const SizedBox(height: 12),
           Text(
               hasQuery
@@ -786,7 +790,7 @@ class _EmptyCertificates extends StatelessWidget {
                   : l10n.certificatesEmptyPrompt(
                       _BadgeThresholds.certificateMinScore),
               textAlign: TextAlign.center,
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.ink3)),
+              style: AppTextStyles.bodyMedium.copyWith(color: pal.ink3)),
         ],
       ),
     );
@@ -810,6 +814,7 @@ class _CertificateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     final dateStr = result.submittedAt != null
         ? DateFormat('dd.MM.yyyy').format(result.submittedAt!.toLocal())
         : '';
@@ -817,9 +822,9 @@ class _CertificateCard extends StatelessWidget {
       width: 320,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: pal.surface,
         borderRadius: AppRadii.roundedXl,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: pal.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -841,12 +846,12 @@ class _CertificateCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.labelLarge
-                        .copyWith(fontWeight: FontWeight.w700)),
+                        .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
                 if (dateStr.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(l10n.certificateIssuedOn(dateStr),
                       style: AppTextStyles.caption
-                          .copyWith(color: AppColors.ink3)),
+                          .copyWith(color: pal.ink3)),
                 ],
                 const SizedBox(height: 6),
                 Text('${result.score}/100',
@@ -867,10 +872,11 @@ class _CertificateCard extends StatelessWidget {
                         generating
                             ? l10n.certificateGeneratingLabel
                             : l10n.downloadPdfButton,
-                        style: AppTextStyles.labelMedium),
+                        style: AppTextStyles.labelMedium
+                            .copyWith(color: pal.ink2)),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      side: const BorderSide(color: AppColors.border),
+                      side: BorderSide(color: pal.border),
                     ),
                   ),
                 ),
@@ -901,11 +907,12 @@ class _DiplomaThumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Container(
       width: 64,
       height: 84,
       decoration: BoxDecoration(
-        color: AppColors.pageBg,
+        color: pal.chipBg,
         borderRadius: AppRadii.roundedSm,
         border: Border.all(color: _color, width: 2),
       ),
