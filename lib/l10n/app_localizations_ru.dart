@@ -75,6 +75,85 @@ class AppLocalizationsRu extends AppLocalizations {
   String get retryCheck => 'Проверить снова';
 
   @override
+  String get sidebarHome => 'Главная';
+
+  @override
+  String get sidebarResults => 'Результаты';
+
+  @override
+  String get sidebarMessages => 'Сообщения';
+
+  @override
+  String get sidebarCertificates => 'Сертификаты';
+
+  @override
+  String get sidebarSettings => 'Настройки';
+
+  @override
+  String get sidebarHelp => 'Помощь';
+
+  @override
+  String get kpiTestsCompleted => 'Пройдено тестов';
+
+  @override
+  String get kpiAverageScore => 'Средний балл';
+
+  @override
+  String get kpiStreakDays => 'Дней подряд';
+
+  @override
+  String get searchTestsHint => 'Поиск тестов...';
+
+  @override
+  String get filterAll => 'Все';
+
+  @override
+  String get filterInProgress => 'В процессе';
+
+  @override
+  String get filterCompleted => 'Завершено';
+
+  @override
+  String get filterLocked => 'Заблокировано';
+
+  @override
+  String get allSubjects => 'Все предметы';
+
+  @override
+  String get otherSubject => 'Другое';
+
+  @override
+  String get continueTest => 'Продолжить';
+
+  @override
+  String get viewResult => 'Посмотреть результат';
+
+  @override
+  String get viewAllResults => 'Посмотреть все результаты';
+
+  @override
+  String questionCountLabel(int count) {
+    return '$count вопросов';
+  }
+
+  @override
+  String durationMinutesLabel(int minutes) {
+    return '$minutes минут';
+  }
+
+  @override
+  String get recentResultsTitle => 'Последние результаты';
+
+  @override
+  String get noResultsYet => 'Пока нет результатов';
+
+  @override
+  String get noFilterMatches => 'Тесты по фильтру не найдены';
+
+  @override
+  String get resultsScreenTitle => 'Мои результаты';
+
+  @override
   String get loginInstruction => 'Получите логин и пароль у вашего учителя';
 
   @override
@@ -153,9 +232,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get gradeLabel => 'Класс';
-
-  @override
-  String get questionCountLabel => 'Количество вопросов';
 
   @override
   String get variantCountLabel => 'Количество вариантов';
@@ -905,6 +981,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get downloaded => 'Скачано';
+
+  @override
+  String get downloading => 'Скачивается';
 
   @override
   String get enterSchoolError => 'Введите школу';

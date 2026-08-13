@@ -76,6 +76,85 @@ class AppLocalizationsUz extends AppLocalizations {
   String get retryCheck => 'Qayta tekshirish';
 
   @override
+  String get sidebarHome => 'Bosh sahifa';
+
+  @override
+  String get sidebarResults => 'Natijalar';
+
+  @override
+  String get sidebarMessages => 'Xabarlar';
+
+  @override
+  String get sidebarCertificates => 'Sertifikatlar';
+
+  @override
+  String get sidebarSettings => 'Sozlamalar';
+
+  @override
+  String get sidebarHelp => 'Yordam';
+
+  @override
+  String get kpiTestsCompleted => 'Topshirilgan testlar';
+
+  @override
+  String get kpiAverageScore => 'O\'rtacha ball';
+
+  @override
+  String get kpiStreakDays => 'Ketma-ket kunlar';
+
+  @override
+  String get searchTestsHint => 'Testlarni qidirish...';
+
+  @override
+  String get filterAll => 'Barchasi';
+
+  @override
+  String get filterInProgress => 'Davom etyapti';
+
+  @override
+  String get filterCompleted => 'Tugallangan';
+
+  @override
+  String get filterLocked => 'Qulflangan';
+
+  @override
+  String get allSubjects => 'Barcha fanlar';
+
+  @override
+  String get otherSubject => 'Boshqa';
+
+  @override
+  String get continueTest => 'Davom ettirish';
+
+  @override
+  String get viewResult => 'Natijani ko\'rish';
+
+  @override
+  String get viewAllResults => 'Barcha natijalarni ko\'rish';
+
+  @override
+  String questionCountLabel(int count) {
+    return '$count ta savol';
+  }
+
+  @override
+  String durationMinutesLabel(int minutes) {
+    return '$minutes daqiqa';
+  }
+
+  @override
+  String get recentResultsTitle => 'So\'nggi natijalar';
+
+  @override
+  String get noResultsYet => 'Hali natijalar yo\'q';
+
+  @override
+  String get noFilterMatches => 'Filtrga mos test topilmadi';
+
+  @override
+  String get resultsScreenTitle => 'Mening natijalarim';
+
+  @override
   String get loginInstruction => 'Login va parolni o\'qituvchingizdan oling';
 
   @override
@@ -154,9 +233,6 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get gradeLabel => 'Sinf';
-
-  @override
-  String get questionCountLabel => 'Savollar soni';
 
   @override
   String get variantCountLabel => 'Variant soni';
@@ -911,6 +987,9 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get downloaded => 'Yuklab olingan';
+
+  @override
+  String get downloading => 'Yuklab olinmoqda';
 
   @override
   String get enterSchoolError => 'Maktabni kiriting';

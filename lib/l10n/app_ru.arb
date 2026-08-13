@@ -22,6 +22,45 @@
   "myTestsTitle": "Мои тесты",
   "myTestsEmpty": "Для вас пока нет доступных тестов",
   "retryCheck": "Проверить снова",
+  "sidebarHome": "Главная",
+  "sidebarResults": "Результаты",
+  "sidebarMessages": "Сообщения",
+  "sidebarCertificates": "Сертификаты",
+  "sidebarSettings": "Настройки",
+  "sidebarHelp": "Помощь",
+  "kpiTestsCompleted": "Пройдено тестов",
+  "kpiAverageScore": "Средний балл",
+  "kpiStreakDays": "Дней подряд",
+  "searchTestsHint": "Поиск тестов...",
+  "filterAll": "Все",
+  "filterInProgress": "В процессе",
+  "filterCompleted": "Завершено",
+  "filterLocked": "Заблокировано",
+  "allSubjects": "Все предметы",
+  "otherSubject": "Другое",
+  "continueTest": "Продолжить",
+  "viewResult": "Посмотреть результат",
+  "viewAllResults": "Посмотреть все результаты",
+  "questionCountLabel": "{count} вопросов",
+  "@questionCountLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "durationMinutesLabel": "{minutes} минут",
+  "@durationMinutesLabel": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "recentResultsTitle": "Последние результаты",
+  "noResultsYet": "Пока нет результатов",
+  "noFilterMatches": "Тесты по фильтру не найдены",
+  "resultsScreenTitle": "Мои результаты",
   "loginInstruction": "Получите логин и пароль у вашего учителя",
   "usernameLabel": "Логин",
   "passwordLabel": "Пароль",
@@ -64,7 +103,6 @@
   "pdfFileHint": ".pdf файл, макс 10МБ, 50 страниц",
   "subjectLabel": "Предмет",
   "gradeLabel": "Класс",
-  "questionCountLabel": "Количество вопросов",
   "variantCountLabel": "Количество вариантов",
   "generateWithAi": "Создать вопросы с помощью ИИ",
   "gradeN": "{n}-класс",
@@ -396,6 +434,7 @@
   "otherSchools": "Другие школы",
   "schoolCodeOrName": "Код / название школы",
   "downloaded": "Скачано",
+  "downloading": "Скачивается",
   "enterSchoolError": "Введите школу",
   "schoolPrefix": "Школа №{code}",
   "@schoolPrefix": {

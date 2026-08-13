@@ -468,6 +468,29 @@ class MonitoringApi {
     }
   }
 
+  /// GET /my-profile/ — self-login talaba uchun profil xulosasi (maktab nomi,
+  /// statistika, so'nggi natijalar). Backend `student.code`ni FAQAT JWT'dan
+  /// aniqlaydi (StudentProfileSummaryView) — bu yerda hech qanday id/kod
+  /// yuborilmaydi. Token yo'q/xato bo'lsa 401 qaytaradi.
+  ///
+  /// Xato yoki tarmoq holatida `null` qaytaradi (fetchTest bilan bir xil
+  /// naqsh) — chaqiruvchi buni "ma'lumot yo'q" deb talqin qilib, KPI/profil
+  /// blokini butunlay yashirishi kerak, hech qachon nol/soxta qiymat bilan
+  /// to'ldirmasligi kerak.
+  Future<Map<String, dynamic>?> fetchMyProfile(
+      {required String authToken}) async {
+    if (authToken.isEmpty) return null;
+    try {
+      final data = await _get('/my-profile/',
+          extraHeaders: {'Authorization': 'Bearer $authToken'});
+      if (data is! Map) return null;
+      return Map<String, dynamic>.from(data);
+    } catch (e) {
+      debugPrint('fetchMyProfile error: $e');
+      return null;
+    }
+  }
+
   /// Nashr qilingan testi bor barcha maktablar ro'yxati (kod+nom, kontentsiz).
   /// Anonim katalog (`fetchTestCatalog`, school_code'siz) faqat guruhsiz
   /// global testlarni ko'rsatadi — bu endpoint esa maktabni PIN oqimiga

@@ -230,6 +230,156 @@ abstract class AppLocalizations {
   /// **'Qayta tekshirish'**
   String get retryCheck;
 
+  /// No description provided for @sidebarHome.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bosh sahifa'**
+  String get sidebarHome;
+
+  /// No description provided for @sidebarResults.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijalar'**
+  String get sidebarResults;
+
+  /// No description provided for @sidebarMessages.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xabarlar'**
+  String get sidebarMessages;
+
+  /// No description provided for @sidebarCertificates.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sertifikatlar'**
+  String get sidebarCertificates;
+
+  /// No description provided for @sidebarSettings.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sozlamalar'**
+  String get sidebarSettings;
+
+  /// No description provided for @sidebarHelp.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yordam'**
+  String get sidebarHelp;
+
+  /// No description provided for @kpiTestsCompleted.
+  ///
+  /// In uz, this message translates to:
+  /// **'Topshirilgan testlar'**
+  String get kpiTestsCompleted;
+
+  /// No description provided for @kpiAverageScore.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'rtacha ball'**
+  String get kpiAverageScore;
+
+  /// No description provided for @kpiStreakDays.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ketma-ket kunlar'**
+  String get kpiStreakDays;
+
+  /// No description provided for @searchTestsHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testlarni qidirish...'**
+  String get searchTestsHint;
+
+  /// No description provided for @filterAll.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barchasi'**
+  String get filterAll;
+
+  /// No description provided for @filterInProgress.
+  ///
+  /// In uz, this message translates to:
+  /// **'Davom etyapti'**
+  String get filterInProgress;
+
+  /// No description provided for @filterCompleted.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tugallangan'**
+  String get filterCompleted;
+
+  /// No description provided for @filterLocked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qulflangan'**
+  String get filterLocked;
+
+  /// No description provided for @allSubjects.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barcha fanlar'**
+  String get allSubjects;
+
+  /// No description provided for @otherSubject.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqa'**
+  String get otherSubject;
+
+  /// No description provided for @continueTest.
+  ///
+  /// In uz, this message translates to:
+  /// **'Davom ettirish'**
+  String get continueTest;
+
+  /// No description provided for @viewResult.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijani ko\'rish'**
+  String get viewResult;
+
+  /// No description provided for @viewAllResults.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barcha natijalarni ko\'rish'**
+  String get viewAllResults;
+
+  /// No description provided for @questionCountLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} ta savol'**
+  String questionCountLabel(int count);
+
+  /// No description provided for @durationMinutesLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'{minutes} daqiqa'**
+  String durationMinutesLabel(int minutes);
+
+  /// No description provided for @recentResultsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'So\'nggi natijalar'**
+  String get recentResultsTitle;
+
+  /// No description provided for @noResultsYet.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hali natijalar yo\'q'**
+  String get noResultsYet;
+
+  /// No description provided for @noFilterMatches.
+  ///
+  /// In uz, this message translates to:
+  /// **'Filtrga mos test topilmadi'**
+  String get noFilterMatches;
+
+  /// No description provided for @resultsScreenTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mening natijalarim'**
+  String get resultsScreenTitle;
+
   /// No description provided for @loginInstruction.
   ///
   /// In uz, this message translates to:
@@ -379,12 +529,6 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Sinf'**
   String get gradeLabel;
-
-  /// No description provided for @questionCountLabel.
-  ///
-  /// In uz, this message translates to:
-  /// **'Savollar soni'**
-  String get questionCountLabel;
 
   /// No description provided for @variantCountLabel.
   ///
@@ -1765,6 +1909,12 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Yuklab olingan'**
   String get downloaded;
+
+  /// No description provided for @downloading.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuklab olinmoqda'**
+  String get downloading;
 
   /// No description provided for @enterSchoolError.
   ///

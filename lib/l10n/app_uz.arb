@@ -22,6 +22,45 @@
   "myTestsTitle": "Mening testlarim",
   "myTestsEmpty": "Sizga tegishli testlar topilmadi",
   "retryCheck": "Qayta tekshirish",
+  "sidebarHome": "Bosh sahifa",
+  "sidebarResults": "Natijalar",
+  "sidebarMessages": "Xabarlar",
+  "sidebarCertificates": "Sertifikatlar",
+  "sidebarSettings": "Sozlamalar",
+  "sidebarHelp": "Yordam",
+  "kpiTestsCompleted": "Topshirilgan testlar",
+  "kpiAverageScore": "O'rtacha ball",
+  "kpiStreakDays": "Ketma-ket kunlar",
+  "searchTestsHint": "Testlarni qidirish...",
+  "filterAll": "Barchasi",
+  "filterInProgress": "Davom etyapti",
+  "filterCompleted": "Tugallangan",
+  "filterLocked": "Qulflangan",
+  "allSubjects": "Barcha fanlar",
+  "otherSubject": "Boshqa",
+  "continueTest": "Davom ettirish",
+  "viewResult": "Natijani ko'rish",
+  "viewAllResults": "Barcha natijalarni ko'rish",
+  "questionCountLabel": "{count} ta savol",
+  "@questionCountLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "durationMinutesLabel": "{minutes} daqiqa",
+  "@durationMinutesLabel": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "recentResultsTitle": "So'nggi natijalar",
+  "noResultsYet": "Hali natijalar yo'q",
+  "noFilterMatches": "Filtrga mos test topilmadi",
+  "resultsScreenTitle": "Mening natijalarim",
   "loginInstruction": "Login va parolni o'qituvchingizdan oling",
   "usernameLabel": "Login",
   "passwordLabel": "Parol",
@@ -64,7 +103,6 @@
   "pdfFileHint": ".pdf fayl, max 10MB, 50 bet",
   "subjectLabel": "Fan",
   "gradeLabel": "Sinf",
-  "questionCountLabel": "Savollar soni",
   "variantCountLabel": "Variant soni",
   "generateWithAi": "AI bilan savollar yaratish",
   "gradeN": "{n}-sinf",
@@ -434,6 +472,7 @@
   "otherSchools": "Boshqa maktablar",
   "schoolCodeOrName": "Maktab kodi / nomi",
   "downloaded": "Yuklab olingan",
+  "downloading": "Yuklab olinmoqda",
   "enterSchoolError": "Maktabni kiriting",
   "schoolPrefix": "{code}-maktab",
   "@schoolPrefix": {
