@@ -15,6 +15,8 @@ import '../../features/session/results_screen.dart';
 import '../../features/session/student_settings_screen.dart';
 import '../../features/session/student_help_screen.dart';
 import '../../features/session/student_certificates_screen.dart';
+import '../../features/session/student_home_screen.dart';
+import '../../features/session/student_messages_screen.dart';
 import '../../shared/widgets/student_shell.dart';
 import '../models/models.dart';
 
@@ -155,6 +157,28 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) {
                   final extra = state.extra as Map<String, dynamic>? ?? {};
                   return StudentCertificatesScreen(
+                    session: extra['session'] as StudentSession? ??
+                        _ref(context).read(currentStudentSessionProvider)!,
+                  );
+                }),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/home',
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>? ?? {};
+                  return StudentHomeScreen(
+                    session: extra['session'] as StudentSession? ??
+                        _ref(context).read(currentStudentSessionProvider)!,
+                  );
+                }),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+                path: '/messages',
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>? ?? {};
+                  return StudentMessagesScreen(
                     session: extra['session'] as StudentSession? ??
                         _ref(context).read(currentStudentSessionProvider)!,
                   );

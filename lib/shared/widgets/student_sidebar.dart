@@ -28,17 +28,23 @@ class _SidebarItem {
   final String Function(AppLocalizations) label;
   final bool enabled;
 
+  // All 7 items are enabled today (Bosqich 6 shipped Главная/Сообщения),
+  // but `enabled` stays for the next "Скоро" placeholder item, matching
+  // login_screen.dart's same disabled-badge pattern.
   const _SidebarItem({
     this.path,
     required this.icon,
     required this.label,
+    // ignore: unused_element_parameter
     this.enabled = true,
   });
 }
 
 final List<_SidebarItem> _items = [
   _SidebarItem(
-      icon: Icons.home_rounded, label: (l10n) => l10n.sidebarHome, enabled: false),
+      path: '/home',
+      icon: Icons.home_rounded,
+      label: (l10n) => l10n.sidebarHome),
   _SidebarItem(
       path: '/my_tests',
       icon: Icons.assignment_rounded,
@@ -48,9 +54,9 @@ final List<_SidebarItem> _items = [
       icon: Icons.bar_chart_rounded,
       label: (l10n) => l10n.sidebarResults),
   _SidebarItem(
+      path: '/messages',
       icon: Icons.mail_rounded,
-      label: (l10n) => l10n.sidebarMessages,
-      enabled: false),
+      label: (l10n) => l10n.sidebarMessages),
   _SidebarItem(
       path: '/certificates',
       icon: Icons.workspace_premium_rounded,
