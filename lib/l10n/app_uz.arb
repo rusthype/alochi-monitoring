@@ -738,6 +738,11 @@
   "helpAboutSectionTitle": "Ilova haqida",
   "helpAboutVersionLabel": "Ilova versiyasi",
   "helpAboutServerLabel": "Server",
+  "helpContactSectionTitle": "Qo'llab-quvvatlash bilan bog'lanish",
+  "helpOpenTelegramBot": "Telegram Botni ochish",
+  "helpSupportContactLabel": "Alochi Support",
+  "helpSupportContactHandle": "@AlochiSupport",
+  "helpLinkOpenError": "Havolani ochib bo'lmadi",
   "helpNoAnswerTitle": "Javob topa olmadingizmi?",
   "helpNoAnswerDesc": "O'qituvchingiz yoki maktab administratoriga murojaat qiling — ular sizga yordam berishadi.",
 
