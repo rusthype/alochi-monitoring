@@ -558,15 +558,14 @@ class _TrendChartCard extends StatelessWidget {
         ),
       ),
       borderData: FlBorderData(show: false),
-      lineTouchData: LineTouchData(
-        touchTooltipData: LineTouchTooltipData(
-          getTooltipItems: (spots) => spots
-              .map((s) => LineTooltipItem(
-                  '${s.y.toInt()}%',
-                  AppTextStyles.labelMedium.copyWith(color: Colors.white)))
-              .toList(),
-        ),
-      ),
+      // Touch/hover disabled: fl_chart's built-in touch handler installs a
+      // pan gesture recognizer over the whole chart to drive the tooltip,
+      // which wins the gesture arena against the ancestor
+      // SingleChildScrollView for trackpad two-finger scroll — hovering the
+      // chart froze scrolling on the whole Результаты page (reported
+      // 2026-08-15). The tooltip was the only thing this bought; every
+      // score is already visible on the result cards below.
+      lineTouchData: const LineTouchData(enabled: false),
       lineBarsData: [
         LineChartBarData(
           spots: spots,
