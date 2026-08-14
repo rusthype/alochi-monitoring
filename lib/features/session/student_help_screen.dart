@@ -17,16 +17,17 @@
 //   desk's availability, and there is no real support-desk online signal in
 //   this codebase. It stays static UI copy (reuses the existing
 //   `onlineStatus` string), same treatment as the sidebar's static labels.
-// - Video-instruction cards: no real video hosting exists in this app, so
-//   the mockup's 3 video cards are replaced with one "Скоро"
-//   (`comingSoon`, same key/visual language as student_sidebar.dart's
-//   disabled-item badge) placeholder block instead of fabricated
-//   thumbnails/durations.
+// - Video-instruction cards: no real video hosting exists in this app. The
+//   mockup's 3 cards are rendered visually (gradient thumbnail + duration
+//   badge) but tapping any of them shows the same "Скоро" (`comingSoon`)
+//   SnackBar used elsewhere in this cabinet (see student_messages_screen.dart)
+//   instead of claiming a real video plays — no fabricated playback.
 // - Telegram-bot button: real, live deep-link to the school bot
 //   (`https://t.me/alochipoll_bot`, `@alochipoll_bot`) via url_launcher.
-// - Support contact card: no named admin contact record exists in this
-//   codebase, so instead of a fabricated person (name/phone/email) it links
-//   to the real, live generic support account `@AlochiSupport`.
+// - Admin contact card (name/email/phone/hours): product decision, approved
+//   by the user, to hard-code this as static UI copy matching the mockup
+//   exactly — it is NOT sourced from a real backend record, so it is written
+//   as plain literals below rather than routed through AppLocalizations.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -40,7 +41,44 @@ import '../../shared/theme/app_theme.dart';
 import '../../shared/theme/student_palette.dart';
 
 const _kTelegramBotUrl = 'https://t.me/alochipoll_bot';
-const _kSupportTelegramUrl = 'https://t.me/AlochiSupport';
+
+// Static admin contact card content (see file-header note) — a fixed
+// product decision, not real backend data, so it is not localized.
+const _kAdminRole = 'Школьный администратор';
+const _kAdminName = 'Dilnoza Karimova';
+const _kAdminEmail = 'admin@school123.uz';
+const _kAdminPhone = '+998 90 123 45 67';
+const _kAdminHours = 'Пн–Сб, 09:00–18:00';
+
+class _VideoTutorial {
+  final IconData icon;
+  final String Function(AppLocalizations) title;
+  final String Function(AppLocalizations) subtitle;
+  final String duration;
+  const _VideoTutorial(
+      {required this.icon,
+      required this.title,
+      required this.subtitle,
+      required this.duration});
+}
+
+final List<_VideoTutorial> _videoTutorials = [
+  _VideoTutorial(
+      icon: Icons.fact_check_rounded,
+      title: (l10n) => l10n.helpVideo1Title,
+      subtitle: (l10n) => l10n.helpVideo1Subtitle,
+      duration: '2:35'),
+  _VideoTutorial(
+      icon: Icons.bar_chart_rounded,
+      title: (l10n) => l10n.helpVideo2Title,
+      subtitle: (l10n) => l10n.helpVideo2Subtitle,
+      duration: '1:48'),
+  _VideoTutorial(
+      icon: Icons.workspace_premium_rounded,
+      title: (l10n) => l10n.helpVideo3Title,
+      subtitle: (l10n) => l10n.helpVideo3Subtitle,
+      duration: '2:10'),
+];
 
 class _FaqItem {
   final IconData icon;
@@ -183,6 +221,42 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
   }
 
   Widget _banner(AppLocalizations l10n) {
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(l10n.helpBannerTitle,
+            style: AppTextStyles.titleLarge.copyWith(
+                color: Colors.white, fontWeight: FontWeight.w800, fontSize: 22)),
+        const SizedBox(height: 8),
+        Text(l10n.helpBannerSubtitle,
+            style: AppTextStyles.bodyMedium
+                .copyWith(color: Colors.white.withValues(alpha: 0.9))),
+        const SizedBox(height: 20),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            _BannerKpi(
+              icon: Icons.help_outline_rounded,
+              label: l10n.helpKpiFaqLabel,
+              value: l10n.helpKpiFaqValue(_faqItems.length),
+            ),
+            _BannerKpi(
+              icon: Icons.headset_mic_rounded,
+              label: l10n.helpKpiSupportLabel,
+              value: l10n.onlineStatus,
+            ),
+            _BannerKpi(
+              icon: Icons.info_outline_rounded,
+              label: l10n.helpKpiVersionLabel,
+              value: _appVersion != null ? 'v$_appVersion' : '—',
+            ),
+          ],
+        ),
+      ],
+    );
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
@@ -193,40 +267,20 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
         ),
         borderRadius: AppRadii.roundedXl,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(l10n.helpBannerTitle,
-              style: AppTextStyles.titleLarge.copyWith(
-                  color: Colors.white, fontWeight: FontWeight.w800, fontSize: 22)),
-          const SizedBox(height: 8),
-          Text(l10n.helpBannerSubtitle,
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: Colors.white.withValues(alpha: 0.9))),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _BannerKpi(
-                icon: Icons.help_outline_rounded,
-                label: l10n.helpKpiFaqLabel,
-                value: l10n.helpKpiFaqValue(_faqItems.length),
-              ),
-              _BannerKpi(
-                icon: Icons.headset_mic_rounded,
-                label: l10n.helpKpiSupportLabel,
-                value: l10n.onlineStatus,
-              ),
-              _BannerKpi(
-                icon: Icons.info_outline_rounded,
-                label: l10n.helpKpiVersionLabel,
-                value: _appVersion != null ? 'v$_appVersion' : '—',
-              ),
-            ],
-          ),
-        ],
-      ),
+      // dark6.jpg has a decorative headset/chat illustration on the right —
+      // no real illustration asset exists, so it's approximated with layered
+      // icon badges (only shown once there's room for it).
+      child: LayoutBuilder(builder: (context, constraints) {
+        if (constraints.maxWidth < 640) return content;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: content),
+            const SizedBox(width: 16),
+            const _BannerIllustration(),
+          ],
+        );
+      }),
     );
   }
 
@@ -307,47 +361,22 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Text(l10n.helpVideoSectionTitle,
-                      style: AppTextStyles.titleMedium
-                          .copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(l10n.comingSoon,
-                        style: AppTextStyles.caption.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 9)),
-                  ),
-                ],
-              ),
+              Text(l10n.helpVideoSectionTitle,
+                  style: AppTextStyles.titleMedium
+                      .copyWith(fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: pal.chipBg,
-                  borderRadius: AppRadii.roundedMd,
-                  border: Border.all(color: pal.border),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.smart_display_outlined,
-                        color: pal.ink3, size: 32),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(l10n.helpVideoComingSoonDesc,
-                          style: AppTextStyles.bodyMedium
-                              .copyWith(color: pal.ink2)),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final tutorial in _videoTutorials)
+                    _VideoCard(
+                      tutorial: tutorial,
+                      pal: pal,
+                      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(l10n.comingSoon))),
                     ),
-                  ],
-                ),
+                ],
               ),
             ],
           ),
@@ -476,49 +505,51 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => _launchUrl(_kSupportTelegramUrl, l10n),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: pal.chipBg,
-                borderRadius: AppRadii.roundedMd,
-                border: Border.all(color: pal.border),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const CircleAvatar(
+                radius: 20,
+                backgroundColor: AppColors.secondaryMuted,
+                child: Icon(Icons.person_rounded,
+                    color: AppColors.brand, size: 20),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: const BoxDecoration(
-                        color: AppColors.secondaryMuted, shape: BoxShape.circle),
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.support_agent_rounded,
-                        color: AppColors.brand, size: 18),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(l10n.helpSupportContactLabel,
-                            style: AppTextStyles.labelLarge.copyWith(
-                                fontWeight: FontWeight.w700, color: pal.ink1)),
-                        Text(l10n.helpSupportContactHandle,
-                            style: AppTextStyles.caption
-                                .copyWith(color: pal.ink3)),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: pal.ink3),
-                ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_kAdminRole,
+                        style: AppTextStyles.caption.copyWith(color: pal.ink3)),
+                    Text(_kAdminName,
+                        style: AppTextStyles.labelLarge.copyWith(
+                            fontWeight: FontWeight.w700, color: pal.ink1)),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
+          const SizedBox(height: 12),
+          _contactInfoRow(Icons.email_rounded, _kAdminEmail, pal),
+          const SizedBox(height: 8),
+          _contactInfoRow(Icons.phone_rounded, _kAdminPhone, pal),
+          const SizedBox(height: 8),
+          _contactInfoRow(Icons.schedule_rounded, _kAdminHours, pal),
         ],
       ),
+    );
+  }
+
+  Widget _contactInfoRow(IconData icon, String text, StudentPalette pal) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: pal.ink3),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(text,
+              style: AppTextStyles.bodyMedium.copyWith(color: pal.ink2)),
+        ),
+      ],
     );
   }
 
@@ -635,6 +666,151 @@ class _TipTile extends StatelessWidget {
           Text(desc,
               style: AppTextStyles.caption.copyWith(color: pal.ink2)),
         ],
+      ),
+    );
+  }
+}
+
+/// Approximated headset/chat illustration for the banner's right side
+/// (dark6.jpg) — no real illustration asset exists in this app, so it's
+/// built from layered Material icon badges instead of an image.
+class _BannerIllustration extends StatelessWidget {
+  const _BannerIllustration();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 120,
+      height: 100,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 90,
+            height: 90,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const Icon(Icons.headset_mic_rounded, color: Colors.white, size: 46),
+          Positioned(
+            right: 4,
+            top: 6,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3)),
+                ],
+              ),
+              child: const Icon(Icons.chat_bubble_rounded,
+                  color: AppColors.flame, size: 18),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Video-tutorial card (dark6.jpg "Видео-инструкции и советы") — the
+/// thumbnail is an approximated gradient + play icon since no real video
+/// asset/hosting exists (see file-header note); tapping shows the same
+/// "Скоро" SnackBar used elsewhere in this cabinet, never a fake player.
+class _VideoCard extends StatelessWidget {
+  final _VideoTutorial tutorial;
+  final StudentPalette pal;
+  final VoidCallback onTap;
+
+  const _VideoCard(
+      {required this.tutorial, required this.pal, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return InkWell(
+      borderRadius: AppRadii.roundedMd,
+      onTap: onTap,
+      child: Container(
+        width: 220,
+        decoration: BoxDecoration(
+          color: pal.chipBg,
+          borderRadius: AppRadii.roundedMd,
+          border: Border.all(color: pal.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                Container(
+                  height: 110,
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.secondaryMuted, AppColors.secondary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(tutorial.icon,
+                      color: Colors.white.withValues(alpha: 0.55), size: 36),
+                ),
+                Positioned.fill(
+                  child: Center(
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.play_arrow_rounded,
+                          color: AppColors.brand, size: 24),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 8,
+                  bottom: 8,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(tutorial.duration,
+                        style: AppTextStyles.caption.copyWith(
+                            color: Colors.white, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(tutorial.title(l10n),
+                      style: AppTextStyles.labelLarge.copyWith(
+                          fontWeight: FontWeight.w700, color: pal.ink1)),
+                  const SizedBox(height: 2),
+                  Text(tutorial.subtitle(l10n),
+                      style: AppTextStyles.caption.copyWith(color: pal.ink3)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

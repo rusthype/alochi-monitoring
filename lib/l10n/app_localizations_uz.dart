@@ -1532,6 +1532,24 @@ class AppLocalizationsUz extends AppLocalizations {
       'Video-qo\'llanmalar hozircha mavjud emas. Ular platformaga qo\'shilgach, bu yerda paydo bo\'ladi.';
 
   @override
+  String get helpVideo1Title => 'Testni xatosiz qanday topshirish mumkin';
+
+  @override
+  String get helpVideo1Subtitle => 'Qisqa qo\'llanma';
+
+  @override
+  String get helpVideo2Title => 'Natijalarni qanday ko\'rish mumkin';
+
+  @override
+  String get helpVideo2Subtitle => 'Foydali maslahat';
+
+  @override
+  String get helpVideo3Title => 'Sertifikatni qanday olish mumkin';
+
+  @override
+  String get helpVideo3Subtitle => 'Qisqa qo\'llanma';
+
+  @override
   String get helpTroubleshootSectionTitle => 'Muammo yuzaga kelsa';
 
   @override
@@ -1929,13 +1947,16 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get homeHeroSubtitle =>
-      'Har kungi kichik ilg\'or qadam katta natijalarga olib keladi.';
+      'Kun iqtibosi: Har kungi kichik ilg\'or qadam katta natijalarga olib keladi.';
 
   @override
   String get homeUrgentTestsTitle => 'Shoshilinch va yaqinlashayotgan testlar';
 
   @override
   String get homeViewAllTests => 'Barchasini ko\'rish';
+
+  @override
+  String get homeViewAllAnnouncements => 'Barcha e\'lonlar';
 
   @override
   String homeDeadlineHours(int hours) {

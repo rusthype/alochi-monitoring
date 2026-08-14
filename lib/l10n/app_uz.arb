@@ -728,6 +728,12 @@
   "helpFaqA5": "Sertifikatlar bo'limi tez orada ishga tushiriladi. Test natijalaringiz saqlanib boryapti — sertifikat funksiyasi qo'shilgach, ular avtomatik hisoblab chiqiladi.",
   "helpVideoSectionTitle": "Video-yo'riqnomalar",
   "helpVideoComingSoonDesc": "Video-qo'llanmalar hozircha mavjud emas. Ular platformaga qo'shilgach, bu yerda paydo bo'ladi.",
+  "helpVideo1Title": "Testni xatosiz qanday topshirish mumkin",
+  "helpVideo1Subtitle": "Qisqa qo'llanma",
+  "helpVideo2Title": "Natijalarni qanday ko'rish mumkin",
+  "helpVideo2Subtitle": "Foydali maslahat",
+  "helpVideo3Title": "Sertifikatni qanday olish mumkin",
+  "helpVideo3Subtitle": "Qisqa qo'llanma",
   "helpTroubleshootSectionTitle": "Muammo yuzaga kelsa",
   "helpTroubleshootInternetTitle": "Internetni tekshiring",
   "helpTroubleshootInternetDesc": "Qurilma barqaror tarmoqqa ulanganiga ishonch hosil qiling.",
@@ -906,9 +912,10 @@
       }
     }
   },
-  "homeHeroSubtitle": "Har kungi kichik ilg'or qadam katta natijalarga olib keladi.",
+  "homeHeroSubtitle": "Kun iqtibosi: Har kungi kichik ilg'or qadam katta natijalarga olib keladi.",
   "homeUrgentTestsTitle": "Shoshilinch va yaqinlashayotgan testlar",
   "homeViewAllTests": "Barchasini ko'rish",
+  "homeViewAllAnnouncements": "Barcha e'lonlar",
   "homeDeadlineHours": "{hours} soatdan keyin",
   "@homeDeadlineHours": {
     "placeholders": {

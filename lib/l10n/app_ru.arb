@@ -690,6 +690,12 @@
   "helpFaqA5": "Раздел сертификатов скоро заработает. Ваши результаты тестов уже сохраняются — как только функция появится, сертификаты будут рассчитаны автоматически.",
   "helpVideoSectionTitle": "Видео-инструкции",
   "helpVideoComingSoonDesc": "Видеоинструкции пока недоступны. Как только они появятся на платформе, вы увидите их здесь.",
+  "helpVideo1Title": "Как пройти тест без ошибок",
+  "helpVideo1Subtitle": "Краткое руководство",
+  "helpVideo2Title": "Как посмотреть результаты",
+  "helpVideo2Subtitle": "Полезный совет",
+  "helpVideo3Title": "Как получить сертификат",
+  "helpVideo3Subtitle": "Краткое руководство",
   "helpTroubleshootSectionTitle": "Если возникла проблема",
   "helpTroubleshootInternetTitle": "Проверьте интернет",
   "helpTroubleshootInternetDesc": "Убедитесь, что устройство подключено к стабильной сети.",
@@ -868,9 +874,10 @@
       }
     }
   },
-  "homeHeroSubtitle": "Маленький прогресс каждый день приводит к большим результатам.",
+  "homeHeroSubtitle": "Цитата дня: Маленький прогресс каждый день приводит к большим результатам.",
   "homeUrgentTestsTitle": "Срочные и предстоящие тесты",
   "homeViewAllTests": "Посмотреть все",
+  "homeViewAllAnnouncements": "Все объявления",
   "homeDeadlineHours": "Через {hours} ч",
   "@homeDeadlineHours": {
     "placeholders": {

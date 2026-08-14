@@ -2912,6 +2912,42 @@ abstract class AppLocalizations {
   /// **'Video-qo\'llanmalar hozircha mavjud emas. Ular platformaga qo\'shilgach, bu yerda paydo bo\'ladi.'**
   String get helpVideoComingSoonDesc;
 
+  /// No description provided for @helpVideo1Title.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testni xatosiz qanday topshirish mumkin'**
+  String get helpVideo1Title;
+
+  /// No description provided for @helpVideo1Subtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qisqa qo\'llanma'**
+  String get helpVideo1Subtitle;
+
+  /// No description provided for @helpVideo2Title.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijalarni qanday ko\'rish mumkin'**
+  String get helpVideo2Title;
+
+  /// No description provided for @helpVideo2Subtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Foydali maslahat'**
+  String get helpVideo2Subtitle;
+
+  /// No description provided for @helpVideo3Title.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sertifikatni qanday olish mumkin'**
+  String get helpVideo3Title;
+
+  /// No description provided for @helpVideo3Subtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qisqa qo\'llanma'**
+  String get helpVideo3Subtitle;
+
   /// No description provided for @helpTroubleshootSectionTitle.
   ///
   /// In uz, this message translates to:
@@ -3641,7 +3677,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeHeroSubtitle.
   ///
   /// In uz, this message translates to:
-  /// **'Har kungi kichik ilg\'or qadam katta natijalarga olib keladi.'**
+  /// **'Kun iqtibosi: Har kungi kichik ilg\'or qadam katta natijalarga olib keladi.'**
   String get homeHeroSubtitle;
 
   /// No description provided for @homeUrgentTestsTitle.
@@ -3655,6 +3691,12 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Barchasini ko\'rish'**
   String get homeViewAllTests;
+
+  /// No description provided for @homeViewAllAnnouncements.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barcha e\'lonlar'**
+  String get homeViewAllAnnouncements;
 
   /// No description provided for @homeDeadlineHours.
   ///

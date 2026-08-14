@@ -1525,6 +1525,24 @@ class AppLocalizationsRu extends AppLocalizations {
       'Видеоинструкции пока недоступны. Как только они появятся на платформе, вы увидите их здесь.';
 
   @override
+  String get helpVideo1Title => 'Как пройти тест без ошибок';
+
+  @override
+  String get helpVideo1Subtitle => 'Краткое руководство';
+
+  @override
+  String get helpVideo2Title => 'Как посмотреть результаты';
+
+  @override
+  String get helpVideo2Subtitle => 'Полезный совет';
+
+  @override
+  String get helpVideo3Title => 'Как получить сертификат';
+
+  @override
+  String get helpVideo3Subtitle => 'Краткое руководство';
+
+  @override
   String get helpTroubleshootSectionTitle => 'Если возникла проблема';
 
   @override
@@ -1920,13 +1938,16 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get homeHeroSubtitle =>
-      'Маленький прогресс каждый день приводит к большим результатам.';
+      'Цитата дня: Маленький прогресс каждый день приводит к большим результатам.';
 
   @override
   String get homeUrgentTestsTitle => 'Срочные и предстоящие тесты';
 
   @override
   String get homeViewAllTests => 'Посмотреть все';
+
+  @override
+  String get homeViewAllAnnouncements => 'Все объявления';
 
   @override
   String homeDeadlineHours(int hours) {
