@@ -351,6 +351,7 @@ class _UrgentTestsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (tests.isEmpty) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context)!;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -358,7 +359,8 @@ class _UrgentTestsSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(l10n.homeUrgentTestsTitle,
-                style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                style: AppTextStyles.titleMedium
+                    .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
             TextButton(
               onPressed: () => context.go('/my_tests'),
               child: Text(l10n.homeViewAllTests),
@@ -455,7 +457,8 @@ class _AnnouncementsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(l10n.homeAnnouncementsTitle,
-            style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+            style: AppTextStyles.titleMedium
+                .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
         const SizedBox(height: 8),
         if (items.isEmpty)
           Container(
@@ -558,7 +561,8 @@ class _ActivityStreakCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l10n.homeActivityStreakTitle,
-              style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+              style: AppTextStyles.titleMedium
+                  .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -660,7 +664,8 @@ class _QuickActionsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l10n.quickActionsTitle,
-              style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+              style: AppTextStyles.titleMedium
+                  .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
           const SizedBox(height: 12),
           Wrap(
             spacing: 10,
@@ -732,7 +737,8 @@ class _NextLessonCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l10n.homeNextLessonTitle,
-              style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+              style: AppTextStyles.titleMedium
+                  .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -800,7 +806,8 @@ class _LastResultCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l10n.homeLastResultTitle,
-              style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+              style: AppTextStyles.titleMedium
+                  .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
           const SizedBox(height: 12),
           Row(
             children: [

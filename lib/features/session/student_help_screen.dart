@@ -458,8 +458,8 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(l10n.helpContactSectionTitle,
-              style:
-                  AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w700)),
+              style: AppTextStyles.titleMedium
+                  .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,

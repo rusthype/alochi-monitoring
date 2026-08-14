@@ -161,7 +161,15 @@ class StudentSidebar extends StatelessWidget {
     // animation, which is exactly the "no slайд, content just switches"
     // behavior this sidebar needs.
     final onTap = (enabled && !active)
-        ? () => navigationShell.goBranch(kStudentBranchPaths.indexOf(item.path!))
+        ? () {
+            // StudentShell's Scaffold/ScaffoldMessenger is shared across all
+            // branches (built once, IndexedStack swaps content) — a "Скоро"
+            // SnackBar triggered on one tab (e.g. Помощь video card) would
+            // otherwise keep showing after switching tabs, since goBranch
+            // doesn't dismiss it. Clear it on every real tab switch.
+            ScaffoldMessenger.of(context).clearSnackBars();
+            navigationShell.goBranch(kStudentBranchPaths.indexOf(item.path!));
+          }
         : null;
 
     return Padding(
