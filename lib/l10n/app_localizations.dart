@@ -3074,6 +3074,84 @@ abstract class AppLocalizations {
   /// **'PDF hisobot'**
   String get downloadPdfButton;
 
+  /// No description provided for @viewBreakdownButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Batafsil tahlil'**
+  String get viewBreakdownButton;
+
+  /// No description provided for @kpiAverageTime.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'rtacha vaqt'**
+  String get kpiAverageTime;
+
+  /// No description provided for @kpiAverageTimeHoursMinutes.
+  ///
+  /// In uz, this message translates to:
+  /// **'{hours} soat {minutes} daq'**
+  String kpiAverageTimeHoursMinutes(int hours, int minutes);
+
+  /// No description provided for @breakdownNoDataMessage.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu natija uchun batafsil ma\'lumot mavjud emas'**
+  String get breakdownNoDataMessage;
+
+  /// No description provided for @breakdownBobsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boblar bo\'yicha'**
+  String get breakdownBobsTitle;
+
+  /// No description provided for @breakdownTopicsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Mavzular bo\'yicha'**
+  String get breakdownTopicsTitle;
+
+  /// No description provided for @breakdownUnitsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yunitlar bo\'yicha'**
+  String get breakdownUnitsTitle;
+
+  /// No description provided for @breakdownPartsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqa'**
+  String get breakdownPartsTitle;
+
+  /// No description provided for @breakdownQuestionsTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Savollar'**
+  String get breakdownQuestionsTitle;
+
+  /// No description provided for @breakdownNoQuestionDetailNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu natija uchun savol-savol tafsiloti mavjud emas.'**
+  String get breakdownNoQuestionDetailNote;
+
+  /// No description provided for @breakdownNoAnswer.
+  ///
+  /// In uz, this message translates to:
+  /// **'Javob berilmagan'**
+  String get breakdownNoAnswer;
+
+  /// No description provided for @breakdownYourAnswer.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sizning javobingiz'**
+  String get breakdownYourAnswer;
+
+  /// No description provided for @breakdownCorrectAnswer.
+  ///
+  /// In uz, this message translates to:
+  /// **'To\'g\'ri javob'**
+  String get breakdownCorrectAnswer;
+
   /// No description provided for @quickActionsTitle.
   ///
   /// In uz, this message translates to:
@@ -3697,6 +3775,30 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Davomat'**
   String get homeAttendanceLabel;
+
+  /// No description provided for @homeWeekProgressTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Haftalik progress: {assigned} tadan {completed} tasi ({pct}%)'**
+  String homeWeekProgressTitle(int completed, int assigned, int pct);
+
+  /// No description provided for @homeWeekProgressCompleted.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bajarildi'**
+  String get homeWeekProgressCompleted;
+
+  /// No description provided for @homeWeekProgressInProgress.
+  ///
+  /// In uz, this message translates to:
+  /// **'Jarayonda'**
+  String get homeWeekProgressInProgress;
+
+  /// No description provided for @homeWeekProgressRemaining.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qoldi'**
+  String get homeWeekProgressRemaining;
 
   /// No description provided for @homeNextLessonTitle.
   ///

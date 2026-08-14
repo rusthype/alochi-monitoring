@@ -174,6 +174,7 @@ class WrongAnswer {
 /// to'liq ro'yxat ekrani (results_screen.dart) ikkalasida ham ishlatiladi,
 /// shuning uchun umumiy models.dart'da.
 class RecentResult {
+  final String id; // MonitoringResult.id (UUID) — key for /results/<id>/breakdown/
   final String testKey;
   final String title;
   final String subject;
@@ -181,6 +182,7 @@ class RecentResult {
   final DateTime? submittedAt;
 
   const RecentResult({
+    required this.id,
     required this.testKey,
     required this.title,
     required this.subject,
@@ -189,6 +191,7 @@ class RecentResult {
   });
 
   factory RecentResult.fromJson(Map<String, dynamic> j) => RecentResult(
+        id: j['id']?.toString() ?? '',
         testKey: j['test_key']?.toString() ?? '',
         title: j['title']?.toString() ?? '',
         subject: j['subject']?.toString() ?? '',
@@ -207,6 +210,115 @@ class RecentResult {
     return raw
         .map((e) => RecentResult.fromJson(Map<String, dynamic>.from(e as Map)))
         .toList();
+  }
+}
+
+/// `GET /results/<uuid:result_id>/breakdown/` javobi — bir natijaning
+/// bob/topic/unit/part darajasidagi yig'indisi va (mavjud bo'lsa) savol-savol
+/// tafsiloti. Backend har toifa uchun har xil kalit ishlatadi (bobs[].bob,
+/// topics[].code/name, units[].unit, parts[].part) — shuning uchun bu yerda
+/// umumiy Map ro'yxati sifatida saqlanadi (build_breakdown_from_monitoring_detail,
+/// apps/monitoring/services/topic_breakdown.py bilan bir xil shakl), UI
+/// tomonida to'g'ridan-to'g'ri o'sha kalitlar bilan o'qiladi.
+class ResultBreakdown {
+  final List<Map<String, dynamic>> bobs;
+  final List<Map<String, dynamic>> topics;
+  final List<Map<String, dynamic>> units;
+  final List<Map<String, dynamic>> parts;
+  final bool hasQuestionDetail;
+  final List<QuestionBreakdownItem> questions;
+
+  const ResultBreakdown({
+    required this.bobs,
+    required this.topics,
+    required this.units,
+    required this.parts,
+    required this.hasQuestionDetail,
+    required this.questions,
+  });
+
+  factory ResultBreakdown.fromJson(Map<String, dynamic> j) => ResultBreakdown(
+        bobs: _mapList(j['bobs']),
+        topics: _mapList(j['topics']),
+        units: _mapList(j['units']),
+        parts: _mapList(j['parts']),
+        hasQuestionDetail: j['has_question_detail'] == true,
+        questions: j['questions'] is List
+            ? (j['questions'] as List)
+                .whereType<Map>()
+                .map((e) => QuestionBreakdownItem.fromJson(Map<String, dynamic>.from(e)))
+                .toList()
+            : const [],
+      );
+}
+
+List<Map<String, dynamic>> _mapList(dynamic raw) {
+  if (raw is! List) return const [];
+  return raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+}
+
+/// One question inside [ResultBreakdown.questions] — see
+/// apps/monitoring/services/question_breakdown.py's
+/// `build_question_breakdown_from_monitoring_detail` docstring for the
+/// exact server-side shape this mirrors field-for-field.
+class QuestionBreakdownItem {
+  final String sectionName;
+  final String questionType;
+  final String questionText;
+  final List<String>? options; // choice types only
+  final int? selectedIdx; // choice types only
+  final int? correctIdx; // choice types only
+  final dynamic selectedAnswer; // raw given value, null if unanswered
+  final dynamic correctAnswer; // raw answer-key value
+  final bool isCorrect;
+  final bool hasAnswer;
+
+  const QuestionBreakdownItem({
+    required this.sectionName,
+    required this.questionType,
+    required this.questionText,
+    required this.options,
+    required this.selectedIdx,
+    required this.correctIdx,
+    required this.selectedAnswer,
+    required this.correctAnswer,
+    required this.isCorrect,
+    required this.hasAnswer,
+  });
+
+  factory QuestionBreakdownItem.fromJson(Map<String, dynamic> j) => QuestionBreakdownItem(
+        sectionName: j['section_name']?.toString() ?? '',
+        questionType: j['question_type']?.toString() ?? '',
+        questionText: j['question_text']?.toString() ?? '',
+        options: j['options'] is List
+            ? List<String>.from((j['options'] as List).map((e) => e.toString()))
+            : null,
+        selectedIdx: (j['selected_idx'] as num?)?.toInt(),
+        correctIdx: (j['correct_idx'] as num?)?.toInt(),
+        selectedAnswer: j['selected_answer'],
+        correctAnswer: j['correct_answer'],
+        isCorrect: j['is_correct'] == true,
+        hasAnswer: j['has_answer'] == true,
+      );
+
+  /// Human-readable "what the student picked" — resolves choice-type
+  /// [selectedIdx] against [options] when possible, else falls back to the
+  /// raw [selectedAnswer] value.
+  String selectedLabel(String noAnswerText) {
+    if (!hasAnswer) return noAnswerText;
+    if (options != null && selectedIdx != null && selectedIdx! >= 0 && selectedIdx! < options!.length) {
+      return options![selectedIdx!];
+    }
+    return selectedAnswer?.toString() ?? noAnswerText;
+  }
+
+  /// Human-readable "what the correct answer was" — same resolution as
+  /// [selectedLabel] but for [correctIdx]/[correctAnswer].
+  String correctLabel() {
+    if (options != null && correctIdx != null && correctIdx! >= 0 && correctIdx! < options!.length) {
+      return options![correctIdx!];
+    }
+    return correctAnswer?.toString() ?? '';
   }
 }
 
