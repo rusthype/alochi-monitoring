@@ -60,7 +60,7 @@ void main() {
         school: '56',
         studentId: '', // manual-entry — never resumes a saved attempt
         duration: const Duration(minutes: 10),
-        onComplete: (_) {},
+        onComplete: (_, __) {},
       ),
     ));
     await tester.pumpAndSettle();
@@ -89,7 +89,7 @@ void main() {
         school: '56',
         studentId: '', // manual-entry — never resumes a saved attempt
         duration: const Duration(minutes: 10),
-        onComplete: (_) {},
+        onComplete: (_, __) {},
       ),
     ));
     await tester.pumpAndSettle();

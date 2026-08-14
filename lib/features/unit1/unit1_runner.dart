@@ -72,6 +72,7 @@ class _Unit1RunnerState extends State<Unit1Runner>
   // Timer
   Timer? _timer;
   int _secs = 49 * 60;
+  final DateTime _testStartedAt = DateTime.now();
 
   // Animation
   late final AnimationController _fadeCtrl;
@@ -415,6 +416,7 @@ class _Unit1RunnerState extends State<Unit1Runner>
           readingOk: readingOk,
           answers: answers,
           detail: detail,
+          testStartedAt: _testStartedAt,
         ),
       ),
     );
@@ -930,6 +932,7 @@ class Unit1ResultScreen extends StatefulWidget {
   final int readingOk;
   final List<Map<String, dynamic>> answers;
   final Map<String, dynamic> detail;
+  final DateTime? testStartedAt;
 
   const Unit1ResultScreen({
     super.key,
@@ -948,6 +951,7 @@ class Unit1ResultScreen extends StatefulWidget {
     required this.readingOk,
     required this.answers,
     required this.detail,
+    this.testStartedAt,
   });
 
   @override
@@ -992,6 +996,9 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
     final now = DateTime.now();
     final time =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final startedAt = widget.testStartedAt;
+    final durationSeconds =
+        startedAt != null ? now.difference(startedAt).inSeconds : 0;
     return {
       'name': '${widget.lastName} ${widget.firstName}'.trim(),
       'grade': 1,
@@ -1005,6 +1012,7 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
       'school_code': widget.school,
       'answers': widget.answers,
       'detail': widget.detail,
+      if (durationSeconds > 0) 'duration_seconds': durationSeconds,
     };
   }
 

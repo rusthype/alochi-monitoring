@@ -70,7 +70,7 @@ void main() {
       school: '56',
       studentId: '',
       duration: const Duration(minutes: 10),
-      onComplete: (_) => completed = true,
+      onComplete: (_, __) => completed = true,
     )));
     // Unmounts even on assertion failure — otherwise TestEngine's countdown
     // Timer.periodic keeps firing into the next test and pumpAndSettle()
@@ -141,7 +141,7 @@ void main() {
       school: '56',
       studentId: studentId,
       duration: const Duration(minutes: 10),
-      onComplete: (_) => completed = true,
+      onComplete: (_, __) => completed = true,
       onExpiredAutoSubmit: () => expiredNoticeCount++,
     )));
     addTearDown(() => tester.pumpWidget(const SizedBox()));

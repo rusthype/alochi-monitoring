@@ -322,6 +322,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               totalOk: extra['totalOk'] ?? 0,
               pct: extra['pct'] ?? 0,
               timeStr: extra['timeStr'] ?? '',
+              durationSeconds: extra['durationSeconds'] ?? 0,
               answers: extra['answers'] ?? const [],
               detail: extra['detail'] ?? const {},
             );

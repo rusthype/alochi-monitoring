@@ -39,7 +39,12 @@ class TestEngine extends StatefulWidget {
   /// Called when the user finishes (submit) or when the timer hits 0.
   /// The entry screen / Faza 4 integration should call offline_queue / pdf / nav
   /// from inside this callback.
-  final void Function(ScoredResult result) onComplete;
+  ///
+  /// [elapsedSeconds] is the real wall-clock time from the ORIGINAL attempt
+  /// start (survives resume/restore — backed by the persisted `started_at`,
+  /// not a re-entry timestamp) to submission. Null if the start time wasn't
+  /// captured (e.g. restore raced the persisted record).
+  final void Function(ScoredResult result, int? elapsedSeconds) onComplete;
 
   /// Called once, right before [onComplete], when the app was relaunched
   /// after its persisted deadline had already passed — the student never
@@ -411,7 +416,13 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     _saveDebounce?.cancel();
 
     final result = TestScorer.score(widget.spec, _variantKey, _answers);
-    widget.onComplete(result);
+    final startedAtMs = _startedAtMs;
+    final elapsedSeconds = startedAtMs != null
+        ? ((DateTime.now().millisecondsSinceEpoch - startedAtMs) / 1000)
+            .round()
+        : null;
+    widget.onComplete(
+        result, (elapsedSeconds != null && elapsedSeconds > 0) ? elapsedSeconds : null);
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
