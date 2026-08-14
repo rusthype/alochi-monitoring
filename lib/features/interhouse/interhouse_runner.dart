@@ -40,6 +40,7 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
   int _sectionIdx = 0;
   Timer? _timer;
   late int _secs;
+  final DateTime _testStartedAt = DateTime.now();
 
   // 30 questions × 72 seconds each
   static const int _total = 30;
@@ -232,6 +233,7 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
           firstName: widget.firstName,
           lastName: widget.lastName,
           school: widget.school,
+          testStartedAt: _testStartedAt,
         ),
       ),
     );

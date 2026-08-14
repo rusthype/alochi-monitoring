@@ -34,6 +34,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
   Timer? _timer;
   Timer? _autoAdv;
   late int _secs;
+  final DateTime _testStartedAt = DateTime.now();
 
   late final AnimationController _fadeCtrl;
   final ScrollController _dotsScrollCtrl = ScrollController();
@@ -208,6 +209,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
             engOk: engOk,
             pct: pct,
             topicScores: topicScores,
+            testStartedAt: _testStartedAt,
           ),
         ));
   }

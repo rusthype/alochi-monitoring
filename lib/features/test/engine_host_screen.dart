@@ -182,7 +182,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   // math/english top-level are for legacy panel only.
   // detail.sections is the canonical per-section breakdown.
 
-  Map<String, dynamic> _buildPayload(ScoredResult result) {
+  Map<String, dynamic> _buildPayload(ScoredResult result, int? elapsedSeconds) {
     final (math, eng) = _resolveMathEngBuckets(result, _spec?.subject);
 
     return <String, dynamic>{
@@ -199,6 +199,8 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       'group_id': widget.groupId ?? '',
       'student_id': widget.studentId,
       'raw_answers': result.rawAnswers,
+      if (elapsedSeconds != null && elapsedSeconds > 0)
+        'duration_seconds': elapsedSeconds,
       'detail': <String, dynamic>{
         'sections': result.sectionScores
             .map((s) => <String, dynamic>{
@@ -233,8 +235,8 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
 
   // ── onComplete ──────────────────────────────────────────────────────────────
 
-  Future<void> _handleComplete(ScoredResult result) async {
-    final payload = _buildPayload(result);
+  Future<void> _handleComplete(ScoredResult result, int? elapsedSeconds) async {
+    final payload = _buildPayload(result, elapsedSeconds);
     final token = newIdempotencyToken();
 
     // 1. Save to local history DB.

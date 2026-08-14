@@ -107,6 +107,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
   // Timer — 75 minutes
   Timer? _timer;
   int _secs = 75 * 60;
+  final DateTime _testStartedAt = DateTime.now();
 
   // Animation
   late final AnimationController _fadeCtrl;
@@ -437,6 +438,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
     final now = DateTime.now();
     final timeStr =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final durationSeconds = now.difference(_testStartedAt).inSeconds;
 
     // Save to history
     try {
@@ -473,6 +475,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
           totalOk: totalOk,
           pct: pct,
           timeStr: timeStr,
+          durationSeconds: durationSeconds,
           answers: answers,
           detail: detail,
         ),
@@ -1019,6 +1022,7 @@ class CombinedResultScreen extends StatefulWidget {
   final int totalOk;
   final int pct;
   final String timeStr;
+  final int durationSeconds;
   final List<Map<String, dynamic>> answers;
   final Map<String, dynamic> detail;
 
@@ -1039,6 +1043,7 @@ class CombinedResultScreen extends StatefulWidget {
     required this.totalOk,
     required this.pct,
     required this.timeStr,
+    required this.durationSeconds,
     required this.answers,
     required this.detail,
   });
@@ -1095,6 +1100,7 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
       'school_code': widget.school,
       'answers': widget.answers,
       'detail': widget.detail,
+      if (widget.durationSeconds > 0) 'duration_seconds': widget.durationSeconds,
     };
   }
 

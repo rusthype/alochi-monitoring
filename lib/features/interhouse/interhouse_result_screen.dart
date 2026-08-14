@@ -26,6 +26,7 @@ class InterhouseResultScreen extends StatefulWidget {
   final String? firstName;
   final String? lastName;
   final String? school;
+  final DateTime? testStartedAt;
 
   const InterhouseResultScreen({
     super.key,
@@ -38,6 +39,7 @@ class InterhouseResultScreen extends StatefulWidget {
     this.firstName,
     this.lastName,
     this.school,
+    this.testStartedAt,
   });
 
   @override
@@ -98,6 +100,9 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
     final now = DateTime.now();
     final time =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final startedAt = widget.testStartedAt;
+    final durationSeconds =
+        startedAt != null ? now.difference(startedAt).inSeconds : 0;
     return {
       'name': _studentName(),
       'grade': 2,
@@ -110,6 +115,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
       'time': time,
       'school_code': widget.school ?? '',
       'detail': _buildDetail(),
+      if (durationSeconds > 0) 'duration_seconds': durationSeconds,
     };
   }
 

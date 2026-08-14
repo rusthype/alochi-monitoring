@@ -20,6 +20,7 @@ class LocalResultScreen extends StatefulWidget {
   final Map<int, String> answers;
   final int mathOk, engOk, pct;
   final Map<String, ({int ok, int tot})> topicScores;
+  final DateTime? testStartedAt;
 
   const LocalResultScreen(
       {super.key,
@@ -34,7 +35,8 @@ class LocalResultScreen extends StatefulWidget {
       required this.mathOk,
       required this.engOk,
       required this.pct,
-      required this.topicScores});
+      required this.topicScores,
+      this.testStartedAt});
 
   @override
   State<LocalResultScreen> createState() => _LocalResultScreenState();
@@ -175,6 +177,9 @@ class _LocalResultScreenState extends State<LocalResultScreen>
     final now = DateTime.now();
     final time =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final startedAt = widget.testStartedAt;
+    final durationSeconds =
+        startedAt != null ? now.difference(startedAt).inSeconds : 0;
     return {
       'name': '${widget.lastName} ${widget.firstName}'.trim(),
       'grade': widget.grade,
@@ -186,6 +191,7 @@ class _LocalResultScreenState extends State<LocalResultScreen>
       'pct': widget.pct,
       'time': time,
       'school_code': widget.school,
+      if (durationSeconds > 0) 'duration_seconds': durationSeconds,
     };
   }
 
