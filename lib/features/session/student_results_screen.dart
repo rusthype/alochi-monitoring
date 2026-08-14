@@ -310,15 +310,21 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
               const SizedBox(height: 20),
               sidePanel,
             ] else
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 2, child: grid),
-                    const SizedBox(width: 20),
-                    Expanded(flex: 1, child: sidePanel),
-                  ],
-                ),
+              // No IntrinsicHeight here: `grid` (_ResultsGrid) builds itself
+              // via LayoutBuilder, and LayoutBuilder cannot report an
+              // intrinsic height — wrapping this Row in IntrinsicHeight threw
+              // a cascading "RenderBox was not laid out: 'hasSize'" on every
+              // frame, leaving the whole screen blank (reproduced via
+              // computer-use: opening this screen renders nothing at all).
+              // Top-aligned via CrossAxisAlignment.start instead of
+              // stretching both columns to match heights.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 2, child: grid),
+                  const SizedBox(width: 20),
+                  Expanded(flex: 1, child: sidePanel),
+                ],
               ),
           ],
         ),
