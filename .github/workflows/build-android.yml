@@ -24,7 +24,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.x' # Or leave empty for latest
+          flutter-version: '3.x' # was pinned to 3.22.x (Dart 3.4.4) — too old for mac_menu_bar ^0.0.5's Dart ^3.7.0 requirement, matches build-windows.yml/build-macos.yml
           channel: 'stable'
 
       - name: Install dependencies
