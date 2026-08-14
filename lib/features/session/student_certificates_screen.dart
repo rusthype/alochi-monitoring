@@ -51,13 +51,19 @@ class _BadgeThresholds {
   /// `streak_days` field `_ProfileSummary`/`fetchMyProfile` already expose).
   static const int streakDays = 3;
 
-  /// "Faol o'quvchi" (active student) badge: 5 completed tests.
-  static const int activeTests = 5;
+  /// "Будущий чемпион" (future champion) badge: 10 completed tests.
+  static const int futureChampionTests = 10;
+
+  /// "Супер серия" (super streak) badge: 30-day streak.
+  static const int superStreakDays = 30;
 
   /// Certificate minimum score — reuses the SAME threshold the app already
   /// treats as "passed" (`TestResult.passed => totalPct >= 60` in
   /// core/models/models.dart), instead of picking a new arbitrary number.
   static const int certificateMinScore = 60;
+
+  /// "Только новые" filter: certificates issued within the last N days.
+  static const int newCertificateDays = 7;
 }
 
 class _Badge {
@@ -67,6 +73,7 @@ class _Badge {
   final bool unlocked;
   final String? unlockedValueLabel; // shown only when unlocked
   final double progress; // 0..1, shown only when locked
+  final String? progressLeftLabel; // e.g. "7/10 тестов", shown only when locked
   const _Badge({
     required this.title,
     required this.icon,
@@ -74,6 +81,7 @@ class _Badge {
     required this.unlocked,
     this.unlockedValueLabel,
     this.progress = 0,
+    this.progressLeftLabel,
   });
 }
 
@@ -96,6 +104,8 @@ class _StudentCertificatesScreenState
 
   String _searchQuery = '';
   int _sectionFilter = 0; // 0=all, 1=certificates only, 2=badges only
+  bool _onlyNew = false; // real: submittedAt within _BadgeThresholds.newCertificateDays
+  bool _sortNewestFirst = true;
 
   // Identity-keyed (not RecentResult.testKey, which defaults to '' and can
   // collide across multiple results missing that field — see finding #4).
@@ -179,18 +189,28 @@ class _StudentCertificatesScreenState
         .where((r) =>
             r.score != null && r.score! >= _BadgeThresholds.certificateMinScore)
         .toList()
-      ..sort((a, b) => (b.submittedAt ?? DateTime(0))
-          .compareTo(a.submittedAt ?? DateTime(0)));
+      ..sort((a, b) => _sortNewestFirst
+          ? (b.submittedAt ?? DateTime(0)).compareTo(a.submittedAt ?? DateTime(0))
+          : (a.submittedAt ?? DateTime(0)).compareTo(b.submittedAt ?? DateTime(0)));
 
     final badges = _computeBadges(l10n, results, bestScore);
     final unlockedCount = badges.where((b) => b.unlocked).length;
 
-    final filteredCertificates = _searchQuery.isEmpty
-        ? certificates
-        : certificates
-            .where((c) =>
-                c.title.toLowerCase().contains(_searchQuery.toLowerCase()))
-            .toList();
+    final now = DateTime.now();
+    final filteredCertificates = certificates.where((c) {
+      if (_searchQuery.isNotEmpty &&
+          !c.title.toLowerCase().contains(_searchQuery.toLowerCase())) {
+        return false;
+      }
+      if (_onlyNew) {
+        final d = c.submittedAt;
+        if (d == null ||
+            now.difference(d).inDays > _BadgeThresholds.newCertificateDays) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -215,6 +235,7 @@ class _StudentCertificatesScreenState
                 l10n: l10n,
                 results: results,
                 badges: badges,
+                testsCompleted: _testsCompleted ?? results.length,
               );
               // Symmetric with the certificates section's `!= 2` gate below:
               // filter==1 ("Сертификаты" only) must hide badges/progress,
@@ -241,8 +262,12 @@ class _StudentCertificatesScreenState
               l10n: l10n,
               query: _searchQuery,
               filter: _sectionFilter,
+              onlyNew: _onlyNew,
+              sortNewestFirst: _sortNewestFirst,
               onQueryChanged: (v) => setState(() => _searchQuery = v),
               onFilterChanged: (v) => setState(() => _sectionFilter = v),
+              onOnlyNewChanged: () => setState(() => _onlyNew = !_onlyNew),
+              onSortChanged: (v) => setState(() => _sortNewestFirst = v),
             ),
             const SizedBox(height: 20),
             if (_sectionFilter != 2) ...[
@@ -324,12 +349,23 @@ class _StudentCertificatesScreenState
         progress: (engBest / _BadgeThresholds.mastery).clamp(0, 1),
       ),
       _Badge(
-        title: l10n.badgeActiveStudentTitle,
-        icon: Icons.military_tech_rounded,
+        title: l10n.badgeFutureChampionTitle,
+        icon: Icons.emoji_events_rounded,
         color: AppColors.violet,
-        unlocked: testsDone >= _BadgeThresholds.activeTests,
+        unlocked: testsDone >= _BadgeThresholds.futureChampionTests,
         unlockedValueLabel: l10n.badgeUnlockedLabel,
-        progress: (testsDone / _BadgeThresholds.activeTests).clamp(0, 1),
+        progress: (testsDone / _BadgeThresholds.futureChampionTests).clamp(0, 1),
+        progressLeftLabel: l10n.badgeTestsProgressLabel(
+            testsDone.clamp(0, _BadgeThresholds.futureChampionTests),
+            _BadgeThresholds.futureChampionTests),
+      ),
+      _Badge(
+        title: l10n.badgeSuperStreakTitle(_BadgeThresholds.superStreakDays),
+        icon: Icons.calendar_month_rounded,
+        color: AppColors.blue,
+        unlocked: streak >= _BadgeThresholds.superStreakDays,
+        unlockedValueLabel: l10n.badgeUnlockedLabel,
+        progress: (streak / _BadgeThresholds.superStreakDays).clamp(0, 1),
       ),
     ];
   }
@@ -537,8 +573,16 @@ class _BadgeTile extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Text('${(badge.progress * 100).round()}%',
-                style: AppTextStyles.caption.copyWith(color: pal.ink3)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (badge.progressLeftLabel != null)
+                  Text(badge.progressLeftLabel!,
+                      style: AppTextStyles.caption.copyWith(color: pal.ink3)),
+                Text('${(badge.progress * 100).round()}%',
+                    style: AppTextStyles.caption.copyWith(color: pal.ink3)),
+              ],
+            ),
           ],
         ],
       ),
@@ -554,8 +598,13 @@ class _ProgressPanel extends StatelessWidget {
   final AppLocalizations l10n;
   final List<RecentResult> results;
   final List<_Badge> badges;
-  const _ProgressPanel(
-      {required this.l10n, required this.results, required this.badges});
+  final int testsCompleted;
+  const _ProgressPanel({
+    required this.l10n,
+    required this.results,
+    required this.badges,
+    required this.testsCompleted,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -574,6 +623,14 @@ class _ProgressPanel extends StatelessWidget {
 
     final locked = badges.where((b) => !b.unlocked).toList()
       ..sort((a, b) => b.progress.compareTo(a.progress));
+
+    // Real derived metric (not fabricated): same testsCompleted/threshold
+    // ratio the "Будущий чемпион" badge uses, surfaced here as an overall
+    // "Активность" bar.
+    final activityPct =
+        (testsCompleted / _BadgeThresholds.futureChampionTests * 100)
+            .clamp(0, 100)
+            .round();
 
     final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Container(
@@ -599,8 +656,12 @@ class _ProgressPanel extends StatelessWidget {
                   child: _SubjectProgressRow(
                       l10n: l10n, subject: e.key, avgPct: e.value.round()),
                 )),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: _SubjectProgressRow(
+                l10n: l10n, subject: 'activity', avgPct: activityPct),
+          ),
           if (locked.isNotEmpty) ...[
-            const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.all(10),
               decoration: const BoxDecoration(
@@ -639,6 +700,7 @@ class _SubjectProgressRow extends StatelessWidget {
   String get _label {
     if (subject == 'math') return l10n.mathSubjectFull;
     if (subject == 'english') return l10n.englishSubjectFull;
+    if (subject == 'activity') return l10n.progressActivityLabel;
     if (subject.isEmpty) return l10n.otherSubject;
     return subject;
   }
@@ -646,7 +708,15 @@ class _SubjectProgressRow extends StatelessWidget {
   Color get _color {
     if (subject == 'math') return AppColors.math;
     if (subject == 'english') return AppColors.eng;
+    if (subject == 'activity') return AppColors.blue;
     return AppColors.violet;
+  }
+
+  IconData get _icon {
+    if (subject == 'math') return Icons.calculate_rounded;
+    if (subject == 'english') return Icons.school_rounded;
+    if (subject == 'activity') return Icons.bolt_rounded;
+    return Icons.book_rounded;
   }
 
   @override
@@ -657,6 +727,17 @@ class _SubjectProgressRow extends StatelessWidget {
       children: [
         Row(
           children: [
+            Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: _color.withValues(alpha: 0.14),
+                borderRadius: AppRadii.roundedSm,
+              ),
+              alignment: Alignment.center,
+              child: Icon(_icon, color: _color, size: 13),
+            ),
+            const SizedBox(width: 8),
             Expanded(
                 child: Text(_label,
                     style: AppTextStyles.bodyMedium
@@ -681,26 +762,32 @@ class _SubjectProgressRow extends StatelessWidget {
   }
 }
 
-/// ponytail: "Только новые"/"Сначала новые" sort chips from the mockup are
-/// decorative in the reference — skipped (search + all/certs/badges filter
-/// already cover the functional need); add if product wants real sorting.
 class _SearchAndFilterRow extends StatelessWidget {
   final AppLocalizations l10n;
   final String query;
   final int filter;
+  final bool onlyNew;
+  final bool sortNewestFirst;
   final ValueChanged<String> onQueryChanged;
   final ValueChanged<int> onFilterChanged;
+  final VoidCallback onOnlyNewChanged;
+  final ValueChanged<bool> onSortChanged;
 
   const _SearchAndFilterRow({
     required this.l10n,
     required this.query,
     required this.filter,
+    required this.onlyNew,
+    required this.sortNewestFirst,
     required this.onQueryChanged,
     required this.onFilterChanged,
+    required this.onOnlyNewChanged,
+    required this.onSortChanged,
   });
 
   @override
   Widget build(BuildContext context) {
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -718,28 +805,65 @@ class _SearchAndFilterRow extends StatelessWidget {
           ),
         ),
         _FilterChip(
+            icon: Icons.grid_view_rounded,
             label: l10n.filterAll,
             selected: filter == 0,
             onTap: () => onFilterChanged(0)),
         _FilterChip(
+            icon: Icons.workspace_premium_rounded,
             label: l10n.sidebarCertificates,
             selected: filter == 1,
             onTap: () => onFilterChanged(1)),
         _FilterChip(
+            icon: Icons.military_tech_rounded,
             label: l10n.filterBadgesLabel,
             selected: filter == 2,
             onTap: () => onFilterChanged(2)),
+        _FilterChip(
+            icon: Icons.fiber_new_rounded,
+            label: l10n.filterOnlyNewLabel,
+            selected: onlyNew,
+            onTap: onOnlyNewChanged),
+        GestureDetector(
+          onTap: () => onSortChanged(!sortNewestFirst),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: pal.surface,
+              borderRadius: AppRadii.roundedMd,
+              border: Border.all(color: pal.border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.swap_vert_rounded, size: 16, color: pal.ink2),
+                const SizedBox(width: 6),
+                Text(
+                    sortNewestFirst
+                        ? l10n.sortNewestFirstLabel
+                        : l10n.sortOldestFirstLabel,
+                    style: AppTextStyles.labelMedium.copyWith(
+                        color: pal.ink2, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
 class _FilterChip extends StatelessWidget {
+  final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _FilterChip(
-      {required this.label, required this.selected, required this.onTap});
+  const _FilterChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -754,11 +878,19 @@ class _FilterChip extends StatelessWidget {
           border: Border.all(
               color: selected ? AppColors.secondary : pal.border),
         ),
-        child: Text(label,
-            style: AppTextStyles.labelMedium.copyWith(
-              color: selected ? Colors.white : pal.ink2,
-              fontWeight: FontWeight.w700,
-            )),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 16, color: selected ? Colors.white : pal.ink2),
+            const SizedBox(width: 6),
+            Text(label,
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: selected ? Colors.white : pal.ink2,
+                  fontWeight: FontWeight.w700,
+                )),
+          ],
+        ),
       ),
     );
   }

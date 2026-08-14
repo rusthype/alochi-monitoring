@@ -816,9 +816,30 @@
   },
   "badgeEnglishMasterTitle": "Ingliz tili ustasi",
   "badgeActiveStudentTitle": "Faol o'quvchi",
+  "badgeFutureChampionTitle": "Bo'lajak chempion",
+  "badgeSuperStreakTitle": "Super seriya {days} kun",
+  "@badgeSuperStreakTitle": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "badgeTestsProgressLabel": "{done}/{total} test",
+  "@badgeTestsProgressLabel": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "badgeUnlockedLabel": "Ochilgan",
   "badgesAndAchievementsTitle": "Nishonlar va yutuqlar",
   "progressPanelTitle": "Yutuqlar jarayoni",
+  "progressActivityLabel": "Faollik",
   "progressNoSubjectData": "Fanlar bo'yicha ma'lumot hali yo'q",
   "progressClosestBadge": "Eng yaqin: «{title}» — {pct}%",
   "@progressClosestBadge": {
@@ -833,6 +854,9 @@
   },
   "certificatesSearchHint": "Sertifikatlar bo'yicha qidirish...",
   "filterBadgesLabel": "Nishonlar",
+  "filterOnlyNewLabel": "Faqat yangilari",
+  "sortNewestFirstLabel": "Avval yangilari",
+  "sortOldestFirstLabel": "Avval eskilari",
   "certificatesEmptyPrompt": "Birinchi sertifikatingizni olish uchun testni {minScore}%+ natija bilan yakunlang",
   "@certificatesEmptyPrompt": {
     "placeholders": {

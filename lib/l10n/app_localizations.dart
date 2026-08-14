@@ -3374,6 +3374,24 @@ abstract class AppLocalizations {
   /// **'Faol o\'quvchi'**
   String get badgeActiveStudentTitle;
 
+  /// No description provided for @badgeFutureChampionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bo\'lajak chempion'**
+  String get badgeFutureChampionTitle;
+
+  /// No description provided for @badgeSuperStreakTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Super seriya {days} kun'**
+  String badgeSuperStreakTitle(int days);
+
+  /// No description provided for @badgeTestsProgressLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'{done}/{total} test'**
+  String badgeTestsProgressLabel(int done, int total);
+
   /// No description provided for @badgeUnlockedLabel.
   ///
   /// In uz, this message translates to:
@@ -3391,6 +3409,12 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Yutuqlar jarayoni'**
   String get progressPanelTitle;
+
+  /// No description provided for @progressActivityLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faollik'**
+  String get progressActivityLabel;
 
   /// No description provided for @progressNoSubjectData.
   ///
@@ -3415,6 +3439,24 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Nishonlar'**
   String get filterBadgesLabel;
+
+  /// No description provided for @filterOnlyNewLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faqat yangilari'**
+  String get filterOnlyNewLabel;
+
+  /// No description provided for @sortNewestFirstLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Avval yangilari'**
+  String get sortNewestFirstLabel;
+
+  /// No description provided for @sortOldestFirstLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Avval eskilari'**
+  String get sortOldestFirstLabel;
 
   /// No description provided for @certificatesEmptyPrompt.
   ///

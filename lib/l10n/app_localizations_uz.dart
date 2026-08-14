@@ -1777,6 +1777,19 @@ class AppLocalizationsUz extends AppLocalizations {
   String get badgeActiveStudentTitle => 'Faol o\'quvchi';
 
   @override
+  String get badgeFutureChampionTitle => 'Bo\'lajak chempion';
+
+  @override
+  String badgeSuperStreakTitle(int days) {
+    return 'Super seriya $days kun';
+  }
+
+  @override
+  String badgeTestsProgressLabel(int done, int total) {
+    return '$done/$total test';
+  }
+
+  @override
   String get badgeUnlockedLabel => 'Ochilgan';
 
   @override
@@ -1784,6 +1797,9 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get progressPanelTitle => 'Yutuqlar jarayoni';
+
+  @override
+  String get progressActivityLabel => 'Faollik';
 
   @override
   String get progressNoSubjectData => 'Fanlar bo\'yicha ma\'lumot hali yo\'q';
@@ -1798,6 +1814,15 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get filterBadgesLabel => 'Nishonlar';
+
+  @override
+  String get filterOnlyNewLabel => 'Faqat yangilari';
+
+  @override
+  String get sortNewestFirstLabel => 'Avval yangilari';
+
+  @override
+  String get sortOldestFirstLabel => 'Avval eskilari';
 
   @override
   String certificatesEmptyPrompt(int minScore) {

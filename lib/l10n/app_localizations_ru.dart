@@ -1769,6 +1769,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get badgeActiveStudentTitle => 'Активный ученик';
 
   @override
+  String get badgeFutureChampionTitle => 'Будущий чемпион';
+
+  @override
+  String badgeSuperStreakTitle(int days) {
+    return 'Супер серия $days дней';
+  }
+
+  @override
+  String badgeTestsProgressLabel(int done, int total) {
+    return '$done/$total тестов';
+  }
+
+  @override
   String get badgeUnlockedLabel => 'Открыт';
 
   @override
@@ -1776,6 +1789,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get progressPanelTitle => 'Прогресс достижений';
+
+  @override
+  String get progressActivityLabel => 'Активность';
 
   @override
   String get progressNoSubjectData => 'Пока нет данных по предметам';
@@ -1790,6 +1806,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get filterBadgesLabel => 'Бейджи';
+
+  @override
+  String get filterOnlyNewLabel => 'Только новые';
+
+  @override
+  String get sortNewestFirstLabel => 'Сначала новые';
+
+  @override
+  String get sortOldestFirstLabel => 'Сначала старые';
 
   @override
   String certificatesEmptyPrompt(int minScore) {

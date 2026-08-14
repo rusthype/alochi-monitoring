@@ -778,9 +778,30 @@
   },
   "badgeEnglishMasterTitle": "Знаток английского",
   "badgeActiveStudentTitle": "Активный ученик",
+  "badgeFutureChampionTitle": "Будущий чемпион",
+  "badgeSuperStreakTitle": "Супер серия {days} дней",
+  "@badgeSuperStreakTitle": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "badgeTestsProgressLabel": "{done}/{total} тестов",
+  "@badgeTestsProgressLabel": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "badgeUnlockedLabel": "Открыт",
   "badgesAndAchievementsTitle": "Бейджи и достижения",
   "progressPanelTitle": "Прогресс достижений",
+  "progressActivityLabel": "Активность",
   "progressNoSubjectData": "Пока нет данных по предметам",
   "progressClosestBadge": "Ближе всего: «{title}» — {pct}%",
   "@progressClosestBadge": {
@@ -795,6 +816,9 @@
   },
   "certificatesSearchHint": "Поиск по сертификатам...",
   "filterBadgesLabel": "Бейджи",
+  "filterOnlyNewLabel": "Только новые",
+  "sortNewestFirstLabel": "Сначала новые",
+  "sortOldestFirstLabel": "Сначала старые",
   "certificatesEmptyPrompt": "Пройдите тест на {minScore}%+, чтобы получить свой первый сертификат",
   "@certificatesEmptyPrompt": {
     "placeholders": {
