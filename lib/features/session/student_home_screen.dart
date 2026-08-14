@@ -454,8 +454,18 @@ class _AnnouncementsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(l10n.homeAnnouncementsTitle,
-            style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(l10n.homeAnnouncementsTitle,
+                style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+            if (items.isNotEmpty)
+              TextButton(
+                onPressed: () => context.go('/messages'),
+                child: Text(l10n.homeViewAllAnnouncements),
+              ),
+          ],
+        ),
         const SizedBox(height: 8),
         if (items.isEmpty)
           Container(
@@ -485,11 +495,17 @@ class _AnnouncementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
     final title = item['title']?.toString() ?? '';
     final body = item['body']?.toString() ?? '';
     final createdAt = DateTime.tryParse(item['created_at']?.toString() ?? '');
     final isSystem = item['type'] == 'system';
+    // Real "source" label — matches dark2.jpg's "Школа"/"Администрация" line
+    // — derived from the message's real `type` field (system/teacher), same
+    // sender-label convention as student_messages_screen.dart's
+    // `_senderLabel`. Never invented text.
+    final senderLabel = isSystem ? l10n.messagesSenderSystem : l10n.messagesSenderTeacher;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -497,8 +513,17 @@ class _AnnouncementCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(isSystem ? Icons.campaign_rounded : Icons.person_rounded,
-              color: AppColors.brand, size: 22),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isSystem ? AppColors.brandLight : AppColors.violetMuted,
+              borderRadius: AppRadii.roundedMd,
+            ),
+            alignment: Alignment.center,
+            child: Icon(isSystem ? Icons.campaign_rounded : Icons.person_rounded,
+                color: isSystem ? AppColors.brand : AppColors.violet, size: 20),
+          ),
           const SizedBox(height: 10),
           Text(title,
               maxLines: 1,
@@ -511,14 +536,32 @@ class _AnnouncementCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.caption.copyWith(color: pal.ink2)),
           const SizedBox(height: 8),
-          Text(
-            createdAt != null ? DateFormat('dd.MM.yyyy').format(createdAt.toLocal()) : '',
-            style: AppTextStyles.caption.copyWith(color: pal.ink3),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(senderLabel, style: AppTextStyles.caption.copyWith(color: pal.ink3)),
+              Text(
+                createdAt != null ? _relativeDayLabel(l10n, createdAt.toLocal()) : '',
+                style: AppTextStyles.caption.copyWith(color: pal.ink3),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+}
+
+/// "сегодня" / "вчера" / "dd.MM.yyyy" — same today/yesterday convention as
+/// student_messages_screen.dart's `_formatTimestamp`, without the time part
+/// (dark2.jpg's announcement cards show only a day-level recency label).
+String _relativeDayLabel(AppLocalizations l10n, DateTime local) {
+  final now = DateTime.now();
+  bool sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+  if (sameDay(local, now)) return l10n.messagesToday;
+  if (sameDay(local, now.subtract(const Duration(days: 1)))) return l10n.messagesYesterday;
+  return DateFormat('dd.MM.yyyy').format(local);
 }
 
 DateTime _mondayOfWeek(DateTime d) {

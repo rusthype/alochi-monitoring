@@ -3641,7 +3641,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeHeroSubtitle.
   ///
   /// In uz, this message translates to:
-  /// **'Har kungi kichik ilg\'or qadam katta natijalarga olib keladi.'**
+  /// **'Kun iqtibosi: Har kungi kichik ilg\'or qadam katta natijalarga olib keladi.'**
   String get homeHeroSubtitle;
 
   /// No description provided for @homeUrgentTestsTitle.
@@ -3655,6 +3655,12 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Barchasini ko\'rish'**
   String get homeViewAllTests;
+
+  /// No description provided for @homeViewAllAnnouncements.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barcha e\'lonlar'**
+  String get homeViewAllAnnouncements;
 
   /// No description provided for @homeDeadlineHours.
   ///

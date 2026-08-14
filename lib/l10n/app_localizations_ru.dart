@@ -1920,13 +1920,16 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get homeHeroSubtitle =>
-      'Маленький прогресс каждый день приводит к большим результатам.';
+      'Цитата дня: Маленький прогресс каждый день приводит к большим результатам.';
 
   @override
   String get homeUrgentTestsTitle => 'Срочные и предстоящие тесты';
 
   @override
   String get homeViewAllTests => 'Посмотреть все';
+
+  @override
+  String get homeViewAllAnnouncements => 'Все объявления';
 
   @override
   String homeDeadlineHours(int hours) {

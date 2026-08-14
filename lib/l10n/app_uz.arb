@@ -906,9 +906,10 @@
       }
     }
   },
-  "homeHeroSubtitle": "Har kungi kichik ilg'or qadam katta natijalarga olib keladi.",
+  "homeHeroSubtitle": "Kun iqtibosi: Har kungi kichik ilg'or qadam katta natijalarga olib keladi.",
   "homeUrgentTestsTitle": "Shoshilinch va yaqinlashayotgan testlar",
   "homeViewAllTests": "Barchasini ko'rish",
+  "homeViewAllAnnouncements": "Barcha e'lonlar",
   "homeDeadlineHours": "{hours} soatdan keyin",
   "@homeDeadlineHours": {
     "placeholders": {

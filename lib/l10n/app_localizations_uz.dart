@@ -1929,13 +1929,16 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get homeHeroSubtitle =>
-      'Har kungi kichik ilg\'or qadam katta natijalarga olib keladi.';
+      'Kun iqtibosi: Har kungi kichik ilg\'or qadam katta natijalarga olib keladi.';
 
   @override
   String get homeUrgentTestsTitle => 'Shoshilinch va yaqinlashayotgan testlar';
 
   @override
   String get homeViewAllTests => 'Barchasini ko\'rish';
+
+  @override
+  String get homeViewAllAnnouncements => 'Barcha e\'lonlar';
 
   @override
   String homeDeadlineHours(int hours) {
