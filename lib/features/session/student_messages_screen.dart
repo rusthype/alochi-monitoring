@@ -616,6 +616,24 @@ class _FilterBar extends StatelessWidget {
     );
   }
 
+  // Matches dark3.jpg: each filter tab carries a leading icon, reusing the
+  // same icon/color already used for that type's badge in _styleFor (no new
+  // design tokens — _Filter.all has no matching _Message.type so it gets a
+  // neutral "all" icon).
+  static const _tabIcons = <_Filter, IconData>{
+    _Filter.all: Icons.grid_view_rounded,
+    _Filter.teacher: Icons.person_rounded,
+    _Filter.tests: Icons.fact_check_rounded,
+    _Filter.system: Icons.settings_rounded,
+  };
+
+  static const _tabIconColors = <_Filter, Color>{
+    _Filter.all: AppColors.secondary,
+    _Filter.teacher: AppColors.violet,
+    _Filter.tests: AppColors.success,
+    _Filter.system: AppColors.secondary,
+  };
+
   Widget _tab(StudentPalette pal, _Filter value, String label) {
     final active = filter == value;
     return GestureDetector(
@@ -627,10 +645,17 @@ class _FilterBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: active ? AppColors.secondary : pal.border),
         ),
-        child: Text(label,
-            style: AppTextStyles.labelMedium.copyWith(
-                color: active ? AppColors.secondary : pal.ink2,
-                fontWeight: active ? FontWeight.w700 : FontWeight.w500)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(_tabIcons[value], size: 16, color: _tabIconColors[value]),
+            const SizedBox(width: 6),
+            Text(label,
+                style: AppTextStyles.labelMedium.copyWith(
+                    color: active ? AppColors.secondary : pal.ink2,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500)),
+          ],
+        ),
       ),
     );
   }
