@@ -802,7 +802,8 @@ class _DetailPane extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(m.title,
-                          style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                          style: AppTextStyles.titleMedium
+                              .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
                       const SizedBox(height: 4),
                       Text(_formatTimestamp(l10n, m.createdAt),
                           style: AppTextStyles.caption.copyWith(color: pal.ink3)),
@@ -910,7 +911,8 @@ class _QuickActionsPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(l10n.messagesQuickActionsTitle,
-                  style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w700)),
+                  style: AppTextStyles.titleMedium
+                      .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
               const SizedBox(height: 12),
               _actionRow(pal, Icons.mark_email_read_rounded, AppColors.secondary,
                   l10n.messagesMarkAllReadTitle, l10n.messagesMarkAllReadSubtitle, onMarkAllRead),

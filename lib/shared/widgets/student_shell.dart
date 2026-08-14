@@ -61,7 +61,12 @@ class StudentShell extends ConsumerWidget {
     // not while already on `/results`, same as the sidebar suppresses its
     // own "Результаты" tap when already active.
     final onResultsTap = (isSmall && currentIndex != _kResultsBranchIndex)
-        ? () => navigationShell.goBranch(_kResultsBranchIndex)
+        ? () {
+            // Same shared-Scaffold snackbar-persistence fix as
+            // student_sidebar.dart's onTap — see comment there.
+            ScaffoldMessenger.of(context).clearSnackBars();
+            navigationShell.goBranch(_kResultsBranchIndex);
+          }
         : null;
 
     return Scaffold(
