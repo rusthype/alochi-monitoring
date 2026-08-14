@@ -469,7 +469,11 @@ class MonitoringApi {
   }
 
   /// GET /my-profile/ — self-login talaba uchun profil xulosasi (maktab nomi,
-  /// statistika, so'nggi natijalar). Backend `student.code`ni FAQAT JWT'dan
+  /// statistika, so'nggi natijalar). `stats.average_time_seconds` — natija
+  /// davomiyligi saqlangan barcha natijalar bo'yicha o'rtacha; hech qaysi
+  /// natijada saqlanmagan bo'lsa `null` (eski natijalar uchun kutilgan
+  /// holat). `recent_results[].id` — /results/<id>/breakdown/ chaqirig'i
+  /// uchun kalit. Backend `student.code`ni FAQAT JWT'dan
   /// aniqlaydi (StudentProfileSummaryView) — bu yerda hech qanday id/kod
   /// yuborilmaydi. Token yo'q/xato bo'lsa 401 qaytaradi.
   ///
@@ -538,6 +542,10 @@ class MonitoringApi {
   ///
   /// Xato yoki tarmoq holatida `null` qaytaradi — chaqiruvchi butun
   /// ekranni "yuklab bo'lmadi" holatiga o'tkazadi.
+  ///
+  /// Javobda endi ixtiyoriy `week_progress` kaliti ham bo'lishi mumkin
+  /// ({assigned, completed, in_progress, remaining}) — faqat talabaning
+  /// faol guruhi bo'lsa keladi, bo'lmasa butunlay yo'q (null emas).
   Future<Map<String, dynamic>?> fetchHomeSummary(
       {required String authToken}) async {
     if (authToken.isEmpty) return null;
@@ -550,6 +558,37 @@ class MonitoringApi {
       debugPrint('fetchHomeSummary error: $e');
       return null;
     }
+  }
+
+  /// GET /results/<uuid:result_id>/breakdown/ — bitta natijaning bob/topic/
+  /// unit/part yig'indisi + (mavjud bo'lsa) savol-savol tafsiloti
+  /// (ResultBreakdownView). `resultId` — RecentResult.id (MonitoringResult
+  /// UUID'i).
+  ///
+  /// 404 backendda IKKI holatda ham qaytadi: natija boshqa talabaniki
+  /// (S-003 ownership) YOKI natijaning umuman breakdown ma'lumoti yo'q
+  /// (juda eski/legacy submission) — bu ikkisi ataylab farqlanmaydi.
+  /// Bu yerda `null` qaytariladi — chaqiruvchi buni "bu natija uchun
+  /// batafsil ma'lumot yo'q" deb ko'rsatishi kerak, XATO emas (kutilgan,
+  /// keng tarqalgan javob, ayniqsa eski natijalar uchun).
+  ///
+  /// Tarmoq/server xatosida [ApiException] tashlaydi (fetchMyProfile'dan
+  /// farqli — bu yerda 404 allaqachon "ma'lumot yo'q"ni ifodalagani uchun,
+  /// haqiqiy xatoni chaqiruvchidan yashirmaslik kerak).
+  Future<ResultBreakdown?> fetchResultBreakdown(String resultId,
+      {required String authToken}) async {
+    if (authToken.isEmpty || resultId.isEmpty) return null;
+    final resp = await _send(() => http.get(
+          Uri.parse('$_base/results/${Uri.encodeComponent(resultId)}/breakdown/'),
+          headers: {..._headers, 'Authorization': 'Bearer $authToken'},
+        ));
+    if (resp.statusCode == 404) return null;
+    if (resp.statusCode >= 400) {
+      throw ApiException(resp.statusCode, _statusMessage(resp.statusCode));
+    }
+    final data = jsonDecode(utf8.decode(resp.bodyBytes));
+    if (data is! Map) return null;
+    return ResultBreakdown.fromJson(Map<String, dynamic>.from(data));
   }
 
   /// Nashr qilingan testi bor barcha maktablar ro'yxati (kod+nom, kontentsiz).

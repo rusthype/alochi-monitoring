@@ -1620,6 +1620,49 @@ class AppLocalizationsUz extends AppLocalizations {
   String get downloadPdfButton => 'PDF hisobot';
 
   @override
+  String get viewBreakdownButton => 'Batafsil tahlil';
+
+  @override
+  String get kpiAverageTime => 'O\'rtacha vaqt';
+
+  @override
+  String kpiAverageTimeHoursMinutes(int hours, int minutes) {
+    return '$hours soat $minutes daq';
+  }
+
+  @override
+  String get breakdownNoDataMessage =>
+      'Bu natija uchun batafsil ma\'lumot mavjud emas';
+
+  @override
+  String get breakdownBobsTitle => 'Boblar bo\'yicha';
+
+  @override
+  String get breakdownTopicsTitle => 'Mavzular bo\'yicha';
+
+  @override
+  String get breakdownUnitsTitle => 'Yunitlar bo\'yicha';
+
+  @override
+  String get breakdownPartsTitle => 'Boshqa';
+
+  @override
+  String get breakdownQuestionsTitle => 'Savollar';
+
+  @override
+  String get breakdownNoQuestionDetailNote =>
+      'Bu natija uchun savol-savol tafsiloti mavjud emas.';
+
+  @override
+  String get breakdownNoAnswer => 'Javob berilmagan';
+
+  @override
+  String get breakdownYourAnswer => 'Sizning javobingiz';
+
+  @override
+  String get breakdownCorrectAnswer => 'To\'g\'ri javob';
+
+  @override
   String get quickActionsTitle => 'Tezkor amallar';
 
   @override
@@ -1961,6 +2004,20 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get homeAttendanceLabel => 'Davomat';
+
+  @override
+  String homeWeekProgressTitle(int completed, int assigned, int pct) {
+    return 'Haftalik progress: $assigned tadan $completed tasi ($pct%)';
+  }
+
+  @override
+  String get homeWeekProgressCompleted => 'Bajarildi';
+
+  @override
+  String get homeWeekProgressInProgress => 'Jarayonda';
+
+  @override
+  String get homeWeekProgressRemaining => 'Qoldi';
 
   @override
   String get homeNextLessonTitle => 'Yaqin dars';

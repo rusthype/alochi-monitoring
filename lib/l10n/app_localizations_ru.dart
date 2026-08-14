@@ -1612,6 +1612,49 @@ class AppLocalizationsRu extends AppLocalizations {
   String get downloadPdfButton => 'Скачать PDF отчет';
 
   @override
+  String get viewBreakdownButton => 'Подробный разбор';
+
+  @override
+  String get kpiAverageTime => 'Среднее время';
+
+  @override
+  String kpiAverageTimeHoursMinutes(int hours, int minutes) {
+    return '$hours ч $minutes мин';
+  }
+
+  @override
+  String get breakdownNoDataMessage =>
+      'Подробная информация по этому результату недоступна.';
+
+  @override
+  String get breakdownBobsTitle => 'По главам';
+
+  @override
+  String get breakdownTopicsTitle => 'По темам';
+
+  @override
+  String get breakdownUnitsTitle => 'По юнитам';
+
+  @override
+  String get breakdownPartsTitle => 'Прочее';
+
+  @override
+  String get breakdownQuestionsTitle => 'Вопросы';
+
+  @override
+  String get breakdownNoQuestionDetailNote =>
+      'Для этого результата детализация по вопросам недоступна.';
+
+  @override
+  String get breakdownNoAnswer => 'Без ответа';
+
+  @override
+  String get breakdownYourAnswer => 'Ваш ответ';
+
+  @override
+  String get breakdownCorrectAnswer => 'Правильный ответ';
+
+  @override
   String get quickActionsTitle => 'Быстрые действия';
 
   @override
@@ -1952,6 +1995,20 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get homeAttendanceLabel => 'Посещаемость';
+
+  @override
+  String homeWeekProgressTitle(int completed, int assigned, int pct) {
+    return 'Прогресс за неделю: $completed из $assigned ($pct%)';
+  }
+
+  @override
+  String get homeWeekProgressCompleted => 'Выполнено';
+
+  @override
+  String get homeWeekProgressInProgress => 'В процессе';
+
+  @override
+  String get homeWeekProgressRemaining => 'Осталось';
 
   @override
   String get homeNextLessonTitle => 'Ближайший урок';

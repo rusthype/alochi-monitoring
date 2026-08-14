@@ -8,29 +8,36 @@
 // Every number on this screen traces back to `GET /my-profile/`
 // (`api.fetchMyProfile`) — same endpoint/fields the old ResultsScreen and
 // MyTestsScreen's `_ProfileSummary` already use:
-//   - `stats.tests_completed` / `stats.average_score` → KPI tiles (server
-//     truth, never client-recomputed from the capped result list below).
+//   - `stats.tests_completed` / `stats.average_score` / `stats.average_time_seconds`
+//     → KPI tiles (server truth, never client-recomputed from the capped
+//     result list below). `average_time_seconds` is `null` until the
+//     elapsed-time capture work produces real values for new submissions
+//     (ALL historical results have it null) — the 4th "Среднее время" tile
+//     is omitted entirely (not a fake "0 мин") whenever it's null, same
+//     null-guard convention every other tile here already follows.
 //   - `recent_results` (server-capped, historically ≤10) → RecentResult
 //     list, source for: highest-score KPI, trend chart, subject breakdown,
 //     result cards, side-panel "recent reports". Any per-subject/point-in-
 //     time chart is therefore also bounded to this same capped window —
 //     same honest scope as the old screen, not a fabricated full history.
+//     Each entry also carries `id` (MonitoringResult UUID) as of the
+//     2026-08 backend pass — the key `_ResultCard`'s "Подробный разбор"
+//     button uses to call `GET /results/<id>/breakdown/`.
 //
 // Deliberately NOT sourced (no such field exists anywhere in this app's
-// API/model layer — see core/models/models.dart's RecentResult): per-subject
-// correct/total counts (vocab_cor/tot etc.), per-question "Подробный разбор"
-// breakdown, and a bulk "download all as ZIP" quick action. Rather than
-// fabricate any of these, they're omitted; see PR notes for the full
-// scoping rationale.
+// API/model layer): per-subject correct/total counts (vocab_cor/tot etc.),
+// and a bulk "download all as ZIP" quick action. Rather than fabricate
+// either, they're omitted; see PR notes for the full scoping rationale.
 //
-// Re-checked 2026-08-13: `MonitoringResult.time_taken` IS a real column
-// (apps/monitoring/models.py:385, written on submit), but
-// `StudentProfileSummaryView.get()` — the server code behind `/my-profile/`,
-// the only endpoint this screen calls — never puts it in `stats` or
-// `recent_results` (apps/monitoring/views.py ~line 1160). Nothing this
-// client receives carries a time value, so an "average time" 4th KPI still
-// can't be computed without a backend change, which is out of scope for
-// this Flutter-only pass (still 3 tiles).
+// Per-question "Подробный разбор" breakdown (2026-08 pass): each
+// `_ResultCard` now has a button calling `api.fetchResultBreakdown`
+// (`GET /results/<id>/breakdown/`, ResultBreakdownView). A `null` response
+// means EITHER the result predates per-question detail (legacy submission,
+// no `raw_answers` ever stored) OR — indistinguishably, by server design —
+// the id doesn't belong to this student; both render the same "no data"
+// message, never an app error. A non-null response may still carry
+// `has_question_detail: false` (bobs/topics/units/parts aggregate only,
+// no per-question list) for the same legacy-data reason.
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -99,6 +106,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
   bool _loading = true;
   int? _testsCompleted; // null = missing/malformed, NEVER shown as 0
   int? _averageScore; // null = no results yet, NEVER rendered as 0%
+  int? _averageTimeSeconds; // null = no result has a stored duration yet
   List<RecentResult>? _results; // null = fetch failed/offline, never fabricated
 
   String _query = '';
@@ -109,6 +117,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
   // doesn't override ==/hashCode, so Set membership here is already
   // reference-identity, which is genuinely unique per card.
   final Set<RecentResult> _pdfKeys = {}; // results currently generating a PDF
+  final Set<RecentResult> _breakdownKeys = {}; // results currently fetching a breakdown
 
   @override
   void initState() {
@@ -127,6 +136,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
           _results = null;
           _testsCompleted = null;
           _averageScore = null;
+          _averageTimeSeconds = null;
           _loading = false;
         });
         return;
@@ -138,6 +148,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
         _results = RecentResult.listFromJson(profile['recent_results']);
         _testsCompleted = (stats['tests_completed'] as num?)?.toInt();
         _averageScore = (stats['average_score'] as num?)?.toInt();
+        _averageTimeSeconds = (stats['average_time_seconds'] as num?)?.toInt();
         _loading = false;
       });
     } catch (e) {
@@ -147,6 +158,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
         _results = null;
         _testsCompleted = null;
         _averageScore = null;
+        _averageTimeSeconds = null;
         _loading = false;
       });
     }
@@ -215,6 +227,41 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
     }
   }
 
+  Future<void> _viewBreakdown(RecentResult r) async {
+    if (_breakdownKeys.contains(r)) return;
+    setState(() => _breakdownKeys.add(r));
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final breakdown =
+          await api.fetchResultBreakdown(r.id, authToken: widget.session.token);
+      if (!mounted) return;
+      if (breakdown == null) {
+        // 404 — either legacy result with no breakdown data at all, or (by
+        // server design, indistinguishable) not this student's — an
+        // expected outcome for old results, never an app error.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.breakdownNoDataMessage)),
+        );
+        return;
+      }
+      if (!mounted) return;
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _BreakdownSheet(result: r, breakdown: breakdown),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.loadFailed),
+        backgroundColor: AppColors.error,
+      ));
+    } finally {
+      if (mounted) setState(() => _breakdownKeys.remove(r));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -256,6 +303,8 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
       hasAnyResults: results.isNotEmpty,
       pdfKeys: _pdfKeys,
       onDownloadPdf: _downloadPdf,
+      breakdownKeys: _breakdownKeys,
+      onViewBreakdown: _viewBreakdown,
     );
     final sidePanel = _SidePanel(
       results: results,
@@ -276,6 +325,7 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
               testsCompleted: _testsCompleted,
               averageScore: _averageScore,
               bestScore: _bestScore,
+              averageTimeSeconds: _averageTimeSeconds,
             ),
             const SizedBox(height: 16),
             if (isSmall)
@@ -333,21 +383,33 @@ class _StudentResultsScreenState extends State<StudentResultsScreen> {
   }
 }
 
-/// Total tests / average score (server truth from `stats`) + highest score
-/// (client-computed max of the capped `recent_results` window — honest,
-/// bounded to what's visible, not a fabricated all-time max). Deliberately
-/// only 3 tiles — an "average time" 4th tile per the mockup has no backing
-/// field anywhere in this app's result model, so it's omitted rather than
-/// invented.
+/// Formats `stats.average_time_seconds` for the KPI tile — plain minutes
+/// under an hour, "Xч Yмин"/localized-equivalent otherwise. Caller only
+/// invokes this when the value is non-null (see [_KpiRow]'s own guard).
+String _formatAverageTime(AppLocalizations l10n, int seconds) {
+  final minutes = (seconds / 60).round();
+  if (minutes < 60) return l10n.durationMinutesLabel(minutes);
+  return l10n.kpiAverageTimeHoursMinutes(minutes ~/ 60, minutes % 60);
+}
+
+/// Total tests / average score / average time (server truth from `stats`)
+/// + highest score (client-computed max of the capped `recent_results`
+/// window — honest, bounded to what's visible, not a fabricated all-time
+/// max). The "Среднее время" tile only renders when [averageTimeSeconds] is
+/// non-null — `null` means no result has a stored duration yet (true for
+/// every historical result until the elapsed-time capture work starts
+/// producing values), never rendered as a fake "0 мин" tile.
 class _KpiRow extends StatelessWidget {
   final int? testsCompleted;
   final int? averageScore;
   final int? bestScore;
+  final int? averageTimeSeconds;
 
   const _KpiRow(
       {required this.testsCompleted,
       required this.averageScore,
-      required this.bestScore});
+      required this.bestScore,
+      required this.averageTimeSeconds});
 
   @override
   Widget build(BuildContext context) {
@@ -374,6 +436,14 @@ class _KpiRow extends StatelessWidget {
         label: l10n.kpiBestScore,
         value: bestScore != null ? '$bestScore%' : '—',
       ),
+      if (averageTimeSeconds != null)
+        KpiTile(
+          icon: Icons.timer_outlined,
+          iconColor: AppColors.secondary,
+          iconBg: AppColors.primaryMuted,
+          label: l10n.kpiAverageTime,
+          value: _formatAverageTime(l10n, averageTimeSeconds!),
+        ),
     ];
     return LayoutBuilder(builder: (context, constraints) {
       if (constraints.maxWidth < 480) {
@@ -775,12 +845,16 @@ class _ResultsGrid extends StatelessWidget {
   final bool hasAnyResults;
   final Set<RecentResult> pdfKeys;
   final ValueChanged<RecentResult> onDownloadPdf;
+  final Set<RecentResult> breakdownKeys;
+  final ValueChanged<RecentResult> onViewBreakdown;
 
   const _ResultsGrid(
       {required this.results,
       required this.hasAnyResults,
       required this.pdfKeys,
-      required this.onDownloadPdf});
+      required this.onDownloadPdf,
+      required this.breakdownKeys,
+      required this.onViewBreakdown});
 
   @override
   Widget build(BuildContext context) {
@@ -810,6 +884,8 @@ class _ResultsGrid extends StatelessWidget {
                 result: r,
                 generatingPdf: pdfKeys.contains(r),
                 onDownloadPdf: () => onDownloadPdf(r),
+                loadingBreakdown: breakdownKeys.contains(r),
+                onViewBreakdown: () => onViewBreakdown(r),
               ),
             ),
         ],
@@ -818,17 +894,24 @@ class _ResultsGrid extends StatelessWidget {
   }
 }
 
-/// A single result card — real score/date/subject from [result]. No
-/// "Подробный разбор" (per-question breakdown) button: that would need
-/// per-question detail data this endpoint doesn't return for historical
-/// results, so it's left out rather than linking to a fabricated view.
+/// A single result card — real score/date/subject from [result], plus a
+/// "Подробный разбор" button that fetches `GET /results/<id>/breakdown/`
+/// on tap (see `_StudentResultsScreenState._viewBreakdown`). A 404 (legacy
+/// result with no breakdown data, or not this student's) shows a small
+/// snackbar rather than opening anything — never an app error.
 class _ResultCard extends StatelessWidget {
   final RecentResult result;
   final bool generatingPdf;
   final VoidCallback onDownloadPdf;
+  final bool loadingBreakdown;
+  final VoidCallback onViewBreakdown;
 
   const _ResultCard(
-      {required this.result, required this.generatingPdf, required this.onDownloadPdf});
+      {required this.result,
+      required this.generatingPdf,
+      required this.onDownloadPdf,
+      required this.loadingBreakdown,
+      required this.onViewBreakdown});
 
   @override
   Widget build(BuildContext context) {
@@ -905,26 +988,202 @@ class _ResultCard extends StatelessWidget {
                           .copyWith(color: _gradeColor(score), fontWeight: FontWeight.w700)),
                 ),
               const Spacer(),
-              OutlinedButton.icon(
-                onPressed: generatingPdf ? null : onDownloadPdf,
-                icon: generatingPdf
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.file_download_outlined, size: 16),
-                label: Text(l10n.downloadPdfButton,
-                    style: AppTextStyles.labelMedium.copyWith(color: pal.ink1)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: pal.ink1,
-                  side: BorderSide(color: pal.border),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: loadingBreakdown ? null : onViewBreakdown,
+                    icon: loadingBreakdown
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.visibility_outlined, size: 16),
+                    label: Text(l10n.viewBreakdownButton,
+                        style: AppTextStyles.labelMedium.copyWith(color: pal.ink1)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: pal.ink1,
+                      side: BorderSide(color: pal.border),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: generatingPdf ? null : onDownloadPdf,
+                    icon: generatingPdf
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.file_download_outlined, size: 16),
+                    label: Text(l10n.downloadPdfButton,
+                        style: AppTextStyles.labelMedium.copyWith(color: pal.ink1)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: pal.ink1,
+                      side: BorderSide(color: pal.border),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bottom sheet for `_ResultCard`'s "Подробный разбор" button — a
+/// scrollable aggregate breakdown (bobs/topics/units/parts, whichever are
+/// non-empty per [ResultBreakdown]) plus, when [ResultBreakdown.hasQuestionDetail]
+/// is true, a per-question list (text + selected vs correct answer,
+/// correct/incorrect color-coded via the same [AppColors.success]/[AppColors.error]
+/// pair `_gradeColor` above already uses for score coloring). Deliberately a
+/// single scrollable sheet, not a new route — this is a read-only detail
+/// view, not a flow.
+class _BreakdownSheet extends StatelessWidget {
+  final RecentResult result;
+  final ResultBreakdown breakdown;
+
+  const _BreakdownSheet({required this.result, required this.breakdown});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final pal = StudentPalette(Theme.of(context).brightness == Brightness.dark);
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) => Container(
+        decoration: BoxDecoration(
+          color: pal.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                    color: pal.border, borderRadius: AppRadii.roundedFull),
+              ),
+            ),
+            Text(result.title,
+                style: AppTextStyles.titleMedium
+                    .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
+            const SizedBox(height: 4),
+            Text(l10n.viewBreakdownButton,
+                style: AppTextStyles.bodyMedium.copyWith(color: pal.ink3)),
+            const SizedBox(height: 16),
+            if (breakdown.bobs.isNotEmpty)
+              _breakdownSection(pal, l10n.breakdownBobsTitle, breakdown.bobs,
+                  (m) => '${m['bob']}-BOB — ${m['name'] ?? ''}'),
+            if (breakdown.topics.isNotEmpty)
+              _breakdownSection(pal, l10n.breakdownTopicsTitle, breakdown.topics,
+                  (m) => (m['name'] ?? '').toString()),
+            if (breakdown.units.isNotEmpty)
+              _breakdownSection(pal, l10n.breakdownUnitsTitle, breakdown.units,
+                  (m) => 'Unit ${m['unit']}'),
+            if (breakdown.parts.isNotEmpty)
+              _breakdownSection(pal, l10n.breakdownPartsTitle, breakdown.parts,
+                  (m) => (m['part'] ?? '').toString()),
+            const SizedBox(height: 8),
+            Text(l10n.breakdownQuestionsTitle,
+                style: AppTextStyles.labelLarge
+                    .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
+            const SizedBox(height: 8),
+            if (!breakdown.hasQuestionDetail || breakdown.questions.isEmpty)
+              Text(l10n.breakdownNoQuestionDetailNote,
+                  style: AppTextStyles.bodyMedium.copyWith(color: pal.ink3))
+            else
+              for (final q in breakdown.questions) _questionTile(l10n, pal, q),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _breakdownSection(StudentPalette pal, String title,
+      List<Map<String, dynamic>> items, String Function(Map<String, dynamic>) label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: AppTextStyles.labelLarge
+                  .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
+          const SizedBox(height: 8),
+          for (final m in items) _breakdownRow(pal, label(m), m),
+        ],
+      ),
+    );
+  }
+
+  Widget _breakdownRow(StudentPalette pal, String label, Map<String, dynamic> m) {
+    final correct = (m['correct'] as num?)?.toInt() ?? 0;
+    final total = (m['total'] as num?)?.toInt() ?? 0;
+    final pct = (m['pct'] as num?)?.toInt() ?? 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+              child: Text(label,
+                  style: AppTextStyles.bodyMedium.copyWith(color: pal.ink2))),
+          Text('$correct/$total ($pct%)',
+              style: AppTextStyles.bodyMedium
+                  .copyWith(color: pal.ink1, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _questionTile(AppLocalizations l10n, StudentPalette pal, QuestionBreakdownItem q) {
+    final color = q.isCorrect ? AppColors.success : AppColors.error;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: AppRadii.roundedMd,
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(q.isCorrect ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                  color: color, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(q.questionText,
+                    style: AppTextStyles.bodyMedium
+                        .copyWith(color: pal.ink1, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text('${l10n.breakdownYourAnswer}: ${q.selectedLabel(l10n.breakdownNoAnswer)}',
+              style: AppTextStyles.caption.copyWith(color: pal.ink2)),
+          if (!q.isCorrect) ...[
+            const SizedBox(height: 2),
+            Text('${l10n.breakdownCorrectAnswer}: ${q.correctLabel()}',
+                style: AppTextStyles.caption.copyWith(color: pal.ink2)),
+          ],
         ],
       ),
     );

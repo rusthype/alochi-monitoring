@@ -9,22 +9,25 @@
 // Every number traces back to real backend data — nothing here is
 // fabricated:
 //   - GET /home-summary/ (HomeSummaryView, apps/monitoring/views.py):
-//     attendance_pct, streak_days, last_result, urgent_tests, next_lesson.
-//     `next_lesson` is OMITTED from the response entirely (not sent as
-//     null) when no real scheduled lesson exists — checked below via
-//     `_home!.containsKey('next_lesson')`, not a null check.
+//     attendance_pct, streak_days, last_result, urgent_tests, next_lesson,
+//     week_progress. Both `next_lesson` and `week_progress` are OMITTED
+//     from the response entirely (not sent as null) when there's nothing
+//     real to show — checked below via `_home!.containsKey(...)`, not a
+//     null check.
 //   - GET /messages/ (api.fetchMessages, added by the parallel Сообщения
 //     agent): announcements = items with type 'system'/'teacher', latest 3.
 //
 // Simplifications vs dark2.jpg (documented per plan §Bosqich 6 — ponytail:
 // no fabricated numbers, ever):
-//   - Hero banner: the mockup's "4 из 5 задач / 80%" weekly progress bar
-//     has NO backend source (home-summary carries no weekly task-count
-//     field at all) — dropped entirely rather than invented. The banner
-//     instead surfaces the two real per-student numbers home-summary
-//     actually has (streak_days, attendance_pct) as small stat chips, plus
-//     a static motivational line (not personalized data, so not a
-//     fabrication concern).
+//   - Hero banner: streak_days/attendance_pct surface as small stat chips,
+//     plus a static motivational line (not personalized data, so not a
+//     fabrication concern). The mockup's "4 из 5 задач / 80%" weekly
+//     progress bar DOES now have a real backend source — home-summary's
+//     optional `week_progress` ({assigned, completed, in_progress,
+//     remaining}, current ISO week) — rendered via _WeekProgressSection
+//     below the chips, but ONLY when the key is present at all (OMITTED,
+//     not null, when the student has no active group — same convention
+//     `next_lesson` already follows one section down).
 //   - "Активность и серия" weekly grid: home-summary has no per-weekday
 //     activity flags, only a scalar `streak_days` (consecutive calendar
 //     days ending today with >=1 test submission — see HomeSummaryView).
@@ -257,6 +260,12 @@ class _HeroBanner extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final streakDays = (home['streak_days'] as num?)?.toInt() ?? 0;
     final attendancePct = (home['attendance_pct'] as num?)?.toInt();
+    // week_progress is OMITTED entirely (not null) when the student has no
+    // active group — containsKey, not a null check, same convention
+    // next_lesson above already follows.
+    final weekProgress = home.containsKey('week_progress') && home['week_progress'] is Map
+        ? Map<String, dynamic>.from(home['week_progress'] as Map)
+        : null;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -297,6 +306,10 @@ class _HeroBanner extends StatelessWidget {
                         '${l10n.homeAttendanceLabel}: ${attendancePct != null ? '$attendancePct%' : l10n.noDataAvailable}'),
                   ],
                 ),
+                if (weekProgress != null) ...[
+                  const SizedBox(height: 16),
+                  _WeekProgressSection(weekProgress: weekProgress),
+                ],
               ],
             ),
           ),
@@ -322,6 +335,72 @@ class _HeroBanner extends StatelessWidget {
                 style: AppTextStyles.labelMedium
                     .copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
           ],
+        ),
+      );
+}
+
+/// Weekly progress mini-section — "Прогресс за неделю" title + thin bar +
+/// 3 stat chips (Выполнено/В процессе/Осталось), sourced from
+/// `home['week_progress']` (real per-week test counts, see HeroBanner's
+/// `weekProgress` null-guard). Always white-on-gradient like the rest of
+/// the banner — this section never appears outside that gradient
+/// background, so it doesn't need StudentPalette's theme-aware colors.
+class _WeekProgressSection extends StatelessWidget {
+  final Map<String, dynamic> weekProgress;
+
+  const _WeekProgressSection({required this.weekProgress});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final assigned = (weekProgress['assigned'] as num?)?.toInt() ?? 0;
+    final completed = (weekProgress['completed'] as num?)?.toInt() ?? 0;
+    final inProgress = (weekProgress['in_progress'] as num?)?.toInt() ?? 0;
+    final remaining = (weekProgress['remaining'] as num?)?.toInt() ?? 0;
+    final pct = assigned > 0 ? ((completed / assigned) * 100).round() : 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.homeWeekProgressTitle(completed, assigned, pct),
+          style: AppTextStyles.labelLarge
+              .copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: AppRadii.roundedFull,
+          child: LinearProgressIndicator(
+            value: assigned > 0 ? completed / assigned : 0,
+            minHeight: 6,
+            backgroundColor: Colors.white.withValues(alpha: 0.25),
+            valueColor: const AlwaysStoppedAnimation(Colors.white),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 6,
+          children: [
+            _weekStatChip('$completed', l10n.homeWeekProgressCompleted),
+            _weekStatChip('$inProgress', l10n.homeWeekProgressInProgress),
+            _weekStatChip('$remaining', l10n.homeWeekProgressRemaining),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _weekStatChip(String value, String label) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: AppRadii.roundedMd,
+        ),
+        child: Text(
+          '$value $label',
+          style: AppTextStyles.caption
+              .copyWith(color: Colors.white, fontWeight: FontWeight.w600),
         ),
       );
 }

@@ -721,6 +721,29 @@
   "gradeSatisfactory": "Удовлетворительно",
   "gradeWeak": "Низкий",
   "downloadPdfButton": "Скачать PDF отчет",
+  "viewBreakdownButton": "Подробный разбор",
+  "kpiAverageTime": "Среднее время",
+  "kpiAverageTimeHoursMinutes": "{hours} ч {minutes} мин",
+  "@kpiAverageTimeHoursMinutes": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "breakdownNoDataMessage": "Подробная информация по этому результату недоступна.",
+  "breakdownBobsTitle": "По главам",
+  "breakdownTopicsTitle": "По темам",
+  "breakdownUnitsTitle": "По юнитам",
+  "breakdownPartsTitle": "Прочее",
+  "breakdownQuestionsTitle": "Вопросы",
+  "breakdownNoQuestionDetailNote": "Для этого результата детализация по вопросам недоступна.",
+  "breakdownNoAnswer": "Без ответа",
+  "breakdownYourAnswer": "Ваш ответ",
+  "breakdownCorrectAnswer": "Правильный ответ",
   "quickActionsTitle": "Быстрые действия",
   "refreshResultsAction": "Обновить",
   "refreshResultsActionDesc": "Обновить список результатов",
@@ -892,6 +915,23 @@
   "homeAnnouncementsEmpty": "Пока нет объявлений",
   "homeActivityStreakTitle": "Активность и серия",
   "homeAttendanceLabel": "Посещаемость",
+  "homeWeekProgressTitle": "Прогресс за неделю: {completed} из {assigned} ({pct}%)",
+  "@homeWeekProgressTitle": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "assigned": {
+        "type": "int"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "homeWeekProgressCompleted": "Выполнено",
+  "homeWeekProgressInProgress": "В процессе",
+  "homeWeekProgressRemaining": "Осталось",
   "homeNextLessonTitle": "Ближайший урок",
   "homeLastResultTitle": "Последний результат",
   "homeQuickActionTestsDesc": "Выберите тест и начните сейчас",

@@ -759,6 +759,29 @@
   "gradeSatisfactory": "Qoniqarli",
   "gradeWeak": "Past",
   "downloadPdfButton": "PDF hisobot",
+  "viewBreakdownButton": "Batafsil tahlil",
+  "kpiAverageTime": "O'rtacha vaqt",
+  "kpiAverageTimeHoursMinutes": "{hours} soat {minutes} daq",
+  "@kpiAverageTimeHoursMinutes": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "breakdownNoDataMessage": "Bu natija uchun batafsil ma'lumot mavjud emas",
+  "breakdownBobsTitle": "Boblar bo'yicha",
+  "breakdownTopicsTitle": "Mavzular bo'yicha",
+  "breakdownUnitsTitle": "Yunitlar bo'yicha",
+  "breakdownPartsTitle": "Boshqa",
+  "breakdownQuestionsTitle": "Savollar",
+  "breakdownNoQuestionDetailNote": "Bu natija uchun savol-savol tafsiloti mavjud emas.",
+  "breakdownNoAnswer": "Javob berilmagan",
+  "breakdownYourAnswer": "Sizning javobingiz",
+  "breakdownCorrectAnswer": "To'g'ri javob",
   "quickActionsTitle": "Tezkor amallar",
   "refreshResultsAction": "Yangilash",
   "refreshResultsActionDesc": "Ro'yxatni qayta yuklash",
@@ -930,6 +953,23 @@
   "homeAnnouncementsEmpty": "Hozircha e'lonlar yo'q",
   "homeActivityStreakTitle": "Faollik va seriya",
   "homeAttendanceLabel": "Davomat",
+  "homeWeekProgressTitle": "Haftalik progress: {assigned} tadan {completed} tasi ({pct}%)",
+  "@homeWeekProgressTitle": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "assigned": {
+        "type": "int"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "homeWeekProgressCompleted": "Bajarildi",
+  "homeWeekProgressInProgress": "Jarayonda",
+  "homeWeekProgressRemaining": "Qoldi",
   "homeNextLessonTitle": "Yaqin dars",
   "homeLastResultTitle": "Oxirgi natija",
   "homeQuickActionTestsDesc": "Testni tanlang va hoziroq boshlang",
