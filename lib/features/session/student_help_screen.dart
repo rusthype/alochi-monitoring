@@ -241,7 +241,7 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
             children: [
               Text(l10n.helpFaqSectionTitle,
                   style: AppTextStyles.titleMedium
-                      .copyWith(fontWeight: FontWeight.w700)),
+                      .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
               const SizedBox(height: 12),
               TextField(
                 controller: _searchController,
@@ -284,13 +284,14 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
                           leading:
                               Icon(items[i].icon, color: AppColors.brand, size: 20),
                           title: Text(items[i].question(l10n),
-                              style: AppTextStyles.bodyLarge
-                                  .copyWith(fontWeight: FontWeight.w600)),
+                              style: AppTextStyles.bodyLarge.copyWith(
+                                  fontWeight: FontWeight.w600, color: pal.ink1)),
                           children: [
                             Padding(
                               padding: const EdgeInsets.only(left: 32),
                               child: Text(items[i].answer(l10n),
-                                  style: AppTextStyles.bodyMedium),
+                                  style: AppTextStyles.bodyMedium
+                                      .copyWith(color: pal.ink2)),
                             ),
                           ],
                         ),
@@ -311,7 +312,7 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
                 children: [
                   Text(l10n.helpVideoSectionTitle,
                       style: AppTextStyles.titleMedium
-                          .copyWith(fontWeight: FontWeight.w700)),
+                          .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
                   const SizedBox(width: 8),
                   Container(
                     padding:
@@ -360,7 +361,7 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
             children: [
               Text(l10n.helpTroubleshootSectionTitle,
                   style: AppTextStyles.titleMedium
-                      .copyWith(fontWeight: FontWeight.w700)),
+                      .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 12,
@@ -406,7 +407,7 @@ class _StudentHelpScreenState extends ConsumerState<StudentHelpScreen> {
             children: [
               Text(l10n.helpAboutSectionTitle,
                   style: AppTextStyles.titleMedium
-                      .copyWith(fontWeight: FontWeight.w700)),
+                      .copyWith(fontWeight: FontWeight.w700, color: pal.ink1)),
               const SizedBox(height: 12),
               _infoRow(l10n.helpAboutVersionLabel,
                   _appVersion != null ? 'v$_appVersion' : '—', pal),

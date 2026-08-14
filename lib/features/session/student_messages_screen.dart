@@ -669,7 +669,17 @@ class _MessageList extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: selected ? AppColors.secondaryMuted : Colors.transparent,
+                      // AppColors.secondaryMuted is a light-mode-only cream
+                      // tint — on the dark background it made the selected
+                      // row's own (light) title/body text invisible
+                      // (reproduced via computer-use). A low-alpha tint of
+                      // the same brand color used for the border below stays
+                      // legible in both themes.
+                      color: selected
+                          ? (pal.isDark
+                              ? AppColors.secondary.withValues(alpha: 0.16)
+                              : AppColors.secondaryMuted)
+                          : Colors.transparent,
                       borderRadius: AppRadii.roundedMd,
                       border: selected
                           ? Border.all(color: AppColors.secondary.withValues(alpha: 0.4))
