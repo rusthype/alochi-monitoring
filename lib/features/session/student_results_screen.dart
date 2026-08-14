@@ -865,9 +865,19 @@ class _ResultCard extends StatelessWidget {
               ),
               if (score != null) ...[
                 const SizedBox(width: 8),
-                Text('$score%',
-                    style: AppTextStyles.titleMedium
-                        .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Same "X/100 (Y%)" convention as my_tests_screen.dart's
+                    // completed-test row — score is already a 0-100 percent,
+                    // so the fraction and the percent are the same number.
+                    Text('$score / 100',
+                        style: AppTextStyles.titleMedium
+                            .copyWith(fontWeight: FontWeight.w800, color: pal.ink1)),
+                    Text('($score%)',
+                        style: AppTextStyles.caption.copyWith(color: pal.ink3)),
+                  ],
+                ),
                 const SizedBox(width: 8),
                 _ScoreRing(pct: score / 100, color: _gradeColor(score), size: 36),
               ],
