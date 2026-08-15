@@ -212,8 +212,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ── Yangilanish badge holati ────────────────────────────────────────────────
   UpdateInfo? _updateInfo;
-  bool _isDownloadingUpdate = false;
-  double _updateProgress = 0.0;
+  // null = yuklanmayapti; ValueNotifier — progress har chaqirilganda butun
+  // login formasini setState bilan qayta qurmaslik uchun (ekran
+  // "provisaydi" degan xabar shundan edi — _updateBadge() ValueListenableBuilder
+  // bilan o'raladi, faqat shu widget qayta quriladi).
+  final ValueNotifier<double?> _updateProgress = ValueNotifier(null);
 
   // ── Ilova versiyasi (login ekranida pastki chapda ko'rsatish uchun) ────────
   String _appVersion = '';
@@ -284,6 +287,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _passCtrl.dispose();
     _userFocus.dispose();
     _passFocus.dispose();
+    _updateProgress.dispose();
     super.dispose();
   }
 
@@ -723,23 +727,16 @@ class _LoginScreenState extends State<LoginScreen> {
   /// can easily miss. The SnackBar's retry action re-invokes this same
   /// method, so tapping it starts a fresh download attempt.
   Future<void> _attemptUpdateDownload() async {
-    if (_isDownloadingUpdate || _updateInfo == null) return;
-    setState(() {
-      _isDownloadingUpdate = true;
-      _updateProgress = 0.0;
-    });
+    if (_updateProgress.value != null || _updateInfo == null) return;
+    _updateProgress.value = 0.0;
     final success = await UpdateService.instance.downloadAndInstallUpdate(
       _updateInfo!,
       onProgress: (progress) {
-        if (mounted) {
-          setState(() => _updateProgress = progress);
-        }
+        if (mounted) _updateProgress.value = progress;
       },
     );
     if (!mounted) return;
-    setState(() {
-      _isDownloadingUpdate = false;
-    });
+    _updateProgress.value = null;
     if (!success) {
       final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -759,62 +756,72 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _updateBadge() {
     if (_updateInfo == null) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context)!;
-    return Semantics(
-      button: true,
-      label: _isDownloadingUpdate ? l10n.loadingLabelDots : l10n.newVersionAvailable,
-      child: HoverRegion(
-        builder: (context, isHovered) => GestureDetector(
-          onTap: _attemptUpdateDownload,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isHovered ? AppColors.brand : AppColors.primary,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.primary),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: .12),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_isDownloadingUpdate)
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor:
-                          const AlwaysStoppedAnimation<Color>(Colors.white),
-                      value: _updateProgress > 0 ? _updateProgress : null,
+    // ValueListenableBuilder: progress tick'lari faqat shu kichik widget'ni
+    // qayta quradi — butun login formasini emas (avvalgi setState har bir
+    // tarmoq chunk'ida to'liq ekranni qayta chizib, interfeysni "provisirib"
+    // yuborardi).
+    return ValueListenableBuilder<double?>(
+      valueListenable: _updateProgress,
+      builder: (context, progress, _) {
+        final isDownloading = progress != null;
+        return Semantics(
+          button: true,
+          label: isDownloading ? l10n.loadingLabelDots : l10n.newVersionAvailable,
+          child: HoverRegion(
+            builder: (context, isHovered) => GestureDetector(
+              onTap: _attemptUpdateDownload,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isHovered ? AppColors.brand : AppColors.primary,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.primary),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: .12),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
                     ),
-                  )
-                else
-                  const Icon(
-                    Icons.system_update_alt_rounded,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-                const SizedBox(width: 6),
-                Text(
-                  _isDownloadingUpdate
-                      ? '${l10n.loadingLabelDots} ${(_updateProgress * 100).toInt()}%'
-                      : l10n.newVersionAvailable,
-                  style: AppTextStyles.labelMedium.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  ],
                 ),
-              ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isDownloading)
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              const AlwaysStoppedAnimation<Color>(Colors.white),
+                          value: progress > 0 ? progress : null,
+                        ),
+                      )
+                    else
+                      const Icon(
+                        Icons.system_update_alt_rounded,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isDownloading
+                          ? '${l10n.loadingLabelDots} ${(progress * 100).toInt()}%'
+                          : l10n.newVersionAvailable,
+                      style: AppTextStyles.labelMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
