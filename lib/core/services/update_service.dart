@@ -113,6 +113,13 @@ Future<void> _downloadWithRetry(
 
       final contentLength = response.contentLength;
       var downloaded = 0;
+      // Throttled: raw network chunks can arrive far more than once per
+      // frame, and each onProgress call triggers a setState in the caller —
+      // forwarding every chunk was flooding the UI thread with rebuilds
+      // (the actual cause of the reported interface lag, not download
+      // speed). Emit at most 10x/sec, plus always the final 100%.
+      var lastEmit = 0.0;
+      var lastEmitTime = DateTime.fromMillisecondsSinceEpoch(0);
       final sink = file.openWrite();
       try {
         await for (final chunk
@@ -120,7 +127,15 @@ Future<void> _downloadWithRetry(
           sink.add(chunk);
           downloaded += chunk.length;
           if (contentLength != null && onProgress != null) {
-            onProgress(downloaded / contentLength);
+            final progress = downloaded / contentLength;
+            final now = DateTime.now();
+            if (progress - lastEmit >= 0.01 ||
+                now.difference(lastEmitTime).inMilliseconds >= 100 ||
+                progress >= 1.0) {
+              lastEmit = progress;
+              lastEmitTime = now;
+              onProgress(progress);
+            }
           }
         }
       } finally {
