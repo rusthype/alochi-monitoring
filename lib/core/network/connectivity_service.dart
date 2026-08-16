@@ -61,6 +61,8 @@ class ConnectivityService {
     unawaited(_measure());
   }
 
+  Future<void> refresh() => _measure();
+
   Future<void> _measure() async {
     final stopwatch = Stopwatch()..start();
     bool ok;
