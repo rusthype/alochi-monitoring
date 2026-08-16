@@ -367,6 +367,7 @@ try {
       exit(0);
     } catch (e) {
       debugPrint('UpdateService.downloadAndInstallUpdate (Windows) error: $e');
+      await _logUpdateFailure('windows-download-or-install', e);
       await openReleasePage();
       return false;
     }
@@ -435,8 +436,31 @@ open -a "/Applications/alochi_monitoring.app"
       exit(0);
     } catch (e) {
       debugPrint('UpdateService._updateMacOS error: $e');
+      await _logUpdateFailure('macos-download-or-install', e);
       await openReleasePage();
       return false;
+    }
+  }
+
+  /// Persists the actual exception behind a failed download/install so the
+  /// next occurrence is diagnosable — [debugPrint] alone is invisible in a
+  /// release build with no attached console, which previously left the
+  /// generic "check your internet" SnackBar as the only trace of a failure.
+  /// Shares the same log file the macOS post-install script already writes
+  /// to ($HOME/Library/Logs/AlochiMonitoringUpdate.log via
+  /// getApplicationSupportDirectory, cross-platform). Never throws — a
+  /// logging failure must not mask the original error.
+  Future<void> _logUpdateFailure(String stage, Object error) async {
+    try {
+      final dir = await getApplicationSupportDirectory();
+      final logFile = File('${dir.path}/AlochiMonitoringUpdate.log');
+      await logFile.writeAsString(
+        '${DateTime.now().toIso8601String()} [$stage] $error\n',
+        mode: FileMode.append,
+        flush: true,
+      );
+    } catch (_) {
+      // Logging must never throw and mask the original failure.
     }
   }
 
