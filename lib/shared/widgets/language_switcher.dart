@@ -4,7 +4,16 @@ import '../../core/locale/locale_provider.dart';
 import '../../core/theme/app_colors.dart';
 
 class LanguageSwitcher extends ConsumerWidget {
-  const LanguageSwitcher({super.key});
+  final Color? foregroundColor;
+  final Color? iconColor;
+  final Color? dropdownColor;
+
+  const LanguageSwitcher({
+    super.key,
+    this.foregroundColor,
+    this.iconColor,
+    this.dropdownColor,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -13,10 +22,14 @@ class LanguageSwitcher extends ConsumerWidget {
     return DropdownButtonHideUnderline(
       child: DropdownButton<String>(
         value: currentLocale.languageCode,
-        icon: const Icon(Icons.language_rounded, size: 20, color: AppColors.ink2),
-        dropdownColor: AppColors.surface,
-        style: const TextStyle(
-          color: AppColors.ink1,
+        icon: Icon(
+          Icons.language_rounded,
+          size: 20,
+          color: iconColor ?? AppColors.ink2,
+        ),
+        dropdownColor: dropdownColor ?? AppColors.surface,
+        style: TextStyle(
+          color: foregroundColor ?? AppColors.ink1,
           fontWeight: FontWeight.w600,
           fontSize: 14,
         ),

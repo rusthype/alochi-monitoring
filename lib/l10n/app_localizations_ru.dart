@@ -69,6 +69,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get studentLoginButton => 'Войти как ученик';
 
   @override
+  String get proctorLoginTab => 'Проктор / Учитель';
+
+  @override
   String get myTestsTitle => 'Мои тесты';
 
   @override

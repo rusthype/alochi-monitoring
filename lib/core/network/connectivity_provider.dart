@@ -21,7 +21,10 @@ class SignalNotifier extends Notifier<SignalReading> {
     });
     ref.onDispose(() {
       _sub?.cancel();
+      ConnectivityService.instance.dispose();
     });
     return ConnectivityService.instance.last;
   }
+
+  Future<void> refresh() => ConnectivityService.instance.refresh();
 }
