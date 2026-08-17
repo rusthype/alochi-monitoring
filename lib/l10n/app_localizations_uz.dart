@@ -1151,6 +1151,15 @@ class AppLocalizationsUz extends AppLocalizations {
       'Yangilanishni yuklab bo\'lmadi. Internet aloqasini tekshirib, qayta urining.';
 
   @override
+  String get updateNowBtn => 'Hozir yangilash';
+
+  @override
+  String get openInBrowserBtn => 'Brauzerda ochish';
+
+  @override
+  String get updateConfirmBody => 'Ilovani hozir yangilaymizmi?';
+
+  @override
   String get okBtn => 'Yaxshi';
 
   @override
