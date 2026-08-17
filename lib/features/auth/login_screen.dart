@@ -895,6 +895,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
           ),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
                 child: _routeButton(
