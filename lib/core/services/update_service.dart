@@ -4,8 +4,11 @@
 // UpdateInfo — the login screen renders a persistent top-right badge when
 // an update is available. Tapping it downloads and silently installs the
 // update (Windows: elevated via PowerShell Start-Process -Verb RunAs,
-// since installer.iss requires admin; macOS: DMG swap), falling back to
-// openReleasePage() on any failure.
+// since installer.iss requires admin; macOS: DMG swap). Dart-side error
+// paths no longer auto-open the browser on failure — only the macOS
+// detached post-exit install script (which runs after this process has
+// already called exit(0) and can't show any other UI) still opens the
+// release page as a last resort on its own internal failure.
 //
 // The manifest is uploaded as a GitHub Release *asset* on the 'latest' tag
 // by .github/workflows/build-windows.yml / build-macos.yml on every push to
@@ -118,6 +121,10 @@ Future<void> _downloadWithRetry(
       url,
     ]);
     if (result.exitCode != 0) {
+      try {
+        final partial = File(savePath);
+        if (await partial.exists()) await partial.delete();
+      } catch (_) {}
       throw HttpException(
         'HTTP download failed ($e); curl fallback also failed '
         '(exit ${result.exitCode}): ${result.stderr}',
@@ -338,12 +345,12 @@ class UpdateService {
   }
 
   /// Downloads the update installer and executes it silently, then exits
-  /// the app. Returns `true` only in the (practically unreachable, since a
-  /// successful install calls [exit]) success path; returns `false` when
-  /// auto-install failed after retries and the release page was opened as
-  /// a fallback — callers should surface a visible in-app failure signal
-  /// (e.g. a SnackBar with a retry action) in that case rather than relying
-  /// solely on the silently-opened browser tab.
+  /// the app. Returns [UpdateResult.success] only in the (practically
+  /// unreachable, since a successful install calls [exit]) success path;
+  /// returns [UpdateResult.failed] with the error when auto-install fails
+  /// after retries. Opening the release page is no longer automatic on
+  /// failure — it's now a manual "Open in browser" action offered by the
+  /// update dialog, which the caller should surface alongside the error.
   Future<UpdateResult> downloadAndInstallUpdate(UpdateInfo info,
       {Function(double)? onProgress}) async {
     try {
@@ -435,8 +442,9 @@ try {
   /// a bare exception here would have propagated up and only been caught by
   /// [downloadAndInstallUpdate]'s outer handler with no macOS-specific
   /// logging) so failures are logged with which step failed and reported
-  /// back to the caller as `false` rather than only being visible via the
-  /// browser-fallback tab.
+  /// back to the caller as [UpdateResult.failed] — opening the release page
+  /// is now a manual action offered by the update dialog, not an automatic
+  /// fallback from this method.
   Future<UpdateResult> _updateMacOS(
       UpdateInfo info, Function(double)? onProgress) async {
     try {
