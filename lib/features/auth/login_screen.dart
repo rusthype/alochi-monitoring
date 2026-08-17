@@ -517,14 +517,14 @@ class _LoginScreenState extends State<LoginScreen>
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _languageCapsule(palette),
                             if (_updateInfo != null) ...[
-                              const SizedBox(width: 8),
                               _updateBadge(
                                 palette,
                                 compact: viewportWidth < 720,
                               ),
+                              const SizedBox(width: 8),
                             ],
+                            _languageCapsule(palette),
                           ],
                         ),
                       ],
