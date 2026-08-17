@@ -91,60 +91,100 @@ Future<void> _downloadWithRetry(
   String url,
   String savePath, {
   Function(double)? onProgress,
-}) {
-  return _withRetry(() async {
-    final file = File(savePath);
-    if (await file.exists()) {
-      try {
-        await file.delete();
-      } catch (_) {}
+}) async {
+  try {
+    await _withRetry(() => _downloadOnce(url, savePath, onProgress));
+  } catch (e) {
+    // Last-resort fallback: only on macOS, only after all http-based
+    // retries are exhausted. curl uses the system's own TLS/network stack
+    // (CFNetwork), which is a genuinely different code path from
+    // package:http's dart:io HttpClient — if the http path fails for a
+    // reason specific to that stack, curl may still succeed. Progress is
+    // NOT parsed from curl's output (fragile stderr scraping for no clear
+    // benefit here) — the bar just resets to 0% for this final attempt.
+    if (!Platform.isMacOS) rethrow;
+    final hasCurl = await Process.run('which', ['curl'])
+        .then((r) => r.exitCode == 0)
+        .catchError((_) => false);
+    if (!hasCurl) rethrow;
+    onProgress?.call(0.0);
+    final result = await Process.run('curl', [
+      '-L',
+      '-f',
+      '--connect-timeout',
+      '25',
+      '-o',
+      savePath,
+      url,
+    ]);
+    if (result.exitCode != 0) {
+      throw HttpException(
+        'HTTP download failed ($e); curl fallback also failed '
+        '(exit ${result.exitCode}): ${result.stderr}',
+      );
+    }
+    onProgress?.call(1.0);
+  }
+}
+
+Future<void> _downloadOnce(
+  String url,
+  String savePath,
+  Function(double)? onProgress,
+) async {
+  final file = File(savePath);
+  if (await file.exists()) {
+    try {
+      await file.delete();
+    } catch (_) {}
+  }
+
+  final client = http.Client();
+  try {
+    final request = http.Request('GET', Uri.parse(url))
+      ..followRedirects = true
+      ..maxRedirects = 10;
+    final response =
+        await client.send(request).timeout(const Duration(seconds: 20));
+    if (response.statusCode != 200) {
+      throw HttpException(
+        'Update download failed with status ${response.statusCode}',
+      );
     }
 
-    final client = http.Client();
+    final contentLength = response.contentLength;
+    var downloaded = 0;
+    // Throttled: raw network chunks can arrive far more than once per
+    // frame, and each onProgress call triggers a setState in the caller —
+    // forwarding every chunk was flooding the UI thread with rebuilds
+    // (the actual cause of the reported interface lag, not download
+    // speed). Emit at most 10x/sec, plus always the final 100%.
+    var lastEmit = 0.0;
+    var lastEmitTime = DateTime.fromMillisecondsSinceEpoch(0);
+    final sink = file.openWrite();
     try {
-      final request = http.Request('GET', Uri.parse(url));
-      final response =
-          await client.send(request).timeout(const Duration(seconds: 20));
-      if (response.statusCode != 200) {
-        throw HttpException(
-          'Update download failed with status ${response.statusCode}',
-        );
-      }
-
-      final contentLength = response.contentLength;
-      var downloaded = 0;
-      // Throttled: raw network chunks can arrive far more than once per
-      // frame, and each onProgress call triggers a setState in the caller —
-      // forwarding every chunk was flooding the UI thread with rebuilds
-      // (the actual cause of the reported interface lag, not download
-      // speed). Emit at most 10x/sec, plus always the final 100%.
-      var lastEmit = 0.0;
-      var lastEmitTime = DateTime.fromMillisecondsSinceEpoch(0);
-      final sink = file.openWrite();
-      try {
-        await for (final chunk
-            in response.stream.timeout(_downloadChunkTimeout)) {
-          sink.add(chunk);
-          downloaded += chunk.length;
-          if (contentLength != null && onProgress != null) {
-            final progress = downloaded / contentLength;
-            final now = DateTime.now();
-            if (progress - lastEmit >= 0.01 ||
-                now.difference(lastEmitTime).inMilliseconds >= 100 ||
-                progress >= 1.0) {
-              lastEmit = progress;
-              lastEmitTime = now;
-              onProgress(progress);
-            }
+      await for (final chunk
+          in response.stream.timeout(_downloadChunkTimeout)) {
+        sink.add(chunk);
+        downloaded += chunk.length;
+        if (contentLength != null && onProgress != null) {
+          final progress = downloaded / contentLength;
+          final now = DateTime.now();
+          if (progress - lastEmit >= 0.01 ||
+              now.difference(lastEmitTime).inMilliseconds >= 100 ||
+              progress >= 1.0) {
+            lastEmit = progress;
+            lastEmitTime = now;
+            onProgress(progress);
           }
         }
-      } finally {
-        await sink.close();
       }
     } finally {
-      client.close();
+      await sink.close();
     }
-  });
+  } finally {
+    client.close();
+  }
 }
 
 /// True if [remote] is strictly newer than [local] (both "X.Y.Z" strings).
