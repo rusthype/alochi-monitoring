@@ -43,6 +43,8 @@
   "otherSubject": "Другое",
   "continueTest": "Продолжить",
   "viewResult": "Посмотреть результат",
+  "retakeTest": "Пересдать",
+  "maxAttemptsExceeded": "Закончились попытки для этого теста.",
   "viewAllResults": "Посмотреть все результаты",
   "questionCountLabel": "{count} вопросов",
   "@questionCountLabel": {

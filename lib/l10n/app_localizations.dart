@@ -356,6 +356,18 @@ abstract class AppLocalizations {
   /// **'Natijani ko\'rish'**
   String get viewResult;
 
+  /// No description provided for @retakeTest.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qayta topshirish'**
+  String get retakeTest;
+
+  /// No description provided for @maxAttemptsExceeded.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu test uchun urinishlar soni tugagan.'**
+  String get maxAttemptsExceeded;
+
   /// No description provided for @viewAllResults.
   ///
   /// In uz, this message translates to:

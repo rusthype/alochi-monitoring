@@ -799,6 +799,8 @@ class _StudentTestCard extends StatelessWidget {
         return (Icons.timelapse_rounded, AppColors.amber, l10n.filterInProgress);
       case 'completed':
         return (Icons.check_circle_rounded, AppColors.ok, l10n.filterCompleted);
+      case 'retake_available':
+        return (Icons.replay_rounded, AppColors.secondary, l10n.retakeTest);
       default:
         return test.isNew
             ? (Icons.star_rounded, AppColors.secondary, l10n.newBadge)
@@ -885,6 +887,20 @@ class _StudentTestCard extends StatelessWidget {
         label: Text(l10n.viewResult),
       );
     }
+    if (test.displayStatus == 'retake_available') {
+      return ElevatedButton.icon(
+        onPressed: starting ? null : onTap,
+        icon: starting
+            ? const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.replay_rounded, size: 16),
+        label: Text(l10n.retakeTest),
+      );
+    }
     return ElevatedButton.icon(
       onPressed: starting ? null : onTap,
       icon: starting
@@ -953,7 +969,9 @@ class _StudentTestCard extends StatelessWidget {
                       _statusBadge(statusIcon, statusColor, statusLabel),
                     ],
                   ),
-                  if (test.displayStatus == 'completed' && test.score != null) ...[
+                  if ((test.displayStatus == 'completed' ||
+                          test.displayStatus == 'retake_available') &&
+                      test.score != null) ...[
                     const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -138,6 +138,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get viewResult => 'Посмотреть результат';
 
   @override
+  String get retakeTest => 'Пересдать';
+
+  @override
+  String get maxAttemptsExceeded => 'Закончились попытки для этого теста.';
+
+  @override
   String get viewAllResults => 'Посмотреть все результаты';
 
   @override
