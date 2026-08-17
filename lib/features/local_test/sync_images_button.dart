@@ -121,7 +121,10 @@ class _SyncImagesButtonState extends State<SyncImagesButton> {
       child: TextButton.icon(
         onPressed: _startSync,
         icon: const Icon(Icons.cloud_download_rounded, size: 16),
-        label: Text(AppLocalizations.of(context)!.syncImagesOfflineButton),
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(AppLocalizations.of(context)!.syncImagesOfflineButton),
+        ),
         style: TextButton.styleFrom(
           foregroundColor: AppColors.brand,
           textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
