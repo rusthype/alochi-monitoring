@@ -144,6 +144,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get maxAttemptsExceeded => 'Закончились попытки для этого теста.';
 
   @override
+  String attemptsRemainingLabel(int count) {
+    return 'Осталось попыток: $count';
+  }
+
+  @override
   String get viewAllResults => 'Посмотреть все результаты';
 
   @override

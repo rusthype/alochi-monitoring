@@ -993,6 +993,13 @@ class _StudentTestCard extends StatelessWidget {
                         valueColor: const AlwaysStoppedAnimation(AppColors.success),
                       ),
                     ),
+                    if (test.attemptsRemaining != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        l10n.attemptsRemainingLabel(test.attemptsRemaining!),
+                        style: AppTextStyles.caption.copyWith(color: pal.ink3),
+                      ),
+                    ],
                   ],
                   if (test.displayStatus == 'in_progress' && test.progressPct != null) ...[
                     const SizedBox(height: 10),

@@ -145,6 +145,11 @@ class AppLocalizationsUz extends AppLocalizations {
   String get maxAttemptsExceeded => 'Bu test uchun urinishlar soni tugagan.';
 
   @override
+  String attemptsRemainingLabel(int count) {
+    return 'Qolgan urinishlar: $count';
+  }
+
+  @override
   String get viewAllResults => 'Barcha natijalarni ko\'rish';
 
   @override

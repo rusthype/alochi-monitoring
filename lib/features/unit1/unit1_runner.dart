@@ -9,7 +9,6 @@ import '../../core/engine/answer_normalization.dart';
 import '../../core/db/history_db.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/api/api_client.dart';
-import '../../core/sync/sync_service.dart';
 import '../../core/services/pdf_service.dart';
 import 'package:printing/printing.dart';
 import 'unit1_data.dart';
@@ -976,7 +975,18 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
     final token = newIdempotencyToken();
     try {
       await OfflineQueue.enqueueLocal(payload, token);
-      SyncService.instance.flushNow();
+      OfflineQueue.waitForDropReason(token).then<void>((reason) {
+        if (reason == 'max_attempts_exceeded' && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context)!.maxAttemptsExceeded),
+            backgroundColor: AppColors.err,
+            duration: const Duration(seconds: 6),
+          ));
+        }
+      }).catchError((e) {
+        debugPrint('Unit1: waitForDropReason error: $e');
+        return Future<void>.value();
+      });
       if (!mounted) return;
       setState(() {
         _sent = true;

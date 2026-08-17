@@ -368,6 +368,12 @@ abstract class AppLocalizations {
   /// **'Bu test uchun urinishlar soni tugagan.'**
   String get maxAttemptsExceeded;
 
+  /// No description provided for @attemptsRemainingLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qolgan urinishlar: {count}'**
+  String attemptsRemainingLabel(int count);
+
   /// No description provided for @viewAllResults.
   ///
   /// In uz, this message translates to:

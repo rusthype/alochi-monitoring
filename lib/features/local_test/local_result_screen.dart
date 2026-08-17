@@ -105,6 +105,18 @@ class _LocalResultScreenState extends State<LocalResultScreen>
       await OfflineQueue.enqueueLocal(payload, token);
       // Immediate send without blocking UI
       SyncService.instance.flushNow();
+      OfflineQueue.waitForDropReason(token).then<void>((reason) {
+        if (reason == 'max_attempts_exceeded' && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(AppLocalizations.of(context)!.maxAttemptsExceeded),
+            backgroundColor: AppColors.err,
+            duration: const Duration(seconds: 6),
+          ));
+        }
+      }).catchError((e) {
+        debugPrint('LocalResultScreen: waitForDropReason error: $e');
+        return Future<void>.value();
+      });
       if (!mounted) return;
       setState(() {
         _sent = true;

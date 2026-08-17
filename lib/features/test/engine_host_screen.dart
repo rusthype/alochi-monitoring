@@ -37,7 +37,6 @@ import '../../core/engine/test_models.dart';
 import '../../core/engine/test_scorer.dart';
 import '../../core/services/heartbeat_service.dart';
 import '../../core/services/html_service.dart';
-import '../../core/sync/sync_service.dart';
 import '../../shared/theme/app_theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -270,8 +269,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
     }
 
     // 3. Attempt an immediate flush (fire-and-forget — don't block navigation).
-    SyncService.instance.flushNow().then<void>((_) {
-      final reason = OfflineQueue.lastDropReason.remove(token);
+    OfflineQueue.waitForDropReason(token).then<void>((reason) {
       if (reason == 'max_attempts_exceeded' && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(AppLocalizations.of(context)!.maxAttemptsExceeded),
@@ -280,7 +278,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
         ));
       }
     }).catchError((e) {
-      debugPrint('EngineHostScreen: flushNow error: $e');
+      debugPrint('EngineHostScreen: waitForDropReason error: $e');
       return Future<void>.value();
     });
 

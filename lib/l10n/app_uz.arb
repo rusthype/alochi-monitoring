@@ -45,6 +45,14 @@
   "viewResult": "Natijani ko'rish",
   "retakeTest": "Qayta topshirish",
   "maxAttemptsExceeded": "Bu test uchun urinishlar soni tugagan.",
+  "attemptsRemainingLabel": "Qolgan urinishlar: {count}",
+  "@attemptsRemainingLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "viewAllResults": "Barcha natijalarni ko'rish",
   "questionCountLabel": "{count} ta savol",
   "@questionCountLabel": {

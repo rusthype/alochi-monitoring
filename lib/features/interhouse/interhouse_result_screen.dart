@@ -186,7 +186,18 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
     final payload = _buildOfflinePayload();
     final token = newIdempotencyToken();
     await OfflineQueue.enqueueLocal(payload, token);
-    SyncService.instance.flushNow();
+    OfflineQueue.waitForDropReason(token).then<void>((reason) {
+      if (reason == 'max_attempts_exceeded' && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(AppLocalizations.of(context)!.maxAttemptsExceeded),
+          backgroundColor: AppColors.err,
+          duration: const Duration(seconds: 6),
+        ));
+      }
+    }).catchError((e) {
+      debugPrint('InterhouseResultScreen: waitForDropReason error: $e');
+      return Future<void>.value();
+    });
     if (mounted) {
       setState(() {
         _sent = true;

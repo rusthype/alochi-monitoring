@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/models.dart';
 import '../api/api_client.dart';
+import '../sync/sync_service.dart';
 import 'queue_crypto.dart';
 
 class OfflineQueue {
@@ -17,6 +18,25 @@ class OfflineQueue {
   // genuine rejection (e.g. max_attempts_exceeded) instead of the silent
   // drop this queue already does safely.
   static final Map<String, String> lastDropReason = {};
+
+  /// Polls [lastDropReason] for [token], re-triggering a flush each pass --
+  /// a concurrent flush (the periodic timer, or another screen's flushNow())
+  /// can make a single flushNow() call resolve as a no-op before this
+  /// token's row is actually processed, so one check isn't enough.
+  static Future<String?> waitForDropReason(
+    String token, {
+    Duration timeout = const Duration(seconds: 8),
+    Duration pollEvery = const Duration(milliseconds: 400),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (true) {
+      final reason = lastDropReason.remove(token);
+      if (reason != null) return reason;
+      if (DateTime.now().isAfter(deadline)) return null;
+      await SyncService.instance.flushNow();
+      await Future.delayed(pollEvery);
+    }
+  }
 
   static Future<Database> get db async {
     if (_db != null) return _db!;
