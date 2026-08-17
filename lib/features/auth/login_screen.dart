@@ -219,6 +219,10 @@ class _LoginScreenState extends State<LoginScreen>
   // Progress endi UpdateProgressDialog o'z ichida boshqaradi (Task 4) — bu
   // yerda faqat _updateInfo != null ekanligi badge'ni ko'rsatish uchun kifoya.
   UpdateInfo? _updateInfo;
+  // Fast double-tap guard: dialog opening is async, so without this a
+  // second tap before the first frame commits could stack two dialogs both
+  // downloading to the same save path concurrently.
+  bool _updateDialogOpen = false;
 
   // ── Ilova versiyasi (login ekranida pastki chapda ko'rsatish uchun) ────────
   String _appVersion = '';
@@ -646,7 +650,12 @@ class _LoginScreenState extends State<LoginScreen>
       label: l10n.newVersionAvailable,
       child: HoverRegion(
         builder: (context, isHovered) => GestureDetector(
-          onTap: () => showUpdateProgressDialog(context, _updateInfo!),
+          onTap: () async {
+            if (_updateDialogOpen) return;
+            _updateDialogOpen = true;
+            await showUpdateProgressDialog(context, _updateInfo!);
+            if (mounted) _updateDialogOpen = false;
+          },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
