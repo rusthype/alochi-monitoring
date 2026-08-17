@@ -1011,54 +1011,47 @@ class _LoginScreenState extends State<LoginScreen>
           borderRadius: BorderRadius.circular(13),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 5),
-            child: Stack(
-              alignment: Alignment.center,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, size: 16, color: foreground),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        label,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.caption.copyWith(
-                          color: foreground,
-                          fontSize: 10.5,
-                          height: 1.05,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                Icon(icon, size: 16, color: foreground),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.caption.copyWith(
+                      color: foreground,
+                      fontSize: 10.5,
+                      height: 1.05,
+                      fontWeight: FontWeight.w700,
                     ),
-                  ],
+                  ),
                 ),
-                if (badge != null)
-                  Positioned(
-                    right: 2,
-                    bottom: 1,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5C28E),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        badge,
-                        style: AppTextStyles.caption.copyWith(
-                          color: const Color(0xFF7C3F0A),
-                          fontSize: 8,
-                          height: 1.2,
-                          fontWeight: FontWeight.w700,
-                        ),
+                if (badge != null) ...[
+                  const SizedBox(width: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5C28E),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      badge,
+                      style: AppTextStyles.caption.copyWith(
+                        color: const Color(0xFF7C3F0A),
+                        fontSize: 8,
+                        height: 1.2,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
+                ],
               ],
             ),
           ),
