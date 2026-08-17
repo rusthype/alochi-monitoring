@@ -2216,6 +2216,24 @@ abstract class AppLocalizations {
   /// **'Yangilanishni yuklab bo\'lmadi. Internet aloqasini tekshirib, qayta urining.'**
   String get updateDownloadFailedMsg;
 
+  /// No description provided for @updateNowBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozir yangilash'**
+  String get updateNowBtn;
+
+  /// No description provided for @openInBrowserBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Brauzerda ochish'**
+  String get openInBrowserBtn;
+
+  /// No description provided for @updateConfirmBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ilovani hozir yangilaymizmi?'**
+  String get updateConfirmBody;
+
   /// No description provided for @okBtn.
   ///
   /// In uz, this message translates to:

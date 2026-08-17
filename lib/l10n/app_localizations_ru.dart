@@ -1145,6 +1145,15 @@ class AppLocalizationsRu extends AppLocalizations {
       'Не удалось загрузить обновление. Проверьте интернет-соединение и попробуйте снова.';
 
   @override
+  String get updateNowBtn => 'Обновить сейчас';
+
+  @override
+  String get openInBrowserBtn => 'Открыть в браузере';
+
+  @override
+  String get updateConfirmBody => 'Обновить приложение сейчас?';
+
+  @override
   String get okBtn => 'Хорошо';
 
   @override
