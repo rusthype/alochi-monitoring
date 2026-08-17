@@ -963,7 +963,7 @@ class _LoginScreenState extends State<LoginScreen>
                 child: _routeButton(
                   key: const ValueKey('login-tab-proctor'),
                   icon: Icons.lock_outline_rounded,
-                  label: l10n.proctorLoginTab,
+                  label: l10n.proctorTabLabel,
                   active: _selectedTab == 1,
                   palette: palette,
                   onTap: () => setState(() => _selectedTab = 1),
