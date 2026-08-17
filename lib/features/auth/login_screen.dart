@@ -1012,10 +1012,11 @@ class _LoginScreenState extends State<LoginScreen>
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 5),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(icon, size: 16, color: foreground),
-                const SizedBox(width: 5),
+                const SizedBox(width: 4),
                 Flexible(
                   child: Text(
                     label,
@@ -1024,9 +1025,10 @@ class _LoginScreenState extends State<LoginScreen>
                     textAlign: TextAlign.center,
                     style: AppTextStyles.caption.copyWith(
                       color: foreground,
-                      fontSize: 10.5,
+                      fontSize: 11.5,
                       height: 1.05,
                       fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
                     ),
                   ),
                 ),
@@ -1034,19 +1036,19 @@ class _LoginScreenState extends State<LoginScreen>
                   const SizedBox(width: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
+                      horizontal: 4,
                       vertical: 1,
                     ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF5C28E),
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       badge,
                       style: AppTextStyles.caption.copyWith(
                         color: const Color(0xFF7C3F0A),
-                        fontSize: 8,
-                        height: 1.2,
+                        fontSize: 8.5,
+                        height: 1.1,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
