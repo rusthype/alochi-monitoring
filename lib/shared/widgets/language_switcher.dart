@@ -22,6 +22,8 @@ class LanguageSwitcher extends ConsumerWidget {
     return DropdownButtonHideUnderline(
       child: DropdownButton<String>(
         value: currentLocale.languageCode,
+        borderRadius: BorderRadius.circular(14),
+        elevation: 8,
         icon: Icon(
           Icons.language_rounded,
           size: 20,
