@@ -477,8 +477,8 @@ if ! rm -rf "/Applications/alochi_monitoring.app"; then
     open "$_releasePageUrl"
     exit 1
 fi
-if ! cp -R "\$MOUNT_PATH/alochi_monitoring.app" "/Applications/"; then
-    echo "\$(date): cp -R of new app failed" >> "\$LOG"
+if ! ditto "\$MOUNT_PATH/alochi_monitoring.app" "/Applications/alochi_monitoring.app"; then
+    echo "\$(date): ditto of new app failed" >> "\$LOG"
     hdiutil detach "\$MOUNT_PATH" -force
     open "$_releasePageUrl"
     exit 1
