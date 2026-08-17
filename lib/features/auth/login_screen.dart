@@ -867,6 +867,7 @@ class _LoginScreenState extends State<LoginScreen>
         borderRadius: BorderRadius.circular(16),
       ),
       child: Stack(
+        alignment: Alignment.center,
         children: [
           AnimatedAlign(
             duration: const Duration(milliseconds: 200),
