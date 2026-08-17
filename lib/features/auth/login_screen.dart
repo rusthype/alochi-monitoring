@@ -1483,8 +1483,8 @@ class _LoginScreenState extends State<LoginScreen>
           validator: validator,
           style: AppTextStyles.bodyMedium.copyWith(color: palette.ink1),
           decoration: InputDecoration(
-            labelText: label,
-            hintText: hint.isEmpty ? null : hint,
+            hintText: hint.isEmpty ? label : hint,
+            floatingLabelBehavior: FloatingLabelBehavior.never,
             floatingLabelStyle: const TextStyle(color: AppColors.flame),
             labelStyle: TextStyle(color: palette.ink2),
             prefixIcon: Padding(
