@@ -270,7 +270,16 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
     }
 
     // 3. Attempt an immediate flush (fire-and-forget — don't block navigation).
-    SyncService.instance.flushNow().catchError((e) {
+    SyncService.instance.flushNow().then<void>((_) {
+      final reason = OfflineQueue.lastDropReason.remove(token);
+      if (reason == 'max_attempts_exceeded' && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(AppLocalizations.of(context)!.maxAttemptsExceeded),
+          backgroundColor: AppColors.err,
+          duration: const Duration(seconds: 6),
+        ));
+      }
+    }).catchError((e) {
       debugPrint('EngineHostScreen: flushNow error: $e');
       return Future<void>.value();
     });

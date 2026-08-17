@@ -687,7 +687,21 @@ class MonitoringApi {
         // 429 is a rate limit, not a payload rejection — must stay
         // retryable, same fix as submitResultFull above.
         final permanent = resp.statusCode != 429 && resp.statusCode < 500;
-        return {'synced': false, 'permanent': permanent};
+        // 409 = genuine rejection (e.g. max_attempts_exceeded) — surface the
+        // `error` code so the caller can show a one-shot user-facing message
+        // instead of silently dropping the row.
+        String? errorCode;
+        if (resp.statusCode == 409) {
+          try {
+            final body = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+            errorCode = body['error'] as String?;
+          } catch (_) {}
+        }
+        return {
+          'synced': false,
+          'permanent': permanent,
+          if (errorCode != null) 'error': errorCode,
+        };
       }
       return {'synced': true};
     } on ApiException {

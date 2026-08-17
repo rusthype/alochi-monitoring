@@ -12,6 +12,12 @@ import 'queue_crypto.dart';
 class OfflineQueue {
   static Database? _db;
 
+  // Keyed by idempotency token; consulted (and cleared) by the caller after
+  // flushNow() resolves, to show a one-shot user-facing message for a
+  // genuine rejection (e.g. max_attempts_exceeded) instead of the silent
+  // drop this queue already does safely.
+  static final Map<String, String> lastDropReason = {};
+
   static Future<Database> get db async {
     if (_db != null) return _db!;
     if (Platform.isWindows || Platform.isLinux) {
@@ -180,7 +186,11 @@ class OfflineQueue {
         if (ok || permanent) {
           await d.delete('local_queue', where: 'id = ?', whereArgs: [row['id']]);
           if (ok) synced++;
-          if (permanent) debugPrint('OfflineQueue.flushLocal: id=${row['id']} permanent error, dropping');
+          if (permanent) {
+            debugPrint('OfflineQueue.flushLocal: id=${row['id']} permanent error, dropping');
+            final err = r['error'] as String?;
+            if (err != null) lastDropReason[token] = err;
+          }
         } else {
           await d.update('local_queue', {'attempts': (row['attempts'] as int) + 1},
               where: 'id = ?', whereArgs: [row['id']]);
