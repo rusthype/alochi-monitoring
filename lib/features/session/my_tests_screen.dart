@@ -59,6 +59,8 @@ class _StudentTest {
   final String? status;
   final int? score; // only set when status == 'completed'
   final int? progressPct; // only set when status == 'in_progress'
+  final int? attemptsUsed;
+  final int? attemptsRemaining; // null == unlimited
 
   const _StudentTest({
     required this.testKey,
@@ -73,6 +75,8 @@ class _StudentTest {
     this.status,
     this.score,
     this.progressPct,
+    this.attemptsUsed,
+    this.attemptsRemaining,
   });
 
   bool get isLocked =>
@@ -93,7 +97,9 @@ class _StudentTest {
   /// keeps offline/cached-catalog behavior unchanged.
   String get displayStatus {
     if (isLocked) return 'locked';
-    if (status == 'completed' || status == 'in_progress') return status!;
+    if (status == 'completed' || status == 'in_progress' || status == 'retake_available') {
+      return status!;
+    }
     return 'available';
   }
 
@@ -112,6 +118,8 @@ class _StudentTest {
             : null,
         score: (j['score'] as num?)?.toInt(),
         progressPct: (j['progress_pct'] as num?)?.toInt(),
+        attemptsUsed: (j['attempts_used'] as num?)?.toInt(),
+        attemptsRemaining: (j['attempts_remaining'] as num?)?.toInt(),
       );
 
   static DateTime? _tryParse(dynamic raw) {
@@ -352,7 +360,8 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
         case _StatusFilter.inProgress:
           return t.displayStatus == 'in_progress';
         case _StatusFilter.completed:
-          return t.displayStatus == 'completed';
+          return t.displayStatus == 'completed' ||
+              t.displayStatus == 'retake_available';
         case _StatusFilter.locked:
           return t.displayStatus == 'locked';
       }
