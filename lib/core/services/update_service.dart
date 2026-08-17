@@ -199,6 +199,21 @@ class UpdateInfo {
   });
 }
 
+/// Result of an install attempt. On the success path the app has already
+/// called `exit(0)` and relaunched itself (Windows) or handed off to a
+/// detached script (macOS) — so `UpdateResult.success()` is only ever
+/// theoretically reachable, same as the `Future<bool> => true` path it
+/// replaces. [error] carries the actual exception text so the UI can show
+/// something more useful than a generic failure message.
+class UpdateResult {
+  final bool success;
+  final String? error;
+  const UpdateResult.success()
+      : success = true,
+        error = null;
+  const UpdateResult.failed(this.error) : success = false;
+}
+
 class UpdateService {
   UpdateService._();
   static final UpdateService instance = UpdateService._();
@@ -289,7 +304,7 @@ class UpdateService {
   /// a fallback — callers should surface a visible in-app failure signal
   /// (e.g. a SnackBar with a retry action) in that case rather than relying
   /// solely on the silently-opened browser tab.
-  Future<bool> downloadAndInstallUpdate(UpdateInfo info,
+  Future<UpdateResult> downloadAndInstallUpdate(UpdateInfo info,
       {Function(double)? onProgress}) async {
     try {
       if (Platform.isMacOS) {
@@ -297,9 +312,12 @@ class UpdateService {
       }
 
       if (!Platform.isWindows) {
-        // Auto-install is currently only supported on Windows and macOS
-        await openReleasePage();
-        return false;
+        // Auto-install is currently only supported on Windows and macOS —
+        // no automatic browser open here anymore; the caller (UI) decides
+        // whether/when to offer an explicit "open in browser" action.
+        return const UpdateResult.failed(
+          'Auto-install is not supported on this platform',
+        );
       }
 
       final tempDir = await getTemporaryDirectory();
@@ -368,8 +386,7 @@ try {
     } catch (e) {
       debugPrint('UpdateService.downloadAndInstallUpdate (Windows) error: $e');
       await _logUpdateFailure('windows-download-or-install', e);
-      await openReleasePage();
-      return false;
+      return UpdateResult.failed(e.toString());
     }
   }
 
@@ -380,7 +397,7 @@ try {
   /// logging) so failures are logged with which step failed and reported
   /// back to the caller as `false` rather than only being visible via the
   /// browser-fallback tab.
-  Future<bool> _updateMacOS(
+  Future<UpdateResult> _updateMacOS(
       UpdateInfo info, Function(double)? onProgress) async {
     try {
       final tempDir = await getTemporaryDirectory();
@@ -437,8 +454,7 @@ open -a "/Applications/alochi_monitoring.app"
     } catch (e) {
       debugPrint('UpdateService._updateMacOS error: $e');
       await _logUpdateFailure('macos-download-or-install', e);
-      await openReleasePage();
-      return false;
+      return UpdateResult.failed(e.toString());
     }
   }
 
