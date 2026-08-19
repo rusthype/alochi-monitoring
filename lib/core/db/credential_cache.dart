@@ -19,6 +19,7 @@ class CredentialCache {
   static const _keyVariant = 'cc_variant';
   static const _keyGrade = 'cc_grade';
   static const _keyGroupName = 'cc_group_name';
+  static const _keySchoolCode = 'cc_school_code';
 
   static Future<void> saveCredentials(String username, String password) async {
     try {
@@ -41,6 +42,7 @@ class CredentialCache {
           key: _keyVariant, value: session.variant?.toString());
       await _storage.write(key: _keyGrade, value: session.grade?.toString());
       await _storage.write(key: _keyGroupName, value: session.groupName ?? '');
+      await _storage.write(key: _keySchoolCode, value: session.schoolCode);
     } catch (e) {
       debugPrint('CredentialCache.saveSession failed (non-fatal): $e');
     }
@@ -72,6 +74,7 @@ class CredentialCache {
       final variant = await _storage.read(key: _keyVariant);
       final grade = await _storage.read(key: _keyGrade);
       final groupName = await _storage.read(key: _keyGroupName);
+      final schoolCode = await _storage.read(key: _keySchoolCode);
 
       if (token == null || studentId == null || studentName == null) {
         return null;
@@ -84,6 +87,7 @@ class CredentialCache {
         variant: int.tryParse(variant ?? ''),
         grade: int.tryParse(grade ?? ''),
         groupName: (groupName?.isEmpty ?? true) ? null : groupName,
+        schoolCode: schoolCode ?? '',
       );
     } catch (e) {
       debugPrint('CredentialCache.loadOfflineSession failed (non-fatal): $e');
@@ -101,6 +105,7 @@ class CredentialCache {
       await _storage.delete(key: _keyVariant);
       await _storage.delete(key: _keyGrade);
       await _storage.delete(key: _keyGroupName);
+      await _storage.delete(key: _keySchoolCode);
     } catch (e) {
       debugPrint('CredentialCache.clear failed (non-fatal): $e');
     }

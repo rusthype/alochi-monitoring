@@ -162,6 +162,34 @@ class HeartbeatService with WidgetsBindingObserver {
     _questionTimes = null;
   }
 
+  /// Login qilgan talaba identitini idle-presence heartbeat'ga (start()
+  /// tomonidan app ishga tushganda boshlanadigan) biriktiradi — shu bilan
+  /// panelning "kutayotganlar" ro'yxatida faqat qurilma nomi o'rniga
+  /// ism/maktab ko'rinadi. Yangi sessiya id yaratmaydi — talaba hali test
+  /// boshlamagan, shuning uchun mavjud _deviceSessionId ping'iga qo'shiladi.
+  /// group_name ataylab yuborilmaydi: LiveMonitoringView uni server tomonda
+  /// Student.student_groups orqali student_code asosida aniqroq hisoblaydi.
+  void setStudentContext({
+    required String schoolCode,
+    required String name,
+    String? studentCode,
+  }) {
+    _schoolCode = schoolCode;
+    _name = name;
+    _studentCode = studentCode;
+    unawaited(_ping('active'));
+  }
+
+  /// setStudentContext() bilan o'rnatilgan identitini tozalaydi — logout
+  /// paytida chaqiriladi, shu bilan umumiy kioskdagi keyingi talaba oldingi
+  /// talabaning ismi/maktabini idle heartbeat'da meros qilib olmaydi.
+  void clearStudentContext() {
+    _schoolCode = '';
+    _name = '';
+    _studentCode = null;
+    unawaited(_ping('active'));
+  }
+
   void updateProgress(
       int currentQuestionIndex, int totalQuestions, List<int> questionTimes) {
     _currentQuestionIndex = currentQuestionIndex;

@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 
 import '../api/api_client.dart';
 import '../db/credential_cache.dart';
+import '../services/heartbeat_service.dart';
 
 /// Clears the local auth token + cached credentials — the mandatory
 /// kiosk-security step so a shared self-login session never survives past
@@ -20,6 +21,7 @@ import '../db/credential_cache.dart';
 /// only after it returns).
 Future<void> clearStudentSession() async {
   api.clearToken();
+  HeartbeatService.instance.clearStudentContext();
   await CredentialCache.clear();
 }
 
