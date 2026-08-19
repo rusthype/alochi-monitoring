@@ -1024,7 +1024,7 @@ class _BottomNav extends StatelessWidget {
         ),
         const Spacer(),
         SizedBox(
-          width: 120,
+          width: 140,
           height: 44,
           child: isLast
               ? ElevatedButton.icon(
@@ -1032,6 +1032,8 @@ class _BottomNav extends StatelessWidget {
                   icon: const Icon(Icons.check_rounded, size: 15),
                   label: Text(
                     l10n.finish,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w700),
                   ),
@@ -1047,6 +1049,8 @@ class _BottomNav extends StatelessWidget {
                   onPressed: onNext,
                   icon: Text(
                     l10n.nextButton,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w700),
                   ),
