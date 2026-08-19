@@ -202,6 +202,7 @@ class _LoginScreenState extends State<LoginScreen>
   bool _showPass = false;
   bool _userEdited = false;
   bool _passwordEdited = false;
+  bool _submitAttempted = false;
   // ponytail: tarjima matni state'da saqlanmaydi — checking/online/offline
   // holati saqlanadi, matn build vaqtida l10n orqali hisoblanadi (til
   // almashganda ham to'g'ri ko'rinishi uchun).
@@ -340,7 +341,9 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+    final valid = _formKey.currentState!.validate();
+    setState(() => _submitAttempted = true);
+    if (!valid) return;
     final l10n = AppLocalizations.of(context)!;
     setState(() {
       _loading = true;
@@ -1405,16 +1408,26 @@ class _LoginScreenState extends State<LoginScreen>
     Widget? suffix,
   }) =>
       AnimatedBuilder(
-        animation: focusNode,
-        builder: (context, child) => AnimatedContainer(
+        animation: Listenable.merge([focusNode, controller]),
+        builder: (context, child) {
+          // hasError is derived live from the controller instead of a
+          // separate error flag so the outer frame and the field's actual
+          // emptiness never disagree — it's the single border painter for
+          // this field (see errorBorder/focusedErrorBorder below, which are
+          // deliberately BorderSide.none to avoid a second, misaligned
+          // border stacking on top of this one after a failed submit).
+          final hasError = _submitAttempted && controller.text.trim().isEmpty;
+          return AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
             color: palette.fieldFill,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: focusNode.hasFocus ? AppColors.flame : palette.border,
-              width: focusNode.hasFocus ? 1.5 : 1,
+              color: hasError
+                  ? AppColors.err
+                  : (focusNode.hasFocus ? AppColors.flame : palette.border),
+              width: hasError || focusNode.hasFocus ? 1.5 : 1,
             ),
             boxShadow: focusNode.hasFocus
                 ? const [
@@ -1426,7 +1439,8 @@ class _LoginScreenState extends State<LoginScreen>
                 : const [],
           ),
           child: child,
-        ),
+          );
+        },
         child: TextFormField(
           controller: controller,
           focusNode: focusNode,
@@ -1461,13 +1475,17 @@ class _LoginScreenState extends State<LoginScreen>
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide.none,
             ),
+            // The outer AnimatedContainer above is the single border painter
+            // for this field (including the red error state) — these two
+            // stay BorderSide.none like the others so TextFormField never
+            // draws a second, misaligned border on top of it.
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.err),
+              borderSide: BorderSide.none,
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: AppColors.err, width: 1.5),
+              borderSide: BorderSide.none,
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
