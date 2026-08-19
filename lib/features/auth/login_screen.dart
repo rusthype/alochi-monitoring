@@ -10,6 +10,7 @@ import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
 import '../../core/network/connectivity_provider.dart';
 import '../../core/network/connectivity_service.dart';
+import '../../core/services/heartbeat_service.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/hover_region.dart';
@@ -374,6 +375,11 @@ class _LoginScreenState extends State<LoginScreen>
           ProviderScope.containerOf(context)
               .read(currentStudentSessionProvider.notifier)
               .state = session;
+          HeartbeatService.instance.setStudentContext(
+            schoolCode: session.schoolCode,
+            name: session.studentName,
+            studentCode: session.studentId,
+          );
           context.pushReplacement('/my_tests', extra: {'session': session});
           return;
         } on ApiException catch (e) {
@@ -399,6 +405,11 @@ class _LoginScreenState extends State<LoginScreen>
         ProviderScope.containerOf(context)
             .read(currentStudentSessionProvider.notifier)
             .state = session;
+        HeartbeatService.instance.setStudentContext(
+          schoolCode: session.schoolCode,
+          name: session.studentName,
+          studentCode: session.studentId,
+        );
         context.pushReplacement('/my_tests',
             extra: {'session': session, 'offline': !online});
         return;
