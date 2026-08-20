@@ -139,6 +139,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get viewResult => 'Natijani ko\'rish';
 
   @override
+  String get retakeTest => 'Qayta topshirish';
+
+  @override
   String get viewAllResults => 'Barcha natijalarni ko\'rish';
 
   @override
