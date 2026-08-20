@@ -43,6 +43,7 @@
   "otherSubject": "Boshqa",
   "continueTest": "Davom ettirish",
   "viewResult": "Natijani ko'rish",
+  "retakeTest": "Qayta topshirish",
   "viewAllResults": "Barcha natijalarni ko'rish",
   "questionCountLabel": "{count} ta savol",
   "@questionCountLabel": {

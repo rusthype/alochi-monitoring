@@ -747,9 +747,8 @@ class _TestCardsGrid extends StatelessWidget {
             child: _StudentTestCard(
               test: test,
               starting: startingKeys.contains(test.testKey),
-              onTap: () => test.displayStatus == 'completed'
-                  ? onViewResult(test)
-                  : onStart(test),
+              onStart: () => onStart(test),
+              onViewResult: () => onViewResult(test),
             ),
           ),
       ],
@@ -764,12 +763,14 @@ class _TestCardsGrid extends StatelessWidget {
 class _StudentTestCard extends StatelessWidget {
   final _StudentTest test;
   final bool starting;
-  final VoidCallback onTap;
+  final VoidCallback onStart;
+  final VoidCallback onViewResult;
 
   const _StudentTestCard({
     required this.test,
     required this.starting,
-    required this.onTap,
+    required this.onStart,
+    required this.onViewResult,
   });
 
   String _timeWindowLabel() {
@@ -864,20 +865,57 @@ class _StudentTestCard extends StatelessWidget {
       );
     }
     if (test.displayStatus == 'completed') {
-      return OutlinedButton.icon(
-        onPressed: starting ? null : onTap,
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(double.infinity, 44),
-          foregroundColor: AppColors.success,
-          side: const BorderSide(color: AppColors.success),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        icon: const Icon(Icons.bar_chart_rounded, size: 16),
-        label: Text(l10n.viewResult),
+      return Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: starting ? null : onViewResult,
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 44),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                foregroundColor: AppColors.success,
+                side: const BorderSide(color: AppColors.success),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.bar_chart_rounded, size: 15),
+              label: Text(
+                l10n.viewResult,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: starting ? null : onStart,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size(0, 44),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: starting
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.replay_rounded, size: 15),
+              label: Text(
+                l10n.retakeTest,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ),
+        ],
       );
     }
     return ElevatedButton.icon(
-      onPressed: starting ? null : onTap,
+      onPressed: starting ? null : onStart,
       icon: starting
           ? const SizedBox(
               width: 14,
@@ -906,7 +944,9 @@ class _StudentTestCard extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: AppRadii.roundedXl,
-            onTap: (locked || starting) ? null : onTap,
+            onTap: (locked || starting)
+                ? null
+                : (test.displayStatus == 'completed' ? onViewResult : onStart),
             child: Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(

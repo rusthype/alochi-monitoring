@@ -43,6 +43,7 @@
   "otherSubject": "Другое",
   "continueTest": "Продолжить",
   "viewResult": "Посмотреть результат",
+  "retakeTest": "Пройти снова",
   "viewAllResults": "Посмотреть все результаты",
   "questionCountLabel": "{count} вопросов",
   "@questionCountLabel": {
