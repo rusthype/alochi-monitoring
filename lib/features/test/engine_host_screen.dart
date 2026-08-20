@@ -37,6 +37,7 @@ import '../../core/engine/test_models.dart';
 import '../../core/engine/test_scorer.dart';
 import '../../core/services/heartbeat_service.dart';
 import '../../core/services/html_service.dart';
+import '../../core/services/pdf_service.dart';
 import '../../core/sync/sync_service.dart';
 import '../../shared/theme/app_theme.dart';
 
@@ -660,9 +661,16 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     return AppLocalizations.of(context)!.gradeNeedsPractice;
   }
 
-  /// Builds the result HTML string — shared by the "PDF hisobot" button and
-  /// the silent bot-upload so both ever produce exactly the same file.
-  Future<String> _buildHtmlString() async {
+  /// Shared section/topic/unit computation for the HTML bot-upload report
+  /// and the PDF user-facing download — keeps both in sync.
+  ({
+    List<MapEntry<String, ({int ok, int tot})>> mathTopics,
+    List<MapEntry<String, ({int ok, int tot})>> engTopics,
+    _Agg math,
+    _Agg eng,
+    List<MapEntry<String, ({int ok, int tot})>> topicScores,
+    List<MapEntry<String, ({int ok, int tot})>> unitScores,
+  }) _buildReportSections() {
     // Same subject-aware decision _buildPayload/_handleComplete use (Task
     // 1.6) — list-shaped here so the per-§ "Matematika"/"Ingliz tili" topic
     // tables below can never disagree with their own header totals (e.g. a
@@ -676,8 +684,6 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     final engTopics = engSections
         .map((s) => MapEntry(s.name, (ok: s.correct, tot: s.total)))
         .toList();
-    final math = _sumSections(mathSections);
-    final eng = _sumSections(engSections);
 
     // Per-§ / per-topic breakdown + AI summary for the TZ §11 passport.
     final topicScores = widget.result.topicScores
@@ -691,21 +697,37 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         .map((u) => MapEntry(u.topic, (ok: u.correct, tot: u.total)))
         .toList();
 
+    return (
+      mathTopics: mathTopics,
+      engTopics: engTopics,
+      math: _sumSections(mathSections),
+      eng: _sumSections(engSections),
+      topicScores: topicScores,
+      unitScores: unitScores,
+    );
+  }
+
+  /// Builds the result HTML string — used ONLY by the silent bot-upload (the
+  /// server converts it into the parent/teacher Telegram PDF report). The
+  /// user-facing "PDF hisobot" button never touches this — see _generatePdf,
+  /// which builds a real PDF via PdfService so it never downloads raw HTML.
+  Future<String> _buildHtmlString() async {
+    final s = _buildReportSections();
     return HtmlService.generateResultHtml(
       firstName: widget.firstName,
       lastName: widget.lastName,
       group: widget.group ?? '',
       grade: widget.grade,
       variant: widget.variant,
-      mathOk: math.correct,
-      mathTotal: math.total,
-      engOk: eng.correct,
-      engTotal: eng.total,
+      mathOk: s.math.correct,
+      mathTotal: s.math.total,
+      engOk: s.eng.correct,
+      engTotal: s.eng.total,
       pct: widget.result.totalPct.round(),
-      mathTopics: mathTopics,
-      engTopics: engTopics,
-      topicScores: topicScores,
-      unitScores: unitScores,
+      mathTopics: s.mathTopics,
+      engTopics: s.engTopics,
+      topicScores: s.topicScores,
+      unitScores: s.unitScores,
       aiSummary: _aiSummary,
     );
   }
@@ -713,8 +735,28 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
   Future<void> _generatePdf() async {
     if (_pdfGenerating) return;
     setState(() => _pdfGenerating = true);
+    final l10n = AppLocalizations.of(context)!;
     try {
-      final htmlStr = await _buildHtmlString();
+      final s = _buildReportSections();
+      final pdfBytes = await PdfService.generateResultPdf(
+        firstName: widget.firstName,
+        lastName: widget.lastName,
+        group: widget.group ?? '',
+        grade: widget.grade,
+        variant: widget.variant,
+        mathOk: s.math.correct,
+        mathTotal: s.math.total,
+        engOk: s.eng.correct,
+        engTotal: s.eng.total,
+        pct: widget.result.totalPct.round(),
+        mathTopics: s.mathTopics,
+        engTopics: s.engTopics,
+        topicScores: s.topicScores,
+        unitScores: s.unitScores,
+        aiSummary: _aiSummary,
+        l10n: l10n,
+      );
+
       String? path;
       if (!Platform.isIOS && !Platform.isAndroid) {
         try {
@@ -732,8 +774,8 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
 
           if (dir != null) {
             final testPath =
-                '${dir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.html';
-            await File(testPath).writeAsString(htmlStr);
+                '${dir.path}/natija_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+            await File(testPath).writeAsBytes(pdfBytes);
             path = testPath;
           }
         } catch (_) {}
@@ -742,8 +784,8 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       if (path == null) {
         final fallbackDir = await getApplicationSupportDirectory();
         path =
-            '${fallbackDir.path}/result_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.html';
-        await File(path).writeAsString(htmlStr);
+            '${fallbackDir.path}/natija_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+        await File(path).writeAsBytes(pdfBytes);
       }
 
       if (mounted) setState(() => _pdfPath = path);
@@ -756,8 +798,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                  AppLocalizations.of(context)!.reportSavedButOpenFailedMsg),
+              content: Text(l10n.reportSavedButOpenFailedMsg),
               backgroundColor: AppColors.err,
               behavior: SnackBarBehavior.floating,
             ),
@@ -769,7 +810,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)!.reportGenerationError),
+            content: Text(l10n.reportGenerationError),
             backgroundColor: AppColors.err,
             behavior: SnackBarBehavior.floating,
           ),
