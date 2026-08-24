@@ -119,6 +119,7 @@ class _QuestionReportSheetState extends State<_QuestionReportSheet> {
       'school_code': widget.schoolCode,
       'session_id': widget.sessionId,
       'reason': reason.wireValue,
+      'source': 'flutter',
       'comment': comment,
     };
 
