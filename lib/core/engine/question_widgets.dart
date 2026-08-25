@@ -394,6 +394,32 @@ class ImageChoiceWidget extends StatelessWidget {
 // 3. SpellingWidget — type: spelling
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Splits the raw scramble string ("a  g  m  e") into individual letter
+/// tiles. Uses `\s+` (not a fixed "  ") so both single- and double-space
+/// separated JSON data render correctly.
+List<String> _spellingLetters(String? scramble) => (scramble ?? '')
+    .split(RegExp(r'\s+'))
+    .where((s) => s.isNotEmpty)
+    .toList();
+
+/// Greedily marks one letter tile "used" per typed character, left to
+/// right — so duplicate letters (e.g. two "r"s) are consumed one at a
+/// time instead of all flipping together. Recomputed from scratch on
+/// every keystroke, so deleting text un-marks tiles automatically.
+List<bool> _spellingUsedFlags(List<String> letters, String typed) {
+  final used = List<bool>.filled(letters.length, false);
+  for (final ch in typed.toLowerCase().split('')) {
+    if (ch.trim().isEmpty) continue;
+    for (var i = 0; i < letters.length; i++) {
+      if (!used[i] && letters[i].toLowerCase() == ch) {
+        used[i] = true;
+        break;
+      }
+    }
+  }
+  return used;
+}
+
 /// Scrambled letters → user types the correct word.
 /// Controller is managed by [TestEngine] to persist across rebuilds.
 class SpellingWidget extends StatelessWidget {
@@ -443,24 +469,61 @@ class SpellingWidget extends StatelessWidget {
           _buildQuestionImage(question.img!, height: 270),
         if (question.img != null && question.img!.isNotEmpty)
           const SizedBox(height: 10),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.violetMuted,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.violetBorder),
-          ),
-          child: Text(
-            question.scramble ?? '',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: AppColors.violetInk,
-              letterSpacing: 4,
-            ),
-          ),
+        AnimatedBuilder(
+          animation: controller,
+          builder: (context, _) {
+            final letters = _spellingLetters(question.scramble);
+            final used = _spellingUsedFlags(letters, controller.text);
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.violetMuted,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.violetBorder),
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (var i = 0; i < letters.length; i++)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: used[i] ? AppColors.successMuted : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color:
+                              used[i] ? AppColors.success : AppColors.violetBorder,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (used[i]) ...[
+                            const Icon(Icons.check_rounded,
+                                size: 14, color: AppColors.success),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(
+                            letters[i],
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: used[i]
+                                  ? AppColors.success
+                                  : AppColors.violetInk,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         ),
         const SizedBox(height: 10),
         TextField(
