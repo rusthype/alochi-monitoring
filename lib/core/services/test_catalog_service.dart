@@ -136,6 +136,7 @@ class TestCatalogService {
     // Online urinish
     List<Map<String, dynamic>> catalog;
     bool fetchFailed;
+    Object? fetchError;
     try {
       catalog =
           await _api.fetchTestCatalog(groupId: groupId, schoolCode: schoolCode);
@@ -144,11 +145,19 @@ class TestCatalogService {
       debugPrint('TestCatalogService.refresh: network error: $e');
       catalog = [];
       fetchFailed = true;
+      fetchError = e;
     }
 
     if (fetchFailed) {
-      // Tarmoq xatosi — faqat keshdan ko'rsat
-      if (cachedRows.isEmpty) return [];
+      // Tarmoq xatosi — faqat keshdan ko'rsat. Lekin keshda HECH narsa yo'q
+      // bo'lsa, bu "chindan ham bo'sh" degani emas — masalan 429/timeout
+      // (2026-08-25: guruh tanlashda throttle 429'i xuddi shu yo'l bilan
+      // "Bu guruh uchun test topilmadi"ga aylanib qolgan, guruh o'zgarib
+      // qaytilganda tasodifan tuzalgandek ko'ringan). Chaqiruvchi (masalan
+      // GroupSelectScreen._selectGroup) buni ochiq xato holati sifatida
+      // ko'rsatib, qayta urinish imkonini bersin — jim tarzda bo'sh ro'yxat
+      // qaytarish o'rniga.
+      if (cachedRows.isEmpty) throw fetchError ?? Exception('catalog fetch failed');
       return cachedRows.map((row) {
         final key = row['test_key']?.toString() ?? '';
         final title = row['title']?.toString() ?? '';
