@@ -49,6 +49,11 @@ dependencies:
   go_router: ^17.3.0
   mac_menu_bar: ^0.0.5
 
+  # Live proctoring (Windows kiosk): GDI screen capture via pure Dart FFI.
+  win32: ^5.15.0
+  ffi: ^2.2.0
+  image: ^4.8.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

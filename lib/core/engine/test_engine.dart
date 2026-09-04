@@ -15,6 +15,7 @@ import 'test_models.dart';
 import 'test_scorer.dart';
 import 'question_widgets.dart';
 import '../services/heartbeat_service.dart';
+import '../services/proctor_service.dart';
 import '../../features/test/question_report_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -160,6 +161,16 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     // is ever notified after it stops being the active one.
     HeartbeatService.instance.onTerminated = _finishNow;
 
+    // Live proctoring (Windows kiosk only, no-op elsewhere) — the sole
+    // chokepoint all three test-launch flows pass through. Started here,
+    // stopped in dispose().
+    ProctorService.instance
+      ..onLock = _finishNow
+      ..onExtendSeconds = (secs) {
+        if (mounted) setState(() => _secs += secs);
+      }
+      ..start();
+
     _restoreAttempt();
   }
 
@@ -292,6 +303,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   void dispose() {
     _timer?.cancel();
     _saveDebounce?.cancel();
+    ProctorService.instance.stop();
     _fadeCtrl.dispose();
     for (final c in _controllers.values) {
       c.dispose();
@@ -418,11 +430,10 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     final result = TestScorer.score(widget.spec, _variantKey, _answers);
     final startedAtMs = _startedAtMs;
     final elapsedSeconds = startedAtMs != null
-        ? ((DateTime.now().millisecondsSinceEpoch - startedAtMs) / 1000)
-            .round()
+        ? ((DateTime.now().millisecondsSinceEpoch - startedAtMs) / 1000).round()
         : null;
-    widget.onComplete(
-        result, (elapsedSeconds != null && elapsedSeconds > 0) ? elapsedSeconds : null);
+    widget.onComplete(result,
+        (elapsedSeconds != null && elapsedSeconds > 0) ? elapsedSeconds : null);
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────

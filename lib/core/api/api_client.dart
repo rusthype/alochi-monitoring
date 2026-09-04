@@ -211,6 +211,46 @@ class MonitoringApi {
     });
   }
 
+  /// Uploads one live-proctoring screen frame (see ProctorService). Best
+  /// effort, same posture as [uploadResultHtml] — a dropped frame must never
+  /// interrupt the exam, so every failure path returns an empty map instead
+  /// of throwing; the caller treats an empty map as "no panel action".
+  Future<Map<String, dynamic>> proctorFrame({
+    required String sessionId,
+    required String token,
+    required Uint8List jpeg,
+    required bool focus,
+    required int monitorCount,
+    int? questionIndex,
+    int? totalQuestions,
+  }) async {
+    try {
+      final req =
+          http.MultipartRequest('POST', Uri.parse('$_base/proctor/frame/'))
+            ..fields['session_id'] = sessionId
+            ..fields['token'] = token
+            ..fields['focus'] = focus.toString()
+            ..fields['monitor_count'] = monitorCount.toString();
+      if (questionIndex != null) {
+        req.fields['q_idx'] = questionIndex.toString();
+      }
+      if (totalQuestions != null) {
+        req.fields['total'] = totalQuestions.toString();
+      }
+      req.files
+          .add(http.MultipartFile.fromBytes('frame', jpeg, filename: 'f.jpg'));
+      final streamed = await req.send().timeout(const Duration(seconds: 5));
+      final body = await streamed.stream.bytesToString();
+      if (streamed.statusCode == 200) {
+        final decoded = jsonDecode(body);
+        return decoded is Map<String, dynamic> ? decoded : {};
+      }
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
   Future<List<Map<String, dynamic>>> fetchDownloads(String schoolCode) async {
     try {
       final resp = await _send(() => http.get(
@@ -507,7 +547,10 @@ class MonitoringApi {
       final data = await _get('/messages/',
           extraHeaders: {'Authorization': 'Bearer $authToken'});
       if (data is! List) return [];
-      return data.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      return data
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
     } catch (e) {
       debugPrint('fetchMessages error: $e');
       return [];
@@ -579,7 +622,8 @@ class MonitoringApi {
       {required String authToken}) async {
     if (authToken.isEmpty || resultId.isEmpty) return null;
     final resp = await _send(() => http.get(
-          Uri.parse('$_base/results/${Uri.encodeComponent(resultId)}/breakdown/'),
+          Uri.parse(
+              '$_base/results/${Uri.encodeComponent(resultId)}/breakdown/'),
           headers: {..._headers, 'Authorization': 'Bearer $authToken'},
         ));
     if (resp.statusCode == 404) return null;

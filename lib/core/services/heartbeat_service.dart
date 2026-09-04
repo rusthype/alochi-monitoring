@@ -32,6 +32,20 @@ class HeartbeatService with WidgetsBindingObserver {
   /// never call anything here that would mutate ping/conflict/terminated
   /// state; that stays owned by [startTest]/[cancelTest]/[finishTest].
   String? get activeSessionId => _activeSessionId;
+
+  String? _proctorToken;
+  int _proctorIntervalMs = 2500;
+
+  /// Per-session HMAC handed back by the ping response, consumed by
+  /// ProctorService. Null until the first successful ping of a test session.
+  String? get proctorToken => _proctorToken;
+  int get proctorIntervalMs => _proctorIntervalMs;
+
+  /// Public read-only progress surface for ProctorService (avoids
+  /// duplicating question-index/total state that this service already owns).
+  int? get currentQuestionIndex => _currentQuestionIndex;
+  int? get totalQuestions => _totalQuestions;
+
   String _schoolCode = '';
   String _name = '';
   String _variant = '';
@@ -145,6 +159,7 @@ class HeartbeatService with WidgetsBindingObserver {
     _testKey = '';
     _studentCode = null;
     _tabSwitchCount = 0;
+    _proctorToken = null;
   }
 
   void finishTest() {
@@ -160,6 +175,7 @@ class HeartbeatService with WidgetsBindingObserver {
     _currentQuestionIndex = null;
     _totalQuestions = null;
     _questionTimes = null;
+    _proctorToken = null;
   }
 
   /// Login qilgan talaba identitini idle-presence heartbeat'ga (start()
@@ -224,6 +240,10 @@ class HeartbeatService with WidgetsBindingObserver {
       if (response['terminated'] == true) {
         onTerminated?.call();
       }
+      final tok = response['proctor_token'];
+      if (tok is String && tok.isNotEmpty) _proctorToken = tok;
+      final iv = response['proctor_interval_ms'];
+      if (iv is int && iv >= 1000 && iv <= 30000) _proctorIntervalMs = iv;
       return response;
     } catch (_) {
       return null;
