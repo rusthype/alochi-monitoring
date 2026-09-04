@@ -36,7 +36,7 @@ class ProctorService {
   ValueChanged<int>? onExtendSeconds;
 
   void start() {
-    if (!Platform.isWindows) return;
+    if (!Platform.isWindows && !Platform.isMacOS) return;
     stop(); // idempotent restart
     _running = true;
     _scheduleNext(_baseInterval);

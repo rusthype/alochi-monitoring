@@ -4,7 +4,7 @@
 // no-op/default on non-Windows platforms, so call sites never need their
 // own Platform.isWindows guard.
 import 'dart:ffi';
-import 'dart:io' show Platform;
+import 'dart:io' show Directory, File, Platform, Process;
 import 'dart:isolate';
 import 'dart:typed_data';
 
@@ -22,6 +22,7 @@ const int kJpegQuality = 55;
 /// as JPEG bytes. Returns null on any GDI failure or off-Windows.
 /// Encoding runs in [Isolate.run] so the exam UI never drops a frame.
 Future<Uint8List?> captureScreenJpeg() async {
+  if (Platform.isMacOS) return _captureMacOsJpeg();
   if (!Platform.isWindows) return null;
   final bgra = _grabBgra();
   if (bgra == null) return null;
@@ -38,6 +39,42 @@ Future<Uint8List?> captureScreenJpeg() async {
     });
   } catch (_) {
     return null;
+  }
+}
+
+/// macOS capture via the `screencapture` + `sips` CLI tools (already present
+/// on every Mac, no FFI/native code/entitlement changes needed — the kiosk's
+/// app-sandbox entitlement is already false). `screencapture -x -m -t jpg`
+/// grabs the main display silently to a temp file; `sips -z H W` downscales
+/// it in place to the same wire size the Windows path emits. Every failure
+/// (missing Screen Recording permission, missing binaries, timeout) is a
+/// null return, matching the Windows contract.
+Future<Uint8List?> _captureMacOsJpeg() async {
+  final tempPath =
+      '${Directory.systemTemp.path}/proctor_${DateTime.now().microsecondsSinceEpoch}.jpg';
+  final tempFile = File(tempPath);
+  try {
+    final capRes = await Process.run(
+      'screencapture',
+      ['-x', '-m', '-t', 'jpg', tempPath],
+    ).timeout(const Duration(seconds: 2));
+    if (capRes.exitCode != 0 || !await tempFile.exists()) return null;
+
+    final sipsRes = await Process.run(
+      'sips',
+      ['-z', '$kFrameHeight', '$kFrameWidth', tempPath],
+    ).timeout(const Duration(seconds: 2));
+    if (sipsRes.exitCode != 0) return null;
+
+    return await tempFile.readAsBytes();
+  } catch (_) {
+    return null;
+  } finally {
+    if (await tempFile.exists()) {
+      try {
+        await tempFile.delete();
+      } catch (_) {}
+    }
   }
 }
 
