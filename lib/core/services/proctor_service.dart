@@ -68,31 +68,43 @@ class ProctorService {
     }
     _inFlight = true;
     try {
-      final jpeg = await captureScreenJpeg();
-      if (jpeg != null) {
+      final capture = await captureScreenJpeg();
+      if (capture != null) {
         final result = await api.proctorFrame(
           sessionId: sessionId,
           token: token,
-          jpeg: jpeg,
+          jpeg: capture.jpeg,
           focus: isForegroundOurs(),
           monitorCount: monitorCount(),
           questionIndex: HeartbeatService.instance.currentQuestionIndex,
           totalQuestions: HeartbeatService.instance.totalQuestions,
           questionText: HeartbeatService.instance.currentQuestionText,
           selectedOptionText: HeartbeatService.instance.selectedOptionText,
+          frameType: capture.frameType,
+          x: capture.x,
+          y: capture.y,
+          w: capture.w,
+          h: capture.h,
+          streamEpoch: capture.streamEpoch,
+          cursorX: capture.cursorX,
+          cursorY: capture.cursorY,
+          cursorVisible: capture.cursorVisible,
         );
         if (result.isNotEmpty) {
           _consecutiveFailures = 0;
           _usingBackoff = false;
           if (result['action'] == 'lock') onLock?.call();
+          if (result['action'] == 'request_keyframe') forceNextKeyframe();
           final extra = result['extra_seconds'];
           if (extra is int) onExtendSeconds?.call(extra);
           // Backend-driven capture profile for the NEXT tick — target_width
           // 960 means spotlight (single-student close-up), anything else
           // (including missing/default) means grid.
-          currentCaptureProfile = result['target_width'] == 960
+          final nextProfile = result['target_width'] == 960
               ? CaptureProfile.spotlight
               : CaptureProfile.grid;
+          if (nextProfile != currentCaptureProfile) forceNextKeyframe();
+          currentCaptureProfile = nextProfile;
         } else {
           _consecutiveFailures++;
         }

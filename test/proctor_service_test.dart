@@ -21,13 +21,13 @@ void main() {
         // either one. What we CAN assert unconditionally: it never throws,
         // and if it does return bytes, they look like a real downscaled
         // JPEG rather than garbage.
-        final bytes = await captureScreenJpeg();
-        if (bytes != null) {
-          expect(bytes, isNotEmpty);
+        final capture = await captureScreenJpeg();
+        if (capture != null) {
+          expect(capture.jpeg, isNotEmpty);
           // Sanity bound only — this is not the server's real 30KB
           // enforcement (already covered by the backend test suite), just
           // a guard against capturing something absurdly large here.
-          expect(bytes.length, lessThan(500 * 1024));
+          expect(capture.jpeg.length, lessThan(500 * 1024));
         }
       },
       timeout: const Timeout(Duration(seconds: 10)),

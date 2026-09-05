@@ -225,6 +225,15 @@ class MonitoringApi {
     int? totalQuestions,
     String? questionText,
     String? selectedOptionText,
+    String? frameType,
+    int? x,
+    int? y,
+    int? w,
+    int? h,
+    int? streamEpoch,
+    int? cursorX,
+    int? cursorY,
+    bool? cursorVisible,
   }) async {
     try {
       final req =
@@ -244,6 +253,19 @@ class MonitoringApi {
       }
       if (selectedOptionText != null && selectedOptionText.isNotEmpty) {
         req.fields['selected_option'] = selectedOptionText;
+      }
+      if (frameType != null) req.fields['frame_type'] = frameType;
+      if (x != null) req.fields['x'] = x.toString();
+      if (y != null) req.fields['y'] = y.toString();
+      if (w != null) req.fields['w'] = w.toString();
+      if (h != null) req.fields['h'] = h.toString();
+      if (streamEpoch != null) {
+        req.fields['stream_epoch'] = streamEpoch.toString();
+      }
+      if (cursorX != null) req.fields['cursor_x'] = cursorX.toString();
+      if (cursorY != null) req.fields['cursor_y'] = cursorY.toString();
+      if (cursorVisible != null) {
+        req.fields['cursor_visible'] = cursorVisible.toString();
       }
       req.files
           .add(http.MultipartFile.fromBytes('frame', jpeg, filename: 'f.jpg'));

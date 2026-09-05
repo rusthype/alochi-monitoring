@@ -29,11 +29,177 @@ class CaptureProfile {
 // boundaries for one value). In-memory only — resets to grid on relaunch.
 CaptureProfile currentCaptureProfile = CaptureProfile.grid;
 
+/// Result of one capture tick: the JPEG bytes plus enough metadata for the
+/// backend to reassemble a patch onto its last-known keyframe and to render
+/// the cursor without decoding pixels for it.
+class CaptureResult {
+  final Uint8List jpeg;
+  final String frameType; // 'keyframe' | 'patch'
+  final int x;
+  final int y;
+  final int w;
+  final int h;
+  final int streamEpoch;
+  final int? cursorX;
+  final int? cursorY;
+  final bool cursorVisible;
+  const CaptureResult({
+    required this.jpeg,
+    required this.frameType,
+    required this.x,
+    required this.y,
+    required this.w,
+    required this.h,
+    required this.streamEpoch,
+    this.cursorX,
+    this.cursorY,
+    this.cursorVisible = false,
+  });
+}
+
+// ponytail: stream_epoch only needs to be stable for the life of this
+// process and change across restarts — a millisecond timestamp mod 1e6
+// satisfies that with zero persistence/coordination. Not a sequence number,
+// just a restart marker the backend uses to discard stale patches.
+final int _streamEpoch = DateTime.now().millisecondsSinceEpoch % 1000000;
+
+// Dirty-rect diffing state (Windows only). Reset whenever the profile
+// changes since grid<->spotlight switches dimensions, invalidating any
+// byte-range comparison against the previous frame.
+Uint8List? _lastFrameBgra;
+CaptureProfile? _lastFrameProfile;
+DateTime? _lastKeyframeAt;
+bool _forceKeyframe = false;
+
+/// Forces the NEXT capture to be a full keyframe. Called by
+/// proctor_service.dart when the capture profile flips (grid<->spotlight)
+/// or the backend requests one via action=='request_keyframe'.
+void forceNextKeyframe() => _forceKeyframe = true;
+
+class _DirtyResult {
+  final String frameType;
+  final int x;
+  final int y;
+  final int w;
+  final int h;
+  const _DirtyResult(this.frameType, this.x, this.y, this.w, this.h);
+}
+
+const int _kDirtyTile = 64;
+const Duration _kKeyframeInterval = Duration(seconds: 12);
+
+bool _rowRangeEqual(Uint8List a, Uint8List b, int start, int length) {
+  for (var i = 0; i < length; i++) {
+    if (a[start + i] != b[start + i]) return false;
+  }
+  return true;
+}
+
+/// Decides whether this tick sends a full keyframe or a cropped patch, and
+/// updates [_lastKeyframeAt] whenever a keyframe is actually produced.
+_DirtyResult _decideDirty(CaptureProfile profile, Uint8List bgra) {
+  final width = profile.width;
+  final height = profile.height;
+  final now = DateTime.now();
+  final profileChanged = _lastFrameProfile != profile;
+  final keyframeDue = _lastKeyframeAt == null ||
+      now.difference(_lastKeyframeAt!) >= _kKeyframeInterval;
+
+  if (_lastFrameBgra == null || profileChanged || keyframeDue || _forceKeyframe) {
+    _forceKeyframe = false;
+    _lastKeyframeAt = now;
+    return _DirtyResult('keyframe', 0, 0, width, height);
+  }
+
+  final prev = _lastFrameBgra!;
+  var minX = width, minY = height, maxX = 0, maxY = 0;
+  var anyDirty = false;
+  for (var ty = 0; ty < height; ty += _kDirtyTile) {
+    final tileH = (ty + _kDirtyTile > height) ? height - ty : _kDirtyTile;
+    for (var tx = 0; tx < width; tx += _kDirtyTile) {
+      final tileW = (tx + _kDirtyTile > width) ? width - tx : _kDirtyTile;
+      var dirty = false;
+      for (var row = 0; row < tileH; row++) {
+        final rowStart = ((ty + row) * width + tx) * 4;
+        final rowLen = tileW * 4;
+        if (!_rowRangeEqual(bgra, prev, rowStart, rowLen)) {
+          dirty = true;
+          break;
+        }
+      }
+      if (dirty) {
+        anyDirty = true;
+        if (tx < minX) minX = tx;
+        if (ty < minY) minY = ty;
+        if (tx + tileW > maxX) maxX = tx + tileW;
+        if (ty + tileH > maxY) maxY = ty + tileH;
+      }
+    }
+  }
+
+  if (!anyDirty) {
+    // ponytail: zero dirty tiles still needs an upload this tick — the tick
+    // loop in proctor_service.dart isn't built to skip uploads, and adding
+    // that would ripple into its timer/backoff bookkeeping for a rare case
+    // (a fully static screen). Sending a minimal 1-tile patch is simplest;
+    // upgrade to a real skip-upload path if bandwidth ever matters.
+    return _DirtyResult(
+        'patch', 0, 0, _kDirtyTile.clamp(0, width), _kDirtyTile.clamp(0, height));
+  }
+
+  final dirtyW = maxX - minX;
+  final dirtyH = maxY - minY;
+  final coverage = (dirtyW * dirtyH) / (width * height);
+  if (coverage < 0.30) {
+    // ponytail: single bounding box, not full multi-rect merge — a scattered
+    // diff (e.g. cursor in one corner + text change in another) still ships
+    // as one rect covering both, which can be larger than the true dirty
+    // area but is far simpler than tracking/encoding a rect list.
+    return _DirtyResult('patch', minX, minY, dirtyW, dirtyH);
+  }
+  _lastKeyframeAt = now;
+  return _DirtyResult('keyframe', 0, 0, width, height);
+}
+
+/// Shared by [_grabBgra] and [_getCursorPosition] so both use the identical
+/// screen-size values for their downscale/coordinate-scale math.
+(int, int) _getScreenSize() {
+  final w = GetSystemMetrics(SM_CXSCREEN);
+  final h = GetSystemMetrics(SM_CYSCREEN);
+  return (w, h);
+}
+
+/// Absolute cursor position converted into [profile]'s downscaled
+/// coordinate space, reusing the exact scale factor [_grabBgra] uses for its
+/// StretchBlt call. Returns invisible when off the captured monitor
+/// entirely (e.g. cursor parked on a secondary monitor).
+(int x, int y, bool visible) _getCursorPosition(CaptureProfile profile) {
+  if (!Platform.isWindows) return (0, 0, false);
+  final point = calloc<POINT>();
+  try {
+    if (GetCursorPos(point) == 0) return (0, 0, false);
+    final rawX = point.ref.x;
+    final rawY = point.ref.y;
+    final (screenW, screenH) = _getScreenSize();
+    if (screenW <= 0 || screenH <= 0) return (0, 0, false);
+    if (rawX < 0 || rawX > screenW || rawY < 0 || rawY > screenH) {
+      return (0, 0, false);
+    }
+    final scaledX =
+        (rawX * profile.width / screenW).round().clamp(0, profile.width);
+    final scaledY =
+        (rawY * profile.height / screenH).round().clamp(0, profile.height);
+    return (scaledX, scaledY, true);
+  } finally {
+    calloc.free(point);
+  }
+}
+
 /// Captures the primary display, downscaled to [currentCaptureProfile]'s
-/// width/height, as JPEG bytes at its quality. Returns null on any GDI
-/// failure or off-Windows. Encoding runs in [Isolate.run] so the exam UI
-/// never drops a frame.
-Future<Uint8List?> captureScreenJpeg() async {
+/// width/height, as a [CaptureResult] (JPEG bytes + dirty-rect/cursor
+/// metadata). Returns null on any GDI failure or off-Windows/macOS.
+/// Encoding runs in [Isolate.run] so the exam UI never drops a frame.
+Future<CaptureResult?> captureScreenJpeg() async {
   final profile = currentCaptureProfile; // snapshot before isolate/CLI hop
   if (Platform.isMacOS) return _captureMacOsJpeg(profile);
   if (!Platform.isWindows) return null;
@@ -42,8 +208,17 @@ Future<Uint8List?> captureScreenJpeg() async {
   final width = profile.width;
   final height = profile.height;
   final quality = profile.quality;
+
+  final dirty = _decideDirty(profile, bgra);
+  final cursor = _getCursorPosition(profile);
+
+  // Stash this tick's raw frame for the NEXT tick's diff, regardless of
+  // whether this tick itself was a keyframe or a patch.
+  _lastFrameBgra = bgra;
+  _lastFrameProfile = profile;
+
   try {
-    return await Isolate.run(() {
+    final jpeg = await Isolate.run(() {
       final image = img.Image.fromBytes(
         width: width,
         height: height,
@@ -51,8 +226,24 @@ Future<Uint8List?> captureScreenJpeg() async {
         numChannels: 4,
         order: img.ChannelOrder.bgra,
       );
-      return img.encodeJpg(image, quality: quality);
+      final target = dirty.frameType == 'keyframe'
+          ? image
+          : img.copyCrop(image,
+              x: dirty.x, y: dirty.y, width: dirty.w, height: dirty.h);
+      return img.encodeJpg(target, quality: quality);
     });
+    return CaptureResult(
+      jpeg: jpeg,
+      frameType: dirty.frameType,
+      x: dirty.x,
+      y: dirty.y,
+      w: dirty.w,
+      h: dirty.h,
+      streamEpoch: _streamEpoch,
+      cursorX: cursor.$1,
+      cursorY: cursor.$2,
+      cursorVisible: cursor.$3,
+    );
   } catch (_) {
     return null;
   }
@@ -65,7 +256,12 @@ Future<Uint8List?> captureScreenJpeg() async {
 /// it in place to the same wire size the Windows path emits. Every failure
 /// (missing Screen Recording permission, missing binaries, timeout) is a
 /// null return, matching the Windows contract.
-Future<Uint8List?> _captureMacOsJpeg(CaptureProfile profile) async {
+///
+/// Stage 2a scope: dirty-rect diffing and cursor capture are Windows-only.
+/// macOS always produces a full-frame keyframe with no cursor data — an
+/// accepted gap since macOS is dev-only here, not a production kiosk
+/// platform.
+Future<CaptureResult?> _captureMacOsJpeg(CaptureProfile profile) async {
   final tempPath =
       '${Directory.systemTemp.path}/proctor_${DateTime.now().microsecondsSinceEpoch}.jpg';
   final tempFile = File(tempPath);
@@ -82,7 +278,17 @@ Future<Uint8List?> _captureMacOsJpeg(CaptureProfile profile) async {
     ).timeout(const Duration(seconds: 2));
     if (sipsRes.exitCode != 0) return null;
 
-    return await tempFile.readAsBytes();
+    final jpeg = await tempFile.readAsBytes();
+    return CaptureResult(
+      jpeg: jpeg,
+      frameType: 'keyframe',
+      x: 0,
+      y: 0,
+      w: profile.width,
+      h: profile.height,
+      streamEpoch: _streamEpoch,
+      cursorVisible: false,
+    );
   } catch (_) {
     return null;
   } finally {
@@ -113,8 +319,7 @@ Uint8List? _grabBgra(CaptureProfile profile) {
     if (hdcMem == 0 || hBmp == 0) return null;
     SelectObject(hdcMem, hBmp);
     SetStretchBltMode(hdcMem, HALFTONE);
-    final screenW = GetSystemMetrics(SM_CXSCREEN);
-    final screenH = GetSystemMetrics(SM_CYSCREEN);
+    final (screenW, screenH) = _getScreenSize();
     final ok = StretchBlt(hdcMem, 0, 0, width, height, hScreen, 0,
         0, screenW, screenH, SRCCOPY);
     if (ok == 0) return null;
