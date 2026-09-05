@@ -9,6 +9,7 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:image/image.dart' as img;
 import 'package:win32/win32.dart';
 
@@ -61,7 +62,12 @@ class CaptureResult {
 // process and change across restarts — a millisecond timestamp mod 1e6
 // satisfies that with zero persistence/coordination. Not a sequence number,
 // just a restart marker the backend uses to discard stale patches.
-final int _streamEpoch = DateTime.now().millisecondsSinceEpoch % 1000000;
+int _streamEpoch = DateTime.now().millisecondsSinceEpoch % 1000000;
+
+/// Test-only peek at the current stream epoch — proves
+/// [resetCaptureStreamForNewSession] actually rotates it.
+@visibleForTesting
+int get currentStreamEpochForTesting => _streamEpoch;
 
 // Dirty-rect diffing state (Windows only). Reset whenever the profile
 // changes since grid<->spotlight switches dimensions, invalidating any
@@ -75,6 +81,18 @@ bool _forceKeyframe = false;
 /// proctor_service.dart when the capture profile flips (grid<->spotlight)
 /// or the backend requests one via action=='request_keyframe'.
 void forceNextKeyframe() => _forceKeyframe = true;
+
+/// Called once per new exam-session start (ProctorService.start()). Rotates
+/// the stream epoch and clears cross-session dirty-rect state so the first
+/// frame of a new session is always a full keyframe under a fresh epoch —
+/// even when the kiosk process is reused back-to-back for two students.
+void resetCaptureStreamForNewSession() {
+  _streamEpoch = DateTime.now().millisecondsSinceEpoch % 1000000;
+  _lastFrameBgra = null;
+  _lastFrameProfile = null;
+  _lastKeyframeAt = null;
+  _forceKeyframe = true;
+}
 
 class _DirtyResult {
   final String frameType;

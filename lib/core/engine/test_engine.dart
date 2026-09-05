@@ -286,7 +286,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
       _currentQuestionIndex,
       _totalQuestions,
       List<int>.from(_questionTimes),
-      question?.q,
+      question?.q ?? question?.words ?? question?.scramble,
       selectedOptionText,
     );
   }

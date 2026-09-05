@@ -38,6 +38,7 @@ class ProctorService {
   void start() {
     if (!Platform.isWindows && !Platform.isMacOS) return;
     stop(); // idempotent restart
+    resetCaptureStreamForNewSession();
     _running = true;
     _scheduleNext(_baseInterval);
   }

@@ -40,6 +40,25 @@ void main() {
     test('monitorCount returns 1', () {
       expect(monitorCount(), 1);
     });
+
+    test(
+      'resetCaptureStreamForNewSession rotates the stream epoch',
+      () async {
+        // Guards against the actual Stage 2a hotfix regressing: if
+        // resetCaptureStreamForNewSession() were removed or stopped
+        // reassigning _streamEpoch, this would fail because the epoch
+        // would stay identical across the two calls.
+        resetCaptureStreamForNewSession();
+        final first = currentStreamEpochForTesting;
+        // Epoch is millis-since-epoch mod 1e6, so two back-to-back calls
+        // can collide within the same millisecond — a tiny delay makes the
+        // second call land in a different millisecond deterministically.
+        await Future.delayed(const Duration(milliseconds: 5));
+        resetCaptureStreamForNewSession();
+        final second = currentStreamEpochForTesting;
+        expect(second, isNot(equals(first)));
+      },
+    );
   });
 
   group('ProctorService', () {
