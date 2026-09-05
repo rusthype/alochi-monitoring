@@ -69,6 +69,22 @@ int _streamEpoch = DateTime.now().millisecondsSinceEpoch % 1000000;
 @visibleForTesting
 int get currentStreamEpochForTesting => _streamEpoch;
 
+// macOS-only failure cooldown: after a screencapture/sips failure (most
+// commonly permission-denied), skip spawning a new subprocess for a while
+// instead of retrying every proctor tick (2.5-15s) for the rest of an exam.
+DateTime? _macOsCaptureCooldownUntil;
+
+bool _macOsCaptureOnCooldown(DateTime now) =>
+    _macOsCaptureCooldownUntil != null && now.isBefore(_macOsCaptureCooldownUntil!);
+
+@visibleForTesting
+void setMacOsCaptureCooldownForTesting(DateTime? until) {
+  _macOsCaptureCooldownUntil = until;
+}
+
+@visibleForTesting
+bool macOsCaptureOnCooldownForTesting(DateTime now) => _macOsCaptureOnCooldown(now);
+
 // Dirty-rect diffing state (Windows only). Reset whenever the profile
 // changes since grid<->spotlight switches dimensions, invalidating any
 // byte-range comparison against the previous frame.
@@ -280,6 +296,9 @@ Future<CaptureResult?> captureScreenJpeg() async {
 /// accepted gap since macOS is dev-only here, not a production kiosk
 /// platform.
 Future<CaptureResult?> _captureMacOsJpeg(CaptureProfile profile) async {
+  final now = DateTime.now();
+  if (_macOsCaptureOnCooldown(now)) return null;
+
   final tempPath =
       '${Directory.systemTemp.path}/proctor_${DateTime.now().microsecondsSinceEpoch}.jpg';
   final tempFile = File(tempPath);
@@ -288,16 +307,22 @@ Future<CaptureResult?> _captureMacOsJpeg(CaptureProfile profile) async {
       'screencapture',
       ['-x', '-m', '-t', 'jpg', tempPath],
     ).timeout(const Duration(seconds: 2));
-    if (capRes.exitCode != 0 || !await tempFile.exists()) return null;
+    if (capRes.exitCode != 0 || !await tempFile.exists()) {
+      _macOsCaptureCooldownUntil = now.add(const Duration(seconds: 30));
+      return null;
+    }
 
     final sipsRes = await Process.run(
       'sips',
       ['-z', '${profile.height}', '${profile.width}', tempPath],
     ).timeout(const Duration(seconds: 2));
-    if (sipsRes.exitCode != 0) return null;
+    if (sipsRes.exitCode != 0) {
+      _macOsCaptureCooldownUntil = now.add(const Duration(seconds: 30));
+      return null;
+    }
 
     final jpeg = await tempFile.readAsBytes();
-    return CaptureResult(
+    final result = CaptureResult(
       jpeg: jpeg,
       frameType: 'keyframe',
       x: 0,
@@ -307,7 +332,10 @@ Future<CaptureResult?> _captureMacOsJpeg(CaptureProfile profile) async {
       streamEpoch: _streamEpoch,
       cursorVisible: false,
     );
+    _macOsCaptureCooldownUntil = null;
+    return result;
   } catch (_) {
+    _macOsCaptureCooldownUntil = now.add(const Duration(seconds: 30));
     return null;
   } finally {
     if (await tempFile.exists()) {

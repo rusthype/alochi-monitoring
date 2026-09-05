@@ -59,6 +59,16 @@ void main() {
         expect(second, isNot(equals(first)));
       },
     );
+
+    test('macOS capture cooldown blocks repeated spawns after a failure', () {
+      final now = DateTime.now();
+      setMacOsCaptureCooldownForTesting(now.add(const Duration(seconds: 30)));
+      expect(macOsCaptureOnCooldownForTesting(now), isTrue);
+      expect(
+        macOsCaptureOnCooldownForTesting(now.add(const Duration(seconds: 31))),
+        isFalse,
+      );
+    });
   });
 
   group('ProctorService', () {

@@ -19,7 +19,6 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:mac_menu_bar/mac_menu_bar.dart';
 import 'core/services/update_service.dart';
-import 'core/services/screen_capture_win.dart';
 
 void main() {
   // Defense-in-depth: Flutter's default ErrorWidget.builder renders an
@@ -115,12 +114,6 @@ void main() {
         SyncService.instance.start();
         unawaited(HeartbeatService.instance.start());
         ConnectivityService.instance.start();
-        if (Platform.isMacOS) {
-          unawaited(captureScreenJpeg()); // fires the Screen Recording TCC
-          // prompt at cold start, not mid-exam — macOS requires an app
-          // relaunch for the grant to take effect either way, so that
-          // relaunch now happens before any student's test session exists.
-        }
 
         if (Platform.isMacOS) {
           try {
