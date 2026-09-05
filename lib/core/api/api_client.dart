@@ -223,6 +223,8 @@ class MonitoringApi {
     required int monitorCount,
     int? questionIndex,
     int? totalQuestions,
+    String? questionText,
+    String? selectedOptionText,
   }) async {
     try {
       final req =
@@ -236,6 +238,12 @@ class MonitoringApi {
       }
       if (totalQuestions != null) {
         req.fields['total'] = totalQuestions.toString();
+      }
+      if (questionText != null && questionText.isNotEmpty) {
+        req.fields['q_text'] = questionText;
+      }
+      if (selectedOptionText != null && selectedOptionText.isNotEmpty) {
+        req.fields['selected_option'] = selectedOptionText;
       }
       req.files
           .add(http.MultipartFile.fromBytes('frame', jpeg, filename: 'f.jpg'));

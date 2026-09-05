@@ -78,6 +78,8 @@ class ProctorService {
           monitorCount: monitorCount(),
           questionIndex: HeartbeatService.instance.currentQuestionIndex,
           totalQuestions: HeartbeatService.instance.totalQuestions,
+          questionText: HeartbeatService.instance.currentQuestionText,
+          selectedOptionText: HeartbeatService.instance.selectedOptionText,
         );
         if (result.isNotEmpty) {
           _consecutiveFailures = 0;
@@ -85,6 +87,12 @@ class ProctorService {
           if (result['action'] == 'lock') onLock?.call();
           final extra = result['extra_seconds'];
           if (extra is int) onExtendSeconds?.call(extra);
+          // Backend-driven capture profile for the NEXT tick — target_width
+          // 960 means spotlight (single-student close-up), anything else
+          // (including missing/default) means grid.
+          currentCaptureProfile = result['target_width'] == 960
+              ? CaptureProfile.spotlight
+              : CaptureProfile.grid;
         } else {
           _consecutiveFailures++;
         }

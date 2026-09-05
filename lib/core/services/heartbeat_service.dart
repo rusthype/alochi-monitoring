@@ -45,6 +45,8 @@ class HeartbeatService with WidgetsBindingObserver {
   /// duplicating question-index/total state that this service already owns).
   int? get currentQuestionIndex => _currentQuestionIndex;
   int? get totalQuestions => _totalQuestions;
+  String? get currentQuestionText => _currentQuestionText;
+  String? get selectedOptionText => _selectedOptionText;
 
   String _schoolCode = '';
   String _name = '';
@@ -55,6 +57,8 @@ class HeartbeatService with WidgetsBindingObserver {
   int? _currentQuestionIndex;
   int? _totalQuestions;
   List<int>? _questionTimes;
+  String? _currentQuestionText;
+  String? _selectedOptionText;
 
   String? _cachedPlatform;
   String? _cachedAppVersion;
@@ -175,6 +179,8 @@ class HeartbeatService with WidgetsBindingObserver {
     _currentQuestionIndex = null;
     _totalQuestions = null;
     _questionTimes = null;
+    _currentQuestionText = null;
+    _selectedOptionText = null;
     _proctorToken = null;
   }
 
@@ -207,10 +213,13 @@ class HeartbeatService with WidgetsBindingObserver {
   }
 
   void updateProgress(
-      int currentQuestionIndex, int totalQuestions, List<int> questionTimes) {
+      int currentQuestionIndex, int totalQuestions, List<int> questionTimes,
+      [String? currentQuestionText, String? selectedOptionText]) {
     _currentQuestionIndex = currentQuestionIndex;
     _totalQuestions = totalQuestions;
     _questionTimes = questionTimes;
+    _currentQuestionText = currentQuestionText;
+    _selectedOptionText = selectedOptionText;
   }
 
   Future<Map<String, dynamic>?> _ping(String status) async {

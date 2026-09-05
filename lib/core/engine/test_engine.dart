@@ -256,11 +256,38 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     _reportProgress();
   }
 
+  /// The AnswerSlot the student is currently on (next unanswered slot in the
+  /// active section) — reuses the same section/answered-count derivation as
+  /// [_currentQuestionIndex] rather than re-deriving it. Null once the
+  /// active section is fully answered (e.g. right before submit).
+  AnswerSlot? get _currentSlot {
+    if (_sectionIdx < 0 || _sectionIdx >= _sections.length) return null;
+    final slots = _sections[_sectionIdx].answerSlots;
+    final localIdx = _answeredInSection(_sectionIdx);
+    if (localIdx < 0 || localIdx >= slots.length) return null;
+    return slots[localIdx];
+  }
+
   void _reportProgress() {
+    final slot = _currentSlot;
+    final question = slot?.question;
+    String? selectedOptionText;
+    if (slot != null) {
+      final raw = _answers[slot.key];
+      if (raw != null) {
+        selectedOptionText = (question!.opts.isNotEmpty && raw is int)
+            ? (raw >= 0 && raw < question.opts.length
+                ? question.opts[raw]
+                : raw.toString())
+            : raw.toString();
+      }
+    }
     HeartbeatService.instance.updateProgress(
       _currentQuestionIndex,
       _totalQuestions,
       List<int>.from(_questionTimes),
+      question?.q,
+      selectedOptionText,
     );
   }
 
