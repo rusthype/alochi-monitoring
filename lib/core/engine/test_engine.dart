@@ -96,6 +96,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   /// True while the admin-lock shield overlay is shown, right before
   /// [_finishNow] ends the test.
   bool _lockShieldVisible = false;
+  Timer? _lockShieldTimer;
 
   final Stopwatch _questionStopwatch = Stopwatch()..start();
   final List<int> _questionTimes = [];
@@ -377,13 +378,19 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   /// a moment to see why the test just ended.
   void _showLockShield() {
     setState(() => _lockShieldVisible = true);
-    Future.delayed(const Duration(milliseconds: 1800), _finishNow);
+    // Tracked so dispose() can cancel it — an untracked Future.delayed here
+    // would still fire _finishNow() after the widget (and its
+    // TextEditingControllers) are disposed if the route is popped or
+    // HeartbeatService.onTerminated finishes the test first.
+    _lockShieldTimer?.cancel();
+    _lockShieldTimer = Timer(const Duration(milliseconds: 1800), _finishNow);
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     _saveDebounce?.cancel();
+    _lockShieldTimer?.cancel();
     for (final t in _toasts) {
       t.timer?.cancel();
     }

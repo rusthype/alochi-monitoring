@@ -101,10 +101,14 @@ class ProctorService {
           if (result['action'] == 'request_keyframe') forceNextKeyframe();
           final extra = result['extra_seconds'];
           if (extra is int) onExtendSeconds?.call(extra);
-          final warn = result['warning'] ??
-              (result['action'] == 'warning' ? result['message'] : null);
-          if (warn is String && warn.trim().isNotEmpty) {
-            onWarning?.call(warn.trim());
+          // The backend only ever sends a warning as {'action': 'warning',
+          // 'message': ...} (see MonitoringSessionWarningView) — no bare
+          // top-level 'warning' key exists on the wire.
+          if (result['action'] == 'warning') {
+            final warn = result['message'];
+            if (warn is String && warn.trim().isNotEmpty) {
+              onWarning?.call(warn.trim());
+            }
           }
           // Backend-driven capture profile for the NEXT tick — target_width
           // 960 means spotlight (single-student close-up), anything else
