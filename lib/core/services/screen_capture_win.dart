@@ -9,7 +9,7 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show kDebugMode, visibleForTesting;
 import 'package:image/image.dart' as img;
 import 'package:win32/win32.dart';
 
@@ -69,21 +69,29 @@ int _streamEpoch = DateTime.now().millisecondsSinceEpoch % 1000000;
 @visibleForTesting
 int get currentStreamEpochForTesting => _streamEpoch;
 
-// macOS-only failure cooldown: after a screencapture/sips failure (most
-// commonly permission-denied), skip spawning a new subprocess for a while
-// instead of retrying every proctor tick (2.5-15s) for the rest of an exam.
-DateTime? _macOsCaptureCooldownUntil;
+// macOS-only permanent disable: once `screencapture`/`sips` fails once (the
+// overwhelming common cause is a denied/pending Screen Recording TCC grant),
+// never spawn another subprocess for the rest of this process's life. TCC
+// dialogs are anchored to the process, so a timed retry (the previous fix)
+// just re-shows the same system dialog every 30s forever — only a relaunch
+// (after granting permission in System Settings) should re-arm capture.
+bool _macOsCaptureDisabled = false;
 
-bool _macOsCaptureOnCooldown(DateTime now) =>
-    _macOsCaptureCooldownUntil != null && now.isBefore(_macOsCaptureCooldownUntil!);
+// Debug-mode default: unless a developer explicitly opts in, never call
+// `screencapture` at all when running locally via `flutter run` (kDebugMode
+// is always false in a real `flutter build --release` Windows kiosk
+// installer, so this can never affect production). Opt in with
+// `ALOCHI_FORCE_MACOS_CAPTURE=1` in the environment before launch.
+bool get _macOsCaptureAllowedInDebug =>
+    !kDebugMode || Platform.environment['ALOCHI_FORCE_MACOS_CAPTURE'] == '1';
 
 @visibleForTesting
-void setMacOsCaptureCooldownForTesting(DateTime? until) {
-  _macOsCaptureCooldownUntil = until;
+void setMacOsCaptureDisabledForTesting(bool disabled) {
+  _macOsCaptureDisabled = disabled;
 }
 
 @visibleForTesting
-bool macOsCaptureOnCooldownForTesting(DateTime now) => _macOsCaptureOnCooldown(now);
+bool get macOsCaptureDisabledForTesting => _macOsCaptureDisabled;
 
 // Dirty-rect diffing state (Windows only). Reset whenever the profile
 // changes since grid<->spotlight switches dimensions, invalidating any
@@ -287,17 +295,22 @@ Future<CaptureResult?> captureScreenJpeg() async {
 /// on every Mac, no FFI/native code/entitlement changes needed — the kiosk's
 /// app-sandbox entitlement is already false). `screencapture -x -m -t jpg`
 /// grabs the main display silently to a temp file; `sips -z H W` downscales
-/// it in place to the same wire size the Windows path emits. Every failure
-/// (missing Screen Recording permission, missing binaries, timeout) is a
-/// null return, matching the Windows contract.
+/// it in place to the same wire size the Windows path emits. The FIRST
+/// failure (missing Screen Recording permission, missing binaries, timeout)
+/// permanently disables real capture for the rest of this process's life —
+/// see [_macOsCaptureDisabled] — and every subsequent call (including this
+/// one, mid-failure) returns [_mockMacOsFrame] instead of retrying
+/// `screencapture`, so the TCC "would like to record this screen" dialog
+/// never resurfaces after the first Allow/Deny.
 ///
 /// Stage 2a scope: dirty-rect diffing and cursor capture are Windows-only.
 /// macOS always produces a full-frame keyframe with no cursor data — an
 /// accepted gap since macOS is dev-only here, not a production kiosk
 /// platform.
 Future<CaptureResult?> _captureMacOsJpeg(CaptureProfile profile) async {
-  final now = DateTime.now();
-  if (_macOsCaptureOnCooldown(now)) return null;
+  if (_macOsCaptureDisabled || !_macOsCaptureAllowedInDebug) {
+    return _mockMacOsFrame(profile);
+  }
 
   final tempPath =
       '${Directory.systemTemp.path}/proctor_${DateTime.now().microsecondsSinceEpoch}.jpg';
@@ -308,8 +321,8 @@ Future<CaptureResult?> _captureMacOsJpeg(CaptureProfile profile) async {
       ['-x', '-m', '-t', 'jpg', tempPath],
     ).timeout(const Duration(seconds: 2));
     if (capRes.exitCode != 0 || !await tempFile.exists()) {
-      _macOsCaptureCooldownUntil = now.add(const Duration(seconds: 30));
-      return null;
+      _macOsCaptureDisabled = true;
+      return _mockMacOsFrame(profile);
     }
 
     final sipsRes = await Process.run(
@@ -317,12 +330,12 @@ Future<CaptureResult?> _captureMacOsJpeg(CaptureProfile profile) async {
       ['-z', '${profile.height}', '${profile.width}', tempPath],
     ).timeout(const Duration(seconds: 2));
     if (sipsRes.exitCode != 0) {
-      _macOsCaptureCooldownUntil = now.add(const Duration(seconds: 30));
-      return null;
+      _macOsCaptureDisabled = true;
+      return _mockMacOsFrame(profile);
     }
 
     final jpeg = await tempFile.readAsBytes();
-    final result = CaptureResult(
+    return CaptureResult(
       jpeg: jpeg,
       frameType: 'keyframe',
       x: 0,
@@ -332,11 +345,9 @@ Future<CaptureResult?> _captureMacOsJpeg(CaptureProfile profile) async {
       streamEpoch: _streamEpoch,
       cursorVisible: false,
     );
-    _macOsCaptureCooldownUntil = null;
-    return result;
   } catch (_) {
-    _macOsCaptureCooldownUntil = now.add(const Duration(seconds: 30));
-    return null;
+    _macOsCaptureDisabled = true;
+    return _mockMacOsFrame(profile);
   } finally {
     if (await tempFile.exists()) {
       try {
@@ -344,6 +355,35 @@ Future<CaptureResult?> _captureMacOsJpeg(CaptureProfile profile) async {
       } catch (_) {}
     }
   }
+}
+
+Uint8List? _mockFrameCache;
+CaptureProfile? _mockFrameProfile;
+
+/// Lightweight solid-color placeholder JPEG for macOS local dev when real
+/// screen capture is disabled (by default in debug mode, or permanently
+/// after a TCC-denied failure) — keeps the panel receiving frames instead of
+/// going blank, without ever touching a screen-recording API. Encoded once
+/// per capture profile and cached; a static image needs no per-tick isolate
+/// hop.
+CaptureResult _mockMacOsFrame(CaptureProfile profile) {
+  if (_mockFrameCache == null || _mockFrameProfile != profile) {
+    final image = img.Image(width: profile.width, height: profile.height);
+    img.fill(image, color: img.ColorRgb8(30, 30, 34));
+    _mockFrameCache =
+        Uint8List.fromList(img.encodeJpg(image, quality: profile.quality));
+    _mockFrameProfile = profile;
+  }
+  return CaptureResult(
+    jpeg: _mockFrameCache!,
+    frameType: 'keyframe',
+    x: 0,
+    y: 0,
+    w: profile.width,
+    h: profile.height,
+    streamEpoch: _streamEpoch,
+    cursorVisible: false,
+  );
 }
 
 /// Raw BGRA pixel grab via GDI StretchBlt+GetDIBits. Synchronous, must run

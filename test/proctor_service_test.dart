@@ -60,15 +60,16 @@ void main() {
       },
     );
 
-    test('macOS capture cooldown blocks repeated spawns after a failure', () {
-      final now = DateTime.now();
-      setMacOsCaptureCooldownForTesting(now.add(const Duration(seconds: 30)));
-      expect(macOsCaptureOnCooldownForTesting(now), isTrue);
-      expect(
-        macOsCaptureOnCooldownForTesting(now.add(const Duration(seconds: 31))),
-        isFalse,
-      );
-    });
+    test(
+      'macOS capture returns a mock frame (never null) once permanently disabled',
+      () async {
+        setMacOsCaptureDisabledForTesting(true);
+        final capture = await captureScreenJpeg();
+        expect(capture, isNotNull);
+        expect(capture!.jpeg, isNotEmpty);
+        setMacOsCaptureDisabledForTesting(false); // don't leak into other tests
+      },
+    );
   });
 
   group('ProctorService', () {
