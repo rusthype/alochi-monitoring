@@ -951,5 +951,15 @@
   "weekdayThuShort": "Чт",
   "weekdayFriShort": "Пт",
   "weekdaySatShort": "Сб",
-  "weekdaySunShort": "Вс"
+  "weekdaySunShort": "Вс",
+  "adminWarning": "Предупреждение администратора",
+  "timeAdded": "+{minutes} мин добавлено",
+  "@timeAdded": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "testLockedByAdmin": "Тест заблокирован администратором"
 }

@@ -3919,6 +3919,24 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Ya'**
   String get weekdaySunShort;
+
+  /// No description provided for @adminWarning.
+  ///
+  /// In uz, this message translates to:
+  /// **'Administrator ogohlantirishi'**
+  String get adminWarning;
+
+  /// No description provided for @timeAdded.
+  ///
+  /// In uz, this message translates to:
+  /// **'+{minutes} daqiqa qo\'shildi'**
+  String timeAdded(int minutes);
+
+  /// No description provided for @testLockedByAdmin.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test administrator tomonidan bloklandi'**
+  String get testLockedByAdmin;
 }
 
 class _AppLocalizationsDelegate

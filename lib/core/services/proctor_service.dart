@@ -35,6 +35,9 @@ class ProctorService {
   /// Called when the panel presses "+N minutes" (frame response extra_seconds).
   ValueChanged<int>? onExtendSeconds;
 
+  /// Called when the panel sends a proctor warning (frame response warning/message).
+  ValueChanged<String>? onWarning;
+
   void start() {
     if (!Platform.isWindows && !Platform.isMacOS) return;
     stop(); // idempotent restart
@@ -98,6 +101,11 @@ class ProctorService {
           if (result['action'] == 'request_keyframe') forceNextKeyframe();
           final extra = result['extra_seconds'];
           if (extra is int) onExtendSeconds?.call(extra);
+          final warn = result['warning'] ??
+              (result['action'] == 'warning' ? result['message'] : null);
+          if (warn is String && warn.trim().isNotEmpty) {
+            onWarning?.call(warn.trim());
+          }
           // Backend-driven capture profile for the NEXT tick — target_width
           // 960 means spotlight (single-student close-up), anything else
           // (including missing/default) means grid.

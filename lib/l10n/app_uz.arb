@@ -989,5 +989,15 @@
   "weekdayThuShort": "Pa",
   "weekdayFriShort": "Ju",
   "weekdaySatShort": "Sh",
-  "weekdaySunShort": "Ya"
+  "weekdaySunShort": "Ya",
+  "adminWarning": "Administrator ogohlantirishi",
+  "timeAdded": "+{minutes} daqiqa qo'shildi",
+  "@timeAdded": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "testLockedByAdmin": "Test administrator tomonidan bloklandi"
 }

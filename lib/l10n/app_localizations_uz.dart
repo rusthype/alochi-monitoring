@@ -2079,4 +2079,15 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get weekdaySunShort => 'Ya';
+
+  @override
+  String get adminWarning => 'Administrator ogohlantirishi';
+
+  @override
+  String timeAdded(int minutes) {
+    return '+$minutes daqiqa qo\'shildi';
+  }
+
+  @override
+  String get testLockedByAdmin => 'Test administrator tomonidan bloklandi';
 }

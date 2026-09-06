@@ -72,12 +72,30 @@ class TestEngine extends StatefulWidget {
   State<TestEngine> createState() => _TestEngineState();
 }
 
+enum _ToastKind { warning, extended }
+
+/// Transient proctor-notification banner (admin warning / time-extend).
+/// Self-removes from `_toasts` via [timer] after its display duration.
+class _ToastEntry {
+  final _ToastKind kind;
+  final String message;
+  Timer? timer;
+  _ToastEntry(this.kind, this.message);
+}
+
 class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   // ── State ──────────────────────────────────────────────────────────────────
 
   int _sectionIdx = 0;
   late int _secs;
   Timer? _timer;
+
+  /// Active proctor-notification toasts (top-right overlay).
+  final List<_ToastEntry> _toasts = [];
+
+  /// True while the admin-lock shield overlay is shown, right before
+  /// [_finishNow] ends the test.
+  bool _lockShieldVisible = false;
 
   final Stopwatch _questionStopwatch = Stopwatch()..start();
   final List<int> _questionTimes = [];
@@ -165,9 +183,25 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     // chokepoint all three test-launch flows pass through. Started here,
     // stopped in dispose().
     ProctorService.instance
-      ..onLock = _finishNow
+      ..onLock = () {
+        if (mounted) _showLockShield();
+      }
+      ..onWarning = (msg) {
+        if (mounted) {
+          _pushToast(_ToastKind.warning, msg, const Duration(seconds: 10));
+        }
+      }
       ..onExtendSeconds = (secs) {
-        if (mounted) setState(() => _secs += secs);
+        if (mounted) {
+          setState(() => _secs += secs);
+          var minutes = (secs / 60).round();
+          if (minutes < 1) minutes = 1;
+          _pushToast(
+            _ToastKind.extended,
+            AppLocalizations.of(context)!.timeAdded(minutes),
+            const Duration(seconds: 5),
+          );
+        }
       }
       ..start();
 
@@ -326,10 +360,33 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
     });
   }
 
+  // ── Proctor notification overlays ───────────────────────────────────────────
+
+  /// Adds a transient toast (admin warning / time-extend) and schedules its
+  /// own removal after [duration].
+  void _pushToast(_ToastKind kind, String message, Duration duration) {
+    final entry = _ToastEntry(kind, message);
+    entry.timer = Timer(duration, () {
+      if (mounted) setState(() => _toasts.remove(entry));
+    });
+    setState(() => _toasts.add(entry));
+  }
+
+  /// Shows the full-screen admin-lock shield, then ends the test — mirrors
+  /// the previous silent `onLock = _finishNow` wiring but gives the student
+  /// a moment to see why the test just ended.
+  void _showLockShield() {
+    setState(() => _lockShieldVisible = true);
+    Future.delayed(const Duration(milliseconds: 1800), _finishNow);
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
     _saveDebounce?.cancel();
+    for (final t in _toasts) {
+      t.timer?.cancel();
+    }
     ProctorService.instance.stop();
     _fadeCtrl.dispose();
     for (final c in _controllers.values) {
@@ -486,68 +543,152 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: Column(children: [
-        // ── Progress bar ─────────────────────────────────────────────────────
-        SizedBox(
-          height: 4,
-          child: Stack(children: [
-            Container(
-              width: double.infinity,
-              height: 4,
-              color: AppColors.border,
+      body: Stack(children: [
+        Column(children: [
+          // ── Progress bar ─────────────────────────────────────────────────────
+          SizedBox(
+            height: 4,
+            child: Stack(children: [
+              Container(
+                width: double.infinity,
+                height: 4,
+                color: AppColors.border,
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                width: MediaQuery.sizeOf(context).width * progress,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: progress >= 1.0 ? AppColors.ok : AppColors.brand,
+                  borderRadius:
+                      const BorderRadius.horizontal(right: Radius.circular(3)),
+                ),
+              ),
+            ]),
+          ),
+
+          // ── Top bar ──────────────────────────────────────────────────────────
+          _TopBar(
+            studentName: _studentName(),
+            testTitle: widget.spec.title,
+            variant: widget.variant,
+            answered: _answeredCount,
+            total: _totalQuestions,
+            timerText: _timerText,
+            timerHot: _timerHot,
+          ),
+
+          // ── Section tabs ─────────────────────────────────────────────────────
+          _SectionTabBar(
+            sections: sections,
+            activeIndex: _sectionIdx,
+            answeredInSection: _answeredInSection,
+            onTap: _goSection,
+          ),
+
+          const Divider(height: 1),
+
+          // ── Section body ─────────────────────────────────────────────────────
+          Expanded(
+            child: FadeTransition(
+              opacity: _fadeCtrl,
+              child: _buildSectionBody(sections[_sectionIdx]),
             ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 400),
-              width: MediaQuery.sizeOf(context).width * progress,
-              height: 4,
-              decoration: BoxDecoration(
-                color: progress >= 1.0 ? AppColors.ok : AppColors.brand,
-                borderRadius:
-                    const BorderRadius.horizontal(right: Radius.circular(3)),
+          ),
+
+          // ── Bottom navigation ─────────────────────────────────────────────────
+          _BottomNav(
+            sectionIdx: _sectionIdx,
+            sectionCount: sections.length,
+            isLast: isLast,
+            onPrev: () => _goSection(_sectionIdx - 1),
+            onNext: () => _goSection(_sectionIdx + 1),
+            onFinish: _requestFinish,
+          ),
+        ]),
+
+        // ── Proctor toasts (admin warning / time-extend) ─────────────────────
+        if (_toasts.isNotEmpty)
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: _toasts.map(_buildToastBanner).toList(),
+            ),
+          ),
+
+        // ── Admin-lock shield ─────────────────────────────────────────────────
+        if (_lockShieldVisible) _buildLockShield(),
+      ]),
+    );
+  }
+
+  Widget _buildToastBanner(_ToastEntry entry) {
+    final isWarning = entry.kind == _ToastKind.warning;
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      constraints: const BoxConstraints(maxWidth: 320),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isWarning ? AppColors.secondaryMuted : AppColors.successMuted,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isWarning ? AppColors.amberBorder : AppColors.emerald,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(
+          isWarning ? Icons.warning_amber_rounded : Icons.alarm_add_rounded,
+          color: isWarning ? AppColors.amberDark : AppColors.success,
+          size: 20,
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            isWarning
+                ? '${l10n.adminWarning}: ${entry.message}'
+                : entry.message,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: isWarning ? AppColors.amberInk : AppColors.emeraldInk,
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildLockShield() {
+    final l10n = AppLocalizations.of(context)!;
+    return Positioned.fill(
+      child: Container(
+        color: AppColors.charcoal.withValues(alpha: .92),
+        child: Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.lock_rounded, color: Colors.white, size: 56),
+            const SizedBox(height: 16),
+            Text(
+              l10n.testLockedByAdmin,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
               ),
             ),
           ]),
         ),
-
-        // ── Top bar ──────────────────────────────────────────────────────────
-        _TopBar(
-          studentName: _studentName(),
-          testTitle: widget.spec.title,
-          variant: widget.variant,
-          answered: _answeredCount,
-          total: _totalQuestions,
-          timerText: _timerText,
-          timerHot: _timerHot,
-        ),
-
-        // ── Section tabs ─────────────────────────────────────────────────────
-        _SectionTabBar(
-          sections: sections,
-          activeIndex: _sectionIdx,
-          answeredInSection: _answeredInSection,
-          onTap: _goSection,
-        ),
-
-        const Divider(height: 1),
-
-        // ── Section body ─────────────────────────────────────────────────────
-        Expanded(
-          child: FadeTransition(
-            opacity: _fadeCtrl,
-            child: _buildSectionBody(sections[_sectionIdx]),
-          ),
-        ),
-
-        // ── Bottom navigation ─────────────────────────────────────────────────
-        _BottomNav(
-          sectionIdx: _sectionIdx,
-          sectionCount: sections.length,
-          isLast: isLast,
-          onPrev: () => _goSection(_sectionIdx - 1),
-          onNext: () => _goSection(_sectionIdx + 1),
-          onFinish: _requestFinish,
-        ),
-      ]),
+      ),
     );
   }
 

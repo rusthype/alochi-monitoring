@@ -2070,4 +2070,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get weekdaySunShort => 'Вс';
+
+  @override
+  String get adminWarning => 'Предупреждение администратора';
+
+  @override
+  String timeAdded(int minutes) {
+    return '+$minutes мин добавлено';
+  }
+
+  @override
+  String get testLockedByAdmin => 'Тест заблокирован администратором';
 }

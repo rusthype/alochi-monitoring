@@ -103,5 +103,21 @@ void main() {
       ProctorService.instance.stop();
       expect(() => ProctorService.instance.stop(), returnsNormally);
     });
+
+    test(
+      'start() with no active session/token never fires onWarning',
+      () async {
+        // Same early-return path as the onLock/onExtendSeconds test above:
+        // _tick() bails out before reading result['warning'] whenever
+        // proctorToken/activeSessionId is null, so onWarning must never fire.
+        var warned = false;
+        final proctor = ProctorService.instance;
+        proctor.onWarning = (_) => warned = true;
+        proctor.start();
+        await Future.delayed(const Duration(milliseconds: 300));
+        expect(warned, false);
+        ProctorService.instance.stop();
+      },
+    );
   });
 }
