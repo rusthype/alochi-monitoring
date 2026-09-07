@@ -53,6 +53,16 @@ void main() {
   });
 
   group('DiagnosticTestRunnerScreen', () {
+    // DiagnosticTestRunnerScreen now starts the real HeartbeatService/
+    // ProctorService singletons in initState() (live proctoring — see
+    // _initProctoring()). ProctorService.start() arms a real (non-fake-clock)
+    // Timer on macOS/Windows. The test framework's post-test invariant check
+    // runs BEFORE tearDown() (right when the test body returns), so the
+    // widget must be explicitly unmounted (triggering its own dispose(),
+    // which stops both services) at the end of each test body instead.
+    Future<void> unmount(WidgetTester tester) =>
+        tester.pumpWidget(const SizedBox());
+
     testWidgets('renders 4 option_a..option_d options', (tester) async {
       await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
         attemptId: 'att-1',
@@ -73,11 +83,19 @@ void main() {
       await tester.pump();
       await tester.pump();
       await tester.pump();
+      // _initProctoring()'s HeartbeatService.startTest() resolves package
+      // info via a platform channel the very first time any test in this
+      // process calls it (cached afterwards) — that first resolution can
+      // outlast a couple of zero-duration pump()s, so advance real time a
+      // little to let it (and its .timeout() timer) settle before this test
+      // ends (tests below happen to pump enough via tap()s not to need this).
+      await tester.pump(const Duration(seconds: 4));
 
       expect(find.text('Variant A'), findsOneWidget);
       expect(find.text('Variant B'), findsOneWidget);
       expect(find.text('Variant C'), findsOneWidget);
       expect(find.text('Variant D'), findsOneWidget);
+      await unmount(tester);
     });
 
     testWidgets('selecting an option and submitting sends selected: "B"',
@@ -123,6 +141,7 @@ void main() {
 
       expect(captured, 'B');
       expect(find.text('Ikkinchi savol'), findsOneWidget);
+      await unmount(tester);
     });
 
     testWidgets('renders an image when image_url is present', (tester) async {
@@ -147,6 +166,7 @@ void main() {
       await tester.pump();
 
       expect(find.byType(AppNetworkImage), findsOneWidget);
+      await unmount(tester);
     });
 
     testWidgets(
@@ -194,6 +214,7 @@ void main() {
 
       expect(find.text('Savol (english)'), findsOneWidget);
       expect(startCalls, 2);
+      await unmount(tester);
     });
   });
 }

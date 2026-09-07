@@ -63,9 +63,11 @@ class _DiagnosticSchoolSelectScreenState
     if (!mounted) return;
     final schoolId = (school['school_id'] ?? '').toString();
     final schoolName = (school['school_name'] ?? '').toString();
+    final schoolCode = (school['school_number'] ?? '').toString();
     context.push('/diagnostic_class_select', extra: {
       'schoolId': schoolId,
       'schoolName': schoolName,
+      'schoolCode': schoolCode,
     });
   }
 

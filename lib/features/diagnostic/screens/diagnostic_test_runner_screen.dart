@@ -17,6 +17,8 @@ import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
 import '../../../core/engine/question_widgets.dart' show EngineOptionRow;
+import '../../../core/services/heartbeat_service.dart';
+import '../../../core/services/proctor_service.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_network_image.dart';
 import '../data/diagnostic_kiosk_api.dart';
@@ -66,6 +68,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   final String attemptId;
   final String studentName;
   final int grade;
+  final String schoolCode;
 
   /// Test-only overrides — default to the real [diagnosticKioskApi] methods.
   /// `diagnosticKioskApi` is a bare top-level singleton with no injectable
@@ -80,6 +83,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
     required this.attemptId,
     required this.studentName,
     required this.grade,
+    this.schoolCode = '',
     this.availableSubjectsOverride,
     this.startAttemptOverride,
     this.submitAnswerOverride,
@@ -113,6 +117,49 @@ class _DiagnosticTestRunnerScreenState
   void initState() {
     super.initState();
     _bootstrap();
+    _initProctoring();
+  }
+
+  Future<void> _initProctoring() async {
+    HeartbeatService.instance.onTerminated = () {
+      ProctorService.instance.stop();
+      HeartbeatService.instance.finishTest();
+      if (mounted) context.pushReplacement('/diagnostic_finished');
+    };
+    try {
+      await HeartbeatService.instance
+          .startTest(
+            schoolCode: widget.schoolCode,
+            name: widget.studentName,
+            variant: 'CAT',
+            testKey: 'diag_${widget.attemptId}',
+            studentCode: widget.attemptId,
+          )
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {}
+
+    // The widget may have been disposed (dispose() already called
+    // ProctorService.stop()) while the awaited call above was still
+    // in flight — starting the proctor loop now would resurrect a
+    // timer after teardown.
+    if (!mounted) return;
+    ProctorService.instance
+      ..onWarning = (msg) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg), backgroundColor: Colors.amber[900]),
+          );
+        }
+      }
+      ..start();
+  }
+
+  @override
+  void dispose() {
+    ProctorService.instance.stop();
+    HeartbeatService.instance.finishTest();
+    HeartbeatService.instance.onTerminated = null;
+    super.dispose();
   }
 
   Future<void> _bootstrap() async {
@@ -165,6 +212,9 @@ class _DiagnosticTestRunnerScreenState
         _total = (resp['total_questions'] as num?)?.toInt() ?? 0;
         _loading = false;
       });
+      final q = _question;
+      HeartbeatService.instance.updateProgress(_position, _total, [],
+          q != null ? _questionText(q) : null, _selectedOption);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -191,6 +241,8 @@ class _DiagnosticTestRunnerScreenState
       final finished = resp['finished'] == true;
       final nextSubject = (resp['next_subject'] ?? '').toString();
       if (finished && nextSubject.isEmpty) {
+        ProctorService.instance.stop();
+        HeartbeatService.instance.finishTest();
         if (!mounted) return;
         context.pushReplacement('/diagnostic_finished');
         return;
@@ -215,6 +267,8 @@ class _DiagnosticTestRunnerScreenState
           _position = (resp['position'] as num?)?.toInt() ?? _position;
           _total = (resp['total_questions'] as num?)?.toInt() ?? _total;
         });
+        HeartbeatService.instance.updateProgress(_position, _total, [],
+            next != null ? _questionText(next) : null, _selectedOption);
       }
     } catch (e) {
       if (!mounted) return;

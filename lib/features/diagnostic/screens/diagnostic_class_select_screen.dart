@@ -13,11 +13,13 @@ import '../widgets/diagnostic_widgets.dart';
 class DiagnosticClassSelectScreen extends StatefulWidget {
   final String schoolId;
   final String schoolName;
+  final String schoolCode;
 
   const DiagnosticClassSelectScreen({
     super.key,
     required this.schoolId,
     required this.schoolName,
+    this.schoolCode = '',
   });
 
   @override
@@ -62,6 +64,7 @@ class _DiagnosticClassSelectScreenState
     context.push('/diagnostic_student_select', extra: {
       'schoolId': widget.schoolId,
       'schoolName': widget.schoolName,
+      'schoolCode': widget.schoolCode,
       'classLabel': classLabel,
     });
   }

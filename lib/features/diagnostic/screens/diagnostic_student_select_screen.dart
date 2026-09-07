@@ -18,12 +18,14 @@ import '../widgets/diagnostic_widgets.dart';
 class DiagnosticStudentSelectScreen extends StatefulWidget {
   final String schoolId;
   final String schoolName;
+  final String schoolCode;
   final String classLabel;
 
   const DiagnosticStudentSelectScreen({
     super.key,
     required this.schoolId,
     required this.schoolName,
+    this.schoolCode = '',
     required this.classLabel,
   });
 
@@ -99,6 +101,7 @@ class _DiagnosticStudentSelectScreenState
       'attemptId': (s['attempt_id'] ?? '').toString(),
       'studentName': (s['student_name'] ?? '').toString(),
       'grade': _gradeFromClassLabel(),
+      'schoolCode': widget.schoolCode,
     });
   }
 

@@ -32,6 +32,7 @@ import 'package:intl/intl.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/models/models.dart';
+import '../../core/services/heartbeat_service.dart';
 import '../../core/session/logout.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/theme/student_palette.dart';
@@ -289,37 +290,45 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
     final firstName = nameParts.isNotEmpty ? nameParts.first : '';
     final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
-    // Clear the session BEFORE launching the test, not only after it
-    // returns: EngineHostScreen's result screen (unchanged, per plan) has
-    // two exit buttons — "Keyingi o'quvchi" pops normally (resolving the
-    // `await push(...)` below), but "Bosh sahifa" calls `context.go('/')`
-    // directly, which — per that screen's own comment — replaces the whole
-    // go_router stack WITHOUT resolving a pending push().then()/await
-    // continuation. Code placed only after `await push(...)` would then
-    // never run on that second path. Clearing here instead guarantees the
-    // kiosk-security property (no leftover token/credentials for the next
-    // student) regardless of which button is tapped. EngineHostScreen never
-    // needs the token itself — the proctor flow already proves the entire
-    // test-taking + result-submission path works fully unauthenticated.
-    await _clearSession();
+    // Best-effort proctoring session start — mirrors runner_dispatch.dart's
+    // launchRunner() exactly. Any failure/timeout must never block
+    // offline test-taking.
+    try {
+      await HeartbeatService.instance
+          .startTest(
+            schoolCode: widget.session.schoolCode,
+            name: widget.session.studentName,
+            variant: variant.toString(),
+            testKey: test.testKey,
+            studentCode: widget.session.studentId,
+          )
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {}
 
     if (!mounted) return;
-    // Same '/engine_host' route + extra shape the proctor flow already uses
-    // (see features/session/runner_dispatch.dart) — EngineHostScreen itself
-    // stays unmodified.
-    await GoRouter.of(context).push('/engine_host', extra: {
-      'testData': data,
-      'variant': variant,
-      'firstName': firstName,
-      'lastName': lastName,
-      // StudentSession.schoolCode comes from MonitoringLoginView's
-      // 'school_code' response field (School.number, e.g. '26') — see
-      // core/models/models.dart. Falls back to '' if the backend omits it.
-      'school': widget.session.schoolCode,
-      'group': widget.session.groupName,
-      'grade': widget.session.grade,
-      'studentId': widget.session.studentId,
-    });
+    try {
+      // Same '/engine_host' route + extra shape the proctor flow already
+      // uses (see features/session/runner_dispatch.dart) — EngineHostScreen
+      // itself stays unmodified.
+      await GoRouter.of(context).push('/engine_host', extra: {
+        'testData': data,
+        'variant': variant,
+        'firstName': firstName,
+        'lastName': lastName,
+        // StudentSession.schoolCode comes from MonitoringLoginView's
+        // 'school_code' response field (School.number, e.g. '26') — see
+        // core/models/models.dart. Falls back to '' if the backend omits it.
+        'school': widget.session.schoolCode,
+        'group': widget.session.groupName,
+        'grade': widget.session.grade,
+        'studentId': widget.session.studentId,
+      });
+    } finally {
+      // Clear the session AFTER the test session ends (either exit button),
+      // alongside tearing down the proctoring heartbeat.
+      await _clearSession();
+      HeartbeatService.instance.finishTest();
+    }
 
     // Only reached via the "Keyingi o'quvchi" (pop) exit — the "Bosh
     // sahifa" exit already lands on LoginScreen directly via its own

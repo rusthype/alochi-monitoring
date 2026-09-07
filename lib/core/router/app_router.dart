@@ -374,6 +374,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             return DiagnosticClassSelectScreen(
               schoolId: extra['schoolId'] as String? ?? '',
               schoolName: extra['schoolName'] as String? ?? '',
+              schoolCode: extra['schoolCode'] as String? ?? '',
             );
           }),
       GoRoute(
@@ -383,6 +384,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             return DiagnosticStudentSelectScreen(
               schoolId: extra['schoolId'] as String? ?? '',
               schoolName: extra['schoolName'] as String? ?? '',
+              schoolCode: extra['schoolCode'] as String? ?? '',
               classLabel: extra['classLabel'] as String? ?? '',
             );
           }),
@@ -394,6 +396,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               attemptId: extra['attemptId'] as String? ?? '',
               studentName: extra['studentName'] as String? ?? '',
               grade: extra['grade'] as int? ?? 1,
+              schoolCode: extra['schoolCode'] as String? ?? '',
             );
           }),
       GoRoute(
