@@ -298,11 +298,18 @@ class MonitoringApi {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchGroups(String schoolCode) async {
+  Future<List<Map<String, dynamic>>> fetchGroups(String schoolCode,
+      {String? schoolId}) async {
     try {
+      // school_id (School.number kolliziyasidan xoli) — berilsa, backend
+      // ustunlik beradi (2026-09-07, /groups/?school= xuddi shu maktab-raqami
+      // kolliziyasidan aziyat chekkan).
+      final sid = (schoolId != null && schoolId.isNotEmpty)
+          ? '&school_id=${Uri.encodeComponent(schoolId)}'
+          : '';
       final resp = await _send(() => http.get(
             Uri.parse(
-                '$_base/groups/?school=${Uri.encodeComponent(schoolCode)}'),
+                '$_base/groups/?school=${Uri.encodeComponent(schoolCode)}$sid'),
             headers: _headers,
           ));
       if (resp.statusCode != 200) return [];
@@ -479,7 +486,10 @@ class MonitoringApi {
   /// tomonda null qoldiriladi). Proctor oqimi (group_select_screen.dart)
   /// `authToken` bermaydi — xatti-harakati o'zgarishsiz (orqaga moslik).
   Future<List<Map<String, dynamic>>> fetchTestCatalog(
-      {String? groupId, String? schoolCode, String? authToken}) async {
+      {String? groupId,
+      String? schoolCode,
+      String? schoolId,
+      String? authToken}) async {
     try {
       final gid = (groupId != null && groupId.isNotEmpty)
           ? '&group_id=${Uri.encodeComponent(groupId)}'
@@ -487,7 +497,12 @@ class MonitoringApi {
       final sc = (schoolCode != null && schoolCode.isNotEmpty)
           ? '&school_code=${Uri.encodeComponent(schoolCode)}'
           : '';
-      final data = await _getCompute('/tests/catalog/?client=3$gid$sc',
+      // school_id (School.number kolliziyasidan xoli) — berilsa, backend
+      // school_code'dan ustun qo'yadi (2026-09-07).
+      final sid = (schoolId != null && schoolId.isNotEmpty)
+          ? '&school_id=${Uri.encodeComponent(schoolId)}'
+          : '';
+      final data = await _getCompute('/tests/catalog/?client=3$gid$sc$sid',
           extraHeaders: (authToken != null && authToken.isNotEmpty)
               ? {'Authorization': 'Bearer $authToken'}
               : const {});
@@ -518,7 +533,10 @@ class MonitoringApi {
   /// guruhidan aniqlaydi (self-login oqimi). Proctor chaqiruvlari
   /// (group_select_screen.dart) bu param'ni bermaydi — o'zgarishsiz.
   Future<Map<String, dynamic>?> fetchTest(String testKey,
-      {String? groupId, String? schoolCode, String? authToken}) async {
+      {String? groupId,
+      String? schoolCode,
+      String? schoolId,
+      String? authToken}) async {
     try {
       final gid = (groupId != null && groupId.isNotEmpty)
           ? '&group_id=${Uri.encodeComponent(groupId)}'
@@ -526,7 +544,10 @@ class MonitoringApi {
       final sc = (schoolCode != null && schoolCode.isNotEmpty)
           ? '&school_code=${Uri.encodeComponent(schoolCode)}'
           : '';
-      final data = await _getCompute('/tests/$testKey/?client=3$gid$sc',
+      final sid = (schoolId != null && schoolId.isNotEmpty)
+          ? '&school_id=${Uri.encodeComponent(schoolId)}'
+          : '';
+      final data = await _getCompute('/tests/$testKey/?client=3$gid$sc$sid',
           extraHeaders: (authToken != null && authToken.isNotEmpty)
               ? {'Authorization': 'Bearer $authToken'}
               : const {});
@@ -680,6 +701,7 @@ class MonitoringApi {
           .map((e) => {
                 'school_code': e['school_code']?.toString() ?? '',
                 'label': e['label']?.toString() ?? '',
+                'school_id': e['school_id']?.toString() ?? '',
               })
           .where((e) => e['school_code']!.isNotEmpty)
           .toList();

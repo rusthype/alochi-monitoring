@@ -2073,7 +2073,14 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
 
   Widget _buildGroupedList(ScrollController scrollCtrl) {
     const umumiy = '__umumiy__';
-    final Map<String, String> codeToLabel = {};
+    // Dedupe/group kaliti sb.schoolId bo'lsa o'sha (kolliziyasiz), aks holda
+    // sb.schoolCode ga qaytiladi (eski, school_id yubormagan backend/test) —
+    // School.number tuman ichida takrorlanishi mumkin (masalan bir nechta
+    // tumanda "39-maktab"), shuning uchun faqat schoolCode bilan guruhlash
+    // ularni bitta kartochkaga birlashtirib qo'yardi (2026-09-07).
+    final Map<String, String> keyToLabel = {};
+    final Map<String, String> keyToCode = {};
+    final Map<String, String> keyToId = {};
     final Map<String, List<CatalogEntry>> groups = {};
 
     for (final entry in _entries) {
@@ -2081,8 +2088,11 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
         groups.putIfAbsent(umumiy, () => []).add(entry);
       } else {
         for (final sb in entry.schoolButtons) {
-          codeToLabel[sb.schoolCode] = sb.label;
-          groups.putIfAbsent(sb.schoolCode, () => []).add(entry);
+          final key = sb.schoolId.isNotEmpty ? sb.schoolId : sb.schoolCode;
+          keyToLabel[key] = sb.label;
+          keyToCode[key] = sb.schoolCode;
+          keyToId[key] = sb.schoolId;
+          groups.putIfAbsent(key, () => []).add(entry);
         }
       }
     }
@@ -2091,38 +2101,48 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       ..sort((a, b) {
         if (a == umumiy) return 1;
         if (b == umumiy) return -1;
-        final aNum = int.tryParse(a);
-        final bNum = int.tryParse(b);
+        // Har doim ko'rinadigan (raqamli) schoolCode bo'yicha saralanadi,
+        // dedupe kaliti UUID bo'lsa ham tartib inson-o'qiladigan qoladi.
+        final aCode = keyToCode[a] ?? a;
+        final bCode = keyToCode[b] ?? b;
+        final aNum = int.tryParse(aCode);
+        final bNum = int.tryParse(bCode);
         if (aNum != null && bNum != null) {
           return aNum.compareTo(bNum);
         }
-        return a.compareTo(b);
+        return aCode.compareTo(bCode);
       });
 
     final widgets = <Widget>[];
-    final schoolCodes = codes.where((c) => c != umumiy).toList();
-    final coveredCodes = codes.where((c) => c != umumiy).toSet();
-    final otherSchools = _schools
-        .where((s) => !coveredCodes.contains(s['school_code']))
-        .toList();
+    final schoolKeys = codes.where((c) => c != umumiy).toList();
+    final coveredKeys = schoolKeys.toSet();
+    final otherSchools = _schools.where((s) {
+      final sId = s['school_id'] ?? '';
+      final sCode = s['school_code'] ?? '';
+      final key = sId.isNotEmpty ? sId : sCode;
+      return !coveredKeys.contains(key);
+    }).toList();
 
     final List<Widget> schoolWidgets = [];
 
     // 1. Add schools that have catalog entries
-    for (final code in schoolCodes) {
+    for (final key in schoolKeys) {
       final l10n = AppLocalizations.of(context)!;
-      final label = codeToLabel[code] ?? l10n.schoolPrefix(code);
-      schoolWidgets.add(_buildSchoolCard(code, label, groups[code]!.first));
+      final code = keyToCode[key] ?? key;
+      final label = keyToLabel[key] ?? l10n.schoolPrefix(code);
+      schoolWidgets.add(_buildSchoolCard(
+          code, keyToId[key] ?? '', label, groups[key]!.first));
     }
 
     // 2. Add other schools from the global list
     for (final school in otherSchools) {
       final l10n = AppLocalizations.of(context)!;
       final schoolCode = school['school_code'] ?? '';
+      final schoolId = school['school_id'] ?? '';
       final schoolLabel = school['label'] ?? '';
       final label =
           schoolLabel.isNotEmpty ? schoolLabel : l10n.schoolPrefix(schoolCode);
-      schoolWidgets.add(_buildSchoolCard(schoolCode, label, null));
+      schoolWidgets.add(_buildSchoolCard(schoolCode, schoolId, label, null));
     }
 
     if (schoolWidgets.isNotEmpty) {
@@ -2489,7 +2509,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
   }
 
   Widget _buildSchoolCard(
-      String schoolCode, String label, CatalogEntry? entry) {
+      String schoolCode, String schoolId, String label, CatalogEntry? entry) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -2520,6 +2540,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
                       pin: '',
                       label: label,
                       schoolCode: schoolCode,
+                      schoolId: schoolId,
                       randomVariant: false,
                     ),
                   ],

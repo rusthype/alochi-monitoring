@@ -43,6 +43,11 @@ class GroupSelectScreen extends StatefulWidget {
   final String schoolCode;
   final String schoolLabel;
 
+  /// Haqiqiy unikal maktab identifikatori (School.id) — qarang
+  /// SchoolButton.schoolId izohi. Bo'sh bo'lishi mumkin (eski oqim/backend),
+  /// shu holda backend faqat schoolCode'ga qaytadi (orqaga moslik).
+  final String schoolId;
+
   /// The test the user originally tapped to start this flow. Used as a
   /// fallback when the school has no groups (nothing to filter by) and
   /// kept as the initial pick if it's still relevant after group scoping.
@@ -58,6 +63,7 @@ class GroupSelectScreen extends StatefulWidget {
     super.key,
     required this.schoolCode,
     required this.schoolLabel,
+    this.schoolId = '',
     this.fallbackEntry,
   });
 
@@ -83,7 +89,8 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
 
   Future<void> _loadGroups() async {
     try {
-      final g = await api.fetchGroups(widget.schoolCode);
+      final g = await api.fetchGroups(widget.schoolCode,
+          schoolId: widget.schoolId);
       if (!mounted) return;
       if (g.isEmpty) {
         final fallback = widget.fallbackEntry;
@@ -132,6 +139,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       final entries = await testCatalogService.refresh(
         groupId: groupId.isEmpty ? null : groupId,
         schoolCode: widget.schoolCode,
+        schoolId: widget.schoolId,
       );
       // Yangi testlar ro'yxat boshida chiqishi uchun yangi-birinchi tartib
       // (backend updated_at bo'yicha; null bo'lsa oxiriga tushadi).
@@ -164,6 +172,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
         entry.testKey,
         groupId: groupId.isEmpty ? null : groupId,
         schoolCode: widget.schoolCode,
+        schoolId: widget.schoolId,
       );
     } catch (e) {
       debugPrint('GroupSelectScreen: download(${entry.testKey}) error: $e');

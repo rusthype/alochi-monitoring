@@ -96,7 +96,10 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
     await Future.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
 
-    context.pushReplacement('/group_select/${_selected!.schoolCode}');
+    // schoolId — extra orqali uzatiladi (UUID'ni URL segmentiga aralashtirmaslik
+    // uchun), School.number kolliziyasiz maktab aniqlash uchun (2026-09-07).
+    context.pushReplacement('/group_select/${_selected!.schoolCode}',
+        extra: {'schoolId': _selected!.schoolId});
   }
 
   @override

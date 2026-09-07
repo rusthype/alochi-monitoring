@@ -25,12 +25,19 @@ class SchoolButton {
   final String pin;
   final String label;
   final String schoolCode;
+  // Haqiqiy unikal maktab identifikatori (School.id, UUID) — school_code
+  // (School.number) tuman ichida takrorlanishi mumkin (masalan bir nechta
+  // tumanda "39-maktab"), schoolId esa kolliziyasiz. Eski backend hali
+  // yubormasa bo'sh string ('') qaytadi — chaqiruvchilar shu holda
+  // schoolCode'ga qaytadi (orqaga moslik).
+  final String schoolId;
   final bool randomVariant;
 
   const SchoolButton({
     required this.pin,
     required this.label,
     required this.schoolCode,
+    this.schoolId = '',
     required this.randomVariant,
   });
 
@@ -38,6 +45,7 @@ class SchoolButton {
         pin: j['pin']?.toString() ?? '',
         label: j['label']?.toString() ?? '',
         schoolCode: j['school_code']?.toString() ?? '',
+        schoolId: j['school_id']?.toString() ?? '',
         randomVariant: j['random_variant'] == true,
       );
 }
@@ -122,8 +130,13 @@ class TestCatalogService {
   /// `schoolCode` — berilsa, so'rovchi maktabni backendga bildiradi;
   /// maktabga bog'langan (school FK bor) testlarni ko'rish uchun SHART
   /// (groupId bilan birga, GroupSelectScreen).
+  ///
+  /// `schoolId` — berilsa, `schoolCode`dan ustunlik oladi: bir xil raqamli
+  /// (masalan "39") bir nechta maktab bo'lganda backend aynan shu maktabni
+  /// kolliziyasiz aniqlaydi (2026-09-07, School.number unikal emasligi
+  /// muammosi).
   Future<List<CatalogEntry>> refresh(
-      {String? groupId, String? schoolCode}) async {
+      {String? groupId, String? schoolCode, String? schoolId}) async {
     // Keshdan metadata olish (har doim holda kerak)
     final cachedRows = await TestCache.all();
     final cachedVersions = <String, int>{};
@@ -138,8 +151,8 @@ class TestCatalogService {
     bool fetchFailed;
     Object? fetchError;
     try {
-      catalog =
-          await _api.fetchTestCatalog(groupId: groupId, schoolCode: schoolCode);
+      catalog = await _api.fetchTestCatalog(
+          groupId: groupId, schoolCode: schoolCode, schoolId: schoolId);
       fetchFailed = false;
     } catch (e) {
       debugPrint('TestCatalogService.refresh: network error: $e');
@@ -252,11 +265,14 @@ class TestCatalogService {
   ///
   /// `schoolCode` — tanlangan maktab kodi ma'lum bo'lganda uzatiladi;
   /// maktabga bog'langan testni yuklash uchun SHART (groupId bilan birga).
+  ///
+  /// `schoolId` — qarang [refresh] izohi: berilsa `schoolCode`dan ustunlik
+  /// oladi, kolliziyasiz maktab aniqlash uchun.
   Future<bool> download(String testKey,
-      {String? groupId, String? schoolCode}) async {
+      {String? groupId, String? schoolCode, String? schoolId}) async {
     try {
       final data = await _api.fetchTest(testKey,
-          groupId: groupId, schoolCode: schoolCode);
+          groupId: groupId, schoolCode: schoolCode, schoolId: schoolId);
       if (data == null) {
         debugPrint('TestCatalogService.download($testKey): null response');
         return false;

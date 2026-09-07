@@ -75,6 +75,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             return GroupSelectScreen(
               schoolCode: schoolCode,
               schoolLabel: extra['schoolLabel'] as String? ?? '',
+              schoolId: extra['schoolId'] as String? ?? '',
             );
           }),
       GoRoute(
