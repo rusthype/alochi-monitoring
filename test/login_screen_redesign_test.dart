@@ -40,7 +40,7 @@ void main() {
     expect(card, findsOneWidget);
     expect(tester.getSize(card).width, 460);
     expect(find.byKey(const ValueKey('login-tab-student')), findsOneWidget);
-    expect(find.byKey(const ValueKey('login-tab-proctor')), findsOneWidget);
+    expect(find.byKey(const ValueKey('login-tab-diagnostic')), findsOneWidget);
     expect(find.byKey(const ValueKey('login-tab-tests')), findsOneWidget);
     expect(find.byKey(const ValueKey('login-form')), findsOneWidget);
 
@@ -48,7 +48,8 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('proctor tab replaces the student form with the catalog panel',
+  testWidgets(
+      'diagnostic tab replaces the student form with the diagnostic panel',
       (tester) async {
     tester.view.physicalSize = const Size(1440, 1200);
     tester.view.devicePixelRatio = 1;
@@ -75,11 +76,11 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const ValueKey('login-tab-proctor')));
+    await tester.tap(find.byKey(const ValueKey('login-tab-diagnostic')));
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.byKey(const ValueKey('proctor-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('diagnostic-panel')), findsOneWidget);
     expect(find.byKey(const ValueKey('login-form')), findsNothing);
 
     ConnectivityService.instance.dispose();

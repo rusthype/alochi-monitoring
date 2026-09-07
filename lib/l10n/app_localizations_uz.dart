@@ -76,6 +76,44 @@ class AppLocalizationsUz extends AppLocalizations {
   String get proctorTabLabel => 'Proktor';
 
   @override
+  String get diagnosticTabLabel => 'Diagnostika';
+
+  @override
+  String get diagnosticLoginTab => 'Diagnostika / Qabul testi';
+
+  @override
+  String get diagnosticSelectSchoolPrompt =>
+      'Diagnostika uchun maktabni tanlang';
+
+  @override
+  String get diagnosticBadge => 'DIAGNOSTIKA';
+
+  @override
+  String get diagnosticSelectClass => 'Sinfni tanlang';
+
+  @override
+  String get diagnosticWhoTakesTest => 'Kim test topshiradi?';
+
+  @override
+  String get diagnosticStartTest => 'Diagnostikani boshlash';
+
+  @override
+  String get diagnosticFinishedTitle => 'Diagnostika yakunlandi';
+
+  @override
+  String get diagnosticFinishedSubtitle =>
+      'Rahmat! Natijalar o\'qituvchiga yuboriladi.';
+
+  @override
+  String get diagnosticNoSchools => 'Maktablar topilmadi';
+
+  @override
+  String get diagnosticNoClasses => 'Sinflar topilmadi';
+
+  @override
+  String get diagnosticNoStudents => 'O\'quvchilar topilmadi';
+
+  @override
   String get myTestsTitle => 'Mening testlarim';
 
   @override

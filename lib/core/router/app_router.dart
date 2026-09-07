@@ -36,11 +36,19 @@ import '../../features/local_test/local_result_screen.dart';
 import '../../features/local_test/local_test_screen.dart';
 import '../../features/unit1/unit1_screen.dart';
 
+// Diagnostic kiosk flow
+import '../../features/diagnostic/screens/diagnostic_school_select_screen.dart';
+import '../../features/diagnostic/screens/diagnostic_class_select_screen.dart';
+import '../../features/diagnostic/screens/diagnostic_student_select_screen.dart';
+import '../../features/diagnostic/screens/diagnostic_test_runner_screen.dart';
+import '../../features/diagnostic/screens/diagnostic_finished_screen.dart';
+
 /// Reads the Riverpod container from a leaf `GoRoute.builder`'s own
 /// [BuildContext] (not the outer `goRouterProvider`'s `ref`, which is only
 /// valid at router-construction time) — same pattern login_screen.dart uses
 /// to write [currentStudentSessionProvider].
-ProviderContainer _ref(BuildContext context) => ProviderScope.containerOf(context);
+ProviderContainer _ref(BuildContext context) =>
+    ProviderScope.containerOf(context);
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -355,6 +363,41 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               topicScores: extra['topicScores'] ?? const {},
             );
           }),
+      GoRoute(
+          path: '/diagnostic_school_select',
+          builder: (context, state) => const DiagnosticSchoolSelectScreen()),
+      GoRoute(
+          path: '/diagnostic_class_select',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return DiagnosticClassSelectScreen(
+              schoolId: extra['schoolId'] as String? ?? '',
+              schoolName: extra['schoolName'] as String? ?? '',
+            );
+          }),
+      GoRoute(
+          path: '/diagnostic_student_select',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return DiagnosticStudentSelectScreen(
+              schoolId: extra['schoolId'] as String? ?? '',
+              schoolName: extra['schoolName'] as String? ?? '',
+              classLabel: extra['classLabel'] as String? ?? '',
+            );
+          }),
+      GoRoute(
+          path: '/diagnostic_test_runner',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return DiagnosticTestRunnerScreen(
+              attemptId: extra['attemptId'] as String? ?? '',
+              studentName: extra['studentName'] as String? ?? '',
+              grade: extra['grade'] as int? ?? 1,
+            );
+          }),
+      GoRoute(
+          path: '/diagnostic_finished',
+          builder: (context, state) => const DiagnosticFinishedScreen()),
       GoRoute(
           path: '/widget_route',
           builder: (context, state) {

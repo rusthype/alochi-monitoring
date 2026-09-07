@@ -75,6 +75,43 @@ class AppLocalizationsRu extends AppLocalizations {
   String get proctorTabLabel => 'Проктор';
 
   @override
+  String get diagnosticTabLabel => 'Диагностика';
+
+  @override
+  String get diagnosticLoginTab => 'Диагностика / Приёмный тест';
+
+  @override
+  String get diagnosticSelectSchoolPrompt => 'Выберите школу для диагностики';
+
+  @override
+  String get diagnosticBadge => 'ДИАГНОСТИКА';
+
+  @override
+  String get diagnosticSelectClass => 'Выберите класс';
+
+  @override
+  String get diagnosticWhoTakesTest => 'Кто сдаёт тест?';
+
+  @override
+  String get diagnosticStartTest => 'Начать диагностику';
+
+  @override
+  String get diagnosticFinishedTitle => 'Диагностика завершена';
+
+  @override
+  String get diagnosticFinishedSubtitle =>
+      'Спасибо! Результаты будут переданы учителю.';
+
+  @override
+  String get diagnosticNoSchools => 'Школы не найдены';
+
+  @override
+  String get diagnosticNoClasses => 'Классы не найдены';
+
+  @override
+  String get diagnosticNoStudents => 'Учащиеся не найдены';
+
+  @override
   String get myTestsTitle => 'Мои тесты';
 
   @override

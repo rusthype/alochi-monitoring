@@ -230,6 +230,78 @@ abstract class AppLocalizations {
   /// **'Proktor'**
   String get proctorTabLabel;
 
+  /// No description provided for @diagnosticTabLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Diagnostika'**
+  String get diagnosticTabLabel;
+
+  /// No description provided for @diagnosticLoginTab.
+  ///
+  /// In uz, this message translates to:
+  /// **'Diagnostika / Qabul testi'**
+  String get diagnosticLoginTab;
+
+  /// No description provided for @diagnosticSelectSchoolPrompt.
+  ///
+  /// In uz, this message translates to:
+  /// **'Diagnostika uchun maktabni tanlang'**
+  String get diagnosticSelectSchoolPrompt;
+
+  /// No description provided for @diagnosticBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'DIAGNOSTIKA'**
+  String get diagnosticBadge;
+
+  /// No description provided for @diagnosticSelectClass.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinfni tanlang'**
+  String get diagnosticSelectClass;
+
+  /// No description provided for @diagnosticWhoTakesTest.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kim test topshiradi?'**
+  String get diagnosticWhoTakesTest;
+
+  /// No description provided for @diagnosticStartTest.
+  ///
+  /// In uz, this message translates to:
+  /// **'Diagnostikani boshlash'**
+  String get diagnosticStartTest;
+
+  /// No description provided for @diagnosticFinishedTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Diagnostika yakunlandi'**
+  String get diagnosticFinishedTitle;
+
+  /// No description provided for @diagnosticFinishedSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rahmat! Natijalar o\'qituvchiga yuboriladi.'**
+  String get diagnosticFinishedSubtitle;
+
+  /// No description provided for @diagnosticNoSchools.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maktablar topilmadi'**
+  String get diagnosticNoSchools;
+
+  /// No description provided for @diagnosticNoClasses.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinflar topilmadi'**
+  String get diagnosticNoClasses;
+
+  /// No description provided for @diagnosticNoStudents.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'quvchilar topilmadi'**
+  String get diagnosticNoStudents;
+
   /// No description provided for @myTestsTitle.
   ///
   /// In uz, this message translates to:

@@ -767,7 +767,7 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
                 child: _selectedTab == 0
                     ? _buildLoginForm(palette)
-                    : _buildProctorPanel(palette),
+                    : _buildDiagnosticPanel(palette),
               ),
               const SizedBox(height: 18),
               _buildDivider(palette),
@@ -923,9 +923,9 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               Expanded(
                 child: _routeButton(
-                  key: const ValueKey('login-tab-proctor'),
-                  icon: Icons.lock_outline_rounded,
-                  label: l10n.proctorTabLabel,
+                  key: const ValueKey('login-tab-diagnostic'),
+                  icon: Icons.fact_check_outlined,
+                  label: l10n.diagnosticTabLabel,
                   active: _selectedTab == 1,
                   palette: palette,
                   onTap: () => setState(() => _selectedTab = 1),
@@ -1249,6 +1249,75 @@ class _LoginScreenState extends State<LoginScreen>
         ),
       );
 
+  Widget _buildDiagnosticPanel(_LoginPalette palette) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      key: const ValueKey('diagnostic-panel'),
+      constraints: const BoxConstraints(minHeight: 318),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: palette.muted,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: palette.border),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: palette.brandMuted,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.fact_check_outlined,
+              color: AppColors.flame,
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            l10n.diagnosticLoginTab,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.titleMedium.copyWith(
+              color: palette.ink1,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.diagnosticSelectSchoolPrompt,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(color: palette.ink2),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: () => context.push('/diagnostic_school_select'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.flame,
+                backgroundColor: palette.fieldFill,
+                side: const BorderSide(color: AppColors.flame, width: 1.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.school_rounded, size: 18),
+              label: Text(
+                l10n.schools,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ignore: unused_element
   Widget _buildProctorPanel(_LoginPalette palette) {
     final l10n = AppLocalizations.of(context)!;
     return Container(
@@ -1418,27 +1487,27 @@ class _LoginScreenState extends State<LoginScreen>
           // border stacking on top of this one after a failed submit).
           final hasError = _submitAttempted && controller.text.trim().isEmpty;
           return AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOutCubic,
-          decoration: BoxDecoration(
-            color: palette.fieldFill,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: hasError
-                  ? AppColors.err
-                  : (focusNode.hasFocus ? AppColors.flame : palette.border),
-              width: hasError || focusNode.hasFocus ? 1.5 : 1,
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: palette.fieldFill,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: hasError
+                    ? AppColors.err
+                    : (focusNode.hasFocus ? AppColors.flame : palette.border),
+                width: hasError || focusNode.hasFocus ? 1.5 : 1,
+              ),
+              boxShadow: focusNode.hasFocus
+                  ? const [
+                      BoxShadow(
+                        color: Color(0x2BFF7A1A),
+                        blurRadius: 10,
+                      ),
+                    ]
+                  : const [],
             ),
-            boxShadow: focusNode.hasFocus
-                ? const [
-                    BoxShadow(
-                      color: Color(0x2BFF7A1A),
-                      blurRadius: 10,
-                    ),
-                  ]
-                : const [],
-          ),
-          child: child,
+            child: child,
           );
         },
         child: TextFormField(
