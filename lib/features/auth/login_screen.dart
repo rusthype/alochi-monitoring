@@ -2073,14 +2073,44 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
 
   Widget _buildGroupedList(ScrollController scrollCtrl) {
     const umumiy = '__umumiy__';
-    // Dedupe/group kaliti sb.schoolId bo'lsa o'sha (kolliziyasiz), aks holda
-    // sb.schoolCode ga qaytiladi (eski, school_id yubormagan backend/test) —
-    // School.number tuman ichida takrorlanishi mumkin (masalan bir nechta
-    // tumanda "39-maktab"), shuning uchun faqat schoolCode bilan guruhlash
-    // ularni bitta kartochkaga birlashtirib qo'yardi (2026-09-07).
+    // Dedupe kaliti: ODATDA schoolCode (bitta jismoniy maktab uchun bitta
+    // kartochka bo'lib qolishi uchun). school_id faqat HAQIQIY kolliziya
+    // borida (bitta schoolCode ostida 2+ turli schoolId ko'rinsa) ishlatiladi.
+    //
+    // Nega shunday: `entry.schoolButtons` bitta testning publish vaqtidagi
+    // JSON'iga "muzlab qolgan" — deploy'dan OLDIN nashr qilingan testlarda
+    // schoolId umuman yo'q (bo'sh string), deploy'dan KEYIN nashr
+    // qilinganlarida bor. `_schools` esa har doim jonli hisoblanadi va
+    // schoolId har doim to'ladi. Agar dedupe kaliti har doim "schoolId
+    // bo'lsa o'sha, aks holda schoolCode" bo'lsa — bitta jismoniy maktabning
+    // eski testi (kalit=schoolCode) va `_schools`dagi yozuvi (kalit=id)
+    // ikki xil kalitga tushib, IKKITA kartochka bo'lib takrorlanadi
+    // (2026-09-07 deploy'dan keyin kuzatilgan xato). schoolCode'ni asosiy
+    // kalit qilib, faqat chindan kolliziya bo'lganda id'ga o'tish bu ikkala
+    // holatni ham to'g'ri hal qiladi.
+    final Map<String, Set<String>> idsByCode = {};
+    void noteId(String code, String id) {
+      if (id.isEmpty || code.isEmpty) return;
+      idsByCode.putIfAbsent(code, () => {}).add(id);
+    }
+
+    for (final entry in _entries) {
+      for (final sb in entry.schoolButtons) {
+        noteId(sb.schoolCode, sb.schoolId);
+      }
+    }
+    for (final s in _schools) {
+      noteId(s['school_code'] ?? '', s['school_id'] ?? '');
+    }
+
+    String dedupeKey(String code, String id) {
+      final ids = idsByCode[code];
+      if (ids != null && ids.length > 1 && id.isNotEmpty) return id;
+      return code;
+    }
+
     final Map<String, String> keyToLabel = {};
     final Map<String, String> keyToCode = {};
-    final Map<String, String> keyToId = {};
     final Map<String, List<CatalogEntry>> groups = {};
 
     for (final entry in _entries) {
@@ -2088,10 +2118,9 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
         groups.putIfAbsent(umumiy, () => []).add(entry);
       } else {
         for (final sb in entry.schoolButtons) {
-          final key = sb.schoolId.isNotEmpty ? sb.schoolId : sb.schoolCode;
+          final key = dedupeKey(sb.schoolCode, sb.schoolId);
           keyToLabel[key] = sb.label;
           keyToCode[key] = sb.schoolCode;
-          keyToId[key] = sb.schoolId;
           groups.putIfAbsent(key, () => []).add(entry);
         }
       }
@@ -2117,9 +2146,7 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
     final schoolKeys = codes.where((c) => c != umumiy).toList();
     final coveredKeys = schoolKeys.toSet();
     final otherSchools = _schools.where((s) {
-      final sId = s['school_id'] ?? '';
-      final sCode = s['school_code'] ?? '';
-      final key = sId.isNotEmpty ? sId : sCode;
+      final key = dedupeKey(s['school_code'] ?? '', s['school_id'] ?? '');
       return !coveredKeys.contains(key);
     }).toList();
 
@@ -2130,8 +2157,15 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       final l10n = AppLocalizations.of(context)!;
       final code = keyToCode[key] ?? key;
       final label = keyToLabel[key] ?? l10n.schoolPrefix(code);
-      schoolWidgets.add(_buildSchoolCard(
-          code, keyToId[key] ?? '', label, groups[key]!.first));
+      // Shu kod uchun aniq bitta school_id ma'lum bo'lsa (kolliziya yo'q)
+      // yoki dedupe kaliti kolliziya tufayli aynan o'sha id bo'lsa — shuni
+      // ishlatamiz; aks holda navigatsiya baribir schoolCode'ga qaytadi.
+      final ids = idsByCode[code];
+      final schoolId = (ids != null && ids.length == 1)
+          ? ids.first
+          : (ids != null && ids.contains(key) ? key : '');
+      schoolWidgets.add(
+          _buildSchoolCard(code, schoolId, label, groups[key]!.first));
     }
 
     // 2. Add other schools from the global list
