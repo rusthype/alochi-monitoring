@@ -212,6 +212,20 @@
   "helloGreeting": "Salom!",
   "mathSubjectFull": "Matematika",
   "englishSubjectFull": "Ingliz tili",
+  "diagnosticQuestionCounter": "Savol {position} / {total}",
+  "@diagnosticQuestionCounter": {
+    "placeholders": {
+      "position": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "diagnosticSubjectTransitionMessage": "{fromSubject} yakunlandi! Endi {toSubject} boshlanadi",
+  "@diagnosticSubjectTransitionMessage": {
+    "placeholders": {
+      "fromSubject": { "type": "String" },
+      "toSubject": { "type": "String" }
+    }
+  },
   "finishConfirmTitle": "Tugatish?",
   "finishConfirmAllAnsweredPrompt": "Barcha javoblar belgilandi. Testni yakunlaysizmi?",
   "testAutoSubmittedNotice": "Test vaqti tugadi, saqlangan javoblaringiz avtomatik yuborildi.",

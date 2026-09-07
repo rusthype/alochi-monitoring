@@ -890,6 +890,19 @@ abstract class AppLocalizations {
   /// **'Ingliz tili'**
   String get englishSubjectFull;
 
+  /// No description provided for @diagnosticQuestionCounter.
+  ///
+  /// In uz, this message translates to:
+  /// **'Savol {position} / {total}'**
+  String diagnosticQuestionCounter(int position, int total);
+
+  /// No description provided for @diagnosticSubjectTransitionMessage.
+  ///
+  /// In uz, this message translates to:
+  /// **'{fromSubject} yakunlandi! Endi {toSubject} boshlanadi'**
+  String diagnosticSubjectTransitionMessage(
+      String fromSubject, String toSubject);
+
   /// No description provided for @finishConfirmTitle.
   ///
   /// In uz, this message translates to:

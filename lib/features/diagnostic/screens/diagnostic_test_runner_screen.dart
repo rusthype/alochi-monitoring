@@ -6,26 +6,83 @@
 // submitAnswer -> render next question, or startAttempt(next_subject) on a
 // subject transition, or navigate to the finished screen when done.
 //
-// The backend response shape is loosely typed per the kiosk API contract
-// ("first question + attempt_id + position info" / "next question data
-// when not finished") — parsing below is defensive about exact key names.
+// Backend contract (alochi_backend/apps/diagnostic/views.py, CATStartView /
+// CATAnswerView / _build_cat_question_response): the question dict carries
+// flat option_a..option_d keys (already per-attempt shuffled) plus optional
+// image_url/svg_visual, and POST cat/answer/ requires `selected` to be
+// exactly "A"|"B"|"C"|"D".
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
+import '../../../core/engine/question_widgets.dart' show EngineOptionRow;
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/app_network_image.dart';
 import '../data/diagnostic_kiosk_api.dart';
+import '../widgets/diagnostic_widgets.dart';
+
+/// One rendered answer option: `key` is "A".."D", `text` is the display
+/// string for that letter (already de/re-shuffled server-side).
+class DiagnosticOptionItem {
+  final String key;
+  final String text;
+  const DiagnosticOptionItem({required this.key, required this.text});
+}
+
+List<DiagnosticOptionItem> extractDiagnosticOptions(Map<String, dynamic> q) {
+  final items = <DiagnosticOptionItem>[];
+  for (final letter in ['A', 'B', 'C', 'D']) {
+    final lowerKey = 'option_${letter.toLowerCase()}';
+    final text = (q[lowerKey] ?? q[letter] ?? '').toString().trim();
+    if (text.isNotEmpty) {
+      items.add(DiagnosticOptionItem(key: letter, text: text));
+    }
+  }
+  return items;
+}
+
+/// Pending "subject A finished, subject B starting" state — shown as a brief
+/// full-screen message instead of jumping straight to the next question.
+class _SubjectTransition {
+  final String from;
+  final String to;
+  const _SubjectTransition({required this.from, required this.to});
+}
+
+typedef DiagnosticAvailableSubjectsFn = Future<Map<String, dynamic>> Function(
+    int grade);
+typedef DiagnosticStartAttemptFn = Future<Map<String, dynamic>> Function({
+  required String attemptId,
+  required String subject,
+});
+typedef DiagnosticSubmitAnswerFn = Future<Map<String, dynamic>> Function({
+  required String attemptId,
+  required String questionId,
+  required String selected,
+});
 
 class DiagnosticTestRunnerScreen extends StatefulWidget {
   final String attemptId;
   final String studentName;
   final int grade;
 
+  /// Test-only overrides — default to the real [diagnosticKioskApi] methods.
+  /// `diagnosticKioskApi` is a bare top-level singleton with no injectable
+  /// HTTP client, so this is the smallest seam that lets widget tests fake
+  /// network responses without touching that file.
+  final DiagnosticAvailableSubjectsFn? availableSubjectsOverride;
+  final DiagnosticStartAttemptFn? startAttemptOverride;
+  final DiagnosticSubmitAnswerFn? submitAnswerOverride;
+
   const DiagnosticTestRunnerScreen({
     super.key,
     required this.attemptId,
     required this.studentName,
     required this.grade,
+    this.availableSubjectsOverride,
+    this.startAttemptOverride,
+    this.submitAnswerOverride,
   });
 
   @override
@@ -39,7 +96,18 @@ class _DiagnosticTestRunnerScreenState
   bool _submitting = false;
   String? _error;
   Map<String, dynamic>? _question;
-  dynamic _selectedOption;
+  String? _selectedOption;
+  int _position = 0;
+  int _total = 0;
+  String _currentSubject = '';
+  _SubjectTransition? _transition;
+
+  DiagnosticAvailableSubjectsFn get _availableSubjects =>
+      widget.availableSubjectsOverride ?? diagnosticKioskApi.availableSubjects;
+  DiagnosticStartAttemptFn get _startAttemptCall =>
+      widget.startAttemptOverride ?? diagnosticKioskApi.startAttempt;
+  DiagnosticSubmitAnswerFn get _submitAnswerCall =>
+      widget.submitAnswerOverride ?? diagnosticKioskApi.submitAnswer;
 
   @override
   void initState() {
@@ -53,8 +121,7 @@ class _DiagnosticTestRunnerScreenState
       _error = null;
     });
     try {
-      final subjectsResp =
-          await diagnosticKioskApi.availableSubjects(widget.grade);
+      final subjectsResp = await _availableSubjects(widget.grade);
       final subjects = (subjectsResp['subjects'] as List?)
               ?.map((e) => e.toString())
               .where((e) => e.isNotEmpty)
@@ -83,15 +150,19 @@ class _DiagnosticTestRunnerScreenState
       _loading = true;
       _error = null;
       _selectedOption = null;
+      _transition = null;
+      _currentSubject = subject;
     });
     try {
-      final resp = await diagnosticKioskApi.startAttempt(
+      final resp = await _startAttemptCall(
         attemptId: widget.attemptId,
         subject: subject,
       );
       if (!mounted) return;
       setState(() {
         _question = _extractQuestion(resp);
+        _position = (resp['position'] as num?)?.toInt() ?? 1;
+        _total = (resp['total_questions'] as num?)?.toInt() ?? 0;
         _loading = false;
       });
     } catch (e) {
@@ -112,10 +183,10 @@ class _DiagnosticTestRunnerScreenState
       _error = null;
     });
     try {
-      final resp = await diagnosticKioskApi.submitAnswer(
+      final resp = await _submitAnswerCall(
         attemptId: widget.attemptId,
         questionId: _questionId(q),
-        selected: _optionValue(selected),
+        selected: selected,
       );
       final finished = resp['finished'] == true;
       final nextSubject = (resp['next_subject'] ?? '').toString();
@@ -124,7 +195,16 @@ class _DiagnosticTestRunnerScreenState
         context.pushReplacement('/diagnostic_finished');
         return;
       }
-      if (nextSubject.isNotEmpty) {
+      if (finished && nextSubject.isNotEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _transition = _SubjectTransition(
+            from: _currentSubject,
+            to: nextSubject,
+          );
+        });
+        await Future.delayed(const Duration(milliseconds: 1500));
+        if (!mounted) return;
         await _startSubject(nextSubject);
       } else {
         final next = _extractQuestion(resp);
@@ -132,6 +212,8 @@ class _DiagnosticTestRunnerScreenState
         setState(() {
           _question = next;
           _selectedOption = null;
+          _position = (resp['position'] as num?)?.toInt() ?? _position;
+          _total = (resp['total_questions'] as num?)?.toInt() ?? _total;
         });
       }
     } catch (e) {
@@ -157,149 +239,238 @@ class _DiagnosticTestRunnerScreenState
   String _questionText(Map<String, dynamic> q) =>
       (q['text'] ?? q['prompt'] ?? q['question_text'] ?? '').toString();
 
-  List<dynamic> _questionOptions(Map<String, dynamic> q) {
-    final raw = q['options'] ?? q['choices'] ?? q['answers'] ?? const [];
-    return raw is List ? raw : const [];
+  String _subjectLabel(AppLocalizations l10n, String subject) {
+    switch (subject) {
+      case 'math':
+        return l10n.mathSubjectFull;
+      case 'english':
+        return l10n.englishSubjectFull;
+      default:
+        return subject;
+    }
   }
 
-  String _optionLabel(dynamic opt) {
-    if (opt is Map) {
-      return (opt['text'] ?? opt['label'] ?? opt['value'] ?? '').toString();
+  Color _subjectColor(String subject) {
+    switch (subject) {
+      case 'math':
+        return AppColors.math;
+      case 'english':
+        return AppColors.eng;
+      default:
+        return AppColors.brand;
     }
-    return opt.toString();
   }
 
-  String _optionValue(dynamic opt) {
-    if (opt is Map) {
-      return (opt['id'] ?? opt['value'] ?? opt['key'] ?? opt['text'] ?? '')
-          .toString();
+  IconData _subjectIcon(String subject) {
+    switch (subject) {
+      case 'math':
+        return Icons.calculate_rounded;
+      case 'english':
+        return Icons.translate_rounded;
+      default:
+        return Icons.school_rounded;
     }
-    return opt.toString();
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final q = _question;
+    final transition = _transition;
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
+        child: transition != null
+            ? _buildTransitionView(l10n, transition)
+            : _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? _buildErrorView(l10n)
+                    : q == null
+                        ? Center(child: Text(l10n.diagnosticNoStudents))
+                        : _buildQuestionView(l10n, q),
+      ),
+    );
+  }
+
+  Widget _buildTransitionView(
+      AppLocalizations l10n, _SubjectTransition transition) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(
+          l10n.diagnosticSubjectTransitionMessage(
+            _subjectLabel(l10n, transition.from),
+            _subjectLabel(l10n, transition.to),
+          ),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: AppColors.ink1,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorView(AppLocalizations l10n) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.warning_rounded, color: AppColors.error, size: 40),
+            const SizedBox(height: 12),
+            Text(_error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.error)),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: _bootstrap, child: Text(l10n.retry)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(AppLocalizations l10n) {
+    final color = _subjectColor(_currentSubject);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(_subjectIcon(_currentSubject), size: 16, color: color),
+                  const SizedBox(width: 6),
+                  Text(
+                    _subjectLabel(l10n, _currentSubject),
+                    style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              l10n.diagnosticQuestionCounter(_position, _total),
+              style: const TextStyle(
+                  color: AppColors.ink3,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            value: _total > 0 ? (_position / _total).clamp(0.0, 1.0) : 0,
+            minHeight: 6,
+            backgroundColor: AppColors.border,
+            valueColor: const AlwaysStoppedAnimation(AppColors.brand),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          widget.studentName,
+          style: const TextStyle(color: AppColors.ink3, fontSize: 13),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuestionView(AppLocalizations l10n, Map<String, dynamic> q) {
+    final imageUrl = (q['image_url'] ?? '').toString().trim();
+    final svgVisual = (q['svg_visual'] ?? '').toString().trim();
+    final options = extractDiagnosticOptions(q);
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 140),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildHeader(l10n),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppColors.border),
+                      ),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Icon(Icons.warning_rounded,
-                              color: AppColors.error, size: 40),
-                          const SizedBox(height: 12),
-                          Text(_error!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: AppColors.error)),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _bootstrap,
-                            child: Text(l10n.retry),
+                          Text(
+                            _questionText(q),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.ink1,
+                            ),
                           ),
+                          if (imageUrl.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            AppNetworkImage(
+                              url: imageUrl,
+                              height: 260,
+                              fit: BoxFit.contain,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ] else if (svgVisual.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            SvgPicture.string(svgVisual,
+                                height: 130, fit: BoxFit.contain),
+                          ],
                         ],
                       ),
                     ),
-                  )
-                : q == null
-                    ? Center(child: Text(l10n.diagnosticNoStudents))
-                    : SingleChildScrollView(
-                        padding: const EdgeInsets.all(20),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 640),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  widget.studentName,
-                                  style: const TextStyle(
-                                      color: AppColors.ink3, fontSize: 13),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _questionText(q),
-                                  style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.ink1,
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                ..._questionOptions(q).map((opt) {
-                                  final isSelected = _selectedOption == opt;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: OutlinedButton(
-                                      onPressed: _submitting
-                                          ? null
-                                          : () => setState(
-                                              () => _selectedOption = opt),
-                                      style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 16, horizontal: 16),
-                                        alignment: Alignment.centerLeft,
-                                        backgroundColor: isSelected
-                                            ? AppColors.brand
-                                                .withValues(alpha: 0.08)
-                                            : AppColors.surface,
-                                        side: BorderSide(
-                                          color: isSelected
-                                              ? AppColors.brand
-                                              : AppColors.border,
-                                          width: isSelected ? 2 : 1,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        _optionLabel(opt),
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? AppColors.brand
-                                              : AppColors.ink1,
-                                          fontWeight: isSelected
-                                              ? FontWeight.w700
-                                              : FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }),
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  height: 52,
-                                  child: ElevatedButton(
-                                    onPressed:
-                                        _selectedOption == null || _submitting
-                                            ? null
-                                            : _submit,
-                                    child: _submitting
-                                        ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.white),
-                                          )
-                                        : Text(l10n.continueButton),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-      ),
+                    const SizedBox(height: 20),
+                    ...options.map((opt) => EngineOptionRow(
+                          label: opt.key,
+                          text: opt.text,
+                          selected: _selectedOption == opt.key,
+                          onTap: _submitting
+                              ? () {}
+                              : () =>
+                                  setState(() => _selectedOption = opt.key),
+                        )),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 20,
+          left: 20,
+          right: 20,
+          child: DiagnosticBottomCta(
+            label: l10n.continueButton,
+            enabled: _selectedOption != null,
+            loading: _submitting,
+            onTap: _submit,
+          ),
+        ),
+      ],
     );
   }
 }

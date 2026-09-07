@@ -212,6 +212,20 @@
   "helloGreeting": "Привет!",
   "mathSubjectFull": "Математика",
   "englishSubjectFull": "Английский язык",
+  "diagnosticQuestionCounter": "Вопрос {position} / {total}",
+  "@diagnosticQuestionCounter": {
+    "placeholders": {
+      "position": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "diagnosticSubjectTransitionMessage": "{fromSubject} завершён! Теперь начинается {toSubject}",
+  "@diagnosticSubjectTransitionMessage": {
+    "placeholders": {
+      "fromSubject": { "type": "String" },
+      "toSubject": { "type": "String" }
+    }
+  },
   "finishConfirmTitle": "Завершить?",
   "finishConfirmAllAnsweredPrompt": "Все ответы отмечены. Завершить тест?",
   "testAutoSubmittedNotice": "Время теста истекло, ваши сохранённые ответы были отправлены автоматически.",

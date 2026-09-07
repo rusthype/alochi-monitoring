@@ -437,6 +437,17 @@ class AppLocalizationsUz extends AppLocalizations {
   String get englishSubjectFull => 'Ingliz tili';
 
   @override
+  String diagnosticQuestionCounter(int position, int total) {
+    return 'Savol $position / $total';
+  }
+
+  @override
+  String diagnosticSubjectTransitionMessage(
+      String fromSubject, String toSubject) {
+    return '$fromSubject yakunlandi! Endi $toSubject boshlanadi';
+  }
+
+  @override
   String get finishConfirmTitle => 'Tugatish?';
 
   @override

@@ -435,6 +435,17 @@ class AppLocalizationsRu extends AppLocalizations {
   String get englishSubjectFull => 'Английский язык';
 
   @override
+  String diagnosticQuestionCounter(int position, int total) {
+    return 'Вопрос $position / $total';
+  }
+
+  @override
+  String diagnosticSubjectTransitionMessage(
+      String fromSubject, String toSubject) {
+    return '$fromSubject завершён! Теперь начинается $toSubject';
+  }
+
+  @override
   String get finishConfirmTitle => 'Завершить?';
 
   @override
