@@ -114,6 +114,27 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticNoStudents => 'O\'quvchilar topilmadi';
 
   @override
+  String get diagnosticSubjectsEmptyTitle => 'Diagnostika savollari topilmadi';
+
+  @override
+  String get diagnosticSubjectsEmptySubtitle =>
+      'Ushbu sinf uchun hozircha diagnostika savollari shakllantirilmagan yoki sessiya faol emas.';
+
+  @override
+  String get diagnosticGoBack => 'Orqaga qaytish';
+
+  @override
+  String get diagnosticScreenRecordingPermissionTitle =>
+      'Ekran yozib olish ruxsati zarur';
+
+  @override
+  String get diagnosticScreenRecordingPermissionBody =>
+      'Test paytida ilova to\'xtab qolmasligi uchun tizim sozlamalarida ruxsatni yoqing va ilovani qayta oching.';
+
+  @override
+  String get diagnosticOpenSystemSettings => 'Sozlamalarni ochish';
+
+  @override
   String get myTestsTitle => 'Mening testlarim';
 
   @override

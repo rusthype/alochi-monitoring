@@ -99,6 +99,7 @@ class _DiagnosticTestRunnerScreenState
   bool _loading = true;
   bool _submitting = false;
   String? _error;
+  bool _subjectsEmpty = false;
   Map<String, dynamic>? _question;
   String? _selectedOption;
   int _position = 0;
@@ -166,6 +167,7 @@ class _DiagnosticTestRunnerScreenState
     setState(() {
       _loading = true;
       _error = null;
+      _subjectsEmpty = false;
     });
     try {
       final subjectsResp = await _availableSubjects(widget.grade);
@@ -178,7 +180,7 @@ class _DiagnosticTestRunnerScreenState
         if (!mounted) return;
         setState(() {
           _loading = false;
-          _error = "Fanlar ro'yxati bo'sh";
+          _subjectsEmpty = true;
         });
         return;
       }
@@ -338,7 +340,7 @@ class _DiagnosticTestRunnerScreenState
             ? _buildTransitionView(l10n, transition)
             : _loading
                 ? const Center(child: CircularProgressIndicator())
-                : _error != null
+                : (_error != null || _subjectsEmpty)
                     ? _buildErrorView(l10n)
                     : q == null
                         ? Center(child: Text(l10n.diagnosticNoStudents))
@@ -369,20 +371,76 @@ class _DiagnosticTestRunnerScreenState
   }
 
   Widget _buildErrorView(AppLocalizations l10n) {
+    // _subjectsEmpty gets the dedicated empty-state copy; a generic
+    // ApiException/network _error reuses the same card with its raw message
+    // as the title (no fixed subtitle for those — the message is already
+    // specific enough).
+    final title = _subjectsEmpty
+        ? l10n.diagnosticSubjectsEmptyTitle
+        : (_error ?? l10n.diagnosticSubjectsEmptyTitle);
+    final subtitle =
+        _subjectsEmpty ? l10n.diagnosticSubjectsEmptySubtitle : null;
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.warning_rounded, color: AppColors.error, size: 40),
-            const SizedBox(height: 12),
-            Text(_error!,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Container(
+          margin: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppColors.pageBg,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.amber.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(28),
+                ),
+                child: const Icon(Icons.info_outline_rounded,
+                    color: AppColors.amber, size: 28),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.error)),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _bootstrap, child: Text(l10n.retry)),
-          ],
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.ink1),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  subtitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.ink2),
+                ),
+              ],
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(l10n.diagnosticGoBack),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _bootstrap,
+                      child: Text(l10n.retry),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -397,8 +455,7 @@ class _DiagnosticTestRunnerScreenState
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(100),
@@ -504,8 +561,7 @@ class _DiagnosticTestRunnerScreenState
                           selected: _selectedOption == opt.key,
                           onTap: _submitting
                               ? () {}
-                              : () =>
-                                  setState(() => _selectedOption = opt.key),
+                              : () => setState(() => _selectedOption = opt.key),
                         )),
                   ],
                 ),

@@ -302,6 +302,42 @@ abstract class AppLocalizations {
   /// **'O\'quvchilar topilmadi'**
   String get diagnosticNoStudents;
 
+  /// No description provided for @diagnosticSubjectsEmptyTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Diagnostika savollari topilmadi'**
+  String get diagnosticSubjectsEmptyTitle;
+
+  /// No description provided for @diagnosticSubjectsEmptySubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ushbu sinf uchun hozircha diagnostika savollari shakllantirilmagan yoki sessiya faol emas.'**
+  String get diagnosticSubjectsEmptySubtitle;
+
+  /// No description provided for @diagnosticGoBack.
+  ///
+  /// In uz, this message translates to:
+  /// **'Orqaga qaytish'**
+  String get diagnosticGoBack;
+
+  /// No description provided for @diagnosticScreenRecordingPermissionTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ekran yozib olish ruxsati zarur'**
+  String get diagnosticScreenRecordingPermissionTitle;
+
+  /// No description provided for @diagnosticScreenRecordingPermissionBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test paytida ilova to\'xtab qolmasligi uchun tizim sozlamalarida ruxsatni yoqing va ilovani qayta oching.'**
+  String get diagnosticScreenRecordingPermissionBody;
+
+  /// No description provided for @diagnosticOpenSystemSettings.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sozlamalarni ochish'**
+  String get diagnosticOpenSystemSettings;
+
   /// No description provided for @myTestsTitle.
   ///
   /// In uz, this message translates to:

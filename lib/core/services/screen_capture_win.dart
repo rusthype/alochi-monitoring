@@ -147,7 +147,10 @@ _DirtyResult _decideDirty(CaptureProfile profile, Uint8List bgra) {
   final keyframeDue = _lastKeyframeAt == null ||
       now.difference(_lastKeyframeAt!) >= _kKeyframeInterval;
 
-  if (_lastFrameBgra == null || profileChanged || keyframeDue || _forceKeyframe) {
+  if (_lastFrameBgra == null ||
+      profileChanged ||
+      keyframeDue ||
+      _forceKeyframe) {
     _forceKeyframe = false;
     _lastKeyframeAt = now;
     return _DirtyResult('keyframe', 0, 0, width, height);
@@ -185,8 +188,8 @@ _DirtyResult _decideDirty(CaptureProfile profile, Uint8List bgra) {
     // that would ripple into its timer/backoff bookkeeping for a rare case
     // (a fully static screen). Sending a minimal 1-tile patch is simplest;
     // upgrade to a real skip-upload path if bandwidth ever matters.
-    return _DirtyResult(
-        'patch', 0, 0, _kDirtyTile.clamp(0, width), _kDirtyTile.clamp(0, height));
+    return _DirtyResult('patch', 0, 0, _kDirtyTile.clamp(0, width),
+        _kDirtyTile.clamp(0, height));
   }
 
   final dirtyW = maxX - minX;
@@ -234,6 +237,34 @@ _DirtyResult _decideDirty(CaptureProfile profile, Uint8List bgra) {
     return (scaledX, scaledY, true);
   } finally {
     calloc.free(point);
+  }
+}
+
+/// One-shot preflight check for macOS Screen Recording (TCC) permission —
+/// distinct from [captureScreenJpeg]/[_captureMacOsJpeg]'s per-tick capture,
+/// which self-disables silently on first denial instead of surfacing it to
+/// the user. Safe no-op (`true`) on every non-macOS platform, matching this
+/// file's existing convention (see the file header) so call sites never
+/// need their own `Platform.isMacOS` guard.
+Future<bool> checkMacOsScreenRecordingPermission() async {
+  if (!Platform.isMacOS) return true;
+  final tempPath =
+      '${Directory.systemTemp.path}/proctor_tcc_check_${DateTime.now().microsecondsSinceEpoch}.jpg';
+  final tempFile = File(tempPath);
+  try {
+    final capRes = await Process.run(
+      'screencapture',
+      ['-x', '-m', '-t', 'jpg', tempPath],
+    ).timeout(const Duration(seconds: 2));
+    return capRes.exitCode == 0 && await tempFile.exists();
+  } catch (_) {
+    return false;
+  } finally {
+    if (await tempFile.exists()) {
+      try {
+        await tempFile.delete();
+      } catch (_) {}
+    }
   }
 }
 
@@ -406,8 +437,8 @@ Uint8List? _grabBgra(CaptureProfile profile) {
     SelectObject(hdcMem, hBmp);
     SetStretchBltMode(hdcMem, HALFTONE);
     final (screenW, screenH) = _getScreenSize();
-    final ok = StretchBlt(hdcMem, 0, 0, width, height, hScreen, 0,
-        0, screenW, screenH, SRCCOPY);
+    final ok = StretchBlt(
+        hdcMem, 0, 0, width, height, hScreen, 0, 0, screenW, screenH, SRCCOPY);
     if (ok == 0) return null;
 
     bi = calloc<BITMAPINFO>();
@@ -420,8 +451,7 @@ Uint8List? _grabBgra(CaptureProfile profile) {
 
     final bufSize = width * height * 4;
     buf = calloc<Uint8>(bufSize);
-    final lines =
-        GetDIBits(hdcMem, hBmp, 0, height, buf, bi, DIB_RGB_COLORS);
+    final lines = GetDIBits(hdcMem, hBmp, 0, height, buf, bi, DIB_RGB_COLORS);
     if (lines == 0) return null;
     return Uint8List.fromList(buf.asTypedList(bufSize)); // copy before free
   } catch (_) {

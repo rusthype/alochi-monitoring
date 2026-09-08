@@ -112,6 +112,27 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticNoStudents => 'Учащиеся не найдены';
 
   @override
+  String get diagnosticSubjectsEmptyTitle => 'Вопросы диагностики не найдены';
+
+  @override
+  String get diagnosticSubjectsEmptySubtitle =>
+      'Для этого класса пока не сформированы вопросы диагностики, либо сессия неактивна.';
+
+  @override
+  String get diagnosticGoBack => 'Назад';
+
+  @override
+  String get diagnosticScreenRecordingPermissionTitle =>
+      'Требуется разрешение на запись экрана';
+
+  @override
+  String get diagnosticScreenRecordingPermissionBody =>
+      'Чтобы приложение не останавливалось во время теста, включите разрешение в системных настройках и откройте приложение заново.';
+
+  @override
+  String get diagnosticOpenSystemSettings => 'Открыть настройки';
+
+  @override
   String get myTestsTitle => 'Мои тесты';
 
   @override

@@ -14,6 +14,7 @@ import '../../../core/api/api_client.dart' show ApiException;
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../widgets/diagnostic_widgets.dart';
+import '../../../core/utils/student_name_formatter.dart';
 
 class DiagnosticStudentSelectScreen extends StatefulWidget {
   final String schoolId;
@@ -82,9 +83,11 @@ class _DiagnosticStudentSelectScreenState
 
   List<Map<String, dynamic>> get _filtered {
     if (_query.isEmpty) return _students;
+    final query = cyrillicToLatinUzbek(_query).toLowerCase();
     return _students
-        .where((s) =>
-            (s['student_name'] ?? '').toString().toLowerCase().contains(_query))
+        .where((s) => cyrillicToLatinUzbek((s['student_name'] ?? '').toString())
+            .toLowerCase()
+            .contains(query))
         .toList();
   }
 
@@ -99,8 +102,9 @@ class _DiagnosticStudentSelectScreenState
     if (s == null) return;
     context.push('/diagnostic_test_runner', extra: {
       'attemptId': (s['attempt_id'] ?? '').toString(),
-      'studentName': (s['student_name'] ?? '').toString(),
-      'grade': _gradeFromClassLabel(),
+      'studentName':
+          formatStudentDisplayName((s['student_name'] ?? '').toString()),
+      'grade': (s['session_grade'] as int?) ?? _gradeFromClassLabel(),
       'schoolCode': widget.schoolCode,
     });
   }
@@ -201,8 +205,9 @@ class _DiagnosticStudentSelectScreenState
                                   itemBuilder: (context, index) {
                                     final student = filtered[index];
                                     return DiagnosticStudentCard(
-                                      name: (student['student_name'] ?? '')
-                                          .toString(),
+                                      name: formatStudentDisplayName(
+                                          (student['student_name'] ?? '')
+                                              .toString()),
                                       isSelected: _selected == student,
                                       onTap: () =>
                                           setState(() => _selected = student),
