@@ -1136,6 +1136,10 @@ class AppLocalizationsUz extends AppLocalizations {
   String get enterTeacherCode => 'O\'qituvchi bergan kodni kiriting';
 
   @override
+  String get diagnosticPinHelpText =>
+      'Administrator tomonidan belgilangan kodni kiriting';
+
+  @override
   String get otherSchoolBtn => 'Boshqa maktab';
 
   @override

@@ -6,7 +6,6 @@
 // Replaces the old popup PIN dialog (_showPinDialog) that used to live in
 // diagnostic_school_select_screen.dart.
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 
@@ -44,6 +43,7 @@ class _DiagnosticSessionSetupScreenState
   void initState() {
     super.initState();
     _pinCtrl.addListener(() => setState(() {}));
+    _pinFocus.addListener(() => setState(() {}));
   }
 
   @override
@@ -62,6 +62,7 @@ class _DiagnosticSessionSetupScreenState
   }
 
   Future<void> _confirm() async {
+    if (_isChecking) return;
     final l10n = AppLocalizations.of(context)!;
 
     if (widget.expectedPin.isNotEmpty &&
@@ -421,9 +422,6 @@ class _DiagnosticSessionSetupScreenState
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
                 onSubmitted: (_) => _confirm(),
               ),
             ),
@@ -457,7 +455,7 @@ class _DiagnosticSessionSetupScreenState
                         size: 16),
                     const SizedBox(width: 6),
                     Text(
-                      AppLocalizations.of(context)!.enterTeacherCode,
+                      AppLocalizations.of(context)!.diagnosticPinHelpText,
                       style: const TextStyle(
                         fontWeight: FontWeight.w500,
                         fontSize: 12,

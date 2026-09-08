@@ -2181,6 +2181,12 @@ abstract class AppLocalizations {
   /// **'O\'qituvchi bergan kodni kiriting'**
   String get enterTeacherCode;
 
+  /// No description provided for @diagnosticPinHelpText.
+  ///
+  /// In uz, this message translates to:
+  /// **'Administrator tomonidan belgilangan kodni kiriting'**
+  String get diagnosticPinHelpText;
+
   /// No description provided for @otherSchoolBtn.
   ///
   /// In uz, this message translates to:

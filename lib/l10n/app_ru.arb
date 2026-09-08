@@ -498,6 +498,7 @@
   "pinCodeRequired": "PIN-КОД (ОБЯЗАТЕЛЬНО)",
   "enterPinCode": "Введите PIN-код",
   "enterTeacherCode": "Введите код, выданный учителем",
+  "diagnosticPinHelpText": "Введите код, установленный администратором",
   "otherSchoolBtn": "Другая школа",
   "groupsNotFound": "Группы не найдены",
   "testsNotFoundForGroup": "Для этой группы тесты не найдены",

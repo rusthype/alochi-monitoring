@@ -1129,6 +1129,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get enterTeacherCode => 'Введите код, выданный учителем';
 
   @override
+  String get diagnosticPinHelpText =>
+      'Введите код, установленный администратором';
+
+  @override
   String get otherSchoolBtn => 'Другая школа';
 
   @override

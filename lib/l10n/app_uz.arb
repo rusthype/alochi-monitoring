@@ -536,6 +536,7 @@
   "pinCodeRequired": "PIN KOD (MAJBURIY)",
   "enterPinCode": "PIN kodni kiriting",
   "enterTeacherCode": "O'qituvchi bergan kodni kiriting",
+  "diagnosticPinHelpText": "Administrator tomonidan belgilangan kodni kiriting",
   "otherSchoolBtn": "Boshqa maktab",
   "groupsNotFound": "Guruhlar topilmadi",
   "testsNotFoundForGroup": "Bu guruh uchun test topilmadi",
