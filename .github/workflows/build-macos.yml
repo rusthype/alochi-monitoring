@@ -50,7 +50,15 @@ jobs:
           # Sign with ad-hoc identity (-). The app is sandboxed and needs at
           # least ad-hoc signing to run. Users must right-click → Open on first
           # launch to bypass Gatekeeper on macOS 15+.
-          codesign --force --deep --sign - \
+          # Two-stage sign: --deep with a custom --requirements clause fails
+          # ("nested code is modified or invalid") because the nested
+          # frameworks/binaries get re-signed against the top-level bundle's
+          # designated requirement instead of their own. Sign nested code
+          # first with the default ad-hoc requirement, then re-sign only the
+          # outer bundle (no --deep) with the stable designated requirement
+          # that keeps macOS's Screen Recording TCC grant across updates.
+          codesign --force --deep --sign - "$APP"
+          codesign --force --sign - \
             --entitlements macos/Runner/Release.entitlements \
             --requirements '=designated => identifier "uz.alochi.alochiMonitoring"' \
             "$APP"
