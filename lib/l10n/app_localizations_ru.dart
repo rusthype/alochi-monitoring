@@ -122,6 +122,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticGoBack => 'Назад';
 
   @override
+  String get diagnosticTitle => 'ДИАГНОСТИКА / ПРИЁМНЫЙ ТЕСТ';
+
+  @override
+  String get diagnosticHeaderTag => 'ДИАГНОСТИКА';
+
+  @override
+  String get diagnosticNextStepClasses => 'Следующий шаг: выбор класса';
+
+  @override
   String get myTestsTitle => 'Мои тесты';
 
   @override

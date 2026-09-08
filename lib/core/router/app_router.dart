@@ -38,6 +38,7 @@ import '../../features/unit1/unit1_screen.dart';
 
 // Diagnostic kiosk flow
 import '../../features/diagnostic/screens/diagnostic_school_select_screen.dart';
+import '../../features/diagnostic/screens/diagnostic_session_setup_screen.dart';
 import '../../features/diagnostic/screens/diagnostic_class_select_screen.dart';
 import '../../features/diagnostic/screens/diagnostic_student_select_screen.dart';
 import '../../features/diagnostic/screens/diagnostic_test_runner_screen.dart';
@@ -367,6 +368,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/diagnostic_school_select',
           builder: (context, state) => const DiagnosticSchoolSelectScreen()),
+      GoRoute(
+          path: '/diagnostic_session_setup',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return DiagnosticSessionSetupScreen(
+              schoolId: extra['schoolId'] as String? ?? '',
+              schoolName: extra['schoolName'] as String? ?? '',
+              schoolCode: extra['schoolCode'] as String? ?? '',
+              expectedPin: extra['expectedPin'] as String? ?? '',
+            );
+          }),
       GoRoute(
           path: '/diagnostic_class_select',
           builder: (context, state) {

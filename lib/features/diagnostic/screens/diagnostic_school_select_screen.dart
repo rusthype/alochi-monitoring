@@ -55,137 +55,25 @@ class _DiagnosticSchoolSelectScreenState
   }
 
   Future<void> _selectSchool(Map<String, dynamic> school) async {
-    final pin = (school['kiosk_pin'] ?? '').toString().trim();
-    if (pin.isNotEmpty) {
-      final ok = await _showPinDialog(pin);
-      if (ok != true) return;
-    }
-    if (!mounted) return;
     final schoolId = (school['school_id'] ?? '').toString();
     final schoolName = (school['school_name'] ?? '').toString();
     final schoolCode = (school['school_number'] ?? '').toString();
+    final pin = (school['kiosk_pin'] ?? '').toString().trim();
+    if (!mounted) return;
+    if (pin.isNotEmpty) {
+      context.push('/diagnostic_session_setup', extra: {
+        'schoolId': schoolId,
+        'schoolName': schoolName,
+        'schoolCode': schoolCode,
+        'expectedPin': pin,
+      });
+      return;
+    }
     context.push('/diagnostic_class_select', extra: {
       'schoolId': schoolId,
       'schoolName': schoolName,
       'schoolCode': schoolCode,
     });
-  }
-
-  Future<bool?> _showPinDialog(String expectedPin) async {
-    final l10n = AppLocalizations.of(context)!;
-    final ctrl = TextEditingController();
-    String? err;
-    return showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => StatefulBuilder(
-        builder: (dialogCtx, setDialogState) {
-          void trySubmit() {
-            if (ctrl.text.trim() == expectedPin) {
-              Navigator.of(dialogCtx).pop(true);
-            } else {
-              setDialogState(() => err = l10n.incorrectPin);
-            }
-          }
-
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            backgroundColor: AppColors.surface,
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AppColors.brand.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: const Icon(Icons.lock_outline_rounded,
-                        color: AppColors.brand),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    l10n.pinCodeRequired,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.bg,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: TextField(
-                      controller: ctrl,
-                      autofocus: true,
-                      obscureText: true,
-                      keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          letterSpacing: 8,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold),
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        hintText: l10n.enterPinCode,
-                        errorText: err,
-                      ),
-                      onSubmitted: (_) => trySubmit(),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 44,
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            onPressed: () => Navigator.of(dialogCtx).pop(false),
-                            child: Text(l10n.cancel),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: SizedBox(
-                          height: 44,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.brand,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            onPressed: trySubmit,
-                            child: Text(l10n.confirmBtn),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
   }
 
   @override

@@ -124,6 +124,15 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticGoBack => 'Orqaga qaytish';
 
   @override
+  String get diagnosticTitle => 'DIAGNOSTIKA / QABUL TESTI';
+
+  @override
+  String get diagnosticHeaderTag => 'DIAGNOSTIKA';
+
+  @override
+  String get diagnosticNextStepClasses => 'Keyingi qadam: sinfni tanlash';
+
+  @override
   String get myTestsTitle => 'Mening testlarim';
 
   @override

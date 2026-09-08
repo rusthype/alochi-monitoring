@@ -320,6 +320,24 @@ abstract class AppLocalizations {
   /// **'Orqaga qaytish'**
   String get diagnosticGoBack;
 
+  /// No description provided for @diagnosticTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'DIAGNOSTIKA / QABUL TESTI'**
+  String get diagnosticTitle;
+
+  /// No description provided for @diagnosticHeaderTag.
+  ///
+  /// In uz, this message translates to:
+  /// **'DIAGNOSTIKA'**
+  String get diagnosticHeaderTag;
+
+  /// No description provided for @diagnosticNextStepClasses.
+  ///
+  /// In uz, this message translates to:
+  /// **'Keyingi qadam: sinfni tanlash'**
+  String get diagnosticNextStepClasses;
+
   /// No description provided for @myTestsTitle.
   ///
   /// In uz, this message translates to:
