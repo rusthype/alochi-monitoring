@@ -320,24 +320,6 @@ abstract class AppLocalizations {
   /// **'Orqaga qaytish'**
   String get diagnosticGoBack;
 
-  /// No description provided for @diagnosticScreenRecordingPermissionTitle.
-  ///
-  /// In uz, this message translates to:
-  /// **'Ekran yozib olish ruxsati zarur'**
-  String get diagnosticScreenRecordingPermissionTitle;
-
-  /// No description provided for @diagnosticScreenRecordingPermissionBody.
-  ///
-  /// In uz, this message translates to:
-  /// **'Test paytida ilova to\'xtab qolmasligi uchun tizim sozlamalarida ruxsatni yoqing va ilovani qayta oching.'**
-  String get diagnosticScreenRecordingPermissionBody;
-
-  /// No description provided for @diagnosticOpenSystemSettings.
-  ///
-  /// In uz, this message translates to:
-  /// **'Sozlamalarni ochish'**
-  String get diagnosticOpenSystemSettings;
-
   /// No description provided for @myTestsTitle.
   ///
   /// In uz, this message translates to:

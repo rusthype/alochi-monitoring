@@ -122,17 +122,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticGoBack => 'Назад';
 
   @override
-  String get diagnosticScreenRecordingPermissionTitle =>
-      'Требуется разрешение на запись экрана';
-
-  @override
-  String get diagnosticScreenRecordingPermissionBody =>
-      'Чтобы приложение не останавливалось во время теста, включите разрешение в системных настройках и откройте приложение заново.';
-
-  @override
-  String get diagnosticOpenSystemSettings => 'Открыть настройки';
-
-  @override
   String get myTestsTitle => 'Мои тесты';
 
   @override

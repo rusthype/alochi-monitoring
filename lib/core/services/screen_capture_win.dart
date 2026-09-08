@@ -240,39 +240,6 @@ _DirtyResult _decideDirty(CaptureProfile profile, Uint8List bgra) {
   }
 }
 
-/// One-shot preflight check for macOS Screen Recording (TCC) permission —
-/// distinct from [captureScreenJpeg]/[_captureMacOsJpeg]'s per-tick capture,
-/// which self-disables silently on first denial instead of surfacing it to
-/// the user. Safe no-op (`true`) on every non-macOS platform, matching this
-/// file's existing convention (see the file header) so call sites never
-/// need their own `Platform.isMacOS` guard. Also honors the same
-/// [_macOsCaptureAllowedInDebug] gate `_captureMacOsJpeg` uses — a `flutter
-/// run` debug launch must never spawn `screencapture` (and risk the TCC
-/// prompt + this check's own nag dialog) just because a developer opened
-/// the diagnostic flow locally.
-Future<bool> checkMacOsScreenRecordingPermission() async {
-  if (!Platform.isMacOS) return true;
-  if (!_macOsCaptureAllowedInDebug) return true;
-  final tempPath =
-      '${Directory.systemTemp.path}/proctor_tcc_check_${DateTime.now().microsecondsSinceEpoch}.jpg';
-  final tempFile = File(tempPath);
-  try {
-    final capRes = await Process.run(
-      'screencapture',
-      ['-x', '-m', '-t', 'jpg', tempPath],
-    ).timeout(const Duration(seconds: 2));
-    return capRes.exitCode == 0 && await tempFile.exists();
-  } catch (_) {
-    return false;
-  } finally {
-    if (await tempFile.exists()) {
-      try {
-        await tempFile.delete();
-      } catch (_) {}
-    }
-  }
-}
-
 /// Captures the primary display, downscaled to [currentCaptureProfile]'s
 /// width/height, as a [CaptureResult] (JPEG bytes + dirty-rect/cursor
 /// metadata). Returns null on any GDI failure or off-Windows/macOS.

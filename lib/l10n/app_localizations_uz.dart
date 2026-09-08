@@ -124,17 +124,6 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticGoBack => 'Orqaga qaytish';
 
   @override
-  String get diagnosticScreenRecordingPermissionTitle =>
-      'Ekran yozib olish ruxsati zarur';
-
-  @override
-  String get diagnosticScreenRecordingPermissionBody =>
-      'Test paytida ilova to\'xtab qolmasligi uchun tizim sozlamalarida ruxsatni yoqing va ilovani qayta oching.';
-
-  @override
-  String get diagnosticOpenSystemSettings => 'Sozlamalarni ochish';
-
-  @override
   String get myTestsTitle => 'Mening testlarim';
 
   @override

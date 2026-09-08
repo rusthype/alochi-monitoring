@@ -19,8 +19,6 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:mac_menu_bar/mac_menu_bar.dart';
 import 'core/services/update_service.dart';
-import 'core/services/screen_capture_win.dart'
-    show checkMacOsScreenRecordingPermission;
 
 void main() {
   // Defense-in-depth: Flutter's default ErrorWidget.builder renders an
@@ -194,52 +192,6 @@ void main() {
             });
           } catch (e) {
             debugPrint('mac_menu_bar error: $e');
-          }
-
-          try {
-            final hasScreenRecordingPermission =
-                await checkMacOsScreenRecordingPermission();
-            if (!hasScreenRecordingPermission) {
-              final navigatorKey =
-                  container.read(goRouterProvider).routerDelegate.navigatorKey;
-              // Wait for the first frame so the router has a mounted
-              // NavigatorState/context to show a dialog against — this runs
-              // right after runApp(), before anything has been built yet.
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                final dialogContext = navigatorKey.currentContext;
-                if (dialogContext == null || !dialogContext.mounted) return;
-                final dialogL10n = AppLocalizations.of(dialogContext);
-                showDialog<void>(
-                  context: dialogContext,
-                  builder: (context) => AlertDialog(
-                    title: Text(
-                        dialogL10n?.diagnosticScreenRecordingPermissionTitle ??
-                            'Ekran yozib olish ruxsati zarur'),
-                    content: Text(dialogL10n
-                            ?.diagnosticScreenRecordingPermissionBody ??
-                        "Test paytida ilova to'xtab qolmasligi uchun tizim sozlamalarida ruxsatni yoqing va ilovani qayta oching."),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: Text(dialogL10n?.cancel ?? 'Bekor qilish'),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          unawaited(Process.run('open', [
-                            'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture'
-                          ]));
-                        },
-                        child: Text(dialogL10n?.diagnosticOpenSystemSettings ??
-                            'Sozlamalarni ochish'),
-                      ),
-                    ],
-                  ),
-                );
-              });
-            }
-          } catch (e) {
-            debugPrint('TCC screen recording preflight error: $e');
           }
         }
       }
