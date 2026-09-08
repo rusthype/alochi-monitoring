@@ -81,14 +81,25 @@ class DiagnosticKioskApi {
     return data.cast<Map<String, dynamic>>();
   }
 
-  /// `["1-A", "1-B", ...]`
-  Future<List<String>> listClasses(String schoolId) async {
+  /// `[{class_label, language}]` — defensively also accepts the old bare
+  /// `["1-A", "1-B", ...]` shape (rolled-back/cached backend), defaulting
+  /// `language` to `'uz'` in that case.
+  Future<List<Map<String, dynamic>>> listClasses(String schoolId) async {
     final data = await _get('/kiosk/schools/$schoolId/classes/');
     if (data is! List || data.isEmpty) return [];
-    return data.map((e) => e.toString()).toList();
+    return data.map((e) {
+      if (e is Map) {
+        return {
+          'class_label': (e['class_label'] ?? '').toString(),
+          'language': (e['language'] ?? 'uz').toString(),
+        };
+      }
+      return {'class_label': e.toString(), 'language': 'uz'};
+    }).toList();
   }
 
-  /// `[{attempt_id, student_name, class_label}]` — never `parent_phone`.
+  /// `[{attempt_id, student_name, class_label, language}]` — never
+  /// `parent_phone`.
   Future<List<Map<String, dynamic>>> listStudents(
       String schoolId, String classLabel) async {
     final query = Uri.encodeQueryComponent(classLabel);
@@ -110,9 +121,11 @@ class DiagnosticKioskApi {
     });
   }
 
-  /// EXISTING, unmodified backend endpoint — `{subjects: [...], config: {...}}`.
-  Future<Map<String, dynamic>> availableSubjects(int grade) async {
-    final data = await _get('/cat/subjects/?grade=$grade');
+  /// `{subjects: [...], config: {...}}` — `language` is always appended;
+  /// the backend tolerates/normalizes any value and never requires it.
+  Future<Map<String, dynamic>> availableSubjects(int grade,
+      {String language = 'uz'}) async {
+    final data = await _get('/cat/subjects/?grade=$grade&language=$language');
     if (data is Map<String, dynamic>) return data;
     return const {};
   }

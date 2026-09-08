@@ -68,7 +68,8 @@ void main() {
         attemptId: 'att-1',
         studentName: 'Aliyev Ali',
         grade: 3,
-        availableSubjectsOverride: (grade) async => {
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
           'subjects': ['math']
         },
         startAttemptOverride: ({required attemptId, required subject}) async {
@@ -105,7 +106,8 @@ void main() {
         attemptId: 'att-1',
         studentName: 'Aliyev Ali',
         grade: 3,
-        availableSubjectsOverride: (grade) async => {
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
           'subjects': ['math']
         },
         startAttemptOverride: ({required attemptId, required subject}) async {
@@ -149,7 +151,8 @@ void main() {
         attemptId: 'att-1',
         studentName: 'Aliyev Ali',
         grade: 3,
-        availableSubjectsOverride: (grade) async => {
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
           'subjects': ['math']
         },
         startAttemptOverride: ({required attemptId, required subject}) async {
@@ -177,7 +180,8 @@ void main() {
         attemptId: 'att-1',
         studentName: 'Aliyev Ali',
         grade: 1,
-        availableSubjectsOverride: (grade) async => {
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
           'subjects': ['math']
         },
         startAttemptOverride: ({required attemptId, required subject}) async {

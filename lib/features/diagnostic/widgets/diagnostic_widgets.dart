@@ -303,6 +303,33 @@ class DiagnosticStudentCard extends StatelessWidget {
   }
 }
 
+/// Small static "O'zbek" / "Русский" language chip — shown next to a class
+/// or student so a proctor never puts a student in the wrong-language test.
+class DiagnosticLanguageBadge extends StatelessWidget {
+  final String language; // 'uz' | 'ru'
+  const DiagnosticLanguageBadge({super.key, required this.language});
+
+  @override
+  Widget build(BuildContext context) {
+    final isRu = language == 'ru';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: (isRu ? Colors.purple : Colors.teal).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Text(
+        isRu ? 'Русский' : "O'zbek",
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: isRu ? Colors.purple.shade700 : Colors.teal.shade700,
+        ),
+      ),
+    );
+  }
+}
+
 /// Floating pill CTA, copied from student_entry_screen's bottom action bar.
 /// Caller wraps this in a `Positioned` inside a `Stack`.
 class DiagnosticBottomCta extends StatelessWidget {

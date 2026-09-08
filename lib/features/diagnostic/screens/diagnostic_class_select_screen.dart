@@ -31,7 +31,7 @@ class _DiagnosticClassSelectScreenState
     extends State<DiagnosticClassSelectScreen> {
   bool _loading = true;
   String? _error;
-  List<String> _classes = [];
+  List<Map<String, dynamic>> _classes = [];
 
   @override
   void initState() {
@@ -60,12 +60,13 @@ class _DiagnosticClassSelectScreenState
     }
   }
 
-  void _selectClass(String classLabel) {
+  void _selectClass(String classLabel, String language) {
     context.push('/diagnostic_student_select', extra: {
       'schoolId': widget.schoolId,
       'schoolName': widget.schoolName,
       'schoolCode': widget.schoolCode,
       'classLabel': classLabel,
+      'language': language,
     });
   }
 
@@ -144,13 +145,26 @@ class _DiagnosticClassSelectScreenState
                                 Wrap(
                                   spacing: 12,
                                   runSpacing: 12,
-                                  children: _classes
-                                      .map((c) => DiagnosticPillButton(
-                                            label: c,
-                                            isSelected: false,
-                                            onTap: () => _selectClass(c),
-                                          ))
-                                      .toList(),
+                                  children: _classes.map((c) {
+                                    final classLabel =
+                                        (c['class_label'] ?? '').toString();
+                                    final language =
+                                        (c['language'] ?? 'uz').toString();
+                                    return Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        DiagnosticPillButton(
+                                          label: classLabel,
+                                          isSelected: false,
+                                          onTap: () => _selectClass(
+                                              classLabel, language),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        DiagnosticLanguageBadge(
+                                            language: language),
+                                      ],
+                                    );
+                                  }).toList(),
                                 ),
                             ],
                           ),

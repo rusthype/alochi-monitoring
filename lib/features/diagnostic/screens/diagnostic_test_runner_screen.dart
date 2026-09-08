@@ -54,7 +54,9 @@ class _SubjectTransition {
 }
 
 typedef DiagnosticAvailableSubjectsFn = Future<Map<String, dynamic>> Function(
-    int grade);
+    int grade, {
+  String language,
+});
 typedef DiagnosticStartAttemptFn = Future<Map<String, dynamic>> Function({
   required String attemptId,
   required String subject,
@@ -76,6 +78,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   final String studentName;
   final int grade;
   final String schoolCode;
+  final String language;
 
   /// Test-only overrides — default to the real [diagnosticKioskApi] methods.
   /// `diagnosticKioskApi` is a bare top-level singleton with no injectable
@@ -91,6 +94,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
     required this.studentName,
     required this.grade,
     this.schoolCode = '',
+    required this.language,
     this.availableSubjectsOverride,
     this.startAttemptOverride,
     this.submitAnswerOverride,
@@ -177,7 +181,8 @@ class _DiagnosticTestRunnerScreenState
       _subjectsEmpty = false;
     });
     try {
-      final subjectsResp = await _availableSubjects(widget.grade);
+      final subjectsResp =
+          await _availableSubjects(widget.grade, language: widget.language);
       final subjects = (subjectsResp['subjects'] as List?)
               ?.map((e) => e.toString())
               .where((e) => e.isNotEmpty)
@@ -505,13 +510,21 @@ class _DiagnosticTestRunnerScreenState
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          // widget.studentName is intentionally the raw/unformatted roster
-          // name (see diagnostic_student_select_screen.dart's _start()) so
-          // HeartbeatService.startTest() keeps whatever disambiguating info
-          // (patronymic) the backend sends — format it just for display here.
-          formatStudentDisplayName(widget.studentName),
-          style: const TextStyle(color: AppColors.ink3, fontSize: 13),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              // widget.studentName is intentionally the raw/unformatted
+              // roster name (see diagnostic_student_select_screen.dart's
+              // _start()) so HeartbeatService.startTest() keeps whatever
+              // disambiguating info (patronymic) the backend sends — format
+              // it just for display here.
+              formatStudentDisplayName(widget.studentName),
+              style: const TextStyle(color: AppColors.ink3, fontSize: 13),
+            ),
+            const SizedBox(width: 8),
+            DiagnosticLanguageBadge(language: widget.language),
+          ],
         ),
       ],
     );

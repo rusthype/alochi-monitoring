@@ -21,6 +21,7 @@ class DiagnosticStudentSelectScreen extends StatefulWidget {
   final String schoolName;
   final String schoolCode;
   final String classLabel;
+  final String language;
 
   const DiagnosticStudentSelectScreen({
     super.key,
@@ -28,6 +29,7 @@ class DiagnosticStudentSelectScreen extends StatefulWidget {
     required this.schoolName,
     this.schoolCode = '',
     required this.classLabel,
+    required this.language,
   });
 
   @override
@@ -111,6 +113,7 @@ class _DiagnosticStudentSelectScreenState
       'studentName': (s['student_name'] ?? '').toString(),
       'grade': (s['session_grade'] as num?)?.toInt() ?? _gradeFromClassLabel(),
       'schoolCode': widget.schoolCode,
+      'language': widget.language,
     });
   }
 
