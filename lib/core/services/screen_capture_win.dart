@@ -9,7 +9,7 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
-import 'package:flutter/foundation.dart' show kDebugMode, visibleForTesting;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:image/image.dart' as img;
 import 'package:win32/win32.dart';
 
@@ -77,13 +77,17 @@ int get currentStreamEpochForTesting => _streamEpoch;
 // (after granting permission in System Settings) should re-arm capture.
 bool _macOsCaptureDisabled = false;
 
-// Debug-mode default: unless a developer explicitly opts in, never call
-// `screencapture` at all when running locally via `flutter run` (kDebugMode
-// is always false in a real `flutter build --release` Windows kiosk
-// installer, so this can never affect production). Opt in with
-// `ALOCHI_FORCE_MACOS_CAPTURE=1` in the environment before launch.
-bool get _macOsCaptureAllowedInDebug =>
-    !kDebugMode || Platform.environment['ALOCHI_FORCE_MACOS_CAPTURE'] == '1';
+// macOS real screen capture is opt-in ONLY, in both Debug and Release —
+// this must never depend on kDebugMode. `screencapture` triggers the OS's
+// Screen Recording TCC dialog; since 100% of real kiosks run on Windows
+// (GDI FFI, no TCC involved) and macOS here is dev/test-only, capture
+// defaults to `_mockMacOsFrame` unless a developer explicitly opts in:
+//   ALOCHI_FORCE_MACOS_CAPTURE=1 flutter run -d macos
+// If a stale TCC grant/denial is stuck from a build made before this fix,
+// clear it with:
+//   tccutil reset ScreenCapture uz.alochi.alochiMonitoring
+bool get _macOsCaptureAllowed =>
+    Platform.environment['ALOCHI_FORCE_MACOS_CAPTURE'] == '1';
 
 @visibleForTesting
 void setMacOsCaptureDisabledForTesting(bool disabled) {
@@ -311,7 +315,7 @@ Future<CaptureResult?> captureScreenJpeg() async {
 /// accepted gap since macOS is dev-only here, not a production kiosk
 /// platform.
 Future<CaptureResult?> _captureMacOsJpeg(CaptureProfile profile) async {
-  if (_macOsCaptureDisabled || !_macOsCaptureAllowedInDebug) {
+  if (_macOsCaptureDisabled || !_macOsCaptureAllowed) {
     return _mockMacOsFrame(profile);
   }
 

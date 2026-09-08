@@ -5,6 +5,8 @@
 // instead of being a guaranteed no-op like on Linux/other platforms. The
 // old assumption that captureScreenJpeg() always returns null no longer
 // holds here, so this file can no longer hard-assert isNull.
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:alochi_monitoring/core/services/proctor_service.dart';
 import 'package:alochi_monitoring/core/services/screen_capture_win.dart';
@@ -68,6 +70,28 @@ void main() {
         expect(capture, isNotNull);
         expect(capture!.jpeg, isNotEmpty);
         setMacOsCaptureDisabledForTesting(false); // don't leak into other tests
+      },
+    );
+
+    test(
+      'macOS capture stays mocked (fast, no subprocess) without ALOCHI_FORCE_MACOS_CAPTURE',
+      () async {
+        // Regression guard for the release-mode TCC loop: the mock path
+        // returns synchronously, while a real screencapture/sips attempt
+        // would spawn subprocesses with 2s timeouts each. This must hold
+        // regardless of kDebugMode (flutter test always runs with
+        // kDebugMode == true, which is exactly the mode the old buggy
+        // getter already handled correctly — the bug only reproduced in
+        // Release builds) — the fixed getter is env-var-only, so this test
+        // now exercises the same logic path Release mode hits.
+        final sw = Stopwatch()..start();
+        final capture = await captureScreenJpeg();
+        sw.stop();
+        expect(sw.elapsedMilliseconds, lessThan(500));
+        if (Platform.isMacOS) {
+          expect(capture, isNotNull);
+          expect(capture!.jpeg, isNotEmpty);
+        }
       },
     );
   });
