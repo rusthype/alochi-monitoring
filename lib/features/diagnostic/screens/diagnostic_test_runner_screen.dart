@@ -23,6 +23,7 @@ import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_network_image.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../widgets/diagnostic_widgets.dart';
+import '../../../core/utils/student_name_formatter.dart';
 
 /// One rendered answer option: `key` is "A".."D", `text` is the display
 /// string for that letter (already de/re-shuffled server-side).
@@ -66,6 +67,12 @@ typedef DiagnosticSubmitAnswerFn = Future<Map<String, dynamic>> Function({
 
 class DiagnosticTestRunnerScreen extends StatefulWidget {
   final String attemptId;
+
+  /// Raw roster name (NOT patronymic-stripped) — this is what
+  /// [HeartbeatService.startTest] sends as the live-monitoring identity, so
+  /// it must keep whatever the backend uses to disambiguate same-name
+  /// classmates. Formatted only where actually displayed on-screen (see
+  /// `_buildHeader`).
   final String studentName;
   final int grade;
   final String schoolCode;
@@ -371,15 +378,19 @@ class _DiagnosticTestRunnerScreenState
   }
 
   Widget _buildErrorView(AppLocalizations l10n) {
-    // _subjectsEmpty gets the dedicated empty-state copy; a generic
-    // ApiException/network _error reuses the same card with its raw message
-    // as the title (no fixed subtitle for those — the message is already
-    // specific enough).
+    // _subjectsEmpty is an expected, calm "not configured yet" state — its
+    // own dedicated copy in a neutral/amber info card. Any other _error is a
+    // real ApiException/network failure: keep the original red warning
+    // treatment so a proctor can still tell "broken" from "nothing to do
+    // here" at a glance.
     final title = _subjectsEmpty
         ? l10n.diagnosticSubjectsEmptyTitle
         : (_error ?? l10n.diagnosticSubjectsEmptyTitle);
     final subtitle =
         _subjectsEmpty ? l10n.diagnosticSubjectsEmptySubtitle : null;
+    final badgeColor = _subjectsEmpty ? AppColors.amber : AppColors.error;
+    final badgeIcon =
+        _subjectsEmpty ? Icons.info_outline_rounded : Icons.warning_rounded;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
@@ -398,20 +409,19 @@ class _DiagnosticTestRunnerScreenState
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: AppColors.amber.withValues(alpha: 0.1),
+                  color: badgeColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(28),
                 ),
-                child: const Icon(Icons.info_outline_rounded,
-                    color: AppColors.amber, size: 28),
+                child: Icon(badgeIcon, color: badgeColor, size: 28),
               ),
               const SizedBox(height: 16),
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.ink1),
+                    color: _subjectsEmpty ? AppColors.ink1 : AppColors.error),
               ),
               if (subtitle != null) ...[
                 const SizedBox(height: 8),
@@ -496,7 +506,11 @@ class _DiagnosticTestRunnerScreenState
         ),
         const SizedBox(height: 8),
         Text(
-          widget.studentName,
+          // widget.studentName is intentionally the raw/unformatted roster
+          // name (see diagnostic_student_select_screen.dart's _start()) so
+          // HeartbeatService.startTest() keeps whatever disambiguating info
+          // (patronymic) the backend sends — format it just for display here.
+          formatStudentDisplayName(widget.studentName),
           style: const TextStyle(color: AppColors.ink3, fontSize: 13),
         ),
       ],

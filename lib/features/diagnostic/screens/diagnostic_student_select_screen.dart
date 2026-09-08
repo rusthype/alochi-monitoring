@@ -102,9 +102,14 @@ class _DiagnosticStudentSelectScreenState
     if (s == null) return;
     context.push('/diagnostic_test_runner', extra: {
       'attemptId': (s['attempt_id'] ?? '').toString(),
-      'studentName':
-          formatStudentDisplayName((s['student_name'] ?? '').toString()),
-      'grade': (s['session_grade'] as int?) ?? _gradeFromClassLabel(),
+      // Raw (unformatted) name on purpose — this flows into
+      // HeartbeatService.startTest() and becomes the identity shown in the
+      // live monitoring/proctoring feed. Stripping the patronymic there
+      // would make same-name classmates indistinguishable to the teacher.
+      // The roster card above already shows the cleaned name; the runner
+      // screen formats it again for its own on-screen display.
+      'studentName': (s['student_name'] ?? '').toString(),
+      'grade': (s['session_grade'] as num?)?.toInt() ?? _gradeFromClassLabel(),
       'schoolCode': widget.schoolCode,
     });
   }

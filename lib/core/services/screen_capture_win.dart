@@ -245,9 +245,14 @@ _DirtyResult _decideDirty(CaptureProfile profile, Uint8List bgra) {
 /// which self-disables silently on first denial instead of surfacing it to
 /// the user. Safe no-op (`true`) on every non-macOS platform, matching this
 /// file's existing convention (see the file header) so call sites never
-/// need their own `Platform.isMacOS` guard.
+/// need their own `Platform.isMacOS` guard. Also honors the same
+/// [_macOsCaptureAllowedInDebug] gate `_captureMacOsJpeg` uses — a `flutter
+/// run` debug launch must never spawn `screencapture` (and risk the TCC
+/// prompt + this check's own nag dialog) just because a developer opened
+/// the diagnostic flow locally.
 Future<bool> checkMacOsScreenRecordingPermission() async {
   if (!Platform.isMacOS) return true;
+  if (!_macOsCaptureAllowedInDebug) return true;
   final tempPath =
       '${Directory.systemTemp.path}/proctor_tcc_check_${DateTime.now().microsecondsSinceEpoch}.jpg';
   final tempFile = File(tempPath);

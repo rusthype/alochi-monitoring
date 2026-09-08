@@ -34,5 +34,9 @@ void main() {
     test('single-token name passes through Title Cased', () {
       expect(formatStudentDisplayName("ALISHER"), "Alisher");
     });
+
+    test('Cyrillic tutuq belgisi (ъ) maps to an apostrophe, not empty', () {
+      expect(formatStudentDisplayName("Раъно"), "Ra'no");
+    });
   });
 }
