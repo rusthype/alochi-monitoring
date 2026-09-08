@@ -138,7 +138,7 @@ class _DiagnosticStudentSelectScreenState
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const DiagnosticStepIndicator('Qadam 3'),
+                              DiagnosticStepIndicator(l10n.diagnosticStep(3)),
                               const SizedBox(height: 12),
                               Text(
                                 l10n.diagnosticWhoTakesTest,

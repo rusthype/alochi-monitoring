@@ -71,20 +71,26 @@ class _DiagnosticSessionSetupScreenState
       return;
     }
 
-    setState(() {
-      _err = null;
-      _isChecking = true;
-    });
+    try {
+      setState(() {
+        _err = null;
+        _isChecking = true;
+      });
 
-    // Simulate slight delay for premium feel
-    await Future.delayed(const Duration(milliseconds: 400));
-    if (!mounted) return;
+      // Simulate slight delay for premium feel
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
 
-    context.push('/diagnostic_class_select', extra: {
-      'schoolId': widget.schoolId,
-      'schoolName': widget.schoolName,
-      'schoolCode': widget.schoolCode,
-    });
+      await context.push('/diagnostic_class_select', extra: {
+        'schoolId': widget.schoolId,
+        'schoolName': widget.schoolName,
+        'schoolCode': widget.schoolCode,
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isChecking = false);
+      }
+    }
   }
 
   @override

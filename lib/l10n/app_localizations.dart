@@ -338,6 +338,12 @@ abstract class AppLocalizations {
   /// **'Keyingi qadam: sinfni tanlash'**
   String get diagnosticNextStepClasses;
 
+  /// No description provided for @diagnosticStep.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qadam {number}'**
+  String diagnosticStep(int number);
+
   /// No description provided for @myTestsTitle.
   ///
   /// In uz, this message translates to:

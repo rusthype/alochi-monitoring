@@ -312,6 +312,7 @@ class DiagnosticLanguageBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isRu = language == 'ru';
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -319,7 +320,7 @@ class DiagnosticLanguageBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(100),
       ),
       child: Text(
-        isRu ? 'Русский' : "O'zbek",
+        isRu ? (l10n?.languageRussian ?? 'Русский') : (l10n?.languageUzbek ?? "O'zbek"),
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,

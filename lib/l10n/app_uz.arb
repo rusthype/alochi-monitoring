@@ -40,6 +40,14 @@
   "diagnosticTitle": "DIAGNOSTIKA / QABUL TESTI",
   "diagnosticHeaderTag": "DIAGNOSTIKA",
   "diagnosticNextStepClasses": "Keyingi qadam: sinfni tanlash",
+  "diagnosticStep": "Qadam {number}",
+  "@diagnosticStep": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
   "myTestsTitle": "Mening testlarim",
   "myTestsEmpty": "Sizga tegishli testlar topilmadi",
   "retryCheck": "Qayta tekshirish",

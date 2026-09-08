@@ -40,6 +40,14 @@
   "diagnosticTitle": "ДИАГНОСТИКА / ПРИЁМНЫЙ ТЕСТ",
   "diagnosticHeaderTag": "ДИАГНОСТИКА",
   "diagnosticNextStepClasses": "Следующий шаг: выбор класса",
+  "diagnosticStep": "Шаг {number}",
+  "@diagnosticStep": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
   "myTestsTitle": "Мои тесты",
   "myTestsEmpty": "Для вас пока нет доступных тестов",
   "retryCheck": "Проверить снова",

@@ -118,7 +118,7 @@ class _DiagnosticSchoolSelectScreenState
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              const DiagnosticStepIndicator('Qadam 1'),
+                              DiagnosticStepIndicator(l10n.diagnosticStep(1)),
                               const SizedBox(height: 12),
                               Text(
                                 l10n.diagnosticSelectSchoolPrompt,

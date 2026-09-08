@@ -10,6 +10,28 @@ import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../widgets/diagnostic_widgets.dart';
 
+/// Natural sort comparator: '1-A' < '2-A' < '9-A' < '10-A' < '11-B', not ASCII order.
+int compareClassLabels(String a, String b) {
+  final regExp = RegExp(r'(\d+|\D+)');
+  final matchesA = regExp.allMatches(a).map((m) => m.group(0)!).toList();
+  final matchesB = regExp.allMatches(b).map((m) => m.group(0)!).toList();
+
+  for (int i = 0; i < matchesA.length && i < matchesB.length; i++) {
+    final partA = matchesA[i];
+    final partB = matchesB[i];
+    final numA = int.tryParse(partA);
+    final numB = int.tryParse(partB);
+    if (numA != null && numB != null) {
+      final comp = numA.compareTo(numB);
+      if (comp != 0) return comp;
+    } else {
+      final comp = partA.toLowerCase().compareTo(partB.toLowerCase());
+      if (comp != 0) return comp;
+    }
+  }
+  return matchesA.length.compareTo(matchesB.length);
+}
+
 class DiagnosticClassSelectScreen extends StatefulWidget {
   final String schoolId;
   final String schoolName;
@@ -47,6 +69,8 @@ class _DiagnosticClassSelectScreenState
     try {
       final classes = await diagnosticKioskApi.listClasses(widget.schoolId);
       if (!mounted) return;
+      classes.sort((a, b) => compareClassLabels(
+          (a['class_label'] ?? '').toString(), (b['class_label'] ?? '').toString()));
       setState(() {
         _classes = classes;
         _loading = false;
@@ -73,6 +97,11 @@ class _DiagnosticClassSelectScreenState
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final hasMultipleLanguages = _classes
+            .map((c) => (c['language'] ?? 'uz').toString().toLowerCase())
+            .toSet()
+            .length >
+        1;
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -90,7 +119,7 @@ class _DiagnosticClassSelectScreenState
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const DiagnosticStepIndicator('Qadam 2'),
+                              DiagnosticStepIndicator(l10n.diagnosticStep(2)),
                               const SizedBox(height: 12),
                               Text(
                                 l10n.diagnosticSelectClass,
@@ -150,6 +179,10 @@ class _DiagnosticClassSelectScreenState
                                         (c['class_label'] ?? '').toString();
                                     final language =
                                         (c['language'] ?? 'uz').toString();
+                                    final isRu =
+                                        language.toLowerCase() == 'ru';
+                                    final showBadge =
+                                        hasMultipleLanguages || isRu;
                                     return Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
@@ -159,9 +192,11 @@ class _DiagnosticClassSelectScreenState
                                           onTap: () => _selectClass(
                                               classLabel, language),
                                         ),
-                                        const SizedBox(width: 6),
-                                        DiagnosticLanguageBadge(
-                                            language: language),
+                                        if (showBadge) ...[
+                                          const SizedBox(width: 6),
+                                          DiagnosticLanguageBadge(
+                                              language: language),
+                                        ],
                                       ],
                                     );
                                   }).toList(),
