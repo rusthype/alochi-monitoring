@@ -91,7 +91,7 @@ class DiagnosticKioskApi {
       if (e is Map) {
         return {
           'class_label': (e['class_label'] ?? '').toString(),
-          'language': (e['language'] ?? 'uz').toString(),
+          'language': (e['language'] ?? 'uz').toString().toLowerCase(),
         };
       }
       return {'class_label': e.toString(), 'language': 'uz'};
