@@ -12,6 +12,28 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../../../core/api/api_client.dart' show ApiException;
 
+/// Parses one row of `GET kiosk/schools/<id>/classes/` — extracted as a
+/// top-level function (rather than inline in `listClasses`) so the new
+/// `has_web_test`/`web_test_key` fields are unit-testable without a network
+/// mock, same rationale as `compareClassLabels` in
+/// diagnostic_class_select_screen.dart.
+Map<String, dynamic> parseDiagnosticClassRow(dynamic e) {
+  if (e is Map) {
+    return {
+      'class_label': (e['class_label'] ?? '').toString(),
+      'language': (e['language'] ?? 'uz').toString().toLowerCase(),
+      'has_web_test': e['has_web_test'] == true,
+      'web_test_key': (e['web_test_key'] ?? '').toString(),
+    };
+  }
+  return {
+    'class_label': e.toString(),
+    'language': 'uz',
+    'has_web_test': false,
+    'web_test_key': '',
+  };
+}
+
 class DiagnosticKioskApi {
   static const String _base = 'https://api.alochi.org/api/v1/diagnostic';
   static const Duration _timeout = Duration(seconds: 20);
@@ -87,15 +109,7 @@ class DiagnosticKioskApi {
   Future<List<Map<String, dynamic>>> listClasses(String schoolId) async {
     final data = await _get('/kiosk/schools/$schoolId/classes/');
     if (data is! List || data.isEmpty) return [];
-    return data.map((e) {
-      if (e is Map) {
-        return {
-          'class_label': (e['class_label'] ?? '').toString(),
-          'language': (e['language'] ?? 'uz').toString().toLowerCase(),
-        };
-      }
-      return {'class_label': e.toString(), 'language': 'uz'};
-    }).toList();
+    return data.map(parseDiagnosticClassRow).toList();
   }
 
   /// `[{attempt_id, student_name, class_label, language}]` — never
@@ -118,6 +132,21 @@ class DiagnosticKioskApi {
     return _post('/kiosk/start/', {
       'attempt_id': attemptId,
       'subject': subject,
+    });
+  }
+
+  /// `{token, student_id, code, student_name, variant, grade, group_name,
+  /// school_code}` — starts the web-test bridge session for a class whose
+  /// row had `has_web_test: true`. 404 (`{"detail": "Topilmadi"}`) covers
+  /// every failure reason (wrong school/class, inactive session, unknown
+  /// attempt) collapsed for security — never distinguished client-side.
+  Future<Map<String, dynamic>> webTestStart({
+    required String attemptId,
+    required String testKey,
+  }) {
+    return _post('/kiosk/web-test/start/', {
+      'attempt_id': attemptId,
+      'test_key': testKey,
     });
   }
 

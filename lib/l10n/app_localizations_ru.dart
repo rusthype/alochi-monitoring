@@ -131,6 +131,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticNextStepClasses => 'Следующий шаг: выбор класса';
 
   @override
+  String get diagnosticChooseTestType => 'Выберите тип теста';
+
+  @override
+  String get diagnosticCatTestOption => 'CAT-тест';
+
+  @override
+  String get diagnosticWebTestOption => 'Веб-тест';
+
+  @override
   String diagnosticStep(int number) {
     return 'Шаг $number';
   }

@@ -40,6 +40,9 @@
   "diagnosticTitle": "DIAGNOSTIKA / QABUL TESTI",
   "diagnosticHeaderTag": "DIAGNOSTIKA",
   "diagnosticNextStepClasses": "Keyingi qadam: sinfni tanlash",
+  "diagnosticChooseTestType": "Test turini tanlang",
+  "diagnosticCatTestOption": "CAT test",
+  "diagnosticWebTestOption": "Veb-test",
   "diagnosticStep": "Qadam {number}",
   "@diagnosticStep": {
     "placeholders": {

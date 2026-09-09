@@ -133,6 +133,15 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticNextStepClasses => 'Keyingi qadam: sinfni tanlash';
 
   @override
+  String get diagnosticChooseTestType => 'Test turini tanlang';
+
+  @override
+  String get diagnosticCatTestOption => 'CAT test';
+
+  @override
+  String get diagnosticWebTestOption => 'Veb-test';
+
+  @override
   String diagnosticStep(int number) {
     return 'Qadam $number';
   }

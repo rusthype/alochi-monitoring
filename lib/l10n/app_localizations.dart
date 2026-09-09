@@ -338,6 +338,24 @@ abstract class AppLocalizations {
   /// **'Keyingi qadam: sinfni tanlash'**
   String get diagnosticNextStepClasses;
 
+  /// No description provided for @diagnosticChooseTestType.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test turini tanlang'**
+  String get diagnosticChooseTestType;
+
+  /// No description provided for @diagnosticCatTestOption.
+  ///
+  /// In uz, this message translates to:
+  /// **'CAT test'**
+  String get diagnosticCatTestOption;
+
+  /// No description provided for @diagnosticWebTestOption.
+  ///
+  /// In uz, this message translates to:
+  /// **'Veb-test'**
+  String get diagnosticWebTestOption;
+
   /// No description provided for @diagnosticStep.
   ///
   /// In uz, this message translates to:

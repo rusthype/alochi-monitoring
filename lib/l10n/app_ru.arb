@@ -40,6 +40,9 @@
   "diagnosticTitle": "ДИАГНОСТИКА / ПРИЁМНЫЙ ТЕСТ",
   "diagnosticHeaderTag": "ДИАГНОСТИКА",
   "diagnosticNextStepClasses": "Следующий шаг: выбор класса",
+  "diagnosticChooseTestType": "Выберите тип теста",
+  "diagnosticCatTestOption": "CAT-тест",
+  "diagnosticWebTestOption": "Веб-тест",
   "diagnosticStep": "Шаг {number}",
   "@diagnosticStep": {
     "placeholders": {

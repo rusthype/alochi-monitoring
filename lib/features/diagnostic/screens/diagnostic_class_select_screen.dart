@@ -70,7 +70,8 @@ class _DiagnosticClassSelectScreenState
       final classes = await diagnosticKioskApi.listClasses(widget.schoolId);
       if (!mounted) return;
       classes.sort((a, b) => compareClassLabels(
-          (a['class_label'] ?? '').toString(), (b['class_label'] ?? '').toString()));
+          (a['class_label'] ?? '').toString(),
+          (b['class_label'] ?? '').toString()));
       setState(() {
         _classes = classes;
         _loading = false;
@@ -84,13 +85,16 @@ class _DiagnosticClassSelectScreenState
     }
   }
 
-  void _selectClass(String classLabel, String language) {
+  void _selectClass(String classLabel, String language,
+      {bool hasWebTest = false, String webTestKey = ''}) {
     context.push('/diagnostic_student_select', extra: {
       'schoolId': widget.schoolId,
       'schoolName': widget.schoolName,
       'schoolCode': widget.schoolCode,
       'classLabel': classLabel,
       'language': language,
+      'hasWebTest': hasWebTest,
+      'webTestKey': webTestKey,
     });
   }
 
@@ -179,8 +183,11 @@ class _DiagnosticClassSelectScreenState
                                         (c['class_label'] ?? '').toString();
                                     final language =
                                         (c['language'] ?? 'uz').toString();
-                                    final isRu =
-                                        language.toLowerCase() == 'ru';
+                                    final hasWebTest =
+                                        c['has_web_test'] == true;
+                                    final webTestKey =
+                                        (c['web_test_key'] ?? '').toString();
+                                    final isRu = language.toLowerCase() == 'ru';
                                     final showBadge =
                                         hasMultipleLanguages || isRu;
                                     return Row(
@@ -190,12 +197,19 @@ class _DiagnosticClassSelectScreenState
                                           label: classLabel,
                                           isSelected: false,
                                           onTap: () => _selectClass(
-                                              classLabel, language),
+                                              classLabel, language,
+                                              hasWebTest: hasWebTest,
+                                              webTestKey: webTestKey),
                                         ),
                                         if (showBadge) ...[
                                           const SizedBox(width: 6),
                                           DiagnosticLanguageBadge(
                                               language: language),
+                                        ],
+                                        if (hasWebTest) ...[
+                                          const SizedBox(width: 6),
+                                          const Icon(Icons.public_rounded,
+                                              size: 16, color: AppColors.brand),
                                         ],
                                       ],
                                     );

@@ -399,6 +399,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               schoolCode: extra['schoolCode'] as String? ?? '',
               classLabel: extra['classLabel'] as String? ?? '',
               language: extra['language'] as String? ?? 'uz',
+              hasWebTest: extra['hasWebTest'] as bool? ?? false,
+              webTestKey: extra['webTestKey'] as String? ?? '',
             );
           }),
       GoRoute(
