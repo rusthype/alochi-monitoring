@@ -18,7 +18,8 @@ import '../widgets/diagnostic_widgets.dart';
 import '../../../core/utils/student_name_formatter.dart';
 
 /// Fixed contract with the alochi-unit-tests Vercel frontend's
-/// `/kiosk-entry` route: it reads `token` off the query string and
+/// `/kiosk-entry` route: it reads `code` (an opaque exchange code, per the
+/// S-003 fix) off the query string, redeems it for a token itself, and
 /// auto-logs the student in.
 const String _kWebTestEntryUrl =
     'https://alochi-unit-tests.vercel.app/kiosk-entry';
@@ -152,13 +153,12 @@ class _DiagnosticStudentSelectScreenState
     final l10n = AppLocalizations.of(context)!;
     setState(() => _starting = true);
     try {
-      final result = await diagnosticKioskApi.webTestStart(
+      final exchangeCode = await diagnosticKioskApi.webTestStart(
         attemptId: (s['attempt_id'] ?? '').toString(),
         testKey: widget.webTestKey,
       );
-      final token = (result['token'] ?? '').toString();
       final uri = Uri.parse(_kWebTestEntryUrl)
-          .replace(queryParameters: {'token': token});
+          .replace(queryParameters: {'code': exchangeCode});
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(

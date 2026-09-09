@@ -135,19 +135,22 @@ class DiagnosticKioskApi {
     });
   }
 
-  /// `{token, student_id, code, student_name, variant, grade, group_name,
-  /// school_code}` — starts the web-test bridge session for a class whose
-  /// row had `has_web_test: true`. 404 (`{"detail": "Topilmadi"}`) covers
-  /// every failure reason (wrong school/class, inactive session, unknown
-  /// attempt) collapsed for security — never distinguished client-side.
-  Future<Map<String, dynamic>> webTestStart({
+  /// `{exchange_code}` — starts the web-test bridge session for a class
+  /// whose row had `has_web_test: true`. Per the S-003 fix, the backend no
+  /// longer returns a raw JWT here (never wanted in a URL) — only an opaque
+  /// exchange code that `student-web-test`'s frontend redeems for the real
+  /// token itself. 404 (`{"detail": "Topilmadi"}`) covers every failure
+  /// reason (wrong school/class, inactive session, unknown attempt)
+  /// collapsed for security — never distinguished client-side.
+  Future<String> webTestStart({
     required String attemptId,
     required String testKey,
-  }) {
-    return _post('/kiosk/web-test/start/', {
+  }) async {
+    final result = await _post('/kiosk/web-test/start/', {
       'attempt_id': attemptId,
       'test_key': testKey,
     });
+    return (result['exchange_code'] ?? '').toString();
   }
 
   /// `{subjects: [...], config: {...}}` — `language` is always appended;
