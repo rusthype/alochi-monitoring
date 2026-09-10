@@ -57,11 +57,19 @@ void main() {
   testWidgets('tapping the return button navigates home immediately',
       (tester) async {
     await tester.pumpWidget(_wrap());
-    await tester.pump();
+    // let the entrance animation (600ms) fully settle before tapping, so the
+    // tap isn't landing on a still-animating (near-zero-scale) hit-test area.
+    // Note: pumpAndSettle() can't be used here — the particle/pulse
+    // controllers repeat forever and never "settle".
+    await tester.pump(const Duration(milliseconds: 700));
 
     expect(find.text('Bosh sahifaga qaytish'), findsOneWidget);
     await tester.tap(find.byType(ElevatedButton));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    // pump for a short duration only — well short of the 15s auto-return
+    // timer — so navigation can only be caused by the button tap itself.
+    // Long enough to let the route's page-transition animation finish.
+    await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('HOME'), findsOneWidget);
   });

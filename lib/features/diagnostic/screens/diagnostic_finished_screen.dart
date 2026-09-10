@@ -70,7 +70,13 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final entrance = CurvedAnimation(
+    final entrance = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+    final fadeIn = CurvedAnimation(
       parent: _entranceController,
       curve: Curves.easeOutBack,
     );
@@ -91,7 +97,7 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
                 child: ScaleTransition(
                   scale: entrance,
                   child: FadeTransition(
-                    opacity: entrance,
+                    opacity: fadeIn,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [

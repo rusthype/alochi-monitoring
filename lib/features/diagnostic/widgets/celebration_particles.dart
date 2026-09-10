@@ -7,16 +7,11 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
-class CelebrationParticles extends StatelessWidget {
+class CelebrationParticles extends StatefulWidget {
   const CelebrationParticles({super.key, required this.animation});
 
   /// 0.0 -> 1.0 looping progress, driven by the parent's AnimationController.
   final Animation<double> animation;
-
-  static final List<_Particle> _particles = List.generate(
-    24,
-    (i) => _Particle(Random(i)),
-  );
 
   static const List<Color> _palette = [
     Color(0xFF0F9A6E), // success green
@@ -26,14 +21,24 @@ class CelebrationParticles extends StatelessWidget {
   ];
 
   @override
+  State<CelebrationParticles> createState() => _CelebrationParticlesState();
+}
+
+class _CelebrationParticlesState extends State<CelebrationParticles> {
+  late final List<_Particle> _particles = List.generate(
+    24,
+    (i) => _Particle(Random()),
+  );
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: animation,
+      animation: widget.animation,
       builder: (context, _) => CustomPaint(
         painter: _ParticlesPainter(
-          progress: animation.value,
+          progress: widget.animation.value,
           particles: _particles,
-          palette: _palette,
+          palette: CelebrationParticles._palette,
         ),
         child: const SizedBox.expand(),
       ),
