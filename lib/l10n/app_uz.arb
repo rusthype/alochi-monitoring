@@ -31,6 +31,16 @@
   "diagnosticStartTest": "Diagnostikani boshlash",
   "diagnosticFinishedTitle": "Diagnostika yakunlandi",
   "diagnosticFinishedSubtitle": "Rahmat! Natijalar o'qituvchiga yuboriladi.",
+  "diagnosticFinishedInfoNote": "Natijalar maktab ma'muriyati va o'qituvchilar uchun tayyorlanmoqda.",
+  "backToKioskBtn": "Bosh sahifaga qaytish",
+  "autoReturnTimerText": "{seconds} soniyadan so'ng avtomatik qaytiladi",
+  "@autoReturnTimerText": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "diagnosticNoSchools": "Maktablar topilmadi",
   "diagnosticNoClasses": "Sinflar topilmadi",
   "diagnosticNoStudents": "O'quvchilar topilmadi",

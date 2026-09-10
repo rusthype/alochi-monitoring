@@ -284,6 +284,24 @@ abstract class AppLocalizations {
   /// **'Rahmat! Natijalar o\'qituvchiga yuboriladi.'**
   String get diagnosticFinishedSubtitle;
 
+  /// No description provided for @diagnosticFinishedInfoNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijalar maktab ma\'muriyati va o\'qituvchilar uchun tayyorlanmoqda.'**
+  String get diagnosticFinishedInfoNote;
+
+  /// No description provided for @backToKioskBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bosh sahifaga qaytish'**
+  String get backToKioskBtn;
+
+  /// No description provided for @autoReturnTimerText.
+  ///
+  /// In uz, this message translates to:
+  /// **'{seconds} soniyadan so\'ng avtomatik qaytiladi'**
+  String autoReturnTimerText(int seconds);
+
   /// No description provided for @diagnosticNoSchools.
   ///
   /// In uz, this message translates to:

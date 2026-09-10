@@ -105,6 +105,18 @@ class AppLocalizationsUz extends AppLocalizations {
       'Rahmat! Natijalar o\'qituvchiga yuboriladi.';
 
   @override
+  String get diagnosticFinishedInfoNote =>
+      'Natijalar maktab ma\'muriyati va o\'qituvchilar uchun tayyorlanmoqda.';
+
+  @override
+  String get backToKioskBtn => 'Bosh sahifaga qaytish';
+
+  @override
+  String autoReturnTimerText(int seconds) {
+    return '$seconds soniyadan so\'ng avtomatik qaytiladi';
+  }
+
+  @override
   String get diagnosticNoSchools => 'Maktablar topilmadi';
 
   @override

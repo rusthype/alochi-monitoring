@@ -103,6 +103,18 @@ class AppLocalizationsRu extends AppLocalizations {
       'Спасибо! Результаты будут переданы учителю.';
 
   @override
+  String get diagnosticFinishedInfoNote =>
+      'Результаты готовятся для администрации школы и учителей.';
+
+  @override
+  String get backToKioskBtn => 'Вернуться на главную';
+
+  @override
+  String autoReturnTimerText(int seconds) {
+    return 'Автоматический переход через $seconds сек.';
+  }
+
+  @override
   String get diagnosticNoSchools => 'Школы не найдены';
 
   @override

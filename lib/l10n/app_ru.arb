@@ -31,6 +31,16 @@
   "diagnosticStartTest": "Начать диагностику",
   "diagnosticFinishedTitle": "Диагностика завершена",
   "diagnosticFinishedSubtitle": "Спасибо! Результаты будут переданы учителю.",
+  "diagnosticFinishedInfoNote": "Результаты готовятся для администрации школы и учителей.",
+  "backToKioskBtn": "Вернуться на главную",
+  "autoReturnTimerText": "Автоматический переход через {seconds} сек.",
+  "@autoReturnTimerText": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "diagnosticNoSchools": "Школы не найдены",
   "diagnosticNoClasses": "Классы не найдены",
   "diagnosticNoStudents": "Учащиеся не найдены",
