@@ -274,6 +274,9 @@ class _DiagnosticTestRunnerScreenState
         await _startSubject(nextSubject);
       } else {
         final next = _extractQuestion(resp);
+        // Keep the selected option visible (no correct/incorrect reveal)
+        // for a beat before advancing, instead of a manual continue tap.
+        await Future.delayed(const Duration(milliseconds: 1500));
         if (!mounted) return;
         setState(() {
           _question = next;
@@ -586,25 +589,17 @@ class _DiagnosticTestRunnerScreenState
                           label: opt.key,
                           text: opt.text,
                           selected: _selectedOption == opt.key,
-                          onTap: _submitting
+                          onTap: _submitting || _selectedOption != null
                               ? () {}
-                              : () => setState(() => _selectedOption = opt.key),
+                              : () {
+                                  setState(() => _selectedOption = opt.key);
+                                  _submit();
+                                },
                         )),
                   ],
                 ),
               ),
             ),
-          ),
-        ),
-        Positioned(
-          bottom: 20,
-          left: 20,
-          right: 20,
-          child: DiagnosticBottomCta(
-            label: l10n.continueButton,
-            enabled: _selectedOption != null,
-            loading: _submitting,
-            onTap: _submit,
           ),
         ),
       ],
