@@ -1035,6 +1035,18 @@ abstract class AppLocalizations {
   /// **'qoldi'**
   String get timeLeftLabel;
 
+  /// No description provided for @flagQuestionButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Belgilash'**
+  String get flagQuestionButton;
+
+  /// No description provided for @finishTestButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testni yakunlash'**
+  String get finishTestButton;
+
   /// No description provided for @engSectionTransitionTitle.
   ///
   /// In uz, this message translates to:

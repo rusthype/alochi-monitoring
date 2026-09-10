@@ -255,6 +255,8 @@
   "answeredLabel": "отвечено",
   "uploadingLabel": "Загрузка",
   "timeLeftLabel": "осталось",
+  "flagQuestionButton": "Отметить",
+  "finishTestButton": "Завершить тест",
   "engSectionTransitionTitle": "Переход к английскому языку",
   "engSectionTransitionDesc": "40 минут · Следующие вопросы на английском",
   "imageLoadFailed": "Ошибка загрузки",

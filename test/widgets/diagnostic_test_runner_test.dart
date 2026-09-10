@@ -1,5 +1,6 @@
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
-import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_widgets.dart';
+import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_bottom_nav.dart';
+import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_option_card.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:alochi_monitoring/shared/widgets/app_network_image.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +24,20 @@ Map<String, dynamic> _question({
     'option_d': d,
     'image_url': imageUrl,
     'svg_visual': '',
+  };
+}
+
+/// Wraps a start-attempt/next-question fixture with the two fields the
+/// backend now always includes (see diagnostic/views.py + fixed_variant.py).
+Map<String, dynamic> _withMeta(
+  Map<String, dynamic> resp, {
+  int? durationMinutes,
+  bool isFixedVariant = false,
+}) {
+  return {
+    ...resp,
+    if (durationMinutes != null) 'duration_minutes': durationMinutes,
+    'is_fixed_variant': isFixedVariant,
   };
 }
 
@@ -63,7 +78,8 @@ void main() {
     Future<void> unmount(WidgetTester tester) =>
         tester.pumpWidget(const SizedBox());
 
-    testWidgets('renders 4 option_a..option_d options', (tester) async {
+    testWidgets('renders 4 option cards, no TextField, for a math question',
+        (tester) async {
       await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
         attemptId: 'att-1',
         studentName: 'Aliyev Ali',
@@ -92,15 +108,19 @@ void main() {
       // ends (tests below happen to pump enough via tap()s not to need this).
       await tester.pump(const Duration(seconds: 4));
 
+      expect(find.byType(DiagnosticOptionCard), findsNWidgets(4));
       expect(find.text('Variant A'), findsOneWidget);
       expect(find.text('Variant B'), findsOneWidget);
       expect(find.text('Variant C'), findsOneWidget);
       expect(find.text('Variant D'), findsOneWidget);
+      // Multiple-choice-only contract: never a free-text input for math.
+      expect(find.byType(TextField), findsNothing);
+      expect(find.byType(TextFormField), findsNothing);
       await unmount(tester);
     });
 
-    testWidgets('selecting an option and submitting sends selected: "B"',
-        (tester) async {
+    testWidgets('selecting an option submits selected: "B" and updates the '
+        'answered counter', (tester) async {
       String? captured;
       await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
         attemptId: 'att-1',
@@ -135,14 +155,20 @@ void main() {
       await tester.pump();
       await tester.pump();
 
+      // Header counter starts at position 1 before answering.
+      expect(find.text('Savol 1 / 5'), findsOneWidget);
+
+      // Selecting an option submits it directly — no separate CTA button
+      // (DiagnosticOptionCard's onTap wiring mirrors what EngineOptionRow
+      // used to do).
       await tester.tap(find.text('Variant B'));
-      await tester.pump();
-      await tester.tap(find.byType(DiagnosticBottomCta));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1600));
       await tester.pump();
 
       expect(captured, 'B');
       expect(find.text('Ikkinchi savol'), findsOneWidget);
+      // Header counter advances to the next question's position.
+      expect(find.text('Savol 2 / 5'), findsOneWidget);
       await unmount(tester);
     });
 
@@ -206,8 +232,6 @@ void main() {
       await tester.pump();
 
       await tester.tap(find.text('Variant A'));
-      await tester.pump();
-      await tester.tap(find.byType(DiagnosticBottomCta));
       await tester.pump(); // shows the transition message
 
       expect(find.text('Savol (math)'), findsNothing);
@@ -218,6 +242,93 @@ void main() {
 
       expect(find.text('Savol (english)'), findsOneWidget);
       expect(startCalls, 2);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'DiagnosticBottomNav is not rendered when is_fixed_variant is false '
+        '(adaptive CAT flow)', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 30,
+            'subject': subject,
+            'question': _question(),
+          }, isFixedVariant: false);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(find.byType(DiagnosticBottomNav), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'DiagnosticBottomNav is rendered when is_fixed_variant is true '
+        '(fixed-variant math bank)', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 30,
+            'subject': subject,
+            'question': _question(),
+          }, isFixedVariant: true);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(find.byType(DiagnosticBottomNav), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'header shows a countdown derived from duration_minutes on the '
+        'start-attempt response', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 5,
+            'subject': subject,
+            'question': _question(),
+          }, durationMinutes: 20);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('20:00'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
       await unmount(tester);
     });
   });

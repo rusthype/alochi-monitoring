@@ -521,6 +521,12 @@ class AppLocalizationsUz extends AppLocalizations {
   String get timeLeftLabel => 'qoldi';
 
   @override
+  String get flagQuestionButton => 'Belgilash';
+
+  @override
+  String get finishTestButton => 'Testni yakunlash';
+
+  @override
   String get engSectionTransitionTitle => 'Ingliz tili bo\'limiga o\'tildi';
 
   @override

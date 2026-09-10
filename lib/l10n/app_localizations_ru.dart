@@ -519,6 +519,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get timeLeftLabel => 'осталось';
 
   @override
+  String get flagQuestionButton => 'Отметить';
+
+  @override
+  String get finishTestButton => 'Завершить тест';
+
+  @override
   String get engSectionTransitionTitle => 'Переход к английскому языку';
 
   @override
