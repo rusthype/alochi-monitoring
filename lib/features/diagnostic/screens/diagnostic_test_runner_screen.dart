@@ -550,31 +550,37 @@ class _DiagnosticTestRunnerScreenState
         constraints: const BoxConstraints(maxWidth: 480),
         child: Container(
           margin: const EdgeInsets.all(24),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: AppColors.pageBg,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border),
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 56,
-                height: 56,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(28),
+                  color: badgeColor.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
                 ),
-                child: Icon(badgeIcon, color: badgeColor, size: 28),
+                child: Icon(badgeIcon, color: badgeColor, size: 34),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               Text(
                 title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
                     color: _subjectsEmpty ? AppColors.ink1 : AppColors.error),
               ),
               if (subtitle != null) ...[
@@ -585,20 +591,38 @@ class _DiagnosticTestRunnerScreenState
                   style: const TextStyle(color: AppColors.ink2),
                 ),
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: Text(l10n.diagnosticGoBack),
+                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                      label: Text(l10n.diagnosticGoBack,
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.ink2,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       onPressed: _bootstrap,
-                      child: Text(l10n.retry),
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: Text(l10n.retry,
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.brand,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                   ),
                 ],
