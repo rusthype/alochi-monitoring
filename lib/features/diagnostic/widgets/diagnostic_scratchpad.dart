@@ -134,6 +134,13 @@ class _ScratchPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ScratchPainter oldDelegate) =>
-      oldDelegate.strokes != strokes;
+  bool shouldRepaint(covariant _ScratchPainter oldDelegate) {
+    // `strokes` is the same mutable List instance across every paint (the
+    // State field is appended-to in place, never reassigned) — comparing it
+    // by identity (`!=`) is always false after the first paint, so drawn
+    // strokes silently stopped rendering and Clear didn't visually clear.
+    // A cheap freehand canvas has no real perf concern here, so just always
+    // repaint.
+    return true;
+  }
 }

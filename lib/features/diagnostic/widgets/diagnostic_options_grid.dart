@@ -5,9 +5,8 @@
 // falls back to a single-column stack — same tactile card either way. CAT
 // flow doesn't use this; it keeps rendering `DiagnosticOptionCard` directly.
 import 'package:flutter/material.dart';
+import '../data/diagnostic_option_item.dart';
 import 'diagnostic_tactile_option_card.dart';
-import '../screens/diagnostic_test_runner_screen.dart'
-    show DiagnosticOptionItem;
 
 class DiagnosticOptionsGrid extends StatelessWidget {
   final List<DiagnosticOptionItem> options;
@@ -25,8 +24,15 @@ class DiagnosticOptionsGrid extends StatelessWidget {
     required this.onSelect,
   });
 
+  /// 8 chars comfortably covers numeric/short-word answers (e.g. "154",
+  /// "3+7") without wrapping inside a 2-column card; anything longer (a
+  /// sentence-style option) falls back to the single-column list below,
+  /// where a card can use the full row width.
+  static const _shortAnswerMaxLength = 8;
+
   static bool shouldUseGrid(List<DiagnosticOptionItem> options) =>
-      options.length == 4 && options.every((o) => o.text.length <= 8);
+      options.length == 4 &&
+      options.every((o) => o.text.length <= _shortAnswerMaxLength);
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +50,8 @@ class DiagnosticOptionsGrid extends StatelessWidget {
         crossAxisCount: 2,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
+        // Wide+short (2.2:1) so a short numeric answer's tactile card reads
+        // as a tappable button, not a tall tile.
         childAspectRatio: 2.2,
         mainAxisSpacing: 14,
         crossAxisSpacing: 14,

@@ -20,6 +20,7 @@ import '../../../core/services/heartbeat_service.dart';
 import '../../../core/services/proctor_service.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
+import '../data/diagnostic_option_item.dart';
 import '../widgets/diagnostic_bottom_nav.dart';
 import '../widgets/diagnostic_header_bar.dart';
 import '../widgets/diagnostic_option_card.dart';
@@ -29,29 +30,11 @@ import '../widgets/diagnostic_question_dots.dart';
 import '../widgets/diagnostic_scratchpad.dart';
 import '../../../core/utils/student_name_formatter.dart';
 
+export '../data/diagnostic_option_item.dart';
+
 /// Max width of the centered content dock (question card and the floating
 /// bottom-nav panel both clamp to this) for the fixed-variant redesign.
 const double _kDockMaxWidth = 760;
-
-/// One rendered answer option: `key` is "A".."D", `text` is the display
-/// string for that letter (already de/re-shuffled server-side).
-class DiagnosticOptionItem {
-  final String key;
-  final String text;
-  const DiagnosticOptionItem({required this.key, required this.text});
-}
-
-List<DiagnosticOptionItem> extractDiagnosticOptions(Map<String, dynamic> q) {
-  final items = <DiagnosticOptionItem>[];
-  for (final letter in ['A', 'B', 'C', 'D']) {
-    final lowerKey = 'option_${letter.toLowerCase()}';
-    final text = (q[lowerKey] ?? q[letter] ?? '').toString().trim();
-    if (text.isNotEmpty) {
-      items.add(DiagnosticOptionItem(key: letter, text: text));
-    }
-  }
-  return items;
-}
 
 /// Pending "subject A finished, subject B starting" state — shown as a brief
 /// full-screen message instead of jumping straight to the next question.
