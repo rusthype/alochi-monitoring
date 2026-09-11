@@ -37,12 +37,11 @@ class DiagnosticBottomNav extends StatelessWidget {
           maintainState: true,
           maintainAnimation: true,
           visible: onPrevious != null,
-          child: ConstrainedBox(
-            // min, not exact: a fixed width guessed too small for "Oldingi"
-            // + icon wrapped the label onto 2 lines (found via a real local
-            // run) — a minimum lets the button grow for longer labels/fonts
-            // instead of clipping/wrapping.
-            constraints: const BoxConstraints(minWidth: 110, minHeight: 44),
+          child: SizedBox(
+            // 140, not 110: 110 guessed too small for "Oldingi" + icon,
+            // wrapping the label onto 2 lines (found via a real local run).
+            width: 140,
+            height: 44,
             child: OutlinedButton.icon(
               onPressed: onPrevious,
               icon: const Icon(Icons.arrow_back_rounded, size: 18),
@@ -59,8 +58,9 @@ class DiagnosticBottomNav extends StatelessWidget {
         ),
         const Spacer(),
         if (isLast)
-          ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 172, minHeight: 44),
+          SizedBox(
+            width: 172,
+            height: 44,
             child: ElevatedButton.icon(
               onPressed: submitting ? null : onFinish,
               icon: submitting
@@ -82,8 +82,9 @@ class DiagnosticBottomNav extends StatelessWidget {
             ),
           )
         else
-          ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 110, minHeight: 44),
+          SizedBox(
+            width: 140,
+            height: 44,
             child: ElevatedButton.icon(
               onPressed: onNext,
               icon: const Icon(Icons.arrow_forward_rounded),
