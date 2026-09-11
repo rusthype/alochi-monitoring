@@ -24,6 +24,7 @@ import '../widgets/diagnostic_bottom_nav.dart';
 import '../widgets/diagnostic_header_bar.dart';
 import '../widgets/diagnostic_option_card.dart';
 import '../widgets/diagnostic_question_card.dart';
+import '../widgets/diagnostic_question_dots.dart';
 import '../../../core/utils/student_name_formatter.dart';
 
 /// One rendered answer option: `key` is "A".."D", `text` is the display
@@ -55,7 +56,7 @@ class _SubjectTransition {
 }
 
 typedef DiagnosticAvailableSubjectsFn = Future<Map<String, dynamic>> Function(
-    int grade, {
+  int grade, {
   String language,
 });
 typedef DiagnosticStartAttemptFn = Future<Map<String, dynamic>> Function({
@@ -298,7 +299,9 @@ class _DiagnosticTestRunnerScreenState
         _total = (resp['total_questions'] as num?)?.toInt() ?? 0;
         _isFixedVariant = resp['is_fixed_variant'] == true;
         _answers.clear();
-        if (_isFixedVariant && questionsList != null && questionsList.isNotEmpty) {
+        if (_isFixedVariant &&
+            questionsList != null &&
+            questionsList.isNotEmpty) {
           _questions = questionsList;
           final idx = (_position - 1).clamp(0, _questions.length - 1);
           _question = _questions[idx];
@@ -403,7 +406,8 @@ class _DiagnosticTestRunnerScreenState
       final ok = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(l10n.finishConfirmTitle,
               style: const TextStyle(fontWeight: FontWeight.w800)),
           content: Text(l10n.unansweredWarning(unanswered)),
@@ -469,28 +473,6 @@ class _DiagnosticTestRunnerScreenState
         return l10n.englishSubjectFull;
       default:
         return subject;
-    }
-  }
-
-  Color _subjectColor(String subject) {
-    switch (subject) {
-      case 'math':
-        return AppColors.math;
-      case 'english':
-        return AppColors.eng;
-      default:
-        return AppColors.brand;
-    }
-  }
-
-  IconData _subjectIcon(String subject) {
-    switch (subject) {
-      case 'math':
-        return Icons.calculate_rounded;
-      case 'english':
-        return Icons.translate_rounded;
-      default:
-        return Icons.school_rounded;
     }
   }
 
@@ -635,11 +617,7 @@ class _DiagnosticTestRunnerScreenState
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     DiagnosticHeaderBar(
-                      subjectLabel: _subjectLabel(l10n, _currentSubject),
-                      subjectIcon: _subjectIcon(_currentSubject),
-                      subjectColor: _subjectColor(_currentSubject),
-                      position: _position,
-                      total: _total,
+                      grade: widget.grade,
                       // widget.studentName is intentionally the raw/
                       // unformatted roster name (see
                       // diagnostic_student_select_screen.dart's _start())
@@ -650,6 +628,17 @@ class _DiagnosticTestRunnerScreenState
                       language: widget.language,
                       remainingSeconds: _remainingSeconds,
                     ),
+                    if (showBottomNav) ...[
+                      const SizedBox(height: 16),
+                      DiagnosticQuestionDots(
+                        total: _total,
+                        currentIndex: (_position - 1)
+                            .clamp(0, _total == 0 ? 0 : _total - 1),
+                        answeredIndexes:
+                            _answers.keys.map((p) => p - 1).toSet(),
+                        onSelectIndex: _jumpTo,
+                      ),
+                    ],
                     const SizedBox(height: 20),
                     DiagnosticQuestionCard(
                       position: _position,
@@ -703,14 +692,12 @@ class _DiagnosticTestRunnerScreenState
             right: 0,
             bottom: 0,
             child: DiagnosticBottomNav(
-              total: _total,
-              currentIndex: (_position - 1).clamp(0, _total == 0 ? 0 : _total - 1),
-              answeredIndexes: _answers.keys.map((p) => p - 1).toSet(),
-              onSelectIndex: _jumpTo,
-              onPrevious: () => _jumpTo(_position - 2),
+              onPrevious: _position <= 1 ? null : () => _jumpTo(_position - 2),
               onNext: () => _jumpTo(_position),
               onFinish:
                   _isFixedVariant ? _confirmAndFinishPackage : _finishTest,
+              isLast: (_position - 1) >= (_total - 1),
+              submitting: _submitting,
             ),
           ),
       ],

@@ -1,6 +1,7 @@
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_bottom_nav.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_option_card.dart';
+import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_question_dots.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:alochi_monitoring/shared/widgets/app_network_image.dart';
 import 'package:flutter/material.dart';
@@ -141,7 +142,8 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('selecting an option submits selected: "B" and updates the '
+    testWidgets(
+        'selecting an option submits selected: "B" and updates the '
         'answered counter', (tester) async {
       String? captured;
       await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
@@ -177,9 +179,6 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      // Header counter starts at position 1 before answering.
-      expect(find.text('Savol 1 / 5'), findsOneWidget);
-
       // Selecting an option submits it directly — no separate CTA button
       // (DiagnosticOptionCard's onTap wiring mirrors what EngineOptionRow
       // used to do).
@@ -189,8 +188,6 @@ void main() {
 
       expect(captured, 'B');
       expect(find.text('Ikkinchi savol'), findsOneWidget);
-      // Header counter advances to the next question's position.
-      expect(find.text('Savol 2 / 5'), findsOneWidget);
       await unmount(tester);
     });
 
@@ -238,8 +235,7 @@ void main() {
             'position': 1,
             'total_questions': 5,
             'subject': subject,
-            'question':
-                _question(id: 'q-$subject', text: 'Savol ($subject)'),
+            'question': _question(id: 'q-$subject', text: 'Savol ($subject)'),
           };
         },
         submitAnswerOverride: (
@@ -322,6 +318,40 @@ void main() {
       await tester.pump(const Duration(seconds: 4));
 
       expect(find.byType(DiagnosticBottomNav), findsOneWidget);
+      // Dots render above the question card, not inside the bottom nav.
+      expect(find.byType(DiagnosticQuestionDots), findsOneWidget);
+      final dotsY = tester.getTopLeft(find.byType(DiagnosticQuestionDots)).dy;
+      final navY = tester.getTopLeft(find.byType(DiagnosticBottomNav)).dy;
+      expect(dotsY, lessThan(navY));
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'no dots row rendered when is_fixed_variant is false '
+        '(adaptive CAT flow)', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 30,
+            'subject': subject,
+            'question': _question(),
+          }, isFixedVariant: false);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(find.byType(DiagnosticQuestionDots), findsNothing);
       await unmount(tester);
     });
 
@@ -355,7 +385,8 @@ void main() {
     });
 
     List<Map<String, dynamic>> fullPackageQuestions(int count) => [
-          for (var i = 1; i <= count; i++) _question(id: 'q$i', text: 'Savol $i')
+          for (var i = 1; i <= count; i++)
+            _question(id: 'q$i', text: 'Savol $i')
         ];
 
     testWidgets(
@@ -383,7 +414,8 @@ void main() {
             required questionId,
             required selected}) async {
           submitCalls++;
-          throw StateError('submitAnswer must not be called in full-package mode');
+          throw StateError(
+              'submitAnswer must not be called in full-package mode');
         },
       )));
       await tester.pump();
@@ -392,12 +424,29 @@ void main() {
       await tester.pump(const Duration(seconds: 4));
 
       expect(find.text('Savol 1'), findsOneWidget);
+      // First question: Previous is disabled (onPressed null), and the
+      // Next label shows (not the finish label).
+      final prevBtn1 = tester.widget<OutlinedButton>(find.descendant(
+          of: find.byType(DiagnosticBottomNav),
+          matching: find.byType(OutlinedButton)));
+      expect(prevBtn1.onPressed, isNull);
+      expect(find.text('Keyingi'), findsOneWidget);
+      expect(find.text('Testni yakunlash'), findsNothing);
 
-      await tester.tap(find.text('3'));
+      // Dot labels are zero-padded to 2 digits (see DiagnosticQuestionDots).
+      await tester.tap(find.text('03'));
       await tester.pump();
 
       expect(find.text('Savol 3'), findsOneWidget);
       expect(submitCalls, 0);
+      // Last question: finish label shows instead of Next, and Previous
+      // becomes enabled.
+      expect(find.text('Testni yakunlash'), findsOneWidget);
+      expect(find.text('Keyingi'), findsNothing);
+      final prevBtn3 = tester.widget<OutlinedButton>(find.descendant(
+          of: find.byType(DiagnosticBottomNav),
+          matching: find.byType(OutlinedButton)));
+      expect(prevBtn3.onPressed, isNotNull);
       await unmount(tester);
     });
 
@@ -425,7 +474,8 @@ void main() {
             required questionId,
             required selected}) async {
           submitCalls++;
-          throw StateError('submitAnswer must not be called in full-package mode');
+          throw StateError(
+              'submitAnswer must not be called in full-package mode');
         },
       )));
       await tester.pump();
@@ -462,8 +512,7 @@ void main() {
             'questions': fullPackageQuestions(2),
           }, isFixedVariant: true);
         },
-        finishAttemptOverride: (
-            {required attemptId, required answers}) async {
+        finishAttemptOverride: ({required attemptId, required answers}) async {
           finishCalls++;
           capturedAnswers = answers;
           return {'finished': true};
@@ -476,6 +525,11 @@ void main() {
 
       // Answer only the first question, leave the second unanswered.
       await tester.tap(find.text('Variant A'));
+      await tester.pump();
+
+      // Finish only appears as the right-side button on the last question.
+      // Dot labels are zero-padded to 2 digits (see DiagnosticQuestionDots).
+      await tester.tap(find.text('02'));
       await tester.pump();
 
       await tester.tap(find.text('Testni yakunlash'));
@@ -516,8 +570,7 @@ void main() {
             'questions': fullPackageQuestions(1),
           }, isFixedVariant: true);
         },
-        finishAttemptOverride: (
-            {required attemptId, required answers}) async {
+        finishAttemptOverride: ({required attemptId, required answers}) async {
           finishCalls++;
           return {'finished': true};
         },
