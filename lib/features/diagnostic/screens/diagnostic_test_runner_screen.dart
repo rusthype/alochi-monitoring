@@ -396,6 +396,7 @@ class _DiagnosticTestRunnerScreenState
   /// questions (same dialog pattern as test_screen.dart's `_finish`), then
   /// submits every locally-collected answer in one `finishAttempt` call.
   Future<void> _confirmAndFinishPackage() async {
+    if (_submitting) return;
     final l10n = AppLocalizations.of(context)!;
     final unanswered = _total - _answers.length;
     if (unanswered > 0) {
