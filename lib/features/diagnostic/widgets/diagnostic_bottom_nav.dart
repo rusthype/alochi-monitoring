@@ -71,7 +71,10 @@ class DiagnosticBottomNav extends StatelessWidget {
         ),
         const Spacer(),
         SizedBox(
-          width: 110,
+          // "Testni yakunlash" doesn't fit test_screen.dart's 110px Next/Prev
+          // width at this font size — widen just this state so the label
+          // never truncates.
+          width: isLast ? 172 : 110,
           height: 44,
           child: isLast
               ? ElevatedButton(

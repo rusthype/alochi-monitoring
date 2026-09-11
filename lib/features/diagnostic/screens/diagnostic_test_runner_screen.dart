@@ -137,6 +137,13 @@ class _DiagnosticTestRunnerScreenState
   int? _remainingSeconds;
   Timer? _timer;
 
+  /// Fixed-variant only: mirrors test_screen.dart's `_autoAdv` — a short
+  /// delay after picking an option before silently moving to the next
+  /// question, so the tap feels responsive without an explicit "Keyingi".
+  /// Cancelled on manual navigation (see `_jumpTo`) so it never fires late
+  /// and overrides wherever the student jumped to.
+  Timer? _autoAdvanceTimer;
+
   /// Whether the current attempt is the fixed-variant math bank (all
   /// questions known upfront, supports prev/next/grid/finish nav) vs the
   /// CAT engine's adaptive one-question-at-a-time flow. Set from the
@@ -228,6 +235,7 @@ class _DiagnosticTestRunnerScreenState
   @override
   void dispose() {
     _timer?.cancel();
+    _autoAdvanceTimer?.cancel();
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
     HeartbeatService.instance.onTerminated = null;
@@ -386,6 +394,7 @@ class _DiagnosticTestRunnerScreenState
   /// Local, network-free navigation for a fixed-variant/full-package
   /// attempt — [zeroBasedIndex] is clamped to the known question set.
   void _jumpTo(int zeroBasedIndex) {
+    _autoAdvanceTimer?.cancel();
     if (_questions.isEmpty) return;
     final clamped = zeroBasedIndex.clamp(0, _questions.length - 1);
     setState(() {
@@ -674,6 +683,18 @@ class _DiagnosticTestRunnerScreenState
                                         [],
                                         _questionText(q),
                                         opt.key);
+                                    // Auto-advance like test_screen.dart's
+                                    // _answer() — skip on the last question,
+                                    // where the bottom nav shows "Testni
+                                    // yakunlash" instead of "Keyingi".
+                                    _autoAdvanceTimer?.cancel();
+                                    if (_position < _total) {
+                                      _autoAdvanceTimer = Timer(
+                                          const Duration(milliseconds: 720),
+                                          () {
+                                        if (mounted) _jumpTo(_position);
+                                      });
+                                    }
                                   } else {
                                     setState(() => _selectedOption = opt.key);
                                     _submit();
