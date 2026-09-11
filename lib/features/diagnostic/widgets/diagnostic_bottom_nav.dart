@@ -59,7 +59,10 @@ class DiagnosticBottomNav extends StatelessWidget {
         const Spacer(),
         if (isLast)
           SizedBox(
-            width: 172,
+            // 220, not 172: still wrapped "Testni yakunlash" onto 2 lines
+            // (found via a real local run) — bold text + icon needs more
+            // room than the shorter "Keyingi"/"Oldingi" labels.
+            width: 220,
             height: 44,
             child: ElevatedButton.icon(
               onPressed: submitting ? null : onFinish,
