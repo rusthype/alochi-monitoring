@@ -273,6 +273,8 @@
   "uploadingLabel": "Yuklanmoqda",
   "timeLeftLabel": "qoldi",
   "flagQuestionButton": "Belgilash",
+  "diagnosticScratchpadButton": "Qoralama",
+  "diagnosticScratchpadUndo": "Bekor qilish",
   "finishTestButton": "Testni yakunlash",
   "engSectionTransitionTitle": "Ingliz tili bo'limiga o'tildi",
   "engSectionTransitionDesc": "40 daqiqa · Keyingi savollar ingliz tilida",

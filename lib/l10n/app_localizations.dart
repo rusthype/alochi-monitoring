@@ -1059,6 +1059,18 @@ abstract class AppLocalizations {
   /// **'Belgilash'**
   String get flagQuestionButton;
 
+  /// No description provided for @diagnosticScratchpadButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qoralama'**
+  String get diagnosticScratchpadButton;
+
+  /// No description provided for @diagnosticScratchpadUndo.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bekor qilish'**
+  String get diagnosticScratchpadUndo;
+
   /// No description provided for @finishTestButton.
   ///
   /// In uz, this message translates to:

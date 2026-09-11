@@ -22,6 +22,10 @@ class DiagnosticQuestionCard extends StatelessWidget {
   /// plan): purely lets a student mark a question to revisit visually.
   final VoidCallback onToggleFlag;
 
+  /// Optional scratchpad entry point (fixed-variant only) — null on the
+  /// CAT/adaptive flow, which renders no button and is otherwise unchanged.
+  final VoidCallback? onOpenScratchpad;
+
   const DiagnosticQuestionCard({
     super.key,
     required this.position,
@@ -30,6 +34,7 @@ class DiagnosticQuestionCard extends StatelessWidget {
     required this.svgVisual,
     required this.flagged,
     required this.onToggleFlag,
+    this.onOpenScratchpad,
   });
 
   @override
@@ -56,31 +61,44 @@ class DiagnosticQuestionCard extends StatelessWidget {
                   fontSize: 13,
                 ),
               ),
-              InkWell(
-                onTap: onToggleFlag,
-                borderRadius: BorderRadius.circular(100),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        flagged ? Icons.flag : Icons.outlined_flag,
-                        size: 16,
-                        color: flagged ? AppColors.amber : AppColors.ink3,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: onToggleFlag,
+                    borderRadius: BorderRadius.circular(100),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            flagged ? Icons.flag : Icons.outlined_flag,
+                            size: 16,
+                            color: flagged ? AppColors.amber : AppColors.ink3,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            l10n.flagQuestionButton,
+                            style: TextStyle(
+                              color: flagged ? AppColors.amber : AppColors.ink3,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        l10n.flagQuestionButton,
-                        style: TextStyle(
-                          color: flagged ? AppColors.amber : AppColors.ink3,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  if (onOpenScratchpad != null) ...[
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      onPressed: onOpenScratchpad,
+                      icon: const Text('✏️'),
+                      label: Text(l10n.diagnosticScratchpadButton),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),

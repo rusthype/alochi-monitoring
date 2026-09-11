@@ -266,6 +266,8 @@
   "uploadingLabel": "Загрузка",
   "timeLeftLabel": "осталось",
   "flagQuestionButton": "Отметить",
+  "diagnosticScratchpadButton": "Черновик",
+  "diagnosticScratchpadUndo": "Отменить",
   "finishTestButton": "Завершить тест",
   "engSectionTransitionTitle": "Переход к английскому языку",
   "engSectionTransitionDesc": "40 минут · Следующие вопросы на английском",
