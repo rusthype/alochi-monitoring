@@ -289,6 +289,9 @@ void main() {
       await tester.pump(const Duration(seconds: 4));
 
       expect(find.byType(DiagnosticBottomNav), findsNothing);
+      // No top progress-line in the adaptive CAT flow.
+      expect(
+          find.byKey(const Key('diagnostic-top-progress-bar')), findsNothing);
       await unmount(tester);
     });
 
@@ -323,6 +326,10 @@ void main() {
       final dotsY = tester.getTopLeft(find.byType(DiagnosticQuestionDots)).dy;
       final navY = tester.getTopLeft(find.byType(DiagnosticBottomNav)).dy;
       expect(dotsY, lessThan(navY));
+
+      // Top progress-line is present in fixed-variant mode.
+      expect(
+          find.byKey(const Key('diagnostic-top-progress-bar')), findsOneWidget);
       await unmount(tester);
     });
 
@@ -523,9 +530,17 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(seconds: 4));
 
+      // Top progress-line fill grows as questions get answered.
+      final fillFinder = find.byKey(const Key('diagnostic-top-progress-fill'));
+      final widthBefore = tester.getSize(fillFinder).width;
+
       // Answer only the first question, leave the second unanswered.
       await tester.tap(find.text('Variant A'));
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final widthAfter = tester.getSize(fillFinder).width;
+      expect(widthAfter, greaterThan(widthBefore));
 
       // Finish only appears as the right-side button on the last question.
       // Dot labels are zero-padded to 2 digits (see DiagnosticQuestionDots).

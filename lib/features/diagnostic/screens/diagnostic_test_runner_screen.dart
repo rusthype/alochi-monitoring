@@ -490,18 +490,48 @@ class _DiagnosticTestRunnerScreenState
     final l10n = AppLocalizations.of(context)!;
     final q = _question;
     final transition = _transition;
+    final progress = _total > 0 ? _answers.length / _total : 0.0;
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
-        child: transition != null
-            ? _buildTransitionView(l10n, transition)
-            : _loading
-                ? const Center(child: CircularProgressIndicator())
-                : (_error != null || _subjectsEmpty)
-                    ? _buildErrorView(l10n)
-                    : q == null
-                        ? Center(child: Text(l10n.diagnosticNoStudents))
-                        : _buildQuestionView(l10n, q),
+        child: Column(
+          children: [
+            if (_isFixedVariantAttempt)
+              SizedBox(
+                key: const Key('diagnostic-top-progress-bar'),
+                height: 4,
+                child: Stack(children: [
+                  Container(
+                      width: double.infinity,
+                      height: 4,
+                      decoration: const BoxDecoration(color: AppColors.border)),
+                  AnimatedContainer(
+                    key: const Key('diagnostic-top-progress-fill'),
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeInOut,
+                    width: MediaQuery.sizeOf(context).width * progress,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: progress == 1 ? AppColors.ok : AppColors.brand,
+                      borderRadius: const BorderRadius.horizontal(
+                          right: Radius.circular(3)),
+                    ),
+                  ),
+                ]),
+              ),
+            Expanded(
+              child: transition != null
+                  ? _buildTransitionView(l10n, transition)
+                  : _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : (_error != null || _subjectsEmpty)
+                          ? _buildErrorView(l10n)
+                          : q == null
+                              ? Center(child: Text(l10n.diagnosticNoStudents))
+                              : _buildQuestionView(l10n, q),
+            ),
+          ],
+        ),
       ),
     );
   }
