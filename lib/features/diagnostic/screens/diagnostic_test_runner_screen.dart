@@ -23,8 +23,10 @@ import '../data/diagnostic_kiosk_api.dart';
 import '../widgets/diagnostic_bottom_nav.dart';
 import '../widgets/diagnostic_header_bar.dart';
 import '../widgets/diagnostic_option_card.dart';
+import '../widgets/diagnostic_options_grid.dart';
 import '../widgets/diagnostic_question_card.dart';
 import '../widgets/diagnostic_question_dots.dart';
+import '../widgets/diagnostic_scratchpad.dart';
 import '../../../core/utils/student_name_formatter.dart';
 
 /// Max width of the centered content dock (question card and the floating
@@ -153,6 +155,11 @@ class _DiagnosticTestRunnerScreenState
   /// populated, prev/next/jump/select never hit the network again.
   List<Map<String, dynamic>> _questions = [];
   final Map<int, String> _answers = {};
+
+  /// Fixed-variant-only scratchpad overlay toggle (see
+  /// DiagnosticScratchpad) — never set for CAT (no trigger button rendered
+  /// there, see DiagnosticQuestionCard's `onOpenScratchpad`).
+  bool _scratchpadOpen = false;
 
   void _startCountdownIfNeeded(Map<String, dynamic> resp) {
     final minutes = (resp['duration_minutes'] as num?)?.toInt();
@@ -680,41 +687,56 @@ class _DiagnosticTestRunnerScreenState
                           _flaggedQuestionIds.add(questionId);
                         }
                       }),
+                      // Scratchpad is a fixed-variant-only affordance (math
+                      // bank) — null on CAT hides the trigger entirely, see
+                      // DiagnosticQuestionCard's doc comment.
+                      onOpenScratchpad: _isFixedVariantAttempt
+                          ? () => setState(() => _scratchpadOpen = true)
+                          : null,
                     ),
                     const SizedBox(height: 20),
-                    ...options.map((opt) => DiagnosticOptionCard(
-                          label: opt.key,
-                          text: opt.text,
-                          selected: _selectedOption == opt.key,
-                          onTap: _submitting ||
-                                  (!_isFixedVariant && _selectedOption != null)
-                              ? () {}
-                              : () {
-                                  if (_isFixedVariant) {
-                                    // Local-only: pick/change the answer for
-                                    // the current position, no network call.
-                                    setState(() {
-                                      _selectedOption = opt.key;
-                                      _answers[_position] = opt.key;
-                                    });
-                                    HeartbeatService.instance.updateProgress(
-                                        _position,
-                                        _total,
-                                        [],
-                                        _questionText(q),
-                                        opt.key);
-                                  } else {
+                    if (_isFixedVariantAttempt)
+                      DiagnosticOptionsGrid(
+                        options: options,
+                        selectedOption: _selectedOption,
+                        interactive: !_submitting,
+                        onSelect: (key) {
+                          // Local-only: pick/change the answer for the
+                          // current position, no network call (mirrors the
+                          // CAT branch below's HeartbeatService update).
+                          setState(() {
+                            _selectedOption = key;
+                            _answers[_position] = key;
+                          });
+                          HeartbeatService.instance.updateProgress(
+                              _position, _total, [], _questionText(q), key);
+                        },
+                      )
+                    else
+                      ...options.map((opt) => DiagnosticOptionCard(
+                            label: opt.key,
+                            text: opt.text,
+                            selected: _selectedOption == opt.key,
+                            onTap: _submitting || _selectedOption != null
+                                ? () {}
+                                : () {
                                     setState(() => _selectedOption = opt.key);
                                     _submit();
-                                  }
-                                },
-                        )),
+                                  },
+                          )),
                   ],
                 ),
               ),
             ),
           ),
         ),
+        if (_scratchpadOpen)
+          Positioned.fill(
+            child: DiagnosticScratchpad(
+              key: ValueKey(_position),
+              onClose: () => setState(() => _scratchpadOpen = false),
+            ),
+          ),
         if (showBottomNav)
           Positioned(
             left: 0,
