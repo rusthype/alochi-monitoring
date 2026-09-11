@@ -45,7 +45,7 @@ class _SubjectTransition {
 }
 
 typedef DiagnosticAvailableSubjectsFn = Future<Map<String, dynamic>> Function(
-    int grade, {
+  int grade, {
   String language,
 });
 typedef DiagnosticStartAttemptFn = Future<Map<String, dynamic>> Function({
@@ -125,6 +125,10 @@ class _DiagnosticTestRunnerScreenState
   /// responses also carry the same value but must not reset the timer.
   int? _remainingSeconds;
   Timer? _timer;
+
+  /// Auto-advance timer after a fixed-variant option select (mirrors
+  /// test_screen.dart's `_autoAdv`, but 500ms per this feature's spec).
+  Timer? _autoAdvance;
 
   /// Whether the current attempt is the fixed-variant math bank (all
   /// questions known upfront, supports prev/next/grid/finish nav) vs the
@@ -222,6 +226,7 @@ class _DiagnosticTestRunnerScreenState
   @override
   void dispose() {
     _timer?.cancel();
+    _autoAdvance?.cancel();
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
     HeartbeatService.instance.onTerminated = null;
@@ -293,7 +298,9 @@ class _DiagnosticTestRunnerScreenState
         _total = (resp['total_questions'] as num?)?.toInt() ?? 0;
         _isFixedVariant = resp['is_fixed_variant'] == true;
         _answers.clear();
-        if (_isFixedVariant && questionsList != null && questionsList.isNotEmpty) {
+        if (_isFixedVariant &&
+            questionsList != null &&
+            questionsList.isNotEmpty) {
           _questions = questionsList;
           final idx = (_position - 1).clamp(0, _questions.length - 1);
           _question = _questions[idx];
@@ -398,7 +405,8 @@ class _DiagnosticTestRunnerScreenState
       final ok = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(l10n.finishConfirmTitle,
               style: const TextStyle(fontWeight: FontWeight.w800)),
           content: Text(l10n.unansweredWarning(unanswered)),
@@ -717,6 +725,13 @@ class _DiagnosticTestRunnerScreenState
                           });
                           HeartbeatService.instance.updateProgress(
                               _position, _total, [], _questionText(q), key);
+                          _autoAdvance?.cancel();
+                          if (!((_position - 1) >= (_total - 1))) {
+                            _autoAdvance =
+                                Timer(const Duration(milliseconds: 500), () {
+                              if (mounted) _jumpTo(_position);
+                            });
+                          }
                         },
                       )
                     else

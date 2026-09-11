@@ -143,7 +143,8 @@ void main() {
       await unmount(tester);
     });
 
-    testWidgets('selecting an option submits selected: "B" and updates the '
+    testWidgets(
+        'selecting an option submits selected: "B" and updates the '
         'answered counter', (tester) async {
       String? captured;
       await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
@@ -240,8 +241,7 @@ void main() {
             'position': 1,
             'total_questions': 5,
             'subject': subject,
-            'question':
-                _question(id: 'q-$subject', text: 'Savol ($subject)'),
+            'question': _question(id: 'q-$subject', text: 'Savol ($subject)'),
           };
         },
         submitAnswerOverride: (
@@ -357,7 +357,8 @@ void main() {
     });
 
     List<Map<String, dynamic>> fullPackageQuestions(int count) => [
-          for (var i = 1; i <= count; i++) _question(id: 'q$i', text: 'Savol $i')
+          for (var i = 1; i <= count; i++)
+            _question(id: 'q$i', text: 'Savol $i')
         ];
 
     testWidgets(
@@ -385,7 +386,8 @@ void main() {
             required questionId,
             required selected}) async {
           submitCalls++;
-          throw StateError('submitAnswer must not be called in full-package mode');
+          throw StateError(
+              'submitAnswer must not be called in full-package mode');
         },
       )));
       await tester.pump();
@@ -427,7 +429,8 @@ void main() {
             required questionId,
             required selected}) async {
           submitCalls++;
-          throw StateError('submitAnswer must not be called in full-package mode');
+          throw StateError(
+              'submitAnswer must not be called in full-package mode');
         },
       )));
       await tester.pump();
@@ -440,6 +443,57 @@ void main() {
 
       expect(submitCalls, 0);
       expect(find.text('Savol 1'), findsOneWidget); // still on same question
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'selecting an option auto-advances to the next question after 500ms',
+        (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 2,
+            'subject': subject,
+            'questions': fullPackageQuestions(2),
+          }, isFixedVariant: true);
+        },
+        submitAnswerOverride: (
+            {required attemptId,
+            required questionId,
+            required selected}) async {
+          throw StateError(
+              'submitAnswer must not be called in full-package mode');
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      await tester.tap(find.text('Variant B'));
+      await tester.pump();
+      expect(find.text('Savol 1'), findsOneWidget); // not yet advanced
+
+      await tester.pump(const Duration(milliseconds: 499));
+      expect(find.text('Savol 1'), findsOneWidget); // still not yet
+
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(find.text('Savol 2'), findsOneWidget); // auto-advanced
+
+      // Last question: selecting must NOT schedule a further auto-advance.
+      await tester.tap(find.text('Variant B'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text('Savol 2'), findsOneWidget); // stays put
+
       await unmount(tester);
     });
 
@@ -464,8 +518,7 @@ void main() {
             'questions': fullPackageQuestions(2),
           }, isFixedVariant: true);
         },
-        finishAttemptOverride: (
-            {required attemptId, required answers}) async {
+        finishAttemptOverride: ({required attemptId, required answers}) async {
           finishCalls++;
           capturedAnswers = answers;
           return {'finished': true};
@@ -522,8 +575,7 @@ void main() {
             'questions': fullPackageQuestions(1),
           }, isFixedVariant: true);
         },
-        finishAttemptOverride: (
-            {required attemptId, required answers}) async {
+        finishAttemptOverride: ({required attemptId, required answers}) async {
           finishCalls++;
           return {'finished': true};
         },

@@ -91,14 +91,15 @@ class DiagnosticHeaderBar extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.timer_outlined, size: 15, color: AppColors.ink3),
+                const Icon(Icons.timer_outlined,
+                    size: 17, color: AppColors.ink1),
                 const SizedBox(width: 4),
                 Text(
                   '${_formatClock(remainingSeconds!)} ${l10n.timeLeftLabel}',
                   style: const TextStyle(
-                    color: AppColors.ink3,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    color: AppColors.ink1,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
                     fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
@@ -137,38 +138,38 @@ class DiagnosticHeaderBar extends StatelessWidget {
             ),
             Flexible(
               child: Wrap(
-              alignment: WrapAlignment.end,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  l10n.diagnosticQuestionCounter(position, total),
-                  style: const TextStyle(
-                      color: AppColors.ink3,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  l10n.answeredLabel,
-                  style: const TextStyle(
-                      color: AppColors.ink3,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13),
-                ),
-                if (remainingSeconds != null) ...[
-                  const SizedBox(width: 12),
-                  const Icon(Icons.timer_outlined,
-                      size: 15, color: AppColors.ink3),
-                  const SizedBox(width: 4),
+                alignment: WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
                   Text(
-                    '${_formatClock(remainingSeconds!)} ${l10n.timeLeftLabel}',
+                    l10n.diagnosticQuestionCounter(position, total),
                     style: const TextStyle(
                         color: AppColors.ink3,
                         fontWeight: FontWeight.w600,
                         fontSize: 13),
                   ),
+                  const SizedBox(width: 4),
+                  Text(
+                    l10n.answeredLabel,
+                    style: const TextStyle(
+                        color: AppColors.ink3,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13),
+                  ),
+                  if (remainingSeconds != null) ...[
+                    const SizedBox(width: 12),
+                    const Icon(Icons.timer_outlined,
+                        size: 15, color: AppColors.ink3),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${_formatClock(remainingSeconds!)} ${l10n.timeLeftLabel}',
+                      style: const TextStyle(
+                          color: AppColors.ink3,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13),
+                    ),
+                  ],
                 ],
-              ],
               ),
             ),
           ],
@@ -229,7 +230,8 @@ class _GradePill extends StatelessWidget {
       ),
       child: Text(
         '$grade-${AppLocalizations.of(context)!.gradeShort}',
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: c.$2),
+        style:
+            TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: c.$2),
       ),
     );
   }
