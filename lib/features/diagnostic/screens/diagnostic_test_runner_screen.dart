@@ -67,6 +67,10 @@ typedef DiagnosticSubmitAnswerFn = Future<Map<String, dynamic>> Function({
   required String questionId,
   required String selected,
 });
+typedef DiagnosticFinishAttemptFn = Future<Map<String, dynamic>> Function({
+  required String attemptId,
+  required List<Map<String, dynamic>> answers,
+});
 
 class DiagnosticTestRunnerScreen extends StatefulWidget {
   final String attemptId;
@@ -88,6 +92,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   final DiagnosticAvailableSubjectsFn? availableSubjectsOverride;
   final DiagnosticStartAttemptFn? startAttemptOverride;
   final DiagnosticSubmitAnswerFn? submitAnswerOverride;
+  final DiagnosticFinishAttemptFn? finishAttemptOverride;
 
   const DiagnosticTestRunnerScreen({
     super.key,
@@ -99,6 +104,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
     this.availableSubjectsOverride,
     this.startAttemptOverride,
     this.submitAnswerOverride,
+    this.finishAttemptOverride,
   });
 
   @override
@@ -136,6 +142,13 @@ class _DiagnosticTestRunnerScreenState
   /// backend's `is_fixed_variant` field on every start/answer response.
   bool _isFixedVariant = false;
 
+  /// Full question set for a fixed-variant/full-package attempt (populated
+  /// once from the start response's `questions` array) and the answers
+  /// picked so far, keyed by 1-indexed position. Purely local state — once
+  /// populated, prev/next/jump/select never hit the network again.
+  List<Map<String, dynamic>> _questions = [];
+  final Map<int, String> _answers = {};
+
   void _startCountdownIfNeeded(Map<String, dynamic> resp) {
     final minutes = (resp['duration_minutes'] as num?)?.toInt();
     _timer?.cancel();
@@ -167,6 +180,8 @@ class _DiagnosticTestRunnerScreenState
       widget.startAttemptOverride ?? diagnosticKioskApi.startAttempt;
   DiagnosticSubmitAnswerFn get _submitAnswerCall =>
       widget.submitAnswerOverride ?? diagnosticKioskApi.submitAnswer;
+  DiagnosticFinishAttemptFn get _finishAttemptCall =>
+      widget.finishAttemptOverride ?? diagnosticKioskApi.finishAttempt;
 
   @override
   void initState() {
@@ -274,11 +289,23 @@ class _DiagnosticTestRunnerScreenState
         subject: subject,
       );
       if (!mounted) return;
+      final questionsList = (resp['questions'] as List?)
+          ?.whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
       setState(() {
-        _question = _extractQuestion(resp);
         _position = (resp['position'] as num?)?.toInt() ?? 1;
         _total = (resp['total_questions'] as num?)?.toInt() ?? 0;
         _isFixedVariant = resp['is_fixed_variant'] == true;
+        _answers.clear();
+        if (_isFixedVariant && questionsList != null && questionsList.isNotEmpty) {
+          _questions = questionsList;
+          final idx = (_position - 1).clamp(0, _questions.length - 1);
+          _question = _questions[idx];
+        } else {
+          _questions = [];
+          _question = _extractQuestion(resp);
+        }
         _loading = false;
       });
       _startCountdownIfNeeded(resp);
@@ -351,6 +378,74 @@ class _DiagnosticTestRunnerScreenState
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  /// Local, network-free navigation for a fixed-variant/full-package
+  /// attempt — [zeroBasedIndex] is clamped to the known question set.
+  void _jumpTo(int zeroBasedIndex) {
+    if (_questions.isEmpty) return;
+    final clamped = zeroBasedIndex.clamp(0, _questions.length - 1);
+    setState(() {
+      _position = clamped + 1;
+      _question = _questions[clamped];
+      _selectedOption = _answers[_position];
+    });
+  }
+
+  /// Finish path for a fixed-variant attempt: warns about unanswered
+  /// questions (same dialog pattern as test_screen.dart's `_finish`), then
+  /// submits every locally-collected answer in one `finishAttempt` call.
+  Future<void> _confirmAndFinishPackage() async {
+    if (_submitting) return;
+    final l10n = AppLocalizations.of(context)!;
+    final unanswered = _total - _answers.length;
+    if (unanswered > 0) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(l10n.finishConfirmTitle,
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          content: Text(l10n.unansweredWarning(unanswered)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l10n.backButton),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  minimumSize: const Size(100, 40)),
+              child: Text(l10n.finishTest),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    final answers = <Map<String, dynamic>>[];
+    _answers.forEach((position, selected) {
+      final idx = position - 1;
+      if (idx < 0 || idx >= _questions.length) return;
+      final qid = _questionId(_questions[idx]);
+      if (qid.isEmpty) return;
+      answers.add({'question_id': qid, 'selected': selected});
+    });
+    if (!mounted) return;
+    setState(() => _submitting = true);
+    try {
+      await _finishAttemptCall(attemptId: widget.attemptId, answers: answers);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = e is ApiException ? e.message : e.toString();
+      });
+      return;
+    }
+    _timer?.cancel();
+    _finishTest();
   }
 
   Map<String, dynamic>? _extractQuestion(Map<String, dynamic> data) {
@@ -573,11 +668,27 @@ class _DiagnosticTestRunnerScreenState
                           label: opt.key,
                           text: opt.text,
                           selected: _selectedOption == opt.key,
-                          onTap: _submitting || _selectedOption != null
+                          onTap: _submitting ||
+                                  (!_isFixedVariant && _selectedOption != null)
                               ? () {}
                               : () {
-                                  setState(() => _selectedOption = opt.key);
-                                  _submit();
+                                  if (_isFixedVariant) {
+                                    // Local-only: pick/change the answer for
+                                    // the current position, no network call.
+                                    setState(() {
+                                      _selectedOption = opt.key;
+                                      _answers[_position] = opt.key;
+                                    });
+                                    HeartbeatService.instance.updateProgress(
+                                        _position,
+                                        _total,
+                                        [],
+                                        _questionText(q),
+                                        opt.key);
+                                  } else {
+                                    setState(() => _selectedOption = opt.key);
+                                    _submit();
+                                  }
                                 },
                         )),
                   ],
@@ -594,14 +705,12 @@ class _DiagnosticTestRunnerScreenState
             child: DiagnosticBottomNav(
               total: _total,
               currentIndex: (_position - 1).clamp(0, _total == 0 ? 0 : _total - 1),
-              answeredIndexes: {
-                for (var i = 0; i < _position - 1; i++) i,
-              },
-              // Arbitrary-question navigation isn't served by any current
-              // fixed-variant endpoint (each answer serves exactly the next
-              // sequential question) — no-ops until that lands server-side.
-              onSelectIndex: (_) {},
-              onFinish: _finishTest,
+              answeredIndexes: _answers.keys.map((p) => p - 1).toSet(),
+              onSelectIndex: _jumpTo,
+              onPrevious: () => _jumpTo(_position - 2),
+              onNext: () => _jumpTo(_position),
+              onFinish:
+                  _isFixedVariant ? _confirmAndFinishPackage : _finishTest,
             ),
           ),
       ],
