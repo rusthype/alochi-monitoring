@@ -46,16 +46,31 @@ class DiagnosticOptionsGrid extends StatelessWidget {
         .toList();
 
     if (shouldUseGrid(options)) {
-      return GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        // Wide+short (2.2:1) so a short numeric answer's tactile card reads
-        // as a tappable button, not a tall tile.
-        childAspectRatio: 2.2,
-        mainAxisSpacing: 14,
-        crossAxisSpacing: 14,
-        children: cards,
+      // Two content-sized rows instead of GridView.count(childAspectRatio:
+      // ...): a fixed aspect ratio forces every cell to a guessed height
+      // that doesn't match the tactile card's actual (much shorter) content
+      // height, leaving a large empty strip of the card's background "3D
+      // edge" exposed below it (visually confirmed on a real run — the
+      // guessed ratio was ~2x too tall). Row+Expanded sizes each row to its
+      // children's real height, so there's no guesswork and no gap.
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: cards[0]),
+              const SizedBox(width: 14),
+              Expanded(child: cards[1]),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: cards[2]),
+              const SizedBox(width: 14),
+              Expanded(child: cards[3]),
+            ],
+          ),
+        ],
       );
     }
 
