@@ -91,9 +91,14 @@ class _DiagnosticTactileOptionCardState
                   Matrix4.translationValues(0, _pressed ? _edgeHeight : 0, 0),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: widget.selected
-                    ? AppColors.brand.withValues(alpha: 0.08)
-                    : AppColors.surface,
+                // Opaque brandLight, not a translucent alpha blend: this
+                // card sits over the solid _brandDark "3D edge" background
+                // layer (see the Stack below), so a translucent tint lets
+                // that dark backdrop bleed through and reads as one flat,
+                // low-contrast orange block with unreadable text (found via
+                // a real local run) instead of a pale card with a thin
+                // accent edge.
+                color: widget.selected ? AppColors.brandLight : AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: borderColor,
