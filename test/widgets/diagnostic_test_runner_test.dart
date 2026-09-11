@@ -1,6 +1,8 @@
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_bottom_nav.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_option_card.dart';
+import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_question_card.dart';
+import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_question_dots.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:alochi_monitoring/shared/widgets/app_network_image.dart';
 import 'package:flutter/material.dart';
@@ -393,7 +395,7 @@ void main() {
 
       expect(find.text('Savol 1'), findsOneWidget);
 
-      await tester.tap(find.text('3'));
+      await tester.tap(find.text('03'));
       await tester.pump();
 
       expect(find.text('Savol 3'), findsOneWidget);
@@ -478,6 +480,10 @@ void main() {
       await tester.tap(find.text('Variant A'));
       await tester.pump();
 
+      // "Testni yakunlash" only replaces "Keyingi" on the last question.
+      await tester.tap(find.text('02'));
+      await tester.pump();
+
       await tester.tap(find.text('Testni yakunlash'));
       await tester.pump();
 
@@ -536,6 +542,110 @@ void main() {
 
       expect(find.text('Tugatish?'), findsNothing);
       expect(finishCalls, 1);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'fixed-variant header shows a grade pill and hides the CAT-only '
+        'subject-pill/answered-counter row', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 2,
+            'subject': subject,
+            'questions': fullPackageQuestions(2),
+          }, isFixedVariant: true);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(find.text('3-sinf'), findsOneWidget);
+      expect(find.text('javoblandi'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'DiagnosticQuestionDots renders above the question card for a '
+        'fixed-variant attempt', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 2,
+            'subject': subject,
+            'questions': fullPackageQuestions(2),
+          }, isFixedVariant: true);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(find.byType(DiagnosticQuestionDots), findsOneWidget);
+      final dotsY = tester.getTopLeft(find.byType(DiagnosticQuestionDots)).dy;
+      final cardY = tester.getTopLeft(find.byType(DiagnosticQuestionCard)).dy;
+      expect(dotsY, lessThan(cardY));
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'first question hides/disables Previous; last question shows '
+        'Finish instead of Next', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 2,
+            'subject': subject,
+            'questions': fullPackageQuestions(2),
+          }, isFixedVariant: true);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      final prevButton =
+          tester.widget<OutlinedButton>(find.byType(OutlinedButton));
+      expect(prevButton.onPressed, isNull);
+      expect(find.text('Keyingi'), findsOneWidget);
+      expect(find.text('Testni yakunlash'), findsNothing);
+
+      await tester.tap(find.text('02'));
+      await tester.pump();
+
+      final prevButton2 =
+          tester.widget<OutlinedButton>(find.byType(OutlinedButton));
+      expect(prevButton2.onPressed, isNotNull);
+      expect(find.text('Testni yakunlash'), findsOneWidget);
+      expect(find.text('Keyingi'), findsNothing);
       await unmount(tester);
     });
   });

@@ -24,7 +24,12 @@ import '../widgets/diagnostic_bottom_nav.dart';
 import '../widgets/diagnostic_header_bar.dart';
 import '../widgets/diagnostic_option_card.dart';
 import '../widgets/diagnostic_question_card.dart';
+import '../widgets/diagnostic_question_dots.dart';
 import '../../../core/utils/student_name_formatter.dart';
+
+/// Max width of the centered content dock (question card and the floating
+/// bottom-nav panel both clamp to this) for the fixed-variant redesign.
+const double _kDockMaxWidth = 760;
 
 /// One rendered answer option: `key` is "A".."D", `text` is the display
 /// string for that letter (already de/re-shuffled server-side).
@@ -630,7 +635,7 @@ class _DiagnosticTestRunnerScreenState
             padding: EdgeInsets.fromLTRB(20, 20, 20, showBottomNav ? 20 : 140),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
+                constraints: const BoxConstraints(maxWidth: _kDockMaxWidth),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -649,7 +654,20 @@ class _DiagnosticTestRunnerScreenState
                       studentName: formatStudentDisplayName(widget.studentName),
                       language: widget.language,
                       remainingSeconds: _remainingSeconds,
+                      isFixedVariant: _isFixedVariantAttempt,
+                      grade: widget.grade,
                     ),
+                    if (_isFixedVariantAttempt) ...[
+                      const SizedBox(height: 12),
+                      DiagnosticQuestionDots(
+                        total: _total,
+                        currentIndex: (_position - 1)
+                            .clamp(0, _total == 0 ? 0 : _total - 1),
+                        answeredIndexes:
+                            _answers.keys.map((p) => p - 1).toSet(),
+                        onSelectIndex: _jumpTo,
+                      ),
+                    ],
                     const SizedBox(height: 20),
                     DiagnosticQuestionCard(
                       position: _position,
@@ -702,15 +720,36 @@ class _DiagnosticTestRunnerScreenState
             left: 0,
             right: 0,
             bottom: 0,
-            child: DiagnosticBottomNav(
-              total: _total,
-              currentIndex: (_position - 1).clamp(0, _total == 0 ? 0 : _total - 1),
-              answeredIndexes: _answers.keys.map((p) => p - 1).toSet(),
-              onSelectIndex: _jumpTo,
-              onPrevious: () => _jumpTo(_position - 2),
-              onNext: () => _jumpTo(_position),
-              onFinish:
-                  _isFixedVariant ? _confirmAndFinishPackage : _finishTest,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: _kDockMaxWidth),
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: DiagnosticBottomNav(
+                    onPrevious:
+                        _position <= 1 ? null : () => _jumpTo(_position - 2),
+                    onNext: () => _jumpTo(_position),
+                    onFinish: _isFixedVariant
+                        ? _confirmAndFinishPackage
+                        : _finishTest,
+                    isLast: (_position - 1) >= (_total - 1),
+                    submitting: _submitting,
+                  ),
+                ),
+              ),
             ),
           ),
       ],

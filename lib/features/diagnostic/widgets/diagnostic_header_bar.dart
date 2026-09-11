@@ -4,6 +4,12 @@
 // answered-count, countdown timer, student name + language badge. The
 // countdown itself (Timer.periodic) lives in the parent screen's State —
 // this widget only renders whatever `remainingSeconds` it's given.
+//
+// For a fixed-variant attempt (isFixedVariant: true) the layout collapses
+// to a single row (name+grade-pill+language on the left, timer on the
+// right) — subject-pill/counter/progress-bar are the CAT-only layout below
+// and are never shown here; DiagnosticQuestionDots (added by the screen,
+// not this widget) carries progress instead.
 import 'package:flutter/material.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
@@ -24,6 +30,14 @@ class DiagnosticHeaderBar extends StatelessWidget {
   /// timer row is simply omitted in that case.
   final int? remainingSeconds;
 
+  /// Whether the current attempt is fixed-variant (all questions known
+  /// upfront) — see DiagnosticTestRunnerScreen._isFixedVariantAttempt.
+  final bool isFixedVariant;
+
+  /// Student grade, shown as a colored pill next to the name — only used
+  /// when [isFixedVariant] is true.
+  final int? grade;
+
   const DiagnosticHeaderBar({
     super.key,
     required this.subjectLabel,
@@ -33,6 +47,8 @@ class DiagnosticHeaderBar extends StatelessWidget {
     required this.total,
     required this.studentName,
     required this.language,
+    required this.isFixedVariant,
+    this.grade,
     this.remainingSeconds,
   });
 
@@ -46,6 +62,52 @@ class DiagnosticHeaderBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    if (isFixedVariant) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    studentName,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.ink3, fontSize: 13),
+                  ),
+                ),
+                if (grade != null) ...[
+                  const SizedBox(width: 8),
+                  _GradePill(grade: grade!),
+                ],
+                const SizedBox(width: 8),
+                DiagnosticLanguageBadge(language: language),
+              ],
+            ),
+          ),
+          if (remainingSeconds != null) ...[
+            const SizedBox(width: 12),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.timer_outlined, size: 15, color: AppColors.ink3),
+                const SizedBox(width: 4),
+                Text(
+                  '${_formatClock(remainingSeconds!)} ${l10n.timeLeftLabel}',
+                  style: const TextStyle(
+                    color: AppColors.ink3,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -134,6 +196,41 @@ class DiagnosticHeaderBar extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Grade badge, copied from test_screen.dart's private `_GradePill`
+/// (read-only pattern reference — see this feature's task doc) so this
+/// file never imports that screen.
+class _GradePill extends StatelessWidget {
+  final int grade;
+  const _GradePill({required this.grade});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = {
+      1: (
+        AppColors.secondaryMuted,
+        const Color(0xFF9A3412),
+        AppColors.amberBorder,
+      ),
+      2: (AppColors.tealMuted, AppColors.tealInk, const Color(0xFF99F6E4)),
+      3: (AppColors.blueMuted, AppColors.blueInk, AppColors.blueBorder),
+      4: (AppColors.violetMuted, AppColors.violetInk, AppColors.violetBorder),
+    };
+    final c = colors[grade] ?? colors[1]!;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: c.$1,
+        border: Border.all(color: c.$3),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        '$grade-${AppLocalizations.of(context)!.gradeShort}',
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: c.$2),
+      ),
     );
   }
 }
