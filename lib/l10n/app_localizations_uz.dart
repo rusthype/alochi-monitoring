@@ -536,6 +536,12 @@ class AppLocalizationsUz extends AppLocalizations {
   String get flagQuestionButton => 'Belgilash';
 
   @override
+  String get diagnosticScratchpadButton => 'Qoralama';
+
+  @override
+  String get diagnosticScratchpadUndo => 'Bekor qilish';
+
+  @override
   String get finishTestButton => 'Testni yakunlash';
 
   @override

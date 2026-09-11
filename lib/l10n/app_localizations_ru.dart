@@ -534,6 +534,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get flagQuestionButton => 'Отметить';
 
   @override
+  String get diagnosticScratchpadButton => 'Черновик';
+
+  @override
+  String get diagnosticScratchpadUndo => 'Отменить';
+
+  @override
   String get finishTestButton => 'Завершить тест';
 
   @override
