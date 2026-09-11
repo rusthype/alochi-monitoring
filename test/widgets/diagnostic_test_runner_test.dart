@@ -5,6 +5,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:alochi_monitoring/shared/widgets/app_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 Map<String, dynamic> _question({
   String id = 'q1',
@@ -47,6 +48,27 @@ Widget _wrap(Widget child) {
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: child,
+  );
+}
+
+/// Same as [_wrap] but with a real GoRouter, for tests whose path finishes
+/// the test and navigates to '/diagnostic_finished' (context.pushReplacement
+/// throws "No GoRouter found" under a plain MaterialApp).
+Widget _wrapWithRouter(Widget child) {
+  final router = GoRouter(
+    initialLocation: '/runner',
+    routes: [
+      GoRoute(path: '/runner', builder: (_, __) => child),
+      GoRoute(
+          path: '/diagnostic_finished',
+          builder: (_, __) => const SizedBox(key: Key('finished'))),
+    ],
+  );
+  return MaterialApp.router(
+    locale: const Locale('uz'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    routerConfig: router,
   );
 }
 
@@ -329,6 +351,191 @@ void main() {
 
       expect(find.textContaining('20:00'), findsOneWidget);
       await tester.pump(const Duration(seconds: 4));
+      await unmount(tester);
+    });
+
+    List<Map<String, dynamic>> fullPackageQuestions(int count) => [
+          for (var i = 1; i <= count; i++) _question(id: 'q$i', text: 'Savol $i')
+        ];
+
+    testWidgets(
+        'full-package mode: tapping a question dot jumps position with no '
+        'extra network calls', (tester) async {
+      var submitCalls = 0;
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 3,
+            'subject': subject,
+            'questions': fullPackageQuestions(3),
+          }, isFixedVariant: true);
+        },
+        submitAnswerOverride: (
+            {required attemptId,
+            required questionId,
+            required selected}) async {
+          submitCalls++;
+          throw StateError('submitAnswer must not be called in full-package mode');
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(find.text('Savol 1'), findsOneWidget);
+
+      await tester.tap(find.text('3'));
+      await tester.pump();
+
+      expect(find.text('Savol 3'), findsOneWidget);
+      expect(submitCalls, 0);
+      await unmount(tester);
+    });
+
+    testWidgets('selecting an option in full-package mode does not submit',
+        (tester) async {
+      var submitCalls = 0;
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 2,
+            'subject': subject,
+            'questions': fullPackageQuestions(2),
+          }, isFixedVariant: true);
+        },
+        submitAnswerOverride: (
+            {required attemptId,
+            required questionId,
+            required selected}) async {
+          submitCalls++;
+          throw StateError('submitAnswer must not be called in full-package mode');
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      await tester.tap(find.text('Variant B'));
+      await tester.pump();
+
+      expect(submitCalls, 0);
+      expect(find.text('Savol 1'), findsOneWidget); // still on same question
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'unanswered questions show the finish-confirmation dialog; '
+        'confirming calls finishAttempt exactly once', (tester) async {
+      var finishCalls = 0;
+      List<Map<String, dynamic>>? capturedAnswers;
+      await tester.pumpWidget(_wrapWithRouter(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 2,
+            'subject': subject,
+            'questions': fullPackageQuestions(2),
+          }, isFixedVariant: true);
+        },
+        finishAttemptOverride: (
+            {required attemptId, required answers}) async {
+          finishCalls++;
+          capturedAnswers = answers;
+          return {'finished': true};
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      // Answer only the first question, leave the second unanswered.
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+
+      await tester.tap(find.text('Testni yakunlash'));
+      await tester.pump();
+
+      // Confirmation dialog appears (1 question unanswered).
+      expect(find.text('Tugatish?'), findsOneWidget);
+      expect(finishCalls, 0);
+
+      await tester.tap(find.text('Tugatish'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(finishCalls, 1);
+      expect(capturedAnswers?.length, 1);
+      expect(capturedAnswers?.first['question_id'], 'q1');
+      expect(capturedAnswers?.first['selected'], 'A');
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'all questions answered: finish skips the dialog and calls '
+        'finishAttempt once', (tester) async {
+      var finishCalls = 0;
+      await tester.pumpWidget(_wrapWithRouter(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 1,
+            'subject': subject,
+            'questions': fullPackageQuestions(1),
+          }, isFixedVariant: true);
+        },
+        finishAttemptOverride: (
+            {required attemptId, required answers}) async {
+          finishCalls++;
+          return {'finished': true};
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+
+      await tester.tap(find.text('Testni yakunlash'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Tugatish?'), findsNothing);
+      expect(finishCalls, 1);
       await unmount(tester);
     });
   });
