@@ -292,6 +292,9 @@ void main() {
       // No top progress-line in the adaptive CAT flow.
       expect(
           find.byKey(const Key('diagnostic-top-progress-bar')), findsNothing);
+      // No auto-advance fill-bar either — that's fixed-variant-only.
+      expect(find.byKey(const Key('diagnostic-autoadvance-fill-bar')),
+          findsNothing);
       await unmount(tester);
     });
 
@@ -495,6 +498,48 @@ void main() {
 
       expect(submitCalls, 0);
       expect(find.text('Savol 1'), findsOneWidget); // still on same question
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'fixed-variant: fill-bar is absent until an option is picked, then '
+        'appears and auto-advances after the shared 900ms delay',
+        (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 3,
+            'subject': subject,
+            'questions': fullPackageQuestions(3),
+          }, isFixedVariant: true);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      final fillBar = find.byKey(const Key('diagnostic-autoadvance-fill-bar'));
+      expect(fillBar, findsNothing);
+
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+
+      expect(fillBar, findsOneWidget);
+      expect(find.text('Savol 1'), findsOneWidget); // hasn't advanced yet
+
+      await tester.pump(const Duration(milliseconds: 950));
+      await tester.pump();
+
+      expect(find.text('Savol 2'), findsOneWidget);
       await unmount(tester);
     });
 

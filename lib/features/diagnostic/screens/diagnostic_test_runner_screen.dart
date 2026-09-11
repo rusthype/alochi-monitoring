@@ -144,6 +144,12 @@ class _DiagnosticTestRunnerScreenState
   /// and overrides wherever the student jumped to.
   Timer? _autoAdvanceTimer;
 
+  /// Single source of truth for the auto-advance delay — shared by the
+  /// [_autoAdvanceTimer] above and the fill-bar animation in
+  /// [_buildQuestionView] so they can never drift apart (matches the
+  /// reference web app's `setTimeout(goTo, 900)` / `fill-bar 900ms linear`).
+  static const Duration _autoAdvanceDelay = Duration(milliseconds: 900);
+
   /// Whether the current attempt is the fixed-variant math bank (all
   /// questions known upfront, supports prev/next/grid/finish nav) vs the
   /// CAT engine's adaptive one-question-at-a-time flow. Set from the
@@ -638,6 +644,40 @@ class _DiagnosticTestRunnerScreenState
 
   bool get _isFixedVariantAttempt => _isFixedVariant;
 
+  /// Fixed-variant-only auto-advance countdown, shown below the options once
+  /// one is picked (mirrors the reference web app's below-options fill bar).
+  /// Keyed by position+selection so a new pick — including changing the
+  /// answer on the same question — remounts the [TweenAnimationBuilder] and
+  /// restarts the fill from 0%, instead of jumping to wherever the old
+  /// animation had reached.
+  Widget _buildAutoAdvanceFillBar() {
+    return Container(
+      key: const Key('diagnostic-autoadvance-fill-bar'),
+      height: 6,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.border,
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: TweenAnimationBuilder<double>(
+        key: Key('$_position-$_selectedOption'),
+        tween: Tween(begin: 0.0, end: 1.0),
+        duration: _autoAdvanceDelay,
+        curve: Curves.linear,
+        builder: (context, value, child) => FractionallySizedBox(
+          alignment: Alignment.centerLeft,
+          widthFactor: value,
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.brand,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildQuestionView(AppLocalizations l10n, Map<String, dynamic> q) {
     final imageUrl = (q['image_url'] ?? '').toString().trim();
     final svgVisual = (q['svg_visual'] ?? '').toString().trim();
@@ -719,9 +759,8 @@ class _DiagnosticTestRunnerScreenState
                                     // yakunlash" instead of "Keyingi".
                                     _autoAdvanceTimer?.cancel();
                                     if (_position < _total) {
-                                      _autoAdvanceTimer = Timer(
-                                          const Duration(milliseconds: 720),
-                                          () {
+                                      _autoAdvanceTimer =
+                                          Timer(_autoAdvanceDelay, () {
                                         if (mounted) _jumpTo(_position);
                                       });
                                     }
@@ -731,6 +770,12 @@ class _DiagnosticTestRunnerScreenState
                                   }
                                 },
                         )),
+                    if (_isFixedVariant &&
+                        _selectedOption != null &&
+                        _position < _total) ...[
+                      const SizedBox(height: 20),
+                      _buildAutoAdvanceFillBar(),
+                    ],
                   ],
                 ),
               ),
