@@ -194,7 +194,12 @@ class _DiagnosticTestRunnerScreenState
     HeartbeatService.instance.onTerminated = () {
       ProctorService.instance.stop();
       HeartbeatService.instance.finishTest();
-      if (mounted) context.pushReplacement('/diagnostic_finished');
+      if (mounted) {
+        context.pushReplacement('/diagnostic_finished', extra: {
+          'studentName': widget.studentName,
+          'subjectsCompleted': _subjectsCompleted,
+        });
+      }
     };
     try {
       await HeartbeatService.instance
@@ -241,7 +246,10 @@ class _DiagnosticTestRunnerScreenState
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
     if (!mounted) return;
-    context.pushReplacement('/diagnostic_finished');
+    context.pushReplacement('/diagnostic_finished', extra: {
+      'studentName': widget.studentName,
+      'subjectsCompleted': _subjectsCompleted,
+    });
   }
 
   Future<void> _bootstrap() async {
