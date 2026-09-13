@@ -417,7 +417,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           }),
       GoRoute(
           path: '/diagnostic_finished',
-          builder: (context, state) => const DiagnosticFinishedScreen()),
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return DiagnosticFinishedScreen(
+              studentName: extra['studentName'] as String?,
+              subjectsCompleted:
+                  (extra['subjectsCompleted'] as List?)?.cast<String>() ??
+                      const [],
+            );
+          }),
       GoRoute(
           path: '/widget_route',
           builder: (context, state) {
