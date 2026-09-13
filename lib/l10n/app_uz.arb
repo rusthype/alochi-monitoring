@@ -41,6 +41,18 @@
       }
     }
   },
+  "diagnosticFinishedGreeting": "Barakalla, {name}!",
+  "@diagnosticFinishedGreeting": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "diagnosticFinishedSubjectsPill": "{count} ta fan topshirildi",
+  "@diagnosticFinishedSubjectsPill": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "diagnosticFinishedSubmittedPill": "Yuborildi",
+  "diagnosticFinishedSecurePill": "Xavfsiz saqlandi",
+  "diagnosticFinishedPauseBtn": "To'xtatish",
+  "diagnosticFinishedResumeBtn": "Davom ettirish",
   "diagnosticNoSchools": "Maktablar topilmadi",
   "diagnosticNoClasses": "Sinflar topilmadi",
   "diagnosticNoStudents": "O'quvchilar topilmadi",

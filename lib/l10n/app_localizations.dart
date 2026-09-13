@@ -302,6 +302,42 @@ abstract class AppLocalizations {
   /// **'{seconds} soniyadan so\'ng avtomatik qaytiladi'**
   String autoReturnTimerText(int seconds);
 
+  /// No description provided for @diagnosticFinishedGreeting.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barakalla, {name}!'**
+  String diagnosticFinishedGreeting(String name);
+
+  /// No description provided for @diagnosticFinishedSubjectsPill.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} ta fan topshirildi'**
+  String diagnosticFinishedSubjectsPill(int count);
+
+  /// No description provided for @diagnosticFinishedSubmittedPill.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuborildi'**
+  String get diagnosticFinishedSubmittedPill;
+
+  /// No description provided for @diagnosticFinishedSecurePill.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xavfsiz saqlandi'**
+  String get diagnosticFinishedSecurePill;
+
+  /// No description provided for @diagnosticFinishedPauseBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'To\'xtatish'**
+  String get diagnosticFinishedPauseBtn;
+
+  /// No description provided for @diagnosticFinishedResumeBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Davom ettirish'**
+  String get diagnosticFinishedResumeBtn;
+
   /// No description provided for @diagnosticNoSchools.
   ///
   /// In uz, this message translates to:

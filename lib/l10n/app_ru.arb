@@ -41,6 +41,18 @@
       }
     }
   },
+  "diagnosticFinishedGreeting": "Молодец, {name}!",
+  "@diagnosticFinishedGreeting": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "diagnosticFinishedSubjectsPill": "Предметов сдано: {count}",
+  "@diagnosticFinishedSubjectsPill": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "diagnosticFinishedSubmittedPill": "Отправлено",
+  "diagnosticFinishedSecurePill": "Надёжно сохранено",
+  "diagnosticFinishedPauseBtn": "Остановить",
+  "diagnosticFinishedResumeBtn": "Продолжить",
   "diagnosticNoSchools": "Школы не найдены",
   "diagnosticNoClasses": "Классы не найдены",
   "diagnosticNoStudents": "Учащиеся не найдены",

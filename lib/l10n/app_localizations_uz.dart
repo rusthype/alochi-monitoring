@@ -117,6 +117,28 @@ class AppLocalizationsUz extends AppLocalizations {
   }
 
   @override
+  String diagnosticFinishedGreeting(String name) {
+    return 'Barakalla, $name!';
+  }
+
+  @override
+  String diagnosticFinishedSubjectsPill(int count) {
+    return '$count ta fan topshirildi';
+  }
+
+  @override
+  String get diagnosticFinishedSubmittedPill => 'Yuborildi';
+
+  @override
+  String get diagnosticFinishedSecurePill => 'Xavfsiz saqlandi';
+
+  @override
+  String get diagnosticFinishedPauseBtn => 'To\'xtatish';
+
+  @override
+  String get diagnosticFinishedResumeBtn => 'Davom ettirish';
+
+  @override
   String get diagnosticNoSchools => 'Maktablar topilmadi';
 
   @override

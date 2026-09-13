@@ -115,6 +115,28 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String diagnosticFinishedGreeting(String name) {
+    return 'Молодец, $name!';
+  }
+
+  @override
+  String diagnosticFinishedSubjectsPill(int count) {
+    return 'Предметов сдано: $count';
+  }
+
+  @override
+  String get diagnosticFinishedSubmittedPill => 'Отправлено';
+
+  @override
+  String get diagnosticFinishedSecurePill => 'Надёжно сохранено';
+
+  @override
+  String get diagnosticFinishedPauseBtn => 'Остановить';
+
+  @override
+  String get diagnosticFinishedResumeBtn => 'Продолжить';
+
+  @override
   String get diagnosticNoSchools => 'Школы не найдены';
 
   @override
