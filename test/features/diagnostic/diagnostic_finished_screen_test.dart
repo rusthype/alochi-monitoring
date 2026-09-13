@@ -4,14 +4,16 @@ import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_finished_screen.dart';
 
-Widget _wrap() {
+Widget _wrap([Widget screen = const DiagnosticFinishedScreen()]) {
   final router = GoRouter(
     initialLocation: '/diagnostic_finished',
     routes: [
-      GoRoute(path: '/', builder: (context, state) => const Scaffold(body: Text('HOME'))),
+      GoRoute(
+          path: '/',
+          builder: (context, state) => const Scaffold(body: Text('HOME'))),
       GoRoute(
         path: '/diagnostic_finished',
-        builder: (context, state) => const DiagnosticFinishedScreen(),
+        builder: (context, state) => screen,
       ),
     ],
   );
@@ -87,5 +89,53 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('HOME'), findsOneWidget);
+  });
+
+  testWidgets('shows personalized greeting when studentName is set',
+      (tester) async {
+    await tester.pumpWidget(
+        _wrap(const DiagnosticFinishedScreen(studentName: 'ALIYEV VALI OGLI')));
+    await tester.pump();
+    expect(find.textContaining('Vali'), findsOneWidget); // patronymic stripped
+    await tester.pump(const Duration(seconds: 15));
+  });
+
+  testWidgets('hides subjects pill when subjectsCompleted is empty',
+      (tester) async {
+    await tester.pumpWidget(_wrap());
+    await tester.pump();
+    expect(find.byIcon(Icons.menu_book_rounded), findsNothing);
+    await tester.pump(const Duration(seconds: 15));
+  });
+
+  testWidgets('shows subjects pill with count when non-empty', (tester) async {
+    await tester.pumpWidget(_wrap(const DiagnosticFinishedScreen(
+        subjectsCompleted: ['math', 'english'])));
+    await tester.pump();
+    expect(find.byIcon(Icons.menu_book_rounded), findsOneWidget);
+    await tester.pump(const Duration(seconds: 15));
+  });
+
+  testWidgets('pause button toggles to resume label', (tester) async {
+    await tester.pumpWidget(_wrap());
+    await tester.pump();
+    final l10n = AppLocalizations.of(
+        tester.element(find.byType(DiagnosticFinishedScreen)))!;
+    expect(find.text(l10n.diagnosticFinishedPauseBtn), findsOneWidget);
+    await tester.tap(find.text(l10n.diagnosticFinishedPauseBtn));
+    await tester.pump();
+    expect(find.text(l10n.diagnosticFinishedResumeBtn), findsOneWidget);
+    // pausing must actually stop the countdown from firing navigation
+    await tester.pump(const Duration(seconds: 20));
+    expect(find.text('HOME'), findsNothing);
+  });
+
+  testWidgets(
+      'neutral title still renders when studentName is null (no regression)',
+      (tester) async {
+    await tester.pumpWidget(_wrap());
+    await tester.pump();
+    expect(find.text('Diagnostika yakunlandi'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 15));
   });
 }
