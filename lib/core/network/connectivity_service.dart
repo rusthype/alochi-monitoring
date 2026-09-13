@@ -31,14 +31,57 @@ class SignalReading {
   });
 }
 
+/// Pings up to twice: a single transient failure (DNS blip, a response
+/// that just barely misses [timeout], a transient 429/5xx) shouldn't read
+/// the same as being genuinely offline. Only reports failure if BOTH
+/// attempts fail. Latency is always the timing of the attempt that decided
+/// the result, so a successful retry isn't penalized with a worse tier for
+/// having needed one. Takes the ping call as a parameter (same seam as
+/// `checkOnlineWithRetry` in login_screen.dart) so it's testable without a
+/// real network call.
+Future<({bool ok, int elapsedMs})> pingWithRetry(
+  Future<bool> Function() ping, {
+  required Duration timeout,
+  required Duration retryDelay,
+  // Overridable so ConnectivityService can back it with a cancellable
+  // Timer (dispose() needs to be able to cut the wait short instead of
+  // leaving a bare Future.delayed running); tests pass Duration.zero and
+  // never touch this.
+  Future<void> Function(Duration)? delay,
+}) async {
+  final wait = delay ?? (d) => Future.delayed(d);
+  for (var attempt = 0; attempt < 2; attempt++) {
+    final stopwatch = Stopwatch()..start();
+    bool ok;
+    try {
+      ok = await ping().timeout(timeout, onTimeout: () => false);
+    } catch (_) {
+      ok = false;
+    }
+    stopwatch.stop();
+    if (ok || attempt == 1) {
+      return (ok: ok, elapsedMs: stopwatch.elapsedMilliseconds);
+    }
+    await wait(retryDelay);
+  }
+  throw StateError('unreachable'); // loop always returns on attempt == 1
+}
+
 class ConnectivityService {
   ConnectivityService._();
   static final ConnectivityService instance = ConnectivityService._();
 
   static const Duration _interval = Duration(seconds: 15);
   static const Duration _timeout = Duration(seconds: 3);
+  // Gap between the 2 attempts within one _measure() cycle. Worst case
+  // (both attempts time out): timeout + _retryDelay + timeout ≈ 6.9s,
+  // comfortably under the 15s _interval between cycles.
+  static const Duration _retryDelay = Duration(milliseconds: 900);
 
   Timer? _timer;
+  // Backs the retry backoff wait so dispose() can cancel it outright
+  // instead of leaving a bare Future.delayed running in the background.
+  Timer? _retryTimer;
   bool _started = false;
 
   final StreamController<SignalReading> _controller =
@@ -63,23 +106,26 @@ class ConnectivityService {
 
   Future<void> refresh() => _measure();
 
-  Future<void> _measure() async {
-    final stopwatch = Stopwatch()..start();
-    bool ok;
-    try {
-      // Single attempt, no retry loop: a slow-but-successful ping should
-      // read as "weak", not be masked by a retry that finds a faster path
-      // and skews the latency reading.
-      ok = await api.ping().timeout(_timeout, onTimeout: () => false);
-    } catch (_) {
-      ok = false;
-    }
-    stopwatch.stop();
+  Future<void> _cancellableDelay(Duration d) {
+    final completer = Completer<void>();
+    _retryTimer = Timer(d, () {
+      if (!completer.isCompleted) completer.complete();
+    });
+    return completer.future;
+  }
 
-    final reading = ok
+  Future<void> _measure() async {
+    final result = await pingWithRetry(
+      () => api.ping(),
+      timeout: _timeout,
+      retryDelay: _retryDelay,
+      delay: _cancellableDelay,
+    );
+
+    final reading = result.ok
         ? SignalReading(
-            tier: _tierForLatency(stopwatch.elapsedMilliseconds),
-            latencyMs: stopwatch.elapsedMilliseconds,
+            tier: _tierForLatency(result.elapsedMs),
+            latencyMs: result.elapsedMs,
             measuredAt: DateTime.now(),
           )
         : SignalReading(
@@ -102,6 +148,8 @@ class ConnectivityService {
   void dispose() {
     _timer?.cancel();
     _timer = null;
+    _retryTimer?.cancel();
+    _retryTimer = null;
     _started = false;
   }
 }
