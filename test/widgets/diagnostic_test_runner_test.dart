@@ -56,14 +56,17 @@ Widget _wrap(Widget child) {
 /// Same as [_wrap] but with a real GoRouter, for tests whose path finishes
 /// the test and navigates to '/diagnostic_finished' (context.pushReplacement
 /// throws "No GoRouter found" under a plain MaterialApp).
-Widget _wrapWithRouter(Widget child) {
+Widget _wrapWithRouter(Widget child, {void Function(Object?)? onFinished}) {
   final router = GoRouter(
     initialLocation: '/runner',
     routes: [
       GoRoute(path: '/runner', builder: (_, __) => child),
       GoRoute(
           path: '/diagnostic_finished',
-          builder: (_, __) => const SizedBox(key: Key('finished'))),
+          builder: (_, state) {
+            onFinished?.call(state.extra);
+            return const SizedBox(key: Key('finished'));
+          }),
     ],
   );
   return MaterialApp.router(
@@ -594,6 +597,65 @@ void main() {
 
       expect(find.text('Tugatish?'), findsNothing);
       expect(finishCalls, 1);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'both subjects appear in subjectsCompleted extra after full CAT '
+        'completion', (tester) async {
+      Object? capturedExtra;
+      var submitCalls = 0;
+      await tester.pumpWidget(_wrapWithRouter(
+        DiagnosticTestRunnerScreen(
+          attemptId: 'att-1',
+          studentName: 'Aliyev Ali',
+          grade: 1,
+          language: 'uz',
+          availableSubjectsOverride:
+              (grade, {String language = 'uz'}) async => {
+            'subjects': ['math']
+          },
+          startAttemptOverride: ({required attemptId, required subject}) async {
+            return {
+              'position': 1,
+              'total_questions': 1,
+              'subject': subject,
+              'question': _question(id: 'q-$subject', text: 'Savol ($subject)'),
+            };
+          },
+          submitAnswerOverride: (
+              {required attemptId,
+              required questionId,
+              required selected}) async {
+            submitCalls++;
+            if (submitCalls == 1) {
+              return {'finished': true, 'next_subject': 'english'};
+            }
+            return {'finished': true, 'next_subject': ''};
+          },
+        ),
+        onFinished: (extra) => capturedExtra = extra,
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      // Answer math's question -> triggers subject transition to english.
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Savol (english)'), findsOneWidget);
+
+      // Answer english's question -> finishes the whole test.
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+      await tester.pump();
+
+      final extraMap = capturedExtra as Map<String, dynamic>?;
+      expect(extraMap?['subjectsCompleted'], ['math', 'english']);
       await unmount(tester);
     });
 
