@@ -37,18 +37,20 @@ ARB kalitlari (Track A qo'shadi, Track B ishlatadi — nomlar bir xil bo'lishi S
 
 ---
 
-## TRACK A — Wiring (ARB + router + runner screen)
+## WAVE 0 — ARB kalitlari (ikkala track boshlanishidan OLDIN, ketma-ket, bitta commit)
 
-**Fayllar:**
-- Modify: `lib/l10n/app_uz.arb`, `lib/l10n/app_ru.arb`
-- Modify: `lib/core/router/app_router.dart:418-420`
-- Modify: `lib/features/diagnostic/screens/diagnostic_test_runner_screen.dart`
-- Test: `test/features/diagnostic/diagnostic_test_runner_subjects_test.dart` (yangi)
+> **Plan-review topilmasi (blocking #2) bo'yicha tuzatildi:** ARB kalitlari
+> ikkala track uchun ham UMUMIY generatsiya qilingan fayl (`app_localizations.dart`)
+> orqali kerak — agar har ikki track o'z izolyatsiyalangan worktree'sida ARB'ni
+> mustaqil qo'shsa, integratsiya paytida BIR XIL qatorlarni ikki marta
+> qo'shgani uchun merge conflict yuzaga keladi VA Track B o'z worktree'sida
+> `flutter test` ishga tushira olmaydi (yangi l10n getter'lar mavjud bo'lmagani
+> uchun COMPILE XATOSI, ogohlantirish emas). Shuning uchun bu qadam ikkala
+> track boshlanishidan OLDIN, bitta odam/agent tomonidan bajarilib, umumiy
+> branch'ga qo'shiladi — Track A va Track B ikkalasi ham SHU commitdan keyin
+> o'z worktree'larini ochadi.
 
-**BU TRACK `diagnostic_finished_screen.dart`ga UMUMAN TEGMAYDI** — faqat
-Track B qotirgan §0 interfeysiga ishonib, shunga mos `extra:` yuboradi.
-
-### A1: ARB kalitlarini qo'shish
+**Fayllar:** `lib/l10n/app_uz.arb`, `lib/l10n/app_ru.arb`
 
 `lib/l10n/app_uz.arb`da, `"autoReturnTimerText"` blokidan keyin (35-37 qator atrofi) qo'shing — ICU plural EMAS, oddiy `{count}`/`{name}` placeholder (loyihada hech qayerda ICU plural ishlatilmagan, `autoReturnTimerText`ning o'zi ham oddiy `{seconds}: int` pattern, shunga ergashiladi):
 
@@ -88,8 +90,22 @@ Track B qotirgan §0 interfeysiga ishonib, shunga mos `extra:` yuboradi.
 - [ ] `flutter gen-l10n` ishga tushiring (repo root'da)
 - [ ] Tekshiring: `lib/l10n/app_localizations.dart` (generated) yangi getter'larni o'z ichiga oladimi — `grep diagnosticFinishedGreeting lib/l10n/app_localizations*.dart`
 - [ ] Commit: `git add lib/l10n/ && git commit -m "feat(diagnostic): add ARB keys for finished-screen personalization"`
+- [ ] **Shu commitdan keyin GINA** Track A va Track B uchun ikkita alohida worktree/branch oching (`git worktree add ... -b <track-branch>`), ikkalasi ham shu commitni asos qilib.
 
-### A2: Runner screen — `_subjectsCompleted` state qo'shish
+---
+
+## TRACK A — Wiring (router + runner screen)
+
+**Fayllar:**
+- Modify: `lib/core/router/app_router.dart:418-420`
+- Modify: `lib/features/diagnostic/screens/diagnostic_test_runner_screen.dart`
+- Test: `test/features/diagnostic/diagnostic_test_runner_subjects_test.dart` (yangi)
+
+**BU TRACK `diagnostic_finished_screen.dart`ga UMUMAN TEGMAYDI** — faqat
+Track B qotirgan §0 interfeysiga ishonib, shunga mos `extra:` yuboradi. ARB
+(Wave 0) allaqachon shu branch'ning asosida bor.
+
+### A1: Runner screen — `_subjectsCompleted` state qo'shish
 
 **Fayl:** `lib/features/diagnostic/screens/diagnostic_test_runner_screen.dart`
 
@@ -133,7 +149,7 @@ onTerminated (~196-qator) da QO'SHILMAYDI, chunki u yerda fan yarim qolgan):
 - [ ] **Step 1: Yozing (yuqoridagi 4 ta o'zgarish)**
 - [ ] **Step 2: `flutter analyze lib/features/diagnostic/screens/diagnostic_test_runner_screen.dart` — 0 xato**
 
-### A3: Runner screen — `extra:` bilan navigatsiya qilish
+### A2: Runner screen — `extra:` bilan navigatsiya qilish
 
 Ikkita LITERAL `pushReplacement('/diagnostic_finished')` joyiga (§Ko'lam bo'yicha aynan shu ikkitasi, boshqa hech qayerda emas — `_finishTest()`ning o'zi 3 xil yo'ldan chaqirilsa ham, navigatsiya kodi faqat shu 2 joyda yozilgan):
 
@@ -167,7 +183,7 @@ Ikkita LITERAL `pushReplacement('/diagnostic_finished')` joyiga (§Ko'lam bo'yic
 - [ ] **Step 1: Yozing**
 - [ ] **Step 2: `flutter analyze` — 0 xato** (E'TIBOR: `DiagnosticFinishedScreen` konstruktori bu vaqtda hali eski — `extra` parametri go_router darajasida `Object?` bo'lgani uchun bu qatorlarning o'zi xato bermaydi; xato faqat Track B qo'shiladigan router builder'da chiqishi mumkin, bu — kutilgan, integratsiya bosqichida hal bo'ladi)
 
-### A4: Router — `/diagnostic_finished` route'ini yangilash
+### A3: Router — `/diagnostic_finished` route'ini yangilash
 
 **Fayl:** `lib/core/router/app_router.dart:418-420`
 
@@ -198,17 +214,20 @@ Yangisi (faylning o'zida 24+ marta ishlatilgan naqsh bilan bir xil, masalan
 - [ ] **Step 1: Yozing**
 - [ ] **Step 2: Commit qilmang hali** — bu integratsiya bosqichigacha kutadi (chunki `DiagnosticFinishedScreen`ning yangi konstruktor maydonlari Track B'da, alohida branch'da yoziladi; shu o'zgarishni alohida commit sifatida saqlab, integratsiya paytida qo'shing — pastdagi "Integratsiya" bo'limiga qarang)
 
-### A5: Runner screen'ning yangi logikasi uchun test
+### A4: Runner screen'ning yangi logikasi uchun test
 
-**Fayl (yangi):** `test/features/diagnostic/diagnostic_test_runner_subjects_test.dart`
+**Fayl (MAVJUD, qo'shiladi):** `test/widgets/diagnostic_test_runner_test.dart`
+— (E'TIBOR: yangi fayl EMAS; `startAttemptOverride:`/`DiagnosticTestRunnerScreen(`
+fake-API pattern aynan shu faylda allaqachon bor, yangi alohida fayl
+o'rniga shu yerga qo'shing.)
 
-Runner screen testlari uchun mavjud namunani toping (`grep -rn "DiagnosticTestRunnerScreen(" test/` — override funksiyalar orqali fake API javoblari beriladigan mavjud testlar bor, o'sha patterndan foydalaning). Minimal test:
+Minimal test:
 
 ```dart
 // Ikki fanli (masalan math->english) CAT oqimini fake API bilan simulyatsiya
 // qiladi, oxirida go_router'ga yuborilgan `extra['subjectsCompleted']`
 // ro'yxatida IKKALA fan ham borligini tekshiradi (bitta emas — bu aynan
-// A2-qadamda tuzatilgan "oxirgi fan hisobga olinmaydi" xatosining
+// A1-qadamda tuzatilgan "oxirgi fan hisobga olinmaydi" xatosining
 // regressiyasi).
 testWidgets(
   'both subjects appear in subjectsCompleted extra after full CAT completion',
@@ -229,21 +248,27 @@ testWidgets(
       override pattern'ini aniq nusxa oling — `grep -rn
       "startAttemptOverride:" test/` bilan toping)
 - [ ] **Step 2: Ishga tushiring, muvaffaqiyatli tugashini tekshiring:**
-      `flutter test test/features/diagnostic/diagnostic_test_runner_subjects_test.dart`
-- [ ] **Step 3: Commit:** `git add lib/features/diagnostic/screens/diagnostic_test_runner_screen.dart test/features/diagnostic/diagnostic_test_runner_subjects_test.dart && git commit -m "feat(diagnostic): track completed subjects and thread student name to finished screen"`
+      `flutter test test/widgets/diagnostic_test_runner_test.dart`
+- [ ] **Step 3: Commit:** `git add lib/features/diagnostic/screens/diagnostic_test_runner_screen.dart test/widgets/diagnostic_test_runner_test.dart && git commit -m "feat(diagnostic): track completed subjects and thread student name to finished screen"`
 
 ---
 
 ## TRACK B — Screen redesign (`diagnostic_finished_screen.dart`)
 
 **Fayllar:**
-- Modify: `lib/features/diagnostic/screens/diagnostic_finished_screen.dart` (TO'LIQ)
-- Test: `test/features/diagnostic/diagnostic_finished_screen_test.dart` (yangi)
+- Modify: `lib/features/diagnostic/screens/diagnostic_finished_screen.dart`
+- Modify (YANGI EMAS — plan-review blocking #1 bo'yicha tuzatildi):
+  `test/features/diagnostic/diagnostic_finished_screen_test.dart` — bu fayl
+  ALLAQACHON MAVJUD, 4 ta o'tayotgan test bilan (jumladan muhim regressiya
+  qo'riqchisi: "never shows score/percentage-like text"). B7'da bu fayl
+  QAYTA YOZILMAYDI — mavjud 4 ta test SAQLANADI, yangi 5 ta test QO'SHILADI.
 
-**BU TRACK boshqa hech qanday faylga TEGMAYDI.** §0dagi ARB kalitlari va
-konstruktor interfeysi hali Track A'da bo'lmasa ham, ularni MAVJUD deb faraz
-qilib yozing (nomlar qotirilgan) — `flutter analyze` integratsiyagacha xato
-berishi kutilgan holat.
+**BU TRACK boshqa hech qanday faylga TEGMAYDI.** §0dagi ARB kalitlari
+WAVE 0'da allaqachon umumiy branch asosiga qo'shilgan (shuning uchun bu
+track o'z worktree'sida `flutter analyze`/`flutter test`ni TO'LIQ, xatosiz
+ishga tushira oladi — Track A hali tugamagan bo'lsa ham). Faqat
+`DiagnosticFinishedScreen`ning §0da qotirilgan konstruktor interfeysi shu
+track ICHIDA B1-qadamda birinchi bo'lib yoziladi.
 
 Joriy fayl (`diagnostic_finished_screen.dart`, 199 qator) mutlaqo ISHLAYDIGAN
 kod — `_entranceController`, `_particlesController`, `_pulseController`,
@@ -275,11 +300,11 @@ import '../../../core/utils/student_name_formatter.dart';
 ```
 
 - [ ] **Step 1: Yozing**
-- [ ] **Step 2: `flutter analyze lib/features/diagnostic/screens/diagnostic_finished_screen.dart`** — ARB getter'lari hali yo'qligi sababli xato ko'rsatishi MUMKIN, bu bosqichda normal (integratsiyada hal bo'ladi); faqat Dart sintaksis xatolarini tekshiring.
+- [ ] **Step 2: `flutter analyze lib/features/diagnostic/screens/diagnostic_finished_screen.dart` — 0 xato** (ARB Wave 0'da allaqachon qo'shilgani uchun bu bosqichda ham TO'LIQ toza bo'lishi kerak)
 
 ### B2: Markaziy vizualni "medal-badge"ga aylantirish
 
-Joriy (97-123 qator atrofidagi) 84x84 doira + `Icons.verified_rounded`ni
+Joriy (aniq 104-123 qator, "~97-123" emas) 84x84 doira + `Icons.verified_rounded`ni
 almashtiring — mavjud `_pulseController`dan FOYDALANING (yangi controller
 YARATMANG):
 
@@ -537,80 +562,109 @@ resurs emas, mavjud `_autoReturnTimer?.cancel()` yetarli.)
 
 - [ ] **Step 1: Yozing**
 
-### B7: Widget test
+### B7: Widget test — MAVJUD faylga qo'shish, QAYTA YOZMASLIK
 
-**Fayl (yangi):** `test/features/diagnostic/diagnostic_finished_screen_test.dart`
+> **Plan-review topilmasi (blocking #1) bo'yicha tuzatildi:**
+> `test/features/diagnostic/diagnostic_finished_screen_test.dart` ALLAQACHON
+> MAVJUD, 4 ta o'tayotgan test bilan (jumladan muhim regressiya qo'riqchisi
+> "never shows score/percentage-like text"). Bu fayl **hech qachon `Write`
+> bilan to'liq almashtirilmasin** — aks holda 4 ta mavjud test yo'qoladi.
+> Uning `_wrap()` funksiyasi ham HOZIR parametrsiz va real `GoRouter`
+> ishlatadi (`MaterialApp.router`, `/`ga `context.go('/')` orqali
+> navigatsiyani tekshirish uchun) — pastdagi yangi testlar ANIQ SHU
+> `_wrap()`ning kengaytirilgan versiyasidan foydalanadi, alohida
+> `MaterialApp(home:)` YOZILMAYDI.
+
+**Qadam 1 — `_wrap()`ni parametr qabul qiladigan qilib o'zgartiring** (mavjud 4 ta chaqiruv joyini ham yangilang):
 
 ```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
-import 'package:alochi_monitoring/l10n/app_localizations.dart';
-import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_finished_screen.dart';
+Widget _wrap([Widget screen = const DiagnosticFinishedScreen()]) {
+  final router = GoRouter(
+    initialLocation: '/diagnostic_finished',
+    routes: [
+      GoRoute(path: '/', builder: (context, state) => const Scaffold(body: Text('HOME'))),
+      GoRoute(
+        path: '/diagnostic_finished',
+        builder: (context, state) => screen,
+      ),
+    ],
+  );
+  return MaterialApp.router(
+    routerConfig: router,
+    locale: const Locale('uz'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+  );
+}
+```
 
-Widget _wrap(Widget child) => MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: child,
-    );
+(Mavjud 4 ta test ichidagi `_wrap()` chaqiruvlari — parametrsiz — o'zgarishsiz ishlayveradi, chunki default qiymat bor.)
 
-void main() {
-  testWidgets('shows neutral title when studentName is null', (tester) async {
-    await tester.pumpWidget(_wrap(const DiagnosticFinishedScreen()));
-    await tester.pump();
-    final l10n = AppLocalizations.of(
-        tester.element(find.byType(DiagnosticFinishedScreen)))!;
-    expect(find.text(l10n.diagnosticFinishedTitle), findsOneWidget);
-  });
+**Qadam 2 — `main()` ichiga, mavjud 4 ta testdan KEYIN, 5 ta yangi test qo'shing:**
 
+```dart
   testWidgets('shows personalized greeting when studentName is set',
       (tester) async {
-    await tester.pumpWidget(_wrap(
-        const DiagnosticFinishedScreen(studentName: 'ALIYEV VALI OGLI')));
+    await tester.pumpWidget(
+        _wrap(const DiagnosticFinishedScreen(studentName: 'ALIYEV VALI OGLI')));
     await tester.pump();
     expect(find.textContaining('Vali'), findsOneWidget); // patronymic stripped
+    await tester.pump(const Duration(seconds: 15));
   });
 
   testWidgets('hides subjects pill when subjectsCompleted is empty',
       (tester) async {
-    await tester.pumpWidget(_wrap(const DiagnosticFinishedScreen()));
+    await tester.pumpWidget(_wrap());
     await tester.pump();
     expect(find.byIcon(Icons.menu_book_rounded), findsNothing);
+    await tester.pump(const Duration(seconds: 15));
   });
 
   testWidgets('shows subjects pill with count when non-empty', (tester) async {
-    await tester.pumpWidget(_wrap(const DiagnosticFinishedScreen(
-        subjectsCompleted: ['math', 'english'])));
+    await tester.pumpWidget(_wrap(
+        const DiagnosticFinishedScreen(subjectsCompleted: ['math', 'english'])));
     await tester.pump();
     expect(find.byIcon(Icons.menu_book_rounded), findsOneWidget);
+    await tester.pump(const Duration(seconds: 15));
   });
 
   testWidgets('pause button toggles to resume label', (tester) async {
-    await tester.pumpWidget(_wrap(const DiagnosticFinishedScreen()));
+    await tester.pumpWidget(_wrap());
     await tester.pump();
-    final l10n = AppLocalizations.of(
-        tester.element(find.byType(DiagnosticFinishedScreen)))!;
+    final l10n =
+        AppLocalizations.of(tester.element(find.byType(DiagnosticFinishedScreen)))!;
     expect(find.text(l10n.diagnosticFinishedPauseBtn), findsOneWidget);
     await tester.tap(find.text(l10n.diagnosticFinishedPauseBtn));
     await tester.pump();
     expect(find.text(l10n.diagnosticFinishedResumeBtn), findsOneWidget);
+    // pausing must actually stop the countdown from firing navigation
+    await tester.pump(const Duration(seconds: 20));
+    expect(find.text('HOME'), findsNothing);
   });
-}
+
+  testWidgets('neutral title still renders when studentName is null (no regression)',
+      (tester) async {
+    await tester.pumpWidget(_wrap());
+    await tester.pump();
+    expect(find.text('Diagnostika yakunlandi'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 15));
+  });
 ```
 
-- [ ] **Step 1: Testlarni yozing**
-- [ ] **Step 2: Ishga tushiring:** `flutter test test/features/diagnostic/diagnostic_finished_screen_test.dart` — barchasi PASS
-- [ ] **Step 3: `flutter analyze lib/features/diagnostic/screens/diagnostic_finished_screen.dart`** — Track A'ning ARB/konstruktor o'zgarishi hali qo'shilmagani sababli xato bo'lishi MUMKIN (kutilgan)
-- [ ] **Step 4: Commit:** `git add lib/features/diagnostic/screens/diagnostic_finished_screen.dart test/features/diagnostic/diagnostic_finished_screen_test.dart && git commit -m "feat(diagnostic): redesign finished screen with medal badge, stars, status pills, countdown pause"`
+- [ ] **Step 1: `_wrap()`ni yuqoridagicha o'zgartiring, mavjud 4 ta testni TEGMASDAN qoldiring**
+- [ ] **Step 2: 5 ta yangi testni qo'shing**
+- [ ] **Step 3: Ishga tushiring:** `flutter test test/features/diagnostic/diagnostic_finished_screen_test.dart` — barcha 9 ta test (4 eski + 5 yangi) PASS (ARB Wave 0'da allaqachon qo'shilgani uchun bu TO'LIQ, shartsiz o'tishi kerak)
+- [ ] **Step 4: `flutter analyze lib/features/diagnostic/screens/diagnostic_finished_screen.dart` — 0 xato**
+- [ ] **Step 5: Commit:** `git add lib/features/diagnostic/screens/diagnostic_finished_screen.dart test/features/diagnostic/diagnostic_finished_screen_test.dart && git commit -m "feat(diagnostic): redesign finished screen with medal badge, stars, status pills, countdown pause"`
 
 ---
 
 ## INTEGRATSIYA (ikkala track tugagach, bitta joyda)
 
-- [ ] **Step 1:** Track A va Track B branch/worktree'larini bitta branch'ga birlashtiring (`git merge` yoki cherry-pick — fayl to'qnashuvi BO'LMASLIGI kerak, chunki ikki track hech qanday umumiy faylga tegmagan, faqat A4-qadamdagi router o'zgarishi alohida saqlab qo'yilgan edi — endi uni ham qo'shing).
-- [ ] **Step 2:** `flutter gen-l10n` qayta ishga tushiring (ikkala track ARB'ga tegishi mumkin bo'lgani uchun generated fayl yangilanishi kerak).
+- [ ] **Step 1:** Track A va Track B branch/worktree'larini (ikkalasi ham Wave 0 commitidan boshlangan) bitta branch'ga birlashtiring (`git merge` yoki cherry-pick — fayl to'qnashuvi BO'LMASLIGI kerak, chunki ikki track hech qanday umumiy faylga tegmagan; faqat A3-qadamdagi router o'zgarishi ataylab alohida saqlab qo'yilgan edi, chunki u `DiagnosticFinishedScreen`ning Track B'da yoziladigan konstruktor maydonlariga bog'liq — endi shu router o'zgarishini qo'shing).
+- [ ] **Step 2:** `flutter gen-l10n` qayta ishga tushiring (ehtiyot chorasi — Wave 0'da allaqachon bajarilgan, lekin generated fayl merge'dan keyin ham to'g'ri ekanini tasdiqlash uchun).
 - [ ] **Step 3:** `flutter analyze` (butun loyiha) — 0 xato/ogohlantirish.
 - [ ] **Step 4:** `flutter test test/features/diagnostic/` — barcha testlar (yangi + mavjud regressiya) PASS.
-- [ ] **Step 5:** Qo'lda tekshirish: `flutter run -d macos --release` (DEBUG rejimda tap gesture buzilishi — loyihaning ma'lum muammosi), diagnostika testini oxirigacha o'tib, yangi ekranni ko'ring — `studentName` bor va yo'q ikkala holatda ham.
+- [ ] **Step 5:** Qo'lda tekshirish: `flutter run -d macos --release` (DEBUG rejimda tap gesture buzilishi — loyihaning ma'lum muammosi), diagnostika testini oxirigacha o'tib, yangi ekranni ko'ring — `studentName` bor va yo'q ikkala holatda ham. **Alohida e'tibor:** medal-badge (96-104px) + yangi yulduzlar qatori + status-pill qatori umumiy balandlikni oshiradi, `Column`da `SingleChildScrollView` yo'q — kichikroq oyna/kiosk ekranida `RenderFlex overflow` sarilangan-sariq chiziq ko'rinmasligini tekshiring (ko'rinsa, `SingleChildScrollView` bilan o'rab qo'ying).
 - [ ] **Step 6:** T1 review (`/code-review high`) — yangi endpoint/auth emas, lekin bir nechta fayl+navigatsiya o'zgargani uchun bir marta o'tish tavsiya etiladi.
 - [ ] **Step 7:** Commit + push ishchi branch'ga (`feat/diagnostic-finished-screen-redesign`), foydalanuvchiga hisobot.
