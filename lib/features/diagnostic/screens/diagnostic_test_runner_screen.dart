@@ -113,6 +113,7 @@ class _DiagnosticTestRunnerScreenState
   int _position = 0;
   int _total = 0;
   String _currentSubject = '';
+  final List<String> _subjectsCompleted = [];
   _SubjectTransition? _transition;
 
   /// Local UI-only bookmark state, keyed by question_id (YAGNI — no backend
@@ -341,11 +342,13 @@ class _DiagnosticTestRunnerScreenState
       final nextSubject = (resp['next_subject'] ?? '').toString();
       if (finished && nextSubject.isEmpty) {
         _timer?.cancel();
+        _subjectsCompleted.add(_currentSubject);
         _finishTest();
         return;
       }
       if (finished && nextSubject.isNotEmpty) {
         _timer?.cancel();
+        _subjectsCompleted.add(_currentSubject);
         if (!mounted) return;
         setState(() {
           _transition = _SubjectTransition(
@@ -448,6 +451,7 @@ class _DiagnosticTestRunnerScreenState
       return;
     }
     _timer?.cancel();
+    _subjectsCompleted.add(_currentSubject);
     _finishTest();
   }
 
