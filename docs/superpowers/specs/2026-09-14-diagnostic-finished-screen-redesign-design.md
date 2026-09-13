@@ -27,8 +27,15 @@ ko'rsatilmagani uchun yangi API maydon kerak emas). Faqat quyidagi fayllar:
 - `lib/features/diagnostic/screens/diagnostic_finished_screen.dart` — to'liq
   qayta yoziladi
 - `lib/features/diagnostic/screens/diagnostic_test_runner_screen.dart` —
-  ikkala `pushReplacement('/diagnostic_finished')` chaqiruviga
-  `extra: {'studentName': ..., 'subjectsCompleted': ...}` qo'shiladi
+  yangi `final List<String> _subjectsCompleted = []` state qo'shiladi (fan
+  yakunlanganda to'ldiriladi); `pushReplacement('/diagnostic_finished')`ning
+  ikkita LITERAL yozilish joyiga (proctoring `onTerminated`, ~satr 196; va
+  umumiy `_finishTest()` helper ichida, ~satr 243) `extra: {'studentName':
+  widget.studentName, 'subjectsCompleted': _subjectsCompleted}` qo'shiladi.
+  `_finishTest()`ning o'zi 3 xil yo'ldan (countdown-timeout ~169, `_submit()`
+  finished tarmog'i ~344, fixed-variant final `finishAttempt` ~451) chaqirilsa
+  ham, ~243-qatordagi bitta tahrir barchasini qamrab oladi — faqat 196- va
+  243-qatorlar qo'lda tahrirlanadi.
 - `lib/core/router/app_router.dart` — `/diagnostic_finished` route'i `extra`ni
   o'qib `DiagnosticFinishedScreen`ga parametr sifatida uzatadi
 - Yangi umumiy widget: `lib/shared/widgets/confetti_burst.dart` —
@@ -54,30 +61,47 @@ class DiagnosticFinishedScreen extends StatefulWidget {
 }
 ```
 
-`app_router.dart`da:
+`app_router.dart`da — faylning boshqa 24+ route'ida allaqachon ishlatilgan
+naqsh bilan bir xil (`extra as Map<String, dynamic>? ?? {}` +
+non-nullable key access, masalan `app_router.dart:66,75,85,96,123,135`),
+joriy `const DiagnosticFinishedScreen()` registratsiyasi (`app_router.dart:
+418-420`) shunga almashtiriladi:
 
 ```dart
 GoRoute(
   path: '/diagnostic_finished',
   builder: (context, state) {
-    final extra = state.extra as Map<String, dynamic>?;
+    final extra = state.extra as Map<String, dynamic>? ?? {};
     return DiagnosticFinishedScreen(
-      studentName: extra?['studentName'] as String?,
+      studentName: extra['studentName'] as String?,
       subjectsCompleted:
-          (extra?['subjectsCompleted'] as List?)?.cast<String>() ?? const [],
+          (extra['subjectsCompleted'] as List?)?.cast<String>() ?? const [],
     );
   },
 ),
 ```
 
-`diagnostic_test_runner_screen.dart`dagi ikkala chaqiruv joyida (proctoring
-`onTerminated` va `_submit()` ichida) `context.pushReplacement(
-'/diagnostic_finished', extra: {...})` shu maydonlar bilan to'ldiriladi —
-runner screen'da o'quvchi ismi va tugallangan fanlar ro'yxati allaqachon
-mavjud state'da bor (`widget.studentName`, `_subjectsCompleted` yoki
-ekvivalenti — implementatsiya vaqtida runner screendan aniq nom o'qiladi).
-Agar `studentName` `null`/bo'sh bo'lsa, ekran neytral "Barakalla!" sarlavhasini
-ko'rsatadi (ism ixtiyoriy, ekran ismsiz ham to'liq ishlashi shart).
+**`studentName`** — `diagnostic_test_runner_screen.dart`da tayyor holda bor:
+`widget.studentName` (required `final String`, satr ~73/90) — ikkala chaqiruv
+joyida bevosita shundan olinadi.
+
+**`subjectsCompleted`** — koddan tasdiqlandi: bunday ro'yxat HOZIR MAVJUD
+EMAS. Runner faqat bitta `_currentSubject` (`String`, satr ~115) saqlaydi va
+har `_startSubject()` chaqirilganda uni ustiga yozadi (satr ~284) — fanlar
+orasida akkumulyatsiya qiluvchi hech narsa yo'q. Shuning uchun bu — YANGI
+holat: `final List<String> _subjectsCompleted = [];` runner state'ga
+qo'shiladi va **faqat** `finished == true && nextSubject.isNotEmpty` tarmog'ida
+(`_submit()` ichida, hozirgi fan navbatga qo'yilganda, ~satr 347-358) shu fan
+ro'yxatga qo'shiladi.
+
+Muhim: test countdown-timeout (`_finishTest()` chaqiruvi timer orqali, ~satr
+169) yoki proctoring-terminatsiya (~satr 196) orqali TO'XTATILGANDA, joriy fan
+"tugallangan" deb hisoblanmaydi — u ro'yxatga QO'SHILMAYDI. Demak
+`subjectsCompleted` ko'pincha bo'sh `[]` yoki to'liqsiz bo'lishi — bu xato
+emas, dizayn bo'yicha kutilgan holat (shuning uchun ekran bu ro'yxatsiz ham
+to'liq ishlashi SHART — pastdagi pill shunga ko'ra shartli ko'rsatiladi).
+`studentName` `null`/bo'sh bo'lsa ham ekran neytral "Barakalla!" sarlavhasini
+ko'rsatadi.
 
 ### 2. Vizual tarkib (yuqoridan pastga)
 
@@ -123,15 +147,70 @@ ko'rsatadi (ism ixtiyoriy, ekran ismsiz ham to'liq ishlashi shart).
 
 ### 3. `ConfettiBurst` umumiy widget
 
-`result_screen.dart`dagi `_ConfettiPainter`/`_Particle` klasslari deyarli
-o'zgarishsiz `lib/shared/widgets/confetti_burst.dart`ga ko'chiriladi (nom:
-`ConfettiBurst extends StatefulWidget`, `particleCount`, `colors` parametrli),
-so'ng `result_screen.dart` shu umumiy widgetni import qilib ishlatadigan
-bo'ladi (kod dublikatsiyasi yo'qoladi — DRY). Bu refactor `result_screen.dart`
-ning tashqi ko'rinishini o'zgartirmasligi shart (faqat ichki implementatsiya
-umumiy joyga ko'chadi).
+`result_screen.dart:694-726` (`_Particle`) va `:728-766` (`_ConfettiPainter`)
+hozircha **konfiguratsiyalanmaydi** — ranglar `_Particle` ichidagi
+`static const _colors`ga qattiq yozilgan, zarrachalar soni (`80`) esa
+`_ResultScreenState.initState()`da (`result_screen.dart:70`,
+`List.generate(80, ...)`) qattiq yozilgan; animatsiyani boshqaruvchi
+`_celebCtrl` (`AnimationController`) butunlay `_ResultScreenState`ga tegishli
+va faqat konfetti uchun ishlatiladi (`:47,73-75,156,186,189` — boshqa hech
+narsaga bog'liq emas, shuning uchun ko'chirish xavfsiz).
 
-### 4. Nima qo'shilmaydi (ataylab qisqartirilgan)
+Bu — haqiqiy refactor, "deyarli o'zgarishsiz ko'chirish" emas:
+
+- `ConfettiBurst extends StatefulWidget` yaratiladi, `_celebCtrl`ni O'ZI
+  boshqaradi (o'z `initState`/`dispose`i bilan).
+- Konstruktor parametrlari: `particleCount` (default 80, joriy qiymatga mos),
+  `colors` (default — joriy `_colors` ro'yxati), **`duration`** (MAJBURIY
+  farqlanadigan parametr — `result_screen.dart` joriy holatda 3400ms bir
+  martalik burst'ga bog'langan (overlay-dismiss vaqti bilan mos), yangi
+  diagnostika ekrani esa ~1.2s so'nishni xohlaydi; `duration` parametrisiz bu
+  ikkisi bir xil widget'ni ishlata olmaydi).
+- `_Particle`ga `colors` ro'yxati konstruktor/`_reset()` orqali uzatiladi
+  (hozir hardcoded).
+- `result_screen.dart` shu umumiy widgetni import qilib, `duration: 3400ms,
+  particleCount: 80` bilan chaqiradi — **tashqi ko'rinish/vaqtlash
+  o'zgarmaydi**, faqat ichki implementatsiya umumiy joyga ko'chadi (DRY).
+- Yangi `diagnostic_finished_screen.dart` esa `duration: 1200ms` bilan
+  chaqiradi.
+
+### 4. Lokalizatsiya (ARB) — MAJBURIY, e'tibordan chetda qolmasin
+
+Joriy `diagnostic_finished_screen.dart` barcha matnlarni `AppLocalizations`
+orqali oladi — real ARB kalitlari allaqachon bor: `lib/l10n/app_uz.arb:32-37`
+va `lib/l10n/app_ru.arb:32-37` (`diagnosticFinishedTitle`,
+`diagnosticFinishedSubtitle`, `diagnosticFinishedInfoNote`, `backToKioskBtn`,
+`autoReturnTimerText`). Bu repo ikki tilli (uz/ru) — Bu spec'dagi barcha yangi
+matnlar (yuqoridagi 2-bo'lim: shaxsiylashtirilgan sarlavha `{name}`
+interpolatsiyasi bilan, iliqroq subtitle, 3 ta status-pill matni — jumladan
+`{count}` bilan, CTA matni, pauza/davom-ettirish va countdown matni) **bare
+Uzbek string literal sifatida YOZILMAYDI** — har biri tegishli ICU
+placeholder/plural bilan ham `app_uz.arb`ga, ham `app_ru.arb`ga YANGI kalit
+sifatida qo'shiladi (masalan `diagnosticFinishedGreeting` `{name}` bilan,
+`diagnosticFinishedSubjectsPill` `{count}` bilan `plural` ICU formatida), so'ng
+`flutter gen-l10n` ishga tushiriladi. Bu — mavjud ekranning bir tilga
+regressiyasini oldini olish uchun MAJBURIY qadam, ixtiyoriy emas.
+
+### 5. AnimationController inventarizatsiyasi — barchasi `dispose()` qilinishi SHART
+
+Joriy ekranda 3 ta `AnimationController` bor va barchasi to'g'ri
+`dispose()` qilingan (`diagnostic_finished_screen.dart:57-63`). Yangi dizayn
+qo'shadigan barcha controller'lar ham xuddi shunday `dispose()` qilinishi
+SHART (bu seansda aynan shu turdagi lifecycle-bug — Timer/Completer race —
+allaqachon topilgan va tuzatilgan edi, xuddi shu ehtiyotkorlik animatsiyalarga
+ham tegishli):
+
+- Badge "breathe" controller (2.5s, cheksiz takror) — `dispose()`da to'xtatiladi.
+- 3 ta yulduz uchun controller(lar) — `Future.delayed`/`Timer` bilan
+  boshqarilsa, ekran `dispose` bo'lganda hali kutilayotgan delayed
+  callback'lar `mounted` tekshiruvisiz `setState` chaqirmasligi kerak.
+- `ConfettiBurst`ning o'z ichki `AnimationController`i — o'zi `StatefulWidget`
+  bo'lgani uchun o'z `dispose()`ida o'zi tozalanadi (yuqoridagi 3-bo'limga
+  qarang), lekin bu ham ro'yxatda aniq qayd etiladi.
+- Countdown `Timer.periodic` — `dispose()`da `cancel()` (allaqachon spec
+  ichida yozilgan, shu yerda takror eslatiladi).
+
+### 6. Nima qo'shilmaydi (ataylab qisqartirilgan)
 
 - Ovoz effektlari — sinfda bir nechta kiosk bir vaqtda ishlaganda shovqin
   yaratadi.
