@@ -99,7 +99,7 @@ ARB kalitlari (Track A qo'shadi, Track B ishlatadi — nomlar bir xil bo'lishi S
 **Fayllar:**
 - Modify: `lib/core/router/app_router.dart:418-420`
 - Modify: `lib/features/diagnostic/screens/diagnostic_test_runner_screen.dart`
-- Test: `test/features/diagnostic/diagnostic_test_runner_subjects_test.dart` (yangi)
+- Modify: `test/widgets/diagnostic_test_runner_test.dart`
 
 **BU TRACK `diagnostic_finished_screen.dart`ga UMUMAN TEGMAYDI** — faqat
 Track B qotirgan §0 interfeysiga ishonib, shunga mos `extra:` yuboradi. ARB
