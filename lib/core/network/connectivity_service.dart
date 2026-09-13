@@ -31,6 +31,27 @@ class SignalReading {
   });
 }
 
+/// A delay that a caller can force to complete right now via `cancel()`,
+/// instead of waiting for its Timer to fire. `cancel()` completes the
+/// Completer directly — it does NOT just cancel the backing Timer, because
+/// `Timer.cancel()` skips the timer's callback entirely, and that callback
+/// was the only thing that would have completed the Future. Cancelling the
+/// Timer without also completing the Completer leaves the `await`er
+/// hanging forever. Each call gets its own Completer/Timer pair (no shared
+/// mutable field), so concurrent delays never step on each other.
+({Future<void> future, void Function() cancel}) cancellableDelay(Duration d) {
+  final completer = Completer<void>();
+  final timer = Timer(d, () {
+    if (!completer.isCompleted) completer.complete();
+  });
+  return (
+    future: completer.future.whenComplete(timer.cancel),
+    cancel: () {
+      if (!completer.isCompleted) completer.complete();
+    },
+  );
+}
+
 /// Pings up to twice: a single transient failure (DNS blip, a response
 /// that just barely misses [timeout], a transient 429/5xx) shouldn't read
 /// the same as being genuinely offline. Only reports failure if BOTH
@@ -79,9 +100,12 @@ class ConnectivityService {
   static const Duration _retryDelay = Duration(milliseconds: 900);
 
   Timer? _timer;
-  // Backs the retry backoff wait so dispose() can cancel it outright
-  // instead of leaving a bare Future.delayed running in the background.
-  Timer? _retryTimer;
+  // Each in-flight retry wait registers its `cancel` callback here (added
+  // in _cancellableDelay, removed once the wait resolves) so dispose() can
+  // force-complete every one of them, not just the most recent — a single
+  // shared Timer field would let a concurrent refresh()/periodic _measure()
+  // overwrite the other's reference.
+  final Set<void Function()> _pendingRetryCancels = {};
   bool _started = false;
 
   final StreamController<SignalReading> _controller =
@@ -107,11 +131,9 @@ class ConnectivityService {
   Future<void> refresh() => _measure();
 
   Future<void> _cancellableDelay(Duration d) {
-    final completer = Completer<void>();
-    _retryTimer = Timer(d, () {
-      if (!completer.isCompleted) completer.complete();
-    });
-    return completer.future;
+    final gate = cancellableDelay(d);
+    _pendingRetryCancels.add(gate.cancel);
+    return gate.future.whenComplete(() => _pendingRetryCancels.remove(gate.cancel));
   }
 
   Future<void> _measure() async {
@@ -148,8 +170,12 @@ class ConnectivityService {
   void dispose() {
     _timer?.cancel();
     _timer = null;
-    _retryTimer?.cancel();
-    _retryTimer = null;
+    // Force-complete every in-flight retry wait ourselves — cancelling
+    // their Timers would leave the awaits hanging (see cancellableDelay).
+    for (final cancel in _pendingRetryCancels.toList()) {
+      cancel();
+    }
+    _pendingRetryCancels.clear();
     _started = false;
   }
 }
