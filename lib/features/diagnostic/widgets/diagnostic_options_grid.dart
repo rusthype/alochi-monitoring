@@ -3,8 +3,9 @@
 // Lays out fixed-variant answer options as a 2x2 grid of tactile cards when
 // all 4 options' text actually fits within 2 lines at the real per-card text
 // width (measured with TextPainter against DiagnosticTactileOptionCard's
-// live chrome), otherwise falls back to a single-column stack — same
-// tactile card either way. CAT flow doesn't use this; it keeps rendering
+// live chrome and the ambient font-scale setting — see MediaQuery.textScalerOf
+// below), otherwise falls back to a single-column stack — same tactile card
+// either way. CAT flow doesn't use this; it keeps rendering
 // `DiagnosticOptionCard` directly.
 import 'package:flutter/material.dart';
 import '../data/diagnostic_option_item.dart';
@@ -26,27 +27,16 @@ class DiagnosticOptionsGrid extends StatelessWidget {
     required this.onSelect,
   });
 
-  /// Must match DiagnosticTactileOptionCard's unselected option-text style
-  /// (fontSize 15, FontWeight.w500) — the selected weight (w700) is
-  /// deliberately not used here, since the grid-vs-list decision must not
-  /// flip when an option becomes selected mid-interaction.
-  static const _optionTextStyle =
-      TextStyle(fontSize: 15, fontWeight: FontWeight.w500);
-
   static const _rowGap = 14.0; // SizedBox between the two Expanded cards
-  static const _cardHorizontalPadding =
-      14.0 * 2; // card's EdgeInsets.symmetric(horizontal: 14)
-  static const _badgeReserve = 36.0 + 10.0; // letter badge width + its gap
-  // Checkmark reserved even when unselected (SizedBox(width: 8) +
-  // Container(width: 22)), so the grid/list decision can't flip between an
-  // option's selected and unselected render — see class doc.
-  static const _checkmarkReserve = 8.0 + 22.0;
 
-  static bool _fitsTwoLines(String text, double textWidth) {
+  static bool _fitsTwoLines(
+      String text, double textWidth, TextScaler textScaler) {
     if (textWidth <= 0) return false;
     final painter = TextPainter(
-      text: TextSpan(text: text, style: _optionTextStyle),
+      text: TextSpan(
+          text: text, style: DiagnosticTactileOptionCard.optionTextStyle),
       textDirection: TextDirection.ltr,
+      textScaler: textScaler,
       maxLines: 2,
     )..layout(maxWidth: textWidth);
     return !painter.didExceedMaxLines;
@@ -54,10 +44,18 @@ class DiagnosticOptionsGrid extends StatelessWidget {
 
   /// [textWidth] is the usable width for the option text inside one
   /// 2-column card, derived from the dock's real available width.
+  /// [textScaler] must be the ambient ("Katta shrift" setting) scaler the
+  /// card will actually render with — omitting it (default: no scaling)
+  /// would pick a grid at 1.0x that then overflows to 3 lines once the
+  /// user's font-scale preference is applied, since the card itself never
+  /// clips or shrinks the text.
   static bool shouldUseGrid(
-          List<DiagnosticOptionItem> options, double textWidth) =>
+    List<DiagnosticOptionItem> options,
+    double textWidth, {
+    TextScaler textScaler = TextScaler.noScaling,
+  }) =>
       options.length == 4 &&
-      options.every((o) => _fitsTwoLines(o.text, textWidth));
+      options.every((o) => _fitsTwoLines(o.text, textWidth, textScaler));
 
   @override
   Widget build(BuildContext context) {
@@ -74,11 +72,12 @@ class DiagnosticOptionsGrid extends StatelessWidget {
       builder: (context, constraints) {
         final columnWidth = (constraints.maxWidth - _rowGap) / 2;
         final textWidth = columnWidth -
-            _cardHorizontalPadding -
-            _badgeReserve -
-            _checkmarkReserve;
+            DiagnosticTactileOptionCard.horizontalPadding -
+            DiagnosticTactileOptionCard.badgeReserve -
+            DiagnosticTactileOptionCard.checkmarkReserve;
+        final textScaler = MediaQuery.textScalerOf(context);
 
-        if (shouldUseGrid(options, textWidth)) {
+        if (shouldUseGrid(options, textWidth, textScaler: textScaler)) {
           // Two content-sized rows instead of GridView.count(childAspectRatio:
           // ...): a fixed aspect ratio forces every cell to a guessed height
           // that doesn't match the tactile card's actual (much shorter) content

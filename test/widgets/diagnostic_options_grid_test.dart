@@ -43,8 +43,19 @@ List<DiagnosticOptionItem> _longOptions() => const [
     ];
 
 Future<void> _pumpGrid(
-    WidgetTester tester, List<DiagnosticOptionItem> options) async {
+  WidgetTester tester,
+  List<DiagnosticOptionItem> options, {
+  TextScaler textScaler = TextScaler.noScaling,
+}) async {
+  // MediaQuery override goes inside MaterialApp's builder — same place
+  // main.dart applies the real "Katta shrift" fontScaleProvider — so it
+  // actually reaches DiagnosticOptionsGrid's MediaQuery.textScalerOf(context)
+  // instead of being shadowed by MaterialApp's own root MediaQuery.
   await tester.pumpWidget(MaterialApp(
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+      child: child!,
+    ),
     home: Scaffold(
       body: Center(
         child: SizedBox(
@@ -73,6 +84,35 @@ void main() {
   test('shouldUseGrid false when option count != 4', () {
     expect(
       DiagnosticOptionsGrid.shouldUseGrid(_shortOptions().sublist(0, 3), 269),
+      isFalse,
+    );
+  });
+
+  test(
+      'shouldUseGrid stops picking the grid once the ambient "Katta shrift" '
+      'font-scale (1.15x) is applied, for text that fits at 1.0x', () {
+    // Borderline text: fits in 2 lines at dock width and normal scale, but
+    // the same glyphs at the app's large-font-scale setting (fontScaleProvider
+    // in app_prefs_provider.dart, 1.15x) overflow to a 3rd line. Without
+    // passing textScaler through to the TextPainter, shouldUseGrid would
+    // still pick the grid here and the card would render one row taller
+    // than its neighbor — the exact bug this heuristic exists to prevent,
+    // just triggered by a font-scale setting instead of raw option length.
+    final options = [
+      const DiagnosticOptionItem(key: 'A', text: '12'),
+      const DiagnosticOptionItem(key: 'B', text: '12'),
+      const DiagnosticOptionItem(key: 'C', text: '12'),
+      const DiagnosticOptionItem(
+          key: 'D', text: 'Bu yetarlicha uzun javob matni'),
+    ];
+    expect(
+      DiagnosticOptionsGrid.shouldUseGrid(options, 269,
+          textScaler: TextScaler.noScaling),
+      isTrue,
+    );
+    expect(
+      DiagnosticOptionsGrid.shouldUseGrid(options, 269,
+          textScaler: const TextScaler.linear(1.15)),
       isFalse,
     );
   });
@@ -130,6 +170,39 @@ void main() {
     expect(topLefts[0].dx, isNot(topLefts[1].dx));
     expect(topLefts[2].dy, topLefts[3].dy);
     expect(topLefts[0].dy, isNot(topLefts[2].dy));
+  });
+
+  testWidgets(
+      'falls back to the vertical list under the "Katta shrift" font-scale '
+      'for text that renders as a grid at normal scale', (tester) async {
+    final borderlineOptions = [
+      const DiagnosticOptionItem(key: 'A', text: '12'),
+      const DiagnosticOptionItem(key: 'B', text: '12'),
+      const DiagnosticOptionItem(key: 'C', text: '12'),
+      const DiagnosticOptionItem(
+          key: 'D', text: 'Bu yetarlicha uzun javob matni'),
+    ];
+
+    await _pumpGrid(tester, borderlineOptions);
+    expect(find.byType(GridView), findsNothing);
+    var topLefts = find
+        .byType(DiagnosticTactileOptionCard)
+        .evaluate()
+        .map((e) => tester.getTopLeft(find.byWidget(e.widget)))
+        .toList();
+    expect(topLefts[0].dy, topLefts[1].dy); // grid at normal scale
+
+    // Same options, same dock width — only the ambient font-scale changes
+    // (mirrors fontScaleProvider's `large = 1.15` in app_prefs_provider.dart).
+    await _pumpGrid(tester, borderlineOptions,
+        textScaler: const TextScaler.linear(1.15));
+    topLefts = find
+        .byType(DiagnosticTactileOptionCard)
+        .evaluate()
+        .map((e) => tester.getTopLeft(find.byWidget(e.widget)))
+        .toList();
+    expect(topLefts.map((p) => p.dx).toSet(), hasLength(1)); // list now
+    expect(topLefts.map((p) => p.dy).toSet(), hasLength(4));
   });
 
   testWidgets('stacks cards in a single vertical column for long options',

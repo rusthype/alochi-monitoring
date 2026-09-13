@@ -23,6 +23,34 @@ class DiagnosticTactileOptionCard extends StatefulWidget {
     required this.onTap,
   });
 
+  // Single source of truth for this card's chrome sizing, so
+  // DiagnosticOptionsGrid's text-width measurement can reserve the same
+  // space this widget's own build() actually consumes below, instead of
+  // keeping a second hand-copied set of numbers in sync via comments.
+  static const double _horizontalPad = 14; // per-side content padding
+  static const double _badgeWidth = 36;
+  static const double _badgeGap = 10;
+  static const double _checkmarkGap = 8;
+  static const double _checkmarkWidth = 22;
+
+  /// Total horizontal content padding (both sides).
+  static const double horizontalPadding = _horizontalPad * 2;
+
+  /// Letter badge width + the gap before the option text.
+  static const double badgeReserve = _badgeWidth + _badgeGap;
+
+  /// Selected-state checkmark's gap + circle width. Reserved by callers
+  /// even when the option isn't currently selected, so a width-based
+  /// layout decision can't flip between an option's selected and
+  /// unselected render.
+  static const double checkmarkReserve = _checkmarkGap + _checkmarkWidth;
+
+  /// Unselected option-text style. Callers measuring text width should use
+  /// this (not the selected w700 variant) for the same reason as
+  /// [checkmarkReserve] — the common case, and selection must not flip it.
+  static const TextStyle optionTextStyle =
+      TextStyle(fontSize: 15, fontWeight: FontWeight.w500);
+
   @override
   State<DiagnosticTactileOptionCard> createState() =>
       _DiagnosticTactileOptionCardState();
@@ -89,7 +117,9 @@ class _DiagnosticTactileOptionCardState
               duration: const Duration(milliseconds: 90),
               transform:
                   Matrix4.translationValues(0, _pressed ? _edgeHeight : 0, 0),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: DiagnosticTactileOptionCard._horizontalPad,
+                  vertical: 12),
               decoration: BoxDecoration(
                 // Opaque brandLight, not a translucent alpha blend: this
                 // card sits over the solid _brandDark "3D edge" background
@@ -98,7 +128,8 @@ class _DiagnosticTactileOptionCardState
                 // low-contrast orange block with unreadable text (found via
                 // a real local run) instead of a pale card with a thin
                 // accent edge.
-                color: widget.selected ? AppColors.brandLight : AppColors.surface,
+                color:
+                    widget.selected ? AppColors.brandLight : AppColors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: borderColor,
@@ -108,8 +139,8 @@ class _DiagnosticTactileOptionCardState
               child: Row(
                 children: [
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: DiagnosticTactileOptionCard._badgeWidth,
+                    height: DiagnosticTactileOptionCard._badgeWidth,
                     alignment: Alignment.center,
                     decoration:
                         BoxDecoration(shape: BoxShape.circle, color: badgeBg),
@@ -122,24 +153,27 @@ class _DiagnosticTactileOptionCardState
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: DiagnosticTactileOptionCard._badgeGap),
                   Expanded(
                     child: Text(
                       widget.text,
-                      style: TextStyle(
+                      style:
+                          DiagnosticTactileOptionCard.optionTextStyle.copyWith(
                         color:
                             widget.selected ? AppColors.brand : AppColors.ink1,
-                        fontWeight:
-                            widget.selected ? FontWeight.w700 : FontWeight.w500,
-                        fontSize: 15,
+                        fontWeight: widget.selected
+                            ? FontWeight.w700
+                            : DiagnosticTactileOptionCard
+                                .optionTextStyle.fontWeight,
                       ),
                     ),
                   ),
                   if (widget.selected) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(
+                        width: DiagnosticTactileOptionCard._checkmarkGap),
                     Container(
-                      width: 22,
-                      height: 22,
+                      width: DiagnosticTactileOptionCard._checkmarkWidth,
+                      height: DiagnosticTactileOptionCard._checkmarkWidth,
                       alignment: Alignment.center,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
