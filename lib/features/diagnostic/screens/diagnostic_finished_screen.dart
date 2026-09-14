@@ -257,12 +257,23 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
                             ),
                           ),
                           const SizedBox(height: 28),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _returnNow,
-                              child: Text(l10n.backToKioskBtn),
+                          Center(
+                            child: SizedBox(
+                              width: 220,
+                              height: 46,
+                              child: ElevatedButton.icon(
+                                onPressed: _returnNow,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.brand,
+                                  foregroundColor: Colors.white,
+                                  shape: const StadiumBorder(),
+                                  elevation: 3,
+                                  shadowColor:
+                                      AppColors.brand.withValues(alpha: 0.35),
+                                ),
+                                icon: const Icon(Icons.home_rounded, size: 18),
+                                label: Text(l10n.backToKioskBtn),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 10),
