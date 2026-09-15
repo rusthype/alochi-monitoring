@@ -137,8 +137,7 @@ void main() {
 
       await tester.tap(find.text('Variant B'));
       await tester.pump();
-      await tester.tap(find.byType(DiagnosticBottomCta));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1600));
       await tester.pump();
 
       expect(captured, 'B');
@@ -207,7 +206,6 @@ void main() {
 
       await tester.tap(find.text('Variant A'));
       await tester.pump();
-      await tester.tap(find.byType(DiagnosticBottomCta));
       await tester.pump(); // shows the transition message
 
       expect(find.text('Savol (math)'), findsNothing);
