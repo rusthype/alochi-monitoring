@@ -105,6 +105,40 @@ class AppLocalizationsUz extends AppLocalizations {
       'Rahmat! Natijalar o\'qituvchiga yuboriladi.';
 
   @override
+  String get diagnosticFinishedInfoNote =>
+      'Natijalar maktab ma\'muriyati va o\'qituvchilar uchun tayyorlanmoqda.';
+
+  @override
+  String get backToKioskBtn => 'Bosh sahifaga qaytish';
+
+  @override
+  String autoReturnTimerText(int seconds) {
+    return '$seconds soniyadan so\'ng avtomatik qaytiladi';
+  }
+
+  @override
+  String diagnosticFinishedGreeting(String name) {
+    return 'Barakalla, $name!';
+  }
+
+  @override
+  String diagnosticFinishedSubjectsPill(int count) {
+    return '$count ta fan topshirildi';
+  }
+
+  @override
+  String get diagnosticFinishedSubmittedPill => 'Yuborildi';
+
+  @override
+  String get diagnosticFinishedSecurePill => 'Xavfsiz saqlandi';
+
+  @override
+  String get diagnosticFinishedPauseBtn => 'To\'xtatish';
+
+  @override
+  String get diagnosticFinishedResumeBtn => 'Davom ettirish';
+
+  @override
   String get diagnosticNoSchools => 'Maktablar topilmadi';
 
   @override
@@ -519,6 +553,18 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get timeLeftLabel => 'qoldi';
+
+  @override
+  String get flagQuestionButton => 'Belgilash';
+
+  @override
+  String get diagnosticScratchpadButton => 'Qoralama';
+
+  @override
+  String get diagnosticScratchpadUndo => 'Bekor qilish';
+
+  @override
+  String get finishTestButton => 'Testni yakunlash';
 
   @override
   String get engSectionTransitionTitle => 'Ingliz tili bo\'limiga o\'tildi';

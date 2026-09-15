@@ -284,6 +284,60 @@ abstract class AppLocalizations {
   /// **'Rahmat! Natijalar o\'qituvchiga yuboriladi.'**
   String get diagnosticFinishedSubtitle;
 
+  /// No description provided for @diagnosticFinishedInfoNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijalar maktab ma\'muriyati va o\'qituvchilar uchun tayyorlanmoqda.'**
+  String get diagnosticFinishedInfoNote;
+
+  /// No description provided for @backToKioskBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bosh sahifaga qaytish'**
+  String get backToKioskBtn;
+
+  /// No description provided for @autoReturnTimerText.
+  ///
+  /// In uz, this message translates to:
+  /// **'{seconds} soniyadan so\'ng avtomatik qaytiladi'**
+  String autoReturnTimerText(int seconds);
+
+  /// No description provided for @diagnosticFinishedGreeting.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barakalla, {name}!'**
+  String diagnosticFinishedGreeting(String name);
+
+  /// No description provided for @diagnosticFinishedSubjectsPill.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} ta fan topshirildi'**
+  String diagnosticFinishedSubjectsPill(int count);
+
+  /// No description provided for @diagnosticFinishedSubmittedPill.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuborildi'**
+  String get diagnosticFinishedSubmittedPill;
+
+  /// No description provided for @diagnosticFinishedSecurePill.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xavfsiz saqlandi'**
+  String get diagnosticFinishedSecurePill;
+
+  /// No description provided for @diagnosticFinishedPauseBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'To\'xtatish'**
+  String get diagnosticFinishedPauseBtn;
+
+  /// No description provided for @diagnosticFinishedResumeBtn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Davom ettirish'**
+  String get diagnosticFinishedResumeBtn;
+
   /// No description provided for @diagnosticNoSchools.
   ///
   /// In uz, this message translates to:
@@ -1034,6 +1088,30 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'qoldi'**
   String get timeLeftLabel;
+
+  /// No description provided for @flagQuestionButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Belgilash'**
+  String get flagQuestionButton;
+
+  /// No description provided for @diagnosticScratchpadButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qoralama'**
+  String get diagnosticScratchpadButton;
+
+  /// No description provided for @diagnosticScratchpadUndo.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bekor qilish'**
+  String get diagnosticScratchpadUndo;
+
+  /// No description provided for @finishTestButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testni yakunlash'**
+  String get finishTestButton;
 
   /// No description provided for @engSectionTransitionTitle.
   ///

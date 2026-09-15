@@ -162,6 +162,19 @@ class DiagnosticKioskApi {
     return const {};
   }
 
+  /// Finishes a fixed-variant/full-package attempt in one shot — the local
+  /// nav flow answers all questions client-side then submits the whole
+  /// batch, instead of one `submitAnswer` round-trip per question.
+  Future<Map<String, dynamic>> finishAttempt({
+    required String attemptId,
+    required List<Map<String, dynamic>> answers,
+  }) {
+    return _post('/kiosk/finish/', {
+      'attempt_id': attemptId,
+      'answers': answers,
+    });
+  }
+
   /// EXISTING, unmodified backend endpoint.
   Future<Map<String, dynamic>> submitAnswer({
     required String attemptId,

@@ -11,39 +11,30 @@
 // flat option_a..option_d keys (already per-attempt shuffled) plus optional
 // image_url/svg_visual, and POST cat/answer/ requires `selected` to be
 // exactly "A"|"B"|"C"|"D".
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
-import '../../../core/engine/question_widgets.dart' show EngineOptionRow;
 import '../../../core/services/heartbeat_service.dart';
 import '../../../core/services/proctor_service.dart';
 import '../../../shared/theme/app_theme.dart';
-import '../../../shared/widgets/app_network_image.dart';
 import '../data/diagnostic_kiosk_api.dart';
-import '../widgets/diagnostic_widgets.dart';
+import '../data/diagnostic_option_item.dart';
+import '../widgets/diagnostic_bottom_nav.dart';
+import '../widgets/diagnostic_header_bar.dart';
+import '../widgets/diagnostic_option_card.dart';
+import '../widgets/diagnostic_options_grid.dart';
+import '../widgets/diagnostic_question_card.dart';
+import '../widgets/diagnostic_question_dots.dart';
+import '../widgets/diagnostic_scratchpad.dart';
 import '../../../core/utils/student_name_formatter.dart';
 
-/// One rendered answer option: `key` is "A".."D", `text` is the display
-/// string for that letter (already de/re-shuffled server-side).
-class DiagnosticOptionItem {
-  final String key;
-  final String text;
-  const DiagnosticOptionItem({required this.key, required this.text});
-}
+export '../data/diagnostic_option_item.dart';
 
-List<DiagnosticOptionItem> extractDiagnosticOptions(Map<String, dynamic> q) {
-  final items = <DiagnosticOptionItem>[];
-  for (final letter in ['A', 'B', 'C', 'D']) {
-    final lowerKey = 'option_${letter.toLowerCase()}';
-    final text = (q[lowerKey] ?? q[letter] ?? '').toString().trim();
-    if (text.isNotEmpty) {
-      items.add(DiagnosticOptionItem(key: letter, text: text));
-    }
-  }
-  return items;
-}
+/// Max width of the centered content dock (question card and the floating
+/// bottom-nav panel both clamp to this) for the fixed-variant redesign.
+const double _kDockMaxWidth = 760;
 
 /// Pending "subject A finished, subject B starting" state — shown as a brief
 /// full-screen message instead of jumping straight to the next question.
@@ -54,7 +45,7 @@ class _SubjectTransition {
 }
 
 typedef DiagnosticAvailableSubjectsFn = Future<Map<String, dynamic>> Function(
-    int grade, {
+  int grade, {
   String language,
 });
 typedef DiagnosticStartAttemptFn = Future<Map<String, dynamic>> Function({
@@ -65,6 +56,10 @@ typedef DiagnosticSubmitAnswerFn = Future<Map<String, dynamic>> Function({
   required String attemptId,
   required String questionId,
   required String selected,
+});
+typedef DiagnosticFinishAttemptFn = Future<Map<String, dynamic>> Function({
+  required String attemptId,
+  required List<Map<String, dynamic>> answers,
 });
 
 class DiagnosticTestRunnerScreen extends StatefulWidget {
@@ -87,6 +82,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   final DiagnosticAvailableSubjectsFn? availableSubjectsOverride;
   final DiagnosticStartAttemptFn? startAttemptOverride;
   final DiagnosticSubmitAnswerFn? submitAnswerOverride;
+  final DiagnosticFinishAttemptFn? finishAttemptOverride;
 
   const DiagnosticTestRunnerScreen({
     super.key,
@@ -98,6 +94,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
     this.availableSubjectsOverride,
     this.startAttemptOverride,
     this.submitAnswerOverride,
+    this.finishAttemptOverride,
   });
 
   @override
@@ -116,7 +113,66 @@ class _DiagnosticTestRunnerScreenState
   int _position = 0;
   int _total = 0;
   String _currentSubject = '';
+  final List<String> _subjectsCompleted = [];
   _SubjectTransition? _transition;
+
+  /// Local UI-only bookmark state, keyed by question_id (YAGNI — no backend
+  /// field/API call, see DiagnosticQuestionCard's doc comment).
+  final Set<String> _flaggedQuestionIds = <String>{};
+
+  /// Countdown seconds remaining, or null when the current attempt carries
+  /// no known duration. Populated from `duration_minutes` on the
+  /// start-attempt response only (see _startSubject) — per-question answer
+  /// responses also carry the same value but must not reset the timer.
+  int? _remainingSeconds;
+  Timer? _timer;
+
+  /// Auto-advance timer after a fixed-variant option select (mirrors
+  /// test_screen.dart's `_autoAdv`, but 500ms per this feature's spec).
+  Timer? _autoAdvance;
+
+  /// Whether the current attempt is the fixed-variant math bank (all
+  /// questions known upfront, supports prev/next/grid/finish nav) vs the
+  /// CAT engine's adaptive one-question-at-a-time flow. Set from the
+  /// backend's `is_fixed_variant` field on every start/answer response.
+  bool _isFixedVariant = false;
+
+  /// Full question set for a fixed-variant/full-package attempt (populated
+  /// once from the start response's `questions` array) and the answers
+  /// picked so far, keyed by 1-indexed position. Purely local state — once
+  /// populated, prev/next/jump/select never hit the network again.
+  List<Map<String, dynamic>> _questions = [];
+  final Map<int, String> _answers = {};
+
+  /// Fixed-variant-only scratchpad overlay toggle (see
+  /// DiagnosticScratchpad) — never set for CAT (no trigger button rendered
+  /// there, see DiagnosticQuestionCard's `onOpenScratchpad`).
+  bool _scratchpadOpen = false;
+
+  void _startCountdownIfNeeded(Map<String, dynamic> resp) {
+    final minutes = (resp['duration_minutes'] as num?)?.toInt();
+    _timer?.cancel();
+    _timer = null;
+    if (minutes == null) {
+      setState(() => _remainingSeconds = null);
+      return;
+    }
+    setState(() => _remainingSeconds = minutes * 60);
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final remaining = _remainingSeconds;
+      if (remaining == null) {
+        timer.cancel();
+        return;
+      }
+      if (remaining <= 1) {
+        timer.cancel();
+        setState(() => _remainingSeconds = 0);
+        _finishTest();
+        return;
+      }
+      setState(() => _remainingSeconds = remaining - 1);
+    });
+  }
 
   DiagnosticAvailableSubjectsFn get _availableSubjects =>
       widget.availableSubjectsOverride ?? diagnosticKioskApi.availableSubjects;
@@ -124,6 +180,8 @@ class _DiagnosticTestRunnerScreenState
       widget.startAttemptOverride ?? diagnosticKioskApi.startAttempt;
   DiagnosticSubmitAnswerFn get _submitAnswerCall =>
       widget.submitAnswerOverride ?? diagnosticKioskApi.submitAnswer;
+  DiagnosticFinishAttemptFn get _finishAttemptCall =>
+      widget.finishAttemptOverride ?? diagnosticKioskApi.finishAttempt;
 
   @override
   void initState() {
@@ -136,7 +194,12 @@ class _DiagnosticTestRunnerScreenState
     HeartbeatService.instance.onTerminated = () {
       ProctorService.instance.stop();
       HeartbeatService.instance.finishTest();
-      if (mounted) context.pushReplacement('/diagnostic_finished');
+      if (mounted) {
+        context.pushReplacement('/diagnostic_finished', extra: {
+          'studentName': widget.studentName,
+          'subjectsCompleted': _subjectsCompleted,
+        });
+      }
     };
     try {
       await HeartbeatService.instance
@@ -168,10 +231,25 @@ class _DiagnosticTestRunnerScreenState
 
   @override
   void dispose() {
+    _timer?.cancel();
+    _autoAdvance?.cancel();
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
     HeartbeatService.instance.onTerminated = null;
     super.dispose();
+  }
+
+  /// Shared "end the test now" path — used both when the backend reports
+  /// `finished: true` with no next subject, and when the countdown timer
+  /// hits zero.
+  void _finishTest() {
+    ProctorService.instance.stop();
+    HeartbeatService.instance.finishTest();
+    if (!mounted) return;
+    context.pushReplacement('/diagnostic_finished', extra: {
+      'studentName': widget.studentName,
+      'subjectsCompleted': _subjectsCompleted,
+    });
   }
 
   Future<void> _bootstrap() async {
@@ -220,12 +298,28 @@ class _DiagnosticTestRunnerScreenState
         subject: subject,
       );
       if (!mounted) return;
+      final questionsList = (resp['questions'] as List?)
+          ?.whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
       setState(() {
-        _question = _extractQuestion(resp);
         _position = (resp['position'] as num?)?.toInt() ?? 1;
         _total = (resp['total_questions'] as num?)?.toInt() ?? 0;
+        _isFixedVariant = resp['is_fixed_variant'] == true;
+        _answers.clear();
+        if (_isFixedVariant &&
+            questionsList != null &&
+            questionsList.isNotEmpty) {
+          _questions = questionsList;
+          final idx = (_position - 1).clamp(0, _questions.length - 1);
+          _question = _questions[idx];
+        } else {
+          _questions = [];
+          _question = _extractQuestion(resp);
+        }
         _loading = false;
       });
+      _startCountdownIfNeeded(resp);
       final q = _question;
       HeartbeatService.instance.updateProgress(_position, _total, [],
           q != null ? _questionText(q) : null, _selectedOption);
@@ -255,13 +349,14 @@ class _DiagnosticTestRunnerScreenState
       final finished = resp['finished'] == true;
       final nextSubject = (resp['next_subject'] ?? '').toString();
       if (finished && nextSubject.isEmpty) {
-        ProctorService.instance.stop();
-        HeartbeatService.instance.finishTest();
-        if (!mounted) return;
-        context.pushReplacement('/diagnostic_finished');
+        _timer?.cancel();
+        _subjectsCompleted.add(_currentSubject);
+        _finishTest();
         return;
       }
       if (finished && nextSubject.isNotEmpty) {
+        _timer?.cancel();
+        _subjectsCompleted.add(_currentSubject);
         if (!mounted) return;
         setState(() {
           _transition = _SubjectTransition(
@@ -283,6 +378,7 @@ class _DiagnosticTestRunnerScreenState
           _selectedOption = null;
           _position = (resp['position'] as num?)?.toInt() ?? _position;
           _total = (resp['total_questions'] as num?)?.toInt() ?? _total;
+          _isFixedVariant = resp['is_fixed_variant'] == true;
         });
         HeartbeatService.instance.updateProgress(_position, _total, [],
             next != null ? _questionText(next) : null, _selectedOption);
@@ -295,6 +391,76 @@ class _DiagnosticTestRunnerScreenState
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  /// Local, network-free navigation for a fixed-variant/full-package
+  /// attempt — [zeroBasedIndex] is clamped to the known question set.
+  void _jumpTo(int zeroBasedIndex) {
+    if (_questions.isEmpty) return;
+    final clamped = zeroBasedIndex.clamp(0, _questions.length - 1);
+    setState(() {
+      _position = clamped + 1;
+      _question = _questions[clamped];
+      _selectedOption = _answers[_position];
+    });
+  }
+
+  /// Finish path for a fixed-variant attempt: warns about unanswered
+  /// questions (same dialog pattern as test_screen.dart's `_finish`), then
+  /// submits every locally-collected answer in one `finishAttempt` call.
+  Future<void> _confirmAndFinishPackage() async {
+    if (_submitting) return;
+    final l10n = AppLocalizations.of(context)!;
+    final unanswered = _total - _answers.length;
+    if (unanswered > 0) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(l10n.finishConfirmTitle,
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          content: Text(l10n.unansweredWarning(unanswered)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l10n.backButton),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  minimumSize: const Size(100, 40)),
+              child: Text(l10n.finishTest),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    final answers = <Map<String, dynamic>>[];
+    _answers.forEach((position, selected) {
+      final idx = position - 1;
+      if (idx < 0 || idx >= _questions.length) return;
+      final qid = _questionId(_questions[idx]);
+      if (qid.isEmpty) return;
+      answers.add({'question_id': qid, 'selected': selected});
+    });
+    if (!mounted) return;
+    setState(() => _submitting = true);
+    try {
+      await _finishAttemptCall(attemptId: widget.attemptId, answers: answers);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = e is ApiException ? e.message : e.toString();
+      });
+      return;
+    }
+    _timer?.cancel();
+    _subjectsCompleted.add(_currentSubject);
+    _finishTest();
   }
 
   Map<String, dynamic>? _extractQuestion(Map<String, dynamic> data) {
@@ -404,31 +570,37 @@ class _DiagnosticTestRunnerScreenState
         constraints: const BoxConstraints(maxWidth: 480),
         child: Container(
           margin: const EdgeInsets.all(24),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: AppColors.pageBg,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border),
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 56,
-                height: 56,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(28),
+                  color: badgeColor.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
                 ),
-                child: Icon(badgeIcon, color: badgeColor, size: 28),
+                child: Icon(badgeIcon, color: badgeColor, size: 34),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               Text(
                 title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
                     color: _subjectsEmpty ? AppColors.ink1 : AppColors.error),
               ),
               if (subtitle != null) ...[
@@ -439,20 +611,38 @@ class _DiagnosticTestRunnerScreenState
                   style: const TextStyle(color: AppColors.ink2),
                 ),
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: Text(l10n.diagnosticGoBack),
+                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                      label: Text(l10n.diagnosticGoBack,
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.ink2,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       onPressed: _bootstrap,
-                      child: Text(l10n.retry),
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: Text(l10n.retry,
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.brand,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                   ),
                 ],
@@ -464,144 +654,160 @@ class _DiagnosticTestRunnerScreenState
     );
   }
 
-  Widget _buildHeader(AppLocalizations l10n) {
-    final color = _subjectColor(_currentSubject);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(_subjectIcon(_currentSubject), size: 16, color: color),
-                  const SizedBox(width: 6),
-                  Text(
-                    _subjectLabel(l10n, _currentSubject),
-                    style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              l10n.diagnosticQuestionCounter(_position, _total),
-              style: const TextStyle(
-                  color: AppColors.ink3,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: _total > 0 ? (_position / _total).clamp(0.0, 1.0) : 0,
-            minHeight: 6,
-            backgroundColor: AppColors.border,
-            valueColor: const AlwaysStoppedAnimation(AppColors.brand),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              // widget.studentName is intentionally the raw/unformatted
-              // roster name (see diagnostic_student_select_screen.dart's
-              // _start()) so HeartbeatService.startTest() keeps whatever
-              // disambiguating info (patronymic) the backend sends — format
-              // it just for display here.
-              formatStudentDisplayName(widget.studentName),
-              style: const TextStyle(color: AppColors.ink3, fontSize: 13),
-            ),
-            const SizedBox(width: 8),
-            DiagnosticLanguageBadge(language: widget.language),
-          ],
-        ),
-      ],
-    );
-  }
+  bool get _isFixedVariantAttempt => _isFixedVariant;
 
   Widget _buildQuestionView(AppLocalizations l10n, Map<String, dynamic> q) {
     final imageUrl = (q['image_url'] ?? '').toString().trim();
     final svgVisual = (q['svg_visual'] ?? '').toString().trim();
     final options = extractDiagnosticOptions(q);
+    final questionId = _questionId(q);
+    final showBottomNav = _isFixedVariantAttempt;
     return Stack(
       children: [
         Positioned.fill(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 140),
+            padding: EdgeInsets.fromLTRB(20, 20, 20, showBottomNav ? 20 : 140),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
+                constraints: const BoxConstraints(maxWidth: _kDockMaxWidth),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildHeader(l10n),
+                    DiagnosticHeaderBar(
+                      subjectLabel: _subjectLabel(l10n, _currentSubject),
+                      subjectIcon: _subjectIcon(_currentSubject),
+                      subjectColor: _subjectColor(_currentSubject),
+                      position: _position,
+                      total: _total,
+                      // widget.studentName is intentionally the raw/
+                      // unformatted roster name (see
+                      // diagnostic_student_select_screen.dart's _start())
+                      // so HeartbeatService.startTest() keeps whatever
+                      // disambiguating info (patronymic) the backend sends
+                      // — format it just for display here.
+                      studentName: formatStudentDisplayName(widget.studentName),
+                      language: widget.language,
+                      remainingSeconds: _remainingSeconds,
+                      isFixedVariant: _isFixedVariantAttempt,
+                      grade: widget.grade,
+                    ),
+                    if (_isFixedVariantAttempt) ...[
+                      const SizedBox(height: 12),
+                      DiagnosticQuestionDots(
+                        total: _total,
+                        currentIndex: (_position - 1)
+                            .clamp(0, _total == 0 ? 0 : _total - 1),
+                        answeredIndexes:
+                            _answers.keys.map((p) => p - 1).toSet(),
+                        onSelectIndex: _jumpTo,
+                      ),
+                    ],
                     const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            _questionText(q),
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.ink1,
-                            ),
-                          ),
-                          if (imageUrl.isNotEmpty) ...[
-                            const SizedBox(height: 16),
-                            AppNetworkImage(
-                              url: imageUrl,
-                              height: 260,
-                              fit: BoxFit.contain,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ] else if (svgVisual.isNotEmpty) ...[
-                            const SizedBox(height: 16),
-                            SvgPicture.string(svgVisual,
-                                height: 130, fit: BoxFit.contain),
-                          ],
-                        ],
-                      ),
+                    DiagnosticQuestionCard(
+                      position: _position,
+                      questionText: _questionText(q),
+                      imageUrl: imageUrl,
+                      svgVisual: svgVisual,
+                      flagged: _flaggedQuestionIds.contains(questionId),
+                      onToggleFlag: () => setState(() {
+                        if (!_flaggedQuestionIds.remove(questionId)) {
+                          _flaggedQuestionIds.add(questionId);
+                        }
+                      }),
+                      // Scratchpad is a fixed-variant-only affordance (math
+                      // bank) — null on CAT hides the trigger entirely, see
+                      // DiagnosticQuestionCard's doc comment.
+                      onOpenScratchpad: _isFixedVariantAttempt
+                          ? () => setState(() => _scratchpadOpen = true)
+                          : null,
                     ),
                     const SizedBox(height: 20),
-                    ...options.map((opt) => EngineOptionRow(
-                          label: opt.key,
-                          text: opt.text,
-                          selected: _selectedOption == opt.key,
-                          onTap: _submitting || _selectedOption != null
-                              ? () {}
-                              : () {
-                                  setState(() => _selectedOption = opt.key);
-                                  _submit();
-                                },
-                        )),
+                    if (_isFixedVariantAttempt)
+                      DiagnosticOptionsGrid(
+                        options: options,
+                        selectedOption: _selectedOption,
+                        interactive: !_submitting,
+                        onSelect: (key) {
+                          // Local-only: pick/change the answer for the
+                          // current position, no network call (mirrors the
+                          // CAT branch below's HeartbeatService update).
+                          setState(() {
+                            _selectedOption = key;
+                            _answers[_position] = key;
+                          });
+                          HeartbeatService.instance.updateProgress(
+                              _position, _total, [], _questionText(q), key);
+                          _autoAdvance?.cancel();
+                          if (!((_position - 1) >= (_total - 1))) {
+                            _autoAdvance =
+                                Timer(const Duration(milliseconds: 500), () {
+                              if (mounted) _jumpTo(_position);
+                            });
+                          }
+                        },
+                      )
+                    else
+                      ...options.map((opt) => DiagnosticOptionCard(
+                            label: opt.key,
+                            text: opt.text,
+                            selected: _selectedOption == opt.key,
+                            onTap: _submitting || _selectedOption != null
+                                ? () {}
+                                : () {
+                                    setState(() => _selectedOption = opt.key);
+                                    _submit();
+                                  },
+                          )),
                   ],
                 ),
               ),
             ),
           ),
         ),
+        if (_scratchpadOpen)
+          Positioned.fill(
+            child: DiagnosticScratchpad(
+              key: ValueKey(_position),
+              onClose: () => setState(() => _scratchpadOpen = false),
+            ),
+          ),
+        if (showBottomNav)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: _kDockMaxWidth),
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: DiagnosticBottomNav(
+                    onPrevious:
+                        _position <= 1 ? null : () => _jumpTo(_position - 2),
+                    onNext: () => _jumpTo(_position),
+                    onFinish: _isFixedVariant
+                        ? _confirmAndFinishPackage
+                        : _finishTest,
+                    isLast: (_position - 1) >= (_total - 1),
+                    submitting: _submitting,
+                  ),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }

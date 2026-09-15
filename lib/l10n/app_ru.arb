@@ -31,6 +31,28 @@
   "diagnosticStartTest": "Начать диагностику",
   "diagnosticFinishedTitle": "Диагностика завершена",
   "diagnosticFinishedSubtitle": "Спасибо! Результаты будут переданы учителю.",
+  "diagnosticFinishedInfoNote": "Результаты готовятся для администрации школы и учителей.",
+  "backToKioskBtn": "Вернуться на главную",
+  "autoReturnTimerText": "Автоматический переход через {seconds} сек.",
+  "@autoReturnTimerText": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "diagnosticFinishedGreeting": "Молодец, {name}!",
+  "@diagnosticFinishedGreeting": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "diagnosticFinishedSubjectsPill": "Предметов сдано: {count}",
+  "@diagnosticFinishedSubjectsPill": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "diagnosticFinishedSubmittedPill": "Отправлено",
+  "diagnosticFinishedSecurePill": "Надёжно сохранено",
+  "diagnosticFinishedPauseBtn": "Остановить",
+  "diagnosticFinishedResumeBtn": "Продолжить",
   "diagnosticNoSchools": "Школы не найдены",
   "diagnosticNoClasses": "Классы не найдены",
   "diagnosticNoStudents": "Учащиеся не найдены",
@@ -255,6 +277,10 @@
   "answeredLabel": "отвечено",
   "uploadingLabel": "Загрузка",
   "timeLeftLabel": "осталось",
+  "flagQuestionButton": "Отметить",
+  "diagnosticScratchpadButton": "Черновик",
+  "diagnosticScratchpadUndo": "Отменить",
+  "finishTestButton": "Завершить тест",
   "engSectionTransitionTitle": "Переход к английскому языку",
   "engSectionTransitionDesc": "40 минут · Следующие вопросы на английском",
   "imageLoadFailed": "Ошибка загрузки",

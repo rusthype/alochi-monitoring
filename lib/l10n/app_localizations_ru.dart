@@ -103,6 +103,40 @@ class AppLocalizationsRu extends AppLocalizations {
       'Спасибо! Результаты будут переданы учителю.';
 
   @override
+  String get diagnosticFinishedInfoNote =>
+      'Результаты готовятся для администрации школы и учителей.';
+
+  @override
+  String get backToKioskBtn => 'Вернуться на главную';
+
+  @override
+  String autoReturnTimerText(int seconds) {
+    return 'Автоматический переход через $seconds сек.';
+  }
+
+  @override
+  String diagnosticFinishedGreeting(String name) {
+    return 'Молодец, $name!';
+  }
+
+  @override
+  String diagnosticFinishedSubjectsPill(int count) {
+    return 'Предметов сдано: $count';
+  }
+
+  @override
+  String get diagnosticFinishedSubmittedPill => 'Отправлено';
+
+  @override
+  String get diagnosticFinishedSecurePill => 'Надёжно сохранено';
+
+  @override
+  String get diagnosticFinishedPauseBtn => 'Остановить';
+
+  @override
+  String get diagnosticFinishedResumeBtn => 'Продолжить';
+
+  @override
   String get diagnosticNoSchools => 'Школы не найдены';
 
   @override
@@ -517,6 +551,18 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get timeLeftLabel => 'осталось';
+
+  @override
+  String get flagQuestionButton => 'Отметить';
+
+  @override
+  String get diagnosticScratchpadButton => 'Черновик';
+
+  @override
+  String get diagnosticScratchpadUndo => 'Отменить';
+
+  @override
+  String get finishTestButton => 'Завершить тест';
 
   @override
   String get engSectionTransitionTitle => 'Переход к английскому языку';
