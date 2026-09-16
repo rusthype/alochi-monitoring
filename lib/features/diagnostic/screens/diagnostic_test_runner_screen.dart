@@ -15,7 +15,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
-import '../../../core/api/api_client.dart' show ApiException, newIdempotencyToken;
+import '../../../core/api/api_client.dart'
+    show ApiException, MonitoringApi, newIdempotencyToken;
 import '../../../core/cache/image_cache_manager.dart';
 import '../../../core/db/offline_queue.dart';
 import '../../../core/services/heartbeat_service.dart';
@@ -548,7 +549,12 @@ class _DiagnosticTestRunnerScreenState
   void _prefetchImages(List<Map<String, dynamic>> questions) {
     final cacheManager = AlochiImageCacheManager();
     for (final q in questions) {
-      for (final url in _collectImageUrls(q)) {
+      for (final rawUrl in _collectImageUrls(q)) {
+        // Must match the exact key AppNetworkImage/CachedNetworkImage
+        // renders with (MonitoringApi.fixImageUrl(url)) — prefetching the
+        // raw url writes a cache entry the renderer never looks up.
+        final url = MonitoringApi.fixImageUrl(rawUrl);
+        if (url.isEmpty) continue;
         cacheManager.downloadFile(url).then((_) {}).catchError((Object e) {
           debugPrint('Diagnostic image prefetch failed for $url: $e');
         });
