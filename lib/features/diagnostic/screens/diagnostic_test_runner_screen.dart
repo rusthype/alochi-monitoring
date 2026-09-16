@@ -448,8 +448,10 @@ class _DiagnosticTestRunnerScreenState
     });
     if (!mounted) return;
     setState(() => _submitting = true);
+    Map<String, dynamic> resp;
     try {
-      await _finishAttemptCall(attemptId: widget.attemptId, answers: answers);
+      resp =
+          await _finishAttemptCall(attemptId: widget.attemptId, answers: answers);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -460,6 +462,21 @@ class _DiagnosticTestRunnerScreenState
     }
     _timer?.cancel();
     _subjectsCompleted.add(_currentSubject);
+    final nextSubject = (resp['next_subject'] ?? '').toString();
+    if (nextSubject.isNotEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _transition = _SubjectTransition(
+          from: _currentSubject,
+          to: nextSubject,
+        );
+      });
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (!mounted) return;
+      await _startSubject(nextSubject);
+      return;
+    }
     _finishTest();
   }
 

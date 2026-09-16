@@ -601,6 +601,57 @@ void main() {
     });
 
     testWidgets(
+        'fixed-variant finish with next_subject advances to the next '
+        'subject instead of ending the attempt', (tester) async {
+      var startCalls = 0;
+      Object? capturedExtra;
+      await tester.pumpWidget(_wrapWithRouter(
+        DiagnosticTestRunnerScreen(
+          attemptId: 'att-1',
+          studentName: 'Aliyev Ali',
+          grade: 3,
+          language: 'uz',
+          availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+            'subjects': ['math']
+          },
+          startAttemptOverride: ({required attemptId, required subject}) async {
+            startCalls++;
+            return _withMeta({
+              'position': 1,
+              'total_questions': 1,
+              'subject': subject,
+              'questions': fullPackageQuestions(1),
+            }, isFixedVariant: true);
+          },
+          finishAttemptOverride: ({required attemptId, required answers}) async {
+            return {'finished': true, 'next_subject': 'english'};
+          },
+        ),
+        onFinished: (extra) => capturedExtra = extra,
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(startCalls, 1);
+
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+
+      await tester.tap(find.text('Testni yakunlash'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pump();
+      await tester.pump();
+
+      // Advanced into a second fixed-variant subject instead of finishing.
+      expect(startCalls, 2);
+      expect(capturedExtra, isNull);
+      await unmount(tester);
+    });
+
+    testWidgets(
         'both subjects appear in subjectsCompleted extra after full CAT '
         'completion', (tester) async {
       Object? capturedExtra;
