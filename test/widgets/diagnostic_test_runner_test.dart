@@ -1,3 +1,4 @@
+import 'package:alochi_monitoring/core/api/api_client.dart' show ApiException;
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_bottom_nav.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_option_card.dart';
@@ -611,7 +612,8 @@ void main() {
           studentName: 'Aliyev Ali',
           grade: 3,
           language: 'uz',
-          availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+              {
             'subjects': ['math']
           },
           startAttemptOverride: ({required attemptId, required subject}) async {
@@ -623,7 +625,8 @@ void main() {
               'questions': fullPackageQuestions(1),
             }, isFixedVariant: true);
           },
-          finishAttemptOverride: ({required attemptId, required answers}) async {
+          finishAttemptOverride: (
+              {required attemptId, required answers}) async {
             return {'finished': true, 'next_subject': 'english'};
           },
         ),
@@ -662,8 +665,8 @@ void main() {
           studentName: 'Aliyev Ali',
           grade: 1,
           language: 'uz',
-          availableSubjectsOverride:
-              (grade, {String language = 'uz'}) async => {
+          availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+              {
             'subjects': ['math']
           },
           startAttemptOverride: ({required attemptId, required subject}) async {
@@ -811,6 +814,79 @@ void main() {
       expect(prevButton2.onPressed, isNotNull);
       expect(find.text('Testni yakunlash'), findsOneWidget);
       expect(find.text('Keyingi'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'error while starting a later subject: Retry re-starts that subject '
+        '(not the first) and shows a generic message, not raw backend text',
+        (tester) async {
+      final startCalls = <String>[];
+      var mathAnswered = false;
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math', 'english']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          startCalls.add(subject);
+          if (subject == 'english' &&
+              startCalls.where((s) => s == 'english').length == 1) {
+            throw const ApiException(400, 'math allaqachon yakunlangan');
+          }
+          return _withMeta({
+            'position': 1,
+            'total_questions': 1,
+            'subject': subject,
+            'question_id': '${subject}_q1',
+            'question_text': 'Savol ($subject)',
+            'option_a': 'A',
+            'option_b': 'B',
+            'option_c': 'C',
+            'option_d': 'D',
+          });
+        },
+        submitAnswerOverride: (
+            {required attemptId,
+            required questionId,
+            required selected}) async {
+          mathAnswered = true;
+          return {
+            'finished': true,
+            'next_subject': 'english',
+          };
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      // Answer the math question -> triggers the subject transition ->
+      // startAttempt('english') which fails on its first attempt.
+      await tester.tap(find.text('A').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1600));
+      // subject-transition screen, then english start kicks off
+      await tester.pump(const Duration(milliseconds: 1600));
+      expect(mathAnswered, isTrue);
+      expect(startCalls, ['math', 'english']);
+
+      // Generic message shown, not the raw backend text.
+      expect(find.text('math allaqachon yakunlangan'), findsNothing);
+      expect(
+          find.text('Server xatosi. Qayta urinib ko\'ring.'), findsOneWidget);
+
+      await tester.tap(find.text('Qayta urinish'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      // Retry re-attempted 'english', never re-triggered 'math'.
+      expect(startCalls, ['math', 'english', 'english']);
+      expect(find.text('Savol (english)'), findsOneWidget);
       await unmount(tester);
     });
   });

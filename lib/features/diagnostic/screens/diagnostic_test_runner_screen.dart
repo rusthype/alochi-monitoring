@@ -15,7 +15,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
-import '../../../core/api/api_client.dart' show ApiException;
 import '../../../core/services/heartbeat_service.dart';
 import '../../../core/services/proctor_service.dart';
 import '../../../shared/theme/app_theme.dart';
@@ -115,6 +114,13 @@ class _DiagnosticTestRunnerScreenState
   String _currentSubject = '';
   final List<String> _subjectsCompleted = [];
   _SubjectTransition? _transition;
+
+  /// Whatever network operation last failed and produced [_error] — set
+  /// synchronously right before each call that can land on the error view,
+  /// so Retry repeats exactly that operation (bootstrap / start-this-subject
+  /// / resubmit-this-answer / finish-this-package) instead of always
+  /// restarting from the first subject (see diagnostic-retry-subject-bug).
+  Future<void> Function() _retryAction = () async {};
 
   /// Local UI-only bookmark state, keyed by question_id (YAGNI — no backend
   /// field/API call, see DiagnosticQuestionCard's doc comment).
@@ -253,6 +259,7 @@ class _DiagnosticTestRunnerScreenState
   }
 
   Future<void> _bootstrap() async {
+    _retryAction = _bootstrap;
     setState(() {
       _loading = true;
       _error = null;
@@ -277,14 +284,16 @@ class _DiagnosticTestRunnerScreenState
       await _startSubject(subjects.first);
     } catch (e) {
       if (!mounted) return;
+      debugPrint('Diagnostic bootstrap error: $e');
       setState(() {
         _loading = false;
-        _error = e is ApiException ? e.message : e.toString();
+        _error = AppLocalizations.of(context)!.serverErrorRetry;
       });
     }
   }
 
   Future<void> _startSubject(String subject) async {
+    _retryAction = () => _startSubject(subject);
     setState(() {
       _loading = true;
       _error = null;
@@ -325,9 +334,10 @@ class _DiagnosticTestRunnerScreenState
           q != null ? _questionText(q) : null, _selectedOption);
     } catch (e) {
       if (!mounted) return;
+      debugPrint('Diagnostic start-subject "$subject" error: $e');
       setState(() {
         _loading = false;
-        _error = e is ApiException ? e.message : e.toString();
+        _error = AppLocalizations.of(context)!.serverErrorRetry;
       });
     }
   }
@@ -336,6 +346,7 @@ class _DiagnosticTestRunnerScreenState
     final q = _question;
     final selected = _selectedOption;
     if (q == null || selected == null) return;
+    _retryAction = _submit;
     setState(() {
       _submitting = true;
       _error = null;
@@ -385,8 +396,9 @@ class _DiagnosticTestRunnerScreenState
       }
     } catch (e) {
       if (!mounted) return;
+      debugPrint('Diagnostic submit-answer error: $e');
       setState(() {
-        _error = e is ApiException ? e.message : e.toString();
+        _error = AppLocalizations.of(context)!.serverErrorRetry;
       });
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -447,16 +459,18 @@ class _DiagnosticTestRunnerScreenState
       answers.add({'question_id': qid, 'selected': selected});
     });
     if (!mounted) return;
+    _retryAction = _confirmAndFinishPackage;
     setState(() => _submitting = true);
     Map<String, dynamic> resp;
     try {
-      resp =
-          await _finishAttemptCall(attemptId: widget.attemptId, answers: answers);
+      resp = await _finishAttemptCall(
+          attemptId: widget.attemptId, answers: answers);
     } catch (e) {
       if (!mounted) return;
+      debugPrint('Diagnostic finish-package error: $e');
       setState(() {
         _submitting = false;
-        _error = e is ApiException ? e.message : e.toString();
+        _error = AppLocalizations.of(context)!.serverErrorRetry;
       });
       return;
     }
@@ -649,7 +663,7 @@ class _DiagnosticTestRunnerScreenState
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _bootstrap,
+                      onPressed: () => _retryAction(),
                       icon: const Icon(Icons.refresh_rounded, size: 18),
                       label: Text(l10n.retry,
                           style: const TextStyle(fontWeight: FontWeight.w700)),
