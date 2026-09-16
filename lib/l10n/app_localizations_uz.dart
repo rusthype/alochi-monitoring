@@ -510,7 +510,9 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String diagnosticSubjectTransitionMessage(
-      String fromSubject, String toSubject) {
+    String fromSubject,
+    String toSubject,
+  ) {
     return '$fromSubject yakunlandi! Endi $toSubject boshlanadi';
   }
 
@@ -565,6 +567,9 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get finishTestButton => 'Testni yakunlash';
+
+  @override
+  String get nextSubjectButton => 'Keyingisi';
 
   @override
   String get engSectionTransitionTitle => 'Ingliz tili bo\'limiga o\'tildi';

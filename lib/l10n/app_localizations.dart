@@ -95,7 +95,7 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('ru'),
-    Locale('uz')
+    Locale('uz'),
   ];
 
   /// No description provided for @appTitle.
@@ -1015,7 +1015,9 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'{fromSubject} yakunlandi! Endi {toSubject} boshlanadi'**
   String diagnosticSubjectTransitionMessage(
-      String fromSubject, String toSubject);
+    String fromSubject,
+    String toSubject,
+  );
 
   /// No description provided for @finishConfirmTitle.
   ///
@@ -1112,6 +1114,12 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Testni yakunlash'**
   String get finishTestButton;
+
+  /// No description provided for @nextSubjectButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Keyingisi'**
+  String get nextSubjectButton;
 
   /// No description provided for @engSectionTransitionTitle.
   ///
@@ -4195,8 +4203,9 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   }
 
   throw FlutterError(
-      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-      'an issue with the localizations generation tool. Please file an issue '
-      'on GitHub with a reproducible sample app and the gen-l10n configuration '
-      'that was used.');
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
 }

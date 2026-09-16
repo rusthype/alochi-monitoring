@@ -112,6 +112,7 @@ class _DiagnosticTestRunnerScreenState
   int _position = 0;
   int _total = 0;
   String _currentSubject = '';
+  List<String> _allSubjects = [];
   final List<String> _subjectsCompleted = [];
   _SubjectTransition? _transition;
 
@@ -281,6 +282,7 @@ class _DiagnosticTestRunnerScreenState
         });
         return;
       }
+      _allSubjects = subjects;
       await _startSubject(subjects.first);
     } catch (e) {
       if (!mounted) return;
@@ -687,6 +689,11 @@ class _DiagnosticTestRunnerScreenState
 
   bool get _isFixedVariantAttempt => _isFixedVariant;
 
+  bool get _hasNextSubject {
+    final idx = _allSubjects.indexOf(_currentSubject);
+    return idx >= 0 && idx < _allSubjects.length - 1;
+  }
+
   Widget _buildQuestionView(AppLocalizations l10n, Map<String, dynamic> q) {
     final imageUrl = (q['image_url'] ?? '').toString().trim();
     final svgVisual = (q['svg_visual'] ?? '').toString().trim();
@@ -834,6 +841,7 @@ class _DiagnosticTestRunnerScreenState
                         : _finishTest,
                     isLast: (_position - 1) >= (_total - 1),
                     submitting: _submitting,
+                    hasNextSubject: _hasNextSubject,
                   ),
                 ),
               ),

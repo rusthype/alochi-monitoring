@@ -451,6 +451,76 @@ void main() {
     });
 
     testWidgets(
+        'last-question button shows "next subject" label, not "finish", '
+        'when another subject follows', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math', 'ingliz']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 2,
+            'subject': subject,
+            'questions': fullPackageQuestions(2),
+          }, isFixedVariant: true);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      await tester.tap(find.text('02'));
+      await tester.pump();
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      expect(find.text(l10n.nextSubjectButton), findsOneWidget);
+      expect(find.text(l10n.finishTestButton), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'last-question button still shows "finish" label when it is the '
+        'only/last subject', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 2,
+            'subject': subject,
+            'questions': fullPackageQuestions(2),
+          }, isFixedVariant: true);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      await tester.tap(find.text('02'));
+      await tester.pump();
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      expect(find.text(l10n.finishTestButton), findsOneWidget);
+      expect(find.text(l10n.nextSubjectButton), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets(
         'selecting an option auto-advances to the next question after 500ms',
         (tester) async {
       await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(

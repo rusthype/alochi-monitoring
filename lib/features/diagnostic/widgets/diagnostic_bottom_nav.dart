@@ -17,6 +17,7 @@ class DiagnosticBottomNav extends StatelessWidget {
   final VoidCallback onFinish;
   final bool isLast;
   final bool submitting;
+  final bool hasNextSubject;
 
   const DiagnosticBottomNav({
     super.key,
@@ -25,6 +26,7 @@ class DiagnosticBottomNav extends StatelessWidget {
     required this.isLast,
     required this.submitting,
     this.onPrevious,
+    this.hasNextSubject = false,
   });
 
   @override
@@ -73,8 +75,13 @@ class DiagnosticBottomNav extends StatelessWidget {
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white),
                     )
-                  : const Icon(Icons.check_rounded),
-              label: Text(l10n.finishTestButton,
+                  : Icon(hasNextSubject
+                      ? Icons.arrow_forward_rounded
+                      : Icons.check_rounded),
+              label: Text(
+                  hasNextSubject
+                      ? l10n.nextSubjectButton
+                      : l10n.finishTestButton,
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.ok,

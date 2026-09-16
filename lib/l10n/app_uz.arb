@@ -288,6 +288,7 @@
   "diagnosticScratchpadButton": "Qoralama",
   "diagnosticScratchpadUndo": "Bekor qilish",
   "finishTestButton": "Testni yakunlash",
+  "nextSubjectButton": "Keyingisi",
   "engSectionTransitionTitle": "Ingliz tili bo'limiga o'tildi",
   "engSectionTransitionDesc": "40 daqiqa · Keyingi savollar ingliz tilida",
   "imageLoadFailed": "Rasm yuklanmadi",

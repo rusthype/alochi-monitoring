@@ -508,7 +508,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String diagnosticSubjectTransitionMessage(
-      String fromSubject, String toSubject) {
+    String fromSubject,
+    String toSubject,
+  ) {
     return '$fromSubject завершён! Теперь начинается $toSubject';
   }
 
@@ -563,6 +565,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get finishTestButton => 'Завершить тест';
+
+  @override
+  String get nextSubjectButton => 'Следующий';
 
   @override
   String get engSectionTransitionTitle => 'Переход к английскому языку';
