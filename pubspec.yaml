@@ -1,6 +1,6 @@
 name: alochi_monitoring
 description: Alochi Monitoring — Maktab test tizimi
-version: 1.0.136+136
+version: 1.0.137+137
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
