@@ -19,8 +19,14 @@ class ApiException implements Exception {
 }
 
 class MonitoringApi {
-  static const String _base = 'https://api.alochi.org/api/v1/monitoring';
-  static const String _media = 'https://api.alochi.org';
+  // ponytail: one env var overrides the whole app's backend host; see
+  // diagnostic_kiosk_api.dart which reads the same API_BASE_URL.
+  static const String _host = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://api.alochi.org',
+  );
+  static const String _base = '$_host/api/v1/monitoring';
+  static const String _media = _host;
 
   /// Relative URL'ni absolute'ga o'giradi (rasm URL'lari uchun)
   static String fixImageUrl(String? url) {

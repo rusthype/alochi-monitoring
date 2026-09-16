@@ -35,7 +35,13 @@ Map<String, dynamic> parseDiagnosticClassRow(dynamic e) {
 }
 
 class DiagnosticKioskApi {
-  static const String _base = 'https://api.alochi.org/api/v1/diagnostic';
+  // Reads the same API_BASE_URL override as MonitoringApi (api_client.dart)
+  // so one --dart-define configures the whole app's backend host.
+  static const String _host = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://api.alochi.org',
+  );
+  static const String _base = '$_host/api/v1/diagnostic';
   static const Duration _timeout = Duration(seconds: 20);
 
   Future<http.Response> _send(Future<http.Response> Function() req) async {
