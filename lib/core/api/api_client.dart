@@ -35,9 +35,14 @@ class MonitoringApi {
     final absolute = trimmed.startsWith('http://') ||
         trimmed.startsWith('https://') ||
         trimmed.startsWith('//');
+    // Force https only when running against the real (https) backend —
+    // a developer-supplied plain-http API_BASE_URL override (local dev
+    // server, no TLS) must be respected as-is, or every image request
+    // hangs forever trying TLS against a plain-http port.
+    final forceHttps = _host.startsWith('https://');
     final fullUrl = trimmed.startsWith('//')
         ? 'https:$trimmed'
-        : trimmed.startsWith('http://')
+        : (trimmed.startsWith('http://') && forceHttps)
             ? 'https://${trimmed.substring('http://'.length)}'
             : absolute
                 ? trimmed
