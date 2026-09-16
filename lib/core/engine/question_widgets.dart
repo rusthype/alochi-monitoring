@@ -9,20 +9,25 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../shared/widgets/app_network_image.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/utils/svg_aspect.dart';
 import 'test_models.dart';
 
 /// Inline SVG diagram (math geometry questions). Rendered above the options,
 /// centered, in the same slot the raster image uses — keeps the monitoring look.
-Widget _buildQuestionSvg(String svg, {double height = 130}) => Container(
-      margin: const EdgeInsets.only(bottom: 4),
-      alignment: Alignment.center,
-      child: SvgPicture.string(
-        svg,
-        height: height,
-        fit: BoxFit.contain,
-        placeholderBuilder: (_) => SizedBox(height: height),
-      ),
-    );
+Widget _buildQuestionSvg(String svg, {double height = 130}) {
+  final ratio = svgAspectRatio(svg);
+  return Container(
+    margin: const EdgeInsets.only(bottom: 4),
+    alignment: Alignment.center,
+    child: SvgPicture.string(
+      svg,
+      height: height,
+      width: ratio == null ? null : height * ratio,
+      fit: BoxFit.contain,
+      placeholderBuilder: (_) => SizedBox(height: height),
+    ),
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Image helper — dual-source: http(s) → AppNetworkImage, otherwise Image.asset

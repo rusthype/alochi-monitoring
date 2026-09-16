@@ -30,6 +30,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/attempt_store.dart';
+import '../../shared/utils/svg_aspect.dart';
 import '../../core/db/history_db.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/engine/test_engine.dart';
@@ -1564,7 +1565,12 @@ class _TzAnalysis extends StatelessWidget {
                 if (r.question.svg != null && r.question.svg!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   SvgPicture.string(r.question.svg!,
-                      height: 80, fit: BoxFit.contain),
+                      height: 80,
+                      width: () {
+                        final ratio = svgAspectRatio(r.question.svg!);
+                        return ratio == null ? null : 80 * ratio;
+                      }(),
+                      fit: BoxFit.contain),
                 ],
                 if (opts.isNotEmpty) ...[
                   const SizedBox(height: 8),

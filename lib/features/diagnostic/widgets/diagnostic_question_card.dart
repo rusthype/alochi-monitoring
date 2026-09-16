@@ -10,6 +10,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_network_image.dart';
+import '../../../shared/utils/svg_aspect.dart';
 
 class DiagnosticQuestionCard extends StatelessWidget {
   final int position;
@@ -124,6 +125,10 @@ class DiagnosticQuestionCard extends StatelessWidget {
             SvgPicture.string(
               svgVisual,
               height: 130,
+              width: () {
+                final ratio = svgAspectRatio(svgVisual);
+                return ratio == null ? null : 130 * ratio;
+              }(),
               fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) => Container(
                 height: 130,
