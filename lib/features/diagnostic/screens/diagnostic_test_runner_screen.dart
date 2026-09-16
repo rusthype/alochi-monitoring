@@ -313,6 +313,18 @@ class _DiagnosticTestRunnerScreenState
         subject: subject,
       );
       if (!mounted) return;
+      // Re-entering an attempt the backend already finished (see
+      // CATStartView's `existing.finished_at` branch) returns
+      // `{finished: true, ...score summary, no question}` — previously fell
+      // through to `_extractQuestion` returning null and stranding the
+      // student on the generic "no data" fallback instead of the results
+      // screen (diagnostic-first-card-blank-page bug).
+      if (resp['finished'] == true) {
+        _timer?.cancel();
+        setState(() => _loading = false);
+        _finishTest();
+        return;
+      }
       final questionsList = (resp['questions'] as List?)
           ?.whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
