@@ -37,6 +37,7 @@
   "diagnosticSubjectsEmptyTitle": "Вопросы диагностики не найдены",
   "diagnosticSubjectsEmptySubtitle": "Для этого класса пока не сформированы вопросы диагностики, либо сессия неактивна.",
   "diagnosticGoBack": "Назад",
+  "diagnosticGenericError": "Произошла ошибка, попробуйте ещё раз.",
   "diagnosticTitle": "ДИАГНОСТИКА / ПРИЁМНЫЙ ТЕСТ",
   "diagnosticHeaderTag": "ДИАГНОСТИКА",
   "diagnosticNextStepClasses": "Следующий шаг: выбор класса",

@@ -122,6 +122,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticGoBack => 'Назад';
 
   @override
+  String get diagnosticGenericError => 'Произошла ошибка, попробуйте ещё раз.';
+
+  @override
   String get diagnosticTitle => 'ДИАГНОСТИКА / ПРИЁМНЫЙ ТЕСТ';
 
   @override

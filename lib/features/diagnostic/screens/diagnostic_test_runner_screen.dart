@@ -118,6 +118,9 @@ class _DiagnosticTestRunnerScreenState
   String _currentSubject = '';
   _SubjectTransition? _transition;
 
+  String get _genericErrorMessage =>
+      AppLocalizations.of(context)!.diagnosticGenericError;
+
   DiagnosticAvailableSubjectsFn get _availableSubjects =>
       widget.availableSubjectsOverride ?? diagnosticKioskApi.availableSubjects;
   DiagnosticStartAttemptFn get _startAttemptCall =>
@@ -199,9 +202,10 @@ class _DiagnosticTestRunnerScreenState
       await _startSubject(subjects.first);
     } catch (e) {
       if (!mounted) return;
+      debugPrint('Diagnostic bootstrap error: $e');
       setState(() {
         _loading = false;
-        _error = e is ApiException ? e.message : e.toString();
+        _error = _genericErrorMessage;
       });
     }
   }
@@ -231,9 +235,10 @@ class _DiagnosticTestRunnerScreenState
           q != null ? _questionText(q) : null, _selectedOption);
     } catch (e) {
       if (!mounted) return;
+      debugPrint('Diagnostic startSubject($subject) error: $e');
       setState(() {
         _loading = false;
-        _error = e is ApiException ? e.message : e.toString();
+        _error = _genericErrorMessage;
       });
     }
   }
@@ -451,7 +456,9 @@ class _DiagnosticTestRunnerScreenState
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _bootstrap,
+                      onPressed: _currentSubject.isEmpty
+                          ? _bootstrap
+                          : () => _startSubject(_currentSubject),
                       child: Text(l10n.retry),
                     ),
                   ),

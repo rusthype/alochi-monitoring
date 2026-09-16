@@ -124,6 +124,10 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticGoBack => 'Orqaga qaytish';
 
   @override
+  String get diagnosticGenericError =>
+      'Xatolik yuz berdi, qayta urinib ko\'ring.';
+
+  @override
   String get diagnosticTitle => 'DIAGNOSTIKA / QABUL TESTI';
 
   @override

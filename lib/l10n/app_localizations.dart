@@ -320,6 +320,12 @@ abstract class AppLocalizations {
   /// **'Orqaga qaytish'**
   String get diagnosticGoBack;
 
+  /// No description provided for @diagnosticGenericError.
+  ///
+  /// In uz, this message translates to:
+  /// **'Xatolik yuz berdi, qayta urinib ko\'ring.'**
+  String get diagnosticGenericError;
+
   /// No description provided for @diagnosticTitle.
   ///
   /// In uz, this message translates to:

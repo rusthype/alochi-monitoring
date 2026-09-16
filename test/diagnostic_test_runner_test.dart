@@ -218,5 +218,68 @@ void main() {
       expect(startCalls, 2);
       await unmount(tester);
     });
+
+    testWidgets(
+        'retry after an error while starting a non-first subject retries '
+        'that subject, not the first one', (tester) async {
+      final startedSubjects = <String>[];
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 1,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          startedSubjects.add(subject);
+          // English's first start attempt fails transiently; math already
+          // finished, so a correct retry must re-start english, not math.
+          if (subject == 'english' && startedSubjects.where((s) => s == 'english').length == 1) {
+            throw Exception('math allaqachon yakunlangan.');
+          }
+          return {
+            'position': 1,
+            'total_questions': 5,
+            'subject': subject,
+            'question':
+                _question(id: 'q-$subject', text: 'Savol ($subject)'),
+          };
+        },
+        submitAnswerOverride: (
+            {required attemptId,
+            required questionId,
+            required selected}) async {
+          return {'finished': true, 'next_subject': 'english'};
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+      await tester.pump(); // shows the transition message
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pump();
+      await tester.pump();
+
+      // english's first start failed -> error view with the friendly
+      // generic message, not the raw backend text.
+      expect(find.text("Xatolik yuz berdi, qayta urinib ko'ring."),
+          findsOneWidget);
+      expect(startedSubjects, ['math', 'english']);
+
+      final l10n = AppLocalizations.of(tester.element(find.byType(
+          DiagnosticTestRunnerScreen)))!;
+      await tester.tap(find.widgetWithText(ElevatedButton, l10n.retry));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Savol (english)'), findsOneWidget);
+      expect(startedSubjects, ['math', 'english', 'english']);
+      await unmount(tester);
+    });
   });
 }

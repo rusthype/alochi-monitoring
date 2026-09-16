@@ -37,6 +37,7 @@
   "diagnosticSubjectsEmptyTitle": "Diagnostika savollari topilmadi",
   "diagnosticSubjectsEmptySubtitle": "Ushbu sinf uchun hozircha diagnostika savollari shakllantirilmagan yoki sessiya faol emas.",
   "diagnosticGoBack": "Orqaga qaytish",
+  "diagnosticGenericError": "Xatolik yuz berdi, qayta urinib ko'ring.",
   "diagnosticTitle": "DIAGNOSTIKA / QABUL TESTI",
   "diagnosticHeaderTag": "DIAGNOSTIKA",
   "diagnosticNextStepClasses": "Keyingi qadam: sinfni tanlash",
