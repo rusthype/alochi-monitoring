@@ -118,6 +118,13 @@ class _DiagnosticTestRunnerScreenState
   String _currentSubject = '';
   List<String> _allSubjects = [];
   final List<String> _subjectsCompleted = [];
+
+  /// Subject packages fetched ahead of time in the background (every subject
+  /// but the one currently being taken) so an offline mid-test subject
+  /// switch never needs a live network call — see `_prefetchSubjectInBackground`
+  /// and `_startSubject`. Consumed (removed) once a subject is actually
+  /// started; a missing entry just falls back to the old live fetch.
+  final Map<String, Map<String, dynamic>> _prefetchedSubjectPackages = {};
   _SubjectTransition? _transition;
 
   /// Whatever network operation last failed and produced [_error] — set
@@ -287,6 +294,12 @@ class _DiagnosticTestRunnerScreenState
         return;
       }
       _allSubjects = subjects;
+      // Fire-and-forget: warm every other subject's package (+ images) now,
+      // in parallel with the first subject's normal live start, so a
+      // mid-test subject switch works even if connectivity drops later.
+      for (final s in subjects.skip(1)) {
+        unawaited(_prefetchSubjectInBackground(s));
+      }
       await _startSubject(subjects.first);
     } catch (e) {
       if (!mounted) return;
@@ -308,10 +321,16 @@ class _DiagnosticTestRunnerScreenState
       _currentSubject = subject;
     });
     try {
-      final resp = await _startAttemptCall(
-        attemptId: widget.attemptId,
-        subject: subject,
-      );
+      // A background prefetch (see `_prefetchSubjectInBackground`) already
+      // has this subject's package + images cached — use it directly
+      // instead of a live call, so an offline subject switch still works.
+      // Falls back to the old live fetch when it wasn't prefetched (e.g.
+      // the device was offline from the very start).
+      final resp = _prefetchedSubjectPackages.remove(subject) ??
+          await _startAttemptCall(
+            attemptId: widget.attemptId,
+            subject: subject,
+          );
       if (!mounted) return;
       // Re-entering an attempt the backend already finished (see
       // CATStartView's `existing.finished_at` branch) returns
@@ -329,21 +348,29 @@ class _DiagnosticTestRunnerScreenState
           ?.whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
+      final isFixedVariant = resp['is_fixed_variant'] == true;
+      final position = (resp['position'] as num?)?.toInt() ?? 1;
+      List<Map<String, dynamic>> questions = [];
+      Map<String, dynamic>? question;
+      if (isFixedVariant && questionsList != null && questionsList.isNotEmpty) {
+        questions = questionsList;
+        final idx = (position - 1).clamp(0, questions.length - 1);
+        question = questions[idx];
+      } else {
+        question = _extractQuestion(resp);
+      }
+      // Await the reveal-question's image (best-effort, short timeout) so
+      // the question never flashes a live-fetch spinner on first render —
+      // near-instant when the package was already background-prefetched.
+      await _awaitFirstImage(question);
+      if (!mounted) return;
       setState(() {
-        _position = (resp['position'] as num?)?.toInt() ?? 1;
+        _position = position;
         _total = (resp['total_questions'] as num?)?.toInt() ?? 0;
-        _isFixedVariant = resp['is_fixed_variant'] == true;
+        _isFixedVariant = isFixedVariant;
         _answers.clear();
-        if (_isFixedVariant &&
-            questionsList != null &&
-            questionsList.isNotEmpty) {
-          _questions = questionsList;
-          final idx = (_position - 1).clamp(0, _questions.length - 1);
-          _question = _questions[idx];
-        } else {
-          _questions = [];
-          _question = _extractQuestion(resp);
-        }
+        _questions = questions;
+        _question = question;
         _loading = false;
       });
       _startCountdownIfNeeded(resp);
@@ -571,6 +598,57 @@ class _DiagnosticTestRunnerScreenState
           debugPrint('Diagnostic image prefetch failed for $url: $e');
         });
       }
+    }
+  }
+
+  /// Background subject-package warm-up (Bug 1) — same live call
+  /// `_startSubject` would eventually make, just kicked off early and
+  /// stashed in [_prefetchedSubjectPackages] instead of rendered. Failures
+  /// (most commonly: offline from the start) are swallowed — the subject
+  /// simply stays unprefetched and `_startSubject` falls back to a live
+  /// call (with today's existing error/retry UI) when the student reaches it.
+  Future<void> _prefetchSubjectInBackground(String subject) async {
+    try {
+      final resp = await _startAttemptCall(
+        attemptId: widget.attemptId,
+        subject: subject,
+      );
+      if (resp['finished'] == true) return;
+      _prefetchedSubjectPackages[subject] = resp;
+      final questionsList = (resp['questions'] as List?)
+          ?.whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      if (resp['is_fixed_variant'] == true &&
+          questionsList != null &&
+          questionsList.isNotEmpty) {
+        _prefetchImages(questionsList);
+      } else {
+        final q = _extractQuestion(resp);
+        if (q != null) _prefetchImages([q]);
+      }
+    } catch (e) {
+      debugPrint('Diagnostic background prefetch for "$subject" failed: $e');
+    }
+  }
+
+  /// Bug 2: await the given question's image(s) into cache before the
+  /// question is revealed via setState, so the image widget's first render
+  /// is a cache hit instead of a live fetch with a spinner. Best-effort —
+  /// a short timeout means a slow/broken image never blocks the UI.
+  Future<void> _awaitFirstImage(Map<String, dynamic>? question) async {
+    if (question == null) return;
+    final urls = _collectImageUrls(question)
+        .map(MonitoringApi.fixImageUrl)
+        .where((u) => u.isNotEmpty)
+        .toList();
+    if (urls.isEmpty) return;
+    try {
+      await AlochiImageCacheManager()
+          .downloadFile(urls.first)
+          .timeout(const Duration(seconds: 3));
+    } catch (_) {
+      // Best-effort — proceed to reveal the question regardless.
     }
   }
 

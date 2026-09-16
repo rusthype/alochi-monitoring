@@ -222,6 +222,10 @@ void main() {
       await tester.pump();
       await tester.pump();
       await tester.pump();
+      // _startSubject now awaits the first question's image (best-effort,
+      // short timeout) before revealing it — give the real (failing, no
+      // network in test) download a moment to resolve/time out.
+      await tester.pump(const Duration(seconds: 4));
 
       expect(find.byType(AppNetworkImage), findsOneWidget);
       await unmount(tester);
@@ -915,8 +919,14 @@ void main() {
         },
         startAttemptOverride: ({required attemptId, required subject}) async {
           startCalls.add(subject);
+          // 'english' fails its first TWO attempts: the background
+          // prefetch kicked off during bootstrap (so it never lands in
+          // _prefetchedSubjectPackages), and the first live attempt made
+          // when the subject transition actually happens. It succeeds on
+          // manual retry (3rd attempt), same as before this fake started
+          // also serving background prefetch calls.
           if (subject == 'english' &&
-              startCalls.where((s) => s == 'english').length == 1) {
+              startCalls.where((s) => s == 'english').length <= 2) {
             throw const ApiException(400, 'math allaqachon yakunlangan');
           }
           return _withMeta({
@@ -955,7 +965,10 @@ void main() {
       // subject-transition screen, then english start kicks off
       await tester.pump(const Duration(milliseconds: 1600));
       expect(mathAnswered, isTrue);
-      expect(startCalls, ['math', 'english']);
+      // Background prefetch (bootstrap) tries 'english' first — synchronously,
+      // before the awaited 'math' start — and fails; the live transition
+      // attempt after math finishes is the second, also-failing, call.
+      expect(startCalls, ['english', 'math', 'english']);
 
       // Generic message shown, not the raw backend text.
       expect(find.text('math allaqachon yakunlangan'), findsNothing);
@@ -967,7 +980,62 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
 
       // Retry re-attempted 'english', never re-triggered 'math'.
-      expect(startCalls, ['math', 'english', 'english']);
+      expect(startCalls, ['english', 'math', 'english', 'english']);
+      expect(find.text('Savol (english)'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'a successfully background-prefetched subject transition makes no '
+        'new live startAttempt call for that subject', (tester) async {
+      final startCalls = <String>[];
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math', 'english']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          startCalls.add(subject);
+          return _withMeta({
+            'position': 1,
+            'total_questions': 1,
+            'subject': subject,
+            'question_id': '${subject}_q1',
+            'question_text': 'Savol ($subject)',
+            'option_a': 'A',
+            'option_b': 'B',
+            'option_c': 'C',
+            'option_d': 'D',
+          });
+        },
+        submitAnswerOverride: (
+            {required attemptId,
+            required questionId,
+            required selected}) async {
+          return {
+            'finished': true,
+            'next_subject': 'english',
+          };
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      // Background prefetch of 'english' already ran during bootstrap.
+      expect(startCalls, ['english', 'math']);
+
+      await tester.tap(find.text('A').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pump(const Duration(milliseconds: 1600));
+
+      // Subject transition used the prefetched package — no 2nd 'english'
+      // startAttempt call.
+      expect(startCalls, ['english', 'math']);
       expect(find.text('Savol (english)'), findsOneWidget);
       await unmount(tester);
     });
