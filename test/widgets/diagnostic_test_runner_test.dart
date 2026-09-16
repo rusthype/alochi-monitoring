@@ -741,6 +741,111 @@ void main() {
     });
 
     testWidgets(
+        'transient finish-call failure with a next subject available '
+        'starts that subject instead of ending the test', (tester) async {
+      var startCalls = 0;
+      Object? capturedExtra;
+      await tester.pumpWidget(_wrapWithRouter(
+        DiagnosticTestRunnerScreen(
+          attemptId: 'att-1',
+          studentName: 'Aliyev Ali',
+          grade: 3,
+          language: 'uz',
+          availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+              {
+            'subjects': ['math', 'english']
+          },
+          startAttemptOverride: ({required attemptId, required subject}) async {
+            startCalls++;
+            return _withMeta({
+              'position': 1,
+              'total_questions': 1,
+              'subject': subject,
+              'questions': fullPackageQuestions(1),
+            }, isFixedVariant: true);
+          },
+          finishAttemptOverride: (
+              {required attemptId, required answers}) async {
+            // Transient failure (timeout/dropped connection), not a
+            // definitive server rejection.
+            throw const ApiException(0, 'timeout');
+          },
+          enqueueLocalOverride: (payload, token) async {},
+        ),
+        onFinished: (extra) => capturedExtra = extra,
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(startCalls, 1);
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+      await tester.tap(find.text(l10n.nextSubjectButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+
+      // Moved on to 'english' locally instead of ending the diagnostic.
+      expect(startCalls, 2);
+      expect(capturedExtra, isNull);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'transient finish-call failure with no next subject left still '
+        'ends the test', (tester) async {
+      Object? capturedExtra;
+      await tester.pumpWidget(_wrapWithRouter(
+        DiagnosticTestRunnerScreen(
+          attemptId: 'att-1',
+          studentName: 'Aliyev Ali',
+          grade: 3,
+          language: 'uz',
+          availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+              {
+            'subjects': ['math']
+          },
+          startAttemptOverride: ({required attemptId, required subject}) async {
+            return _withMeta({
+              'position': 1,
+              'total_questions': 1,
+              'subject': subject,
+              'questions': fullPackageQuestions(1),
+            }, isFixedVariant: true);
+          },
+          finishAttemptOverride: (
+              {required attemptId, required answers}) async {
+            throw const ApiException(0, 'timeout');
+          },
+          enqueueLocalOverride: (payload, token) async {},
+        ),
+        onFinished: (extra) => capturedExtra = extra,
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+      await tester.tap(find.text('Testni yakunlash'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+
+      // 'math' was the only/last subject -> genuinely ends the test.
+      final extraMap = capturedExtra as Map<String, dynamic>?;
+      expect(extraMap?['subjectsCompleted'], ['math']);
+      await unmount(tester);
+    });
+
+    testWidgets(
         'both subjects appear in subjectsCompleted extra after full CAT '
         'completion', (tester) async {
       Object? capturedExtra;
@@ -920,11 +1025,10 @@ void main() {
         startAttemptOverride: ({required attemptId, required subject}) async {
           startCalls.add(subject);
           // 'english' fails its first TWO attempts: the background
-          // prefetch kicked off during bootstrap (so it never lands in
-          // _prefetchedSubjectPackages), and the first live attempt made
-          // when the subject transition actually happens. It succeeds on
-          // manual retry (3rd attempt), same as before this fake started
-          // also serving background prefetch calls.
+          // prefetch kicked off right after 'math' finishes (so it never
+          // lands in _prefetchedSubjectPackages), and the live attempt made
+          // by _startSubject when the transition actually happens. It
+          // succeeds on manual retry (3rd attempt).
           if (subject == 'english' &&
               startCalls.where((s) => s == 'english').length <= 2) {
             throw const ApiException(400, 'math allaqachon yakunlangan');
@@ -965,10 +1069,11 @@ void main() {
       // subject-transition screen, then english start kicks off
       await tester.pump(const Duration(milliseconds: 1600));
       expect(mathAnswered, isTrue);
-      // Background prefetch (bootstrap) tries 'english' first — synchronously,
-      // before the awaited 'math' start — and fails; the live transition
-      // attempt after math finishes is the second, also-failing, call.
-      expect(startCalls, ['english', 'math', 'english']);
+      // No eager bootstrap prefetch anymore — 'english' is only attempted
+      // once 'math' actually finishes: first the background prefetch fired
+      // from `_submit`'s finished+next_subject branch, then the live
+      // attempt `_startSubject` makes for the transition. Both fail.
+      expect(startCalls, ['math', 'english', 'english']);
 
       // Generic message shown, not the raw backend text.
       expect(find.text('math allaqachon yakunlangan'), findsNothing);
@@ -980,7 +1085,7 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
 
       // Retry re-attempted 'english', never re-triggered 'math'.
-      expect(startCalls, ['english', 'math', 'english', 'english']);
+      expect(startCalls, ['math', 'english', 'english', 'english']);
       expect(find.text('Savol (english)'), findsOneWidget);
       await unmount(tester);
     });
@@ -1025,17 +1130,18 @@ void main() {
       await tester.pump();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      // Background prefetch of 'english' already ran during bootstrap.
-      expect(startCalls, ['english', 'math']);
+      // No eager bootstrap prefetch anymore — only 'math' has started.
+      expect(startCalls, ['math']);
 
       await tester.tap(find.text('A').first);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 1600));
       await tester.pump(const Duration(milliseconds: 1600));
 
-      // Subject transition used the prefetched package — no 2nd 'english'
-      // startAttempt call.
-      expect(startCalls, ['english', 'math']);
+      // 'english' was background-prefetched the moment 'math' finished (see
+      // `_submit`), so the subject transition used that prefetched package —
+      // no 2nd 'english' startAttempt call.
+      expect(startCalls, ['math', 'english']);
       expect(find.text('Savol (english)'), findsOneWidget);
       await unmount(tester);
     });

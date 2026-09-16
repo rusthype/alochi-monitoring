@@ -87,6 +87,14 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   final DiagnosticSubmitAnswerFn? submitAnswerOverride;
   final DiagnosticFinishAttemptFn? finishAttemptOverride;
 
+  /// Test-only override for [OfflineQueue.enqueueLocal] — the real one opens
+  /// the platform sqflite plugin, which has no channel binding under plain
+  /// `flutter test` on macOS/iOS and hangs instead of throwing (see
+  /// test_cache_db's sqflite_common_ffi workaround, not usable here since
+  /// OfflineQueue picks its own factory). Defaults to the real call.
+  final Future<void> Function(Map<String, dynamic> payload, String token)?
+      enqueueLocalOverride;
+
   const DiagnosticTestRunnerScreen({
     super.key,
     required this.attemptId,
@@ -98,6 +106,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
     this.startAttemptOverride,
     this.submitAnswerOverride,
     this.finishAttemptOverride,
+    this.enqueueLocalOverride,
   });
 
   @override
@@ -294,12 +303,15 @@ class _DiagnosticTestRunnerScreenState
         return;
       }
       _allSubjects = subjects;
-      // Fire-and-forget: warm every other subject's package (+ images) now,
-      // in parallel with the first subject's normal live start, so a
-      // mid-test subject switch works even if connectivity drops later.
-      for (final s in subjects.skip(1)) {
-        unawaited(_prefetchSubjectInBackground(s));
-      }
+      // NOTE: subjects beyond the first are NOT prefetched here — the
+      // backend's subject-ordering guard (CATStartView.post) always 400s a
+      // start-attempt call for subject N+1 until subject N is in
+      // `subjects_completed`, so an eager prefetch here can never succeed
+      // and only adds futile background HTTP traffic during the first
+      // subject's attempt. Each next subject is instead prefetched right
+      // after the current one is confirmed finished server-side (see the
+      // `nextSubject` branches in `_submit` and `_confirmAndFinishPackage`),
+      // which is the earliest point the backend will actually serve it.
       await _startSubject(subjects.first);
     } catch (e) {
       if (!mounted) return;
@@ -421,6 +433,10 @@ class _DiagnosticTestRunnerScreenState
       if (finished && nextSubject.isNotEmpty) {
         _timer?.cancel();
         _subjectsCompleted.add(_currentSubject);
+        // Earliest point the backend will actually serve the next subject's
+        // content (see the ordering-guard note in `_bootstrap`) — start
+        // warming it now, in parallel with the transition delay below.
+        unawaited(_prefetchSubjectInBackground(nextSubject));
         if (!mounted) return;
         setState(() {
           _transition = _SubjectTransition(
@@ -534,7 +550,15 @@ class _DiagnosticTestRunnerScreenState
       final status = e is ApiException ? e.statusCode : 0;
       final isNetworkFailure = status == 0 || status >= 500;
       if (isNetworkFailure) {
-        await OfflineQueue.enqueueLocal({
+        // The finish-call itself failed transiently, but we still know the
+        // full subject order locally — don't end the whole diagnostic if
+        // there's another subject left to attempt (diagnostic-premature-
+        // finish-on-transient-blip bug). Queue this subject's answers for
+        // later sync, then try to move on to the next subject the same way
+        // a successful finish-call would have; only end the test here if
+        // this genuinely was the last subject.
+        final enqueue = widget.enqueueLocalOverride ?? OfflineQueue.enqueueLocal;
+        await enqueue({
           '_offlineKind': 'diagnostic_finish',
           'attempt_id': widget.attemptId,
           'answers': answers,
@@ -542,7 +566,20 @@ class _DiagnosticTestRunnerScreenState
         if (!mounted) return;
         _timer?.cancel();
         _subjectsCompleted.add(_currentSubject);
-        _finishTest();
+        final nextSubject = _allSubjects.firstWhere(
+          (s) => !_subjectsCompleted.contains(s),
+          orElse: () => '',
+        );
+        if (nextSubject.isEmpty) {
+          _finishTest();
+          return;
+        }
+        setState(() => _submitting = false);
+        // No local prefetch to warm here — the finish-call's own failure
+        // means we can't confirm server-side completion, so `_startSubject`
+        // falls through to its normal live-call path (and surfaces its
+        // existing error/retry UI if that also fails, e.g. genuine offline).
+        await _startSubject(nextSubject);
         return;
       }
       if (!mounted) return;
