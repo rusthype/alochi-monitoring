@@ -651,5 +651,49 @@ void main() {
       expect(finishCalls, 1);
       await unmount(tester);
     });
+
+    testWidgets(
+        'fixed-variant finish with next_subject starts the next subject '
+        'instead of navigating to the finished screen', (tester) async {
+      var startCalls = 0;
+      await tester.pumpWidget(_wrapWithRouter(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          startCalls++;
+          return _withMeta({
+            'position': 1,
+            'total_questions': 1,
+            'subject': subject,
+            'questions': fullPackageQuestions(1),
+          }, isFixedVariant: true);
+        },
+        finishAttemptOverride: ({required attemptId, required answers}) async {
+          return {'finished': true, 'next_subject': 'english'};
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+
+      await tester.tap(find.text('Testni yakunlash'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(startCalls, 2);
+      expect(find.byKey(const Key('finished')), findsNothing);
+      await unmount(tester);
+    });
   });
 }
