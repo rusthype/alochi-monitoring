@@ -8,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../models/test_catalog.dart';
 import '../db/offline_queue.dart';
+import '../../features/diagnostic/data/diagnostic_kiosk_api.dart'
+    show diagnosticKioskApi;
 
 class ApiException implements Exception {
   final int statusCode;
@@ -862,6 +864,10 @@ class MonitoringApi {
     if (payload['_offlineKind'] == 'question_report') {
       final body = Map<String, dynamic>.from(payload)..remove('_offlineKind');
       return submitQuestionReport(body, token);
+    }
+    if (payload['_offlineKind'] == 'diagnostic_finish') {
+      final body = Map<String, dynamic>.from(payload)..remove('_offlineKind');
+      return diagnosticKioskApi.submitFinishOffline(body, token);
     }
     return submitLocalResultFull(payload, token);
   }

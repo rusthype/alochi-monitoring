@@ -671,6 +671,18 @@ void main() {
       await unmount(tester);
     });
 
+    // NOTE: a widget-level test asserting the finish-failure path actually
+    // lands a row in OfflineQueue's `local_queue` table was attempted here
+    // and removed — `OfflineQueue.db` opens the real sqflite plugin (not
+    // sqflite_common_ffi, which this file only wires up for
+    // Windows/Linux), and that plugin has no platform-channel binding under
+    // plain `flutter test` on this host: the native call hangs instead of
+    // throwing, timing out the whole suite. Not feasible from this harness;
+    // see diagnostic_test_runner_screen.dart's `_confirmAndFinishPackage`
+    // for the reviewed production logic instead (mirrors
+    // submitQuestionReport/submitLocalResultFull's exact permanent/
+    // retryable classification already exercised by production traffic).
+
     testWidgets(
         'fixed-variant finish with next_subject advances to the next '
         'subject instead of ending the attempt', (tester) async {

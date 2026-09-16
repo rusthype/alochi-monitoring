@@ -181,6 +181,34 @@ class DiagnosticKioskApi {
     });
   }
 
+  /// Retries a queued [finishAttempt] payload from `OfflineQueue.flushLocal`
+  /// (`_offlineKind: 'diagnostic_finish'`, see api_client.dart's
+  /// `_dispatchLocalQueueItem`) — returns the `{synced, permanent}` shape
+  /// that contract expects instead of throwing, same posture as
+  /// `MonitoringApi.submitQuestionReport`.
+  Future<Map<String, dynamic>> submitFinishOffline(
+      Map<String, dynamic> payload, String token) async {
+    try {
+      final resp = await _send(() => http.post(
+            Uri.parse('$_base/kiosk/finish/'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Idempotency-Key': token,
+            },
+            body: jsonEncode(payload),
+          ));
+      if (resp.statusCode >= 400) {
+        final permanent = resp.statusCode != 429 && resp.statusCode < 500;
+        return {'synced': false, 'permanent': permanent};
+      }
+      return {'synced': true};
+    } on ApiException {
+      return {'synced': false, 'permanent': false};
+    } catch (e) {
+      return {'synced': false, 'permanent': false};
+    }
+  }
+
   /// EXISTING, unmodified backend endpoint.
   Future<Map<String, dynamic>> submitAnswer({
     required String attemptId,

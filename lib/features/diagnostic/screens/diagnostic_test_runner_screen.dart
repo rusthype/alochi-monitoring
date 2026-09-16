@@ -15,6 +15,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import '../../../core/api/api_client.dart' show ApiException, newIdempotencyToken;
+import '../../../core/cache/image_cache_manager.dart';
+import '../../../core/db/offline_queue.dart';
 import '../../../core/services/heartbeat_service.dart';
 import '../../../core/services/proctor_service.dart';
 import '../../../shared/theme/app_theme.dart';
@@ -334,6 +337,14 @@ class _DiagnosticTestRunnerScreenState
       final q = _question;
       HeartbeatService.instance.updateProgress(_position, _total, [],
           q != null ? _questionText(q) : null, _selectedOption);
+      // Fixed-variant: whole batch known upfront — prefetch every question's
+      // image now so the student never waits on a lazy load mid-test. CAT:
+      // only the one question just rendered is known.
+      if (_isFixedVariant) {
+        _prefetchImages(_questions);
+      } else if (q != null) {
+        _prefetchImages([q]);
+      }
     } catch (e) {
       if (!mounted) return;
       debugPrint('Diagnostic start-subject "$subject" error: $e');
@@ -382,6 +393,9 @@ class _DiagnosticTestRunnerScreenState
         await _startSubject(nextSubject);
       } else {
         final next = _extractQuestion(resp);
+        // Cache the next question's image the moment it arrives, before the
+        // 1.5s reveal delay — by the time it renders it's already local.
+        if (next != null) _prefetchImages([next]);
         // Keep the selected option visible (no correct/incorrect reveal)
         // for a beat before advancing, instead of a manual continue tap.
         await Future.delayed(const Duration(milliseconds: 1500));
@@ -468,6 +482,29 @@ class _DiagnosticTestRunnerScreenState
       resp = await _finishAttemptCall(
           attemptId: widget.attemptId, answers: answers);
     } catch (e) {
+      // Network failure (not a definitive rejection the server sent back) —
+      // queue the finish payload for later sync via the same generic
+      // local_queue OfflineQueue already uses for monitoring's offline
+      // results, and let the student finish now rather than block on
+      // connectivity. A definitive 4xx from the server (bad attempt_id,
+      // already finished, etc.) is not a "queue and retry" case — the
+      // ApiException statusCode distinguishes the two the same way
+      // submitLocalResultFull/submitQuestionReport already do in
+      // api_client.dart.
+      final status = e is ApiException ? e.statusCode : 0;
+      final isNetworkFailure = status == 0 || status >= 500;
+      if (isNetworkFailure) {
+        await OfflineQueue.enqueueLocal({
+          '_offlineKind': 'diagnostic_finish',
+          'attempt_id': widget.attemptId,
+          'answers': answers,
+        }, newIdempotencyToken());
+        if (!mounted) return;
+        _timer?.cancel();
+        _subjectsCompleted.add(_currentSubject);
+        _finishTest();
+        return;
+      }
       if (!mounted) return;
       debugPrint('Diagnostic finish-package error: $e');
       setState(() {
@@ -501,6 +538,33 @@ class _DiagnosticTestRunnerScreenState
     if (nested is Map) return Map<String, dynamic>.from(nested);
     if (data['id'] != null || data['question_id'] != null) return data;
     return null;
+  }
+
+  /// Best-effort image prefetch for a batch of questions — same
+  /// fire-and-forget pattern as `TestCatalogService._prefetchImages`
+  /// (monitoring). `image_url`/`svg_visual` per the backend contract (see
+  /// file header), but walked generically since either can be nested or a
+  /// bare string.
+  void _prefetchImages(List<Map<String, dynamic>> questions) {
+    final cacheManager = AlochiImageCacheManager();
+    for (final q in questions) {
+      for (final url in _collectImageUrls(q)) {
+        cacheManager.downloadFile(url).then((_) {}).catchError((Object e) {
+          debugPrint('Diagnostic image prefetch failed for $url: $e');
+        });
+      }
+    }
+  }
+
+  List<String> _collectImageUrls(dynamic node) {
+    if (node is String) {
+      return node.startsWith('http://') || node.startsWith('https://')
+          ? [node]
+          : const [];
+    }
+    if (node is List) return node.expand(_collectImageUrls).toList();
+    if (node is Map) return node.values.expand(_collectImageUrls).toList();
+    return const [];
   }
 
   String _questionId(Map<String, dynamic> q) =>
