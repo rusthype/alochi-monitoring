@@ -35,6 +35,35 @@ Map<String, dynamic> parseDiagnosticClassRow(dynamic e) {
   };
 }
 
+/// Classifies a non-2xx `kiosk/finish/` response for `OfflineQueue.flushLocal`'s
+/// `{synced, permanent}` contract — extracted as a top-level function so the
+/// classification rule is unit-testable without mocking HTTP.
+///
+/// 2026-09-17 incident (Maktab 56): the old rule treated EVERY non-429 4xx as
+/// "permanent" — `OfflineQueue.flushLocal` deletes a "permanent" row
+/// immediately, with no further retry. A genuinely transient/unexpected 400
+/// (server bug, a guard we don't know about yet, a momentary state race)
+/// then silently destroyed a student's real, already-answered English test
+/// with no trace anywhere. Only "allaqachon yakunlangan" is safe to treat as
+/// permanent — it means this exact attempt+subject already finished
+/// successfully (e.g. an earlier retry of this same queued row got through),
+/// so dropping it loses nothing. Every other 400 now stays queued and keeps
+/// retrying (bounded by OfflineQueue's existing 10-attempt/7-day cap, see
+/// purgeStale) instead of vanishing on the first failure.
+Map<String, dynamic> classifyFinishOfflineResponse(
+    int statusCode, String body) {
+  String detail = '';
+  try {
+    final decoded = jsonDecode(body);
+    if (decoded is Map) detail = (decoded['detail'] ?? '').toString();
+  } catch (_) {
+    // Non-JSON body — fall through with detail='', treated as retryable below.
+  }
+  final isAlreadyFinished = detail.contains('allaqachon yakunlangan');
+  final permanent = statusCode != 429 && isAlreadyFinished;
+  return {'synced': isAlreadyFinished, 'permanent': permanent};
+}
+
 class DiagnosticKioskApi {
   // Reads the same API_BASE_URL override as MonitoringApi (api_client.dart)
   // so one --dart-define configures the whole app's backend host.
@@ -230,8 +259,7 @@ class DiagnosticKioskApi {
             body: jsonEncode(payload),
           ));
       if (resp.statusCode >= 400) {
-        final permanent = resp.statusCode != 429 && resp.statusCode < 500;
-        return {'synced': false, 'permanent': permanent};
+        return classifyFinishOfflineResponse(resp.statusCode, resp.body);
       }
       return {'synced': true};
     } on ApiException {
