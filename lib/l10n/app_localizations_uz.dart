@@ -139,6 +139,10 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticFinishedResumeBtn => 'Davom ettirish';
 
   @override
+  String get diagnosticOfflineCached =>
+      'Oflayn — saqlangan ma\'lumot ko\'rsatilmoqda';
+
+  @override
   String get diagnosticNoSchools => 'Maktablar topilmadi';
 
   @override
@@ -510,9 +514,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String diagnosticSubjectTransitionMessage(
-    String fromSubject,
-    String toSubject,
-  ) {
+      String fromSubject, String toSubject) {
     return '$fromSubject yakunlandi! Endi $toSubject boshlanadi';
   }
 

@@ -137,6 +137,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticFinishedResumeBtn => 'Продолжить';
 
   @override
+  String get diagnosticOfflineCached => 'Офлайн — показаны сохранённые данные';
+
+  @override
   String get diagnosticNoSchools => 'Школы не найдены';
 
   @override
@@ -508,9 +511,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String diagnosticSubjectTransitionMessage(
-    String fromSubject,
-    String toSubject,
-  ) {
+      String fromSubject, String toSubject) {
     return '$fromSubject завершён! Теперь начинается $toSubject';
   }
 

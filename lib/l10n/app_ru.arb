@@ -53,6 +53,7 @@
   "diagnosticFinishedSecurePill": "Надёжно сохранено",
   "diagnosticFinishedPauseBtn": "Остановить",
   "diagnosticFinishedResumeBtn": "Продолжить",
+  "diagnosticOfflineCached": "Офлайн — показаны сохранённые данные",
   "diagnosticNoSchools": "Школы не найдены",
   "diagnosticNoClasses": "Классы не найдены",
   "diagnosticNoStudents": "Учащиеся не найдены",

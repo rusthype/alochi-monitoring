@@ -18,6 +18,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart'
     show ApiException, MonitoringApi, newIdempotencyToken;
 import '../../../core/cache/image_cache_manager.dart';
+import '../../../core/db/attempt_store.dart';
 import '../../../core/db/offline_queue.dart';
 import '../../../core/services/heartbeat_service.dart';
 import '../../../core/services/proctor_service.dart';
@@ -114,8 +115,8 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
       _DiagnosticTestRunnerScreenState();
 }
 
-class _DiagnosticTestRunnerScreenState
-    extends State<DiagnosticTestRunnerScreen> with WidgetsBindingObserver {
+class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
+    with WidgetsBindingObserver {
   bool _loading = true;
   bool _submitting = false;
   String? _error;
@@ -189,6 +190,108 @@ class _DiagnosticTestRunnerScreenState
   /// DiagnosticScratchpad) — never set for CAT (no trigger button rendered
   /// there, see DiagnosticQuestionCard's `onOpenScratchpad`).
   bool _scratchpadOpen = false;
+
+  /// Local-persistence key for this attempt — reuses AttemptStore's
+  /// SharedPreferences+QueueCrypto blob store (core/db/attempt_store.dart),
+  /// keyed by attempt id instead of a monitoring test_key so a mid-test
+  /// crash/restart on the FIXED-VARIANT path (question package answered
+  /// so far + deadline) survives the same way a monitoring attempt already
+  /// does — see `_tryRestore`/`_saveProgressIfFixed`. Not used for the CAT
+  /// path: CAT already re-derives current progress from the server on every
+  /// live start-attempt call, and has no local question package to lose.
+  String get _diagKey => 'diag_${widget.attemptId}';
+
+  /// Best-effort save of the fixed-variant attempt's local state — no-op
+  /// for CAT (nothing local to lose there). Called after every subject
+  /// package fetch and every answer pick.
+  Future<void> _saveProgressIfFixed() async {
+    if (!_isFixedVariant || _questions.isEmpty) return;
+    await AttemptStore.save(_diagKey, {
+      'all_subjects': _allSubjects,
+      'subjects_completed': _subjectsCompleted,
+      'current_subject': _currentSubject,
+      'is_fixed_variant': true,
+      'questions': _questions,
+      'answers': _answers.map((k, v) => MapEntry(k.toString(), v)),
+      'position': _position,
+      'total': _total,
+      'deadline_epoch_ms': _deadline?.millisecondsSinceEpoch,
+    });
+  }
+
+  /// Restores a saved fixed-variant attempt (see `_saveProgressIfFixed`)
+  /// entirely from local state — no network call — mirroring
+  /// `test_engine.dart`'s `_restoreAttempt`. Returns false (does nothing) if
+  /// there's no saved attempt, it's a CAT attempt (no local package to
+  /// restore), or its deadline has already passed — a `_bootstrap` fresh
+  /// live start is the correct behavior in every one of those cases.
+  Future<bool> _tryRestore() async {
+    final saved = await AttemptStore.load(_diagKey);
+    if (saved == null || saved['is_fixed_variant'] != true) return false;
+    final questions = (saved['questions'] as List?)
+        ?.whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    if (questions == null || questions.isEmpty) return false;
+    final allSubjects = (saved['all_subjects'] as List?)
+            ?.map((e) => e.toString())
+            .where((e) => e.isNotEmpty)
+            .toList() ??
+        [];
+    final currentSubject = (saved['current_subject'] ?? '').toString();
+    if (allSubjects.isEmpty || currentSubject.isEmpty) return false;
+    final deadlineMs = (saved['deadline_epoch_ms'] as num?)?.toInt();
+    DateTime? deadline;
+    if (deadlineMs != null) {
+      deadline = DateTime.fromMillisecondsSinceEpoch(deadlineMs);
+      // Expired while the app was closed — a fresh live bootstrap is
+      // correct here (the server itself decides what happens next).
+      if (!deadline.isAfter(DateTime.now())) return false;
+    }
+    final answers = <int, String>{};
+    ((saved['answers'] as Map?) ?? {}).forEach((k, v) {
+      final pos = int.tryParse(k.toString());
+      if (pos != null) answers[pos] = v.toString();
+    });
+    final position =
+        ((saved['position'] as num?)?.toInt() ?? 1).clamp(1, questions.length);
+    if (!mounted) return false;
+    setState(() {
+      _allSubjects = allSubjects;
+      _subjectsCompleted
+        ..clear()
+        ..addAll(
+            (saved['subjects_completed'] as List?)?.map((e) => e.toString()) ??
+                const <String>[]);
+      _currentSubject = currentSubject;
+      _isFixedVariant = true;
+      _questions = questions;
+      _answers
+        ..clear()
+        ..addAll(answers);
+      _position = position;
+      _total = (saved['total'] as num?)?.toInt() ?? questions.length;
+      _question = questions[position - 1];
+      _selectedOption = _answers[_position];
+      _loading = false;
+    });
+    if (deadline != null) _restoreCountdown(deadline);
+    _prefetchImages(_questions);
+    return true;
+  }
+
+  /// Resumes the countdown against a previously-saved (not extended)
+  /// [deadline] instead of computing a fresh one from `duration_minutes` —
+  /// see `_startCountdownIfNeeded`'s doc comment for why ticking is measured
+  /// against a fixed wall-clock deadline rather than decremented per tick.
+  void _restoreCountdown(DateTime deadline) {
+    _timer?.cancel();
+    _deadline = deadline;
+    final remaining = deadline.difference(DateTime.now()).inSeconds;
+    setState(() => _remainingSeconds = remaining > 0 ? remaining : 0);
+    _timer =
+        Timer.periodic(const Duration(seconds: 1), _syncRemainingFromDeadline);
+  }
 
   void _startCountdownIfNeeded(Map<String, dynamic> resp) {
     final minutes = (resp['duration_minutes'] as num?)?.toInt();
@@ -309,6 +412,7 @@ class _DiagnosticTestRunnerScreenState
   void _finishTest() {
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
+    unawaited(AttemptStore.clear(_diagKey));
     if (!mounted) return;
     context.pushReplacement('/diagnostic_finished', extra: {
       'studentName': widget.studentName,
@@ -323,6 +427,7 @@ class _DiagnosticTestRunnerScreenState
       _error = null;
       _subjectsEmpty = false;
     });
+    if (await _tryRestore()) return;
     try {
       final subjectsResp =
           await _availableSubjects(widget.grade, language: widget.language);
@@ -431,6 +536,7 @@ class _DiagnosticTestRunnerScreenState
       // only the one question just rendered is known.
       if (_isFixedVariant) {
         _prefetchImages(_questions);
+        unawaited(_saveProgressIfFixed());
       } else if (q != null) {
         _prefetchImages([q]);
       }
@@ -621,7 +727,8 @@ class _DiagnosticTestRunnerScreenState
         // later sync, then try to move on to the next subject the same way
         // a successful finish-call would have; only end the test here if
         // this genuinely was the last subject.
-        final enqueue = widget.enqueueLocalOverride ?? OfflineQueue.enqueueLocal;
+        final enqueue =
+            widget.enqueueLocalOverride ?? OfflineQueue.enqueueLocal;
         await enqueue({
           '_offlineKind': 'diagnostic_finish',
           'attempt_id': widget.attemptId,
@@ -1076,6 +1183,7 @@ class _DiagnosticTestRunnerScreenState
                             _selectedOption = key;
                             _answers[_position] = key;
                           });
+                          unawaited(_saveProgressIfFixed());
                           HeartbeatService.instance.updateProgress(
                               _position, _total, [], _questionText(q), key);
                           _autoAdvance?.cancel();

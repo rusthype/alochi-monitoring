@@ -9,6 +9,7 @@ import 'package:alochi_monitoring/shared/widgets/app_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Map<String, dynamic> _question({
   String id = 'q1',
@@ -79,6 +80,10 @@ Widget _wrapWithRouter(Widget child, {void Function(Object?)? onFinished}) {
 }
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   group('extractDiagnosticOptions', () {
     test('reads option_a..option_d into A..D items', () {
       final items = extractDiagnosticOptions(_question());

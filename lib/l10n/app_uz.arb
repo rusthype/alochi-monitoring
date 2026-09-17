@@ -53,6 +53,7 @@
   "diagnosticFinishedSecurePill": "Xavfsiz saqlandi",
   "diagnosticFinishedPauseBtn": "To'xtatish",
   "diagnosticFinishedResumeBtn": "Davom ettirish",
+  "diagnosticOfflineCached": "Oflayn — saqlangan ma'lumot ko'rsatilmoqda",
   "diagnosticNoSchools": "Maktablar topilmadi",
   "diagnosticNoClasses": "Sinflar topilmadi",
   "diagnosticNoStudents": "O'quvchilar topilmadi",

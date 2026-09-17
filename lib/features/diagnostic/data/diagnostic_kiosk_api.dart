@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../../../core/api/api_client.dart' show ApiException;
+import '../../../core/db/diagnostic_kiosk_cache.dart';
 
 /// Parses one row of `GET kiosk/schools/<id>/classes/` — extracted as a
 /// top-level function (rather than inline in `listClasses`) so the new
@@ -102,31 +103,62 @@ class DiagnosticKioskApi {
     return data;
   }
 
-  /// `[{school_id, school_name, school_number, kiosk_pin}]`
-  Future<List<Map<String, dynamic>>> listSchools() async {
-    final data = await _get('/kiosk/schools/');
-    if (data is! List || data.isEmpty) return [];
-    return data.cast<Map<String, dynamic>>();
+  /// Tries the cache for [cacheKey] on a network failure ([e.statusCode] ==
+  /// 0, per `_send`'s TimeoutException/SocketException/HttpException/
+  /// ClientException mapping) — a real 4xx/5xx from a reachable server is
+  /// never masked by stale data. Returns `(rows, fromCache: true)` on a hit,
+  /// else rethrows so the caller's existing error UI still applies.
+  Future<(List<Map<String, dynamic>>, bool)> _listWithCacheFallback(
+    String cacheKey,
+    Future<List<Map<String, dynamic>>> Function() fetch,
+  ) async {
+    try {
+      final rows = await fetch();
+      unawaited(DiagnosticKioskCache.save(cacheKey, rows));
+      return (rows, false);
+    } on ApiException catch (e) {
+      if (e.statusCode != 0) rethrow;
+      final cached = await DiagnosticKioskCache.load(cacheKey);
+      if (cached is List) {
+        return (cached.cast<Map<String, dynamic>>(), true);
+      }
+      rethrow;
+    }
   }
 
-  /// `[{class_label, language}]` — defensively also accepts the old bare
-  /// `["1-A", "1-B", ...]` shape (rolled-back/cached backend), defaulting
-  /// `language` to `'uz'` in that case.
-  Future<List<Map<String, dynamic>>> listClasses(String schoolId) async {
-    final data = await _get('/kiosk/schools/$schoolId/classes/');
-    if (data is! List || data.isEmpty) return [];
-    return data.map(parseDiagnosticClassRow).toList();
+  /// `(rows, fromCache)` — `rows`: `[{school_id, school_name,
+  /// school_number, kiosk_pin}]`. `fromCache: true` means the live fetch
+  /// failed (offline/timeout) and this is the last successfully-cached copy.
+  Future<(List<Map<String, dynamic>>, bool)> listSchools() {
+    return _listWithCacheFallback('schools', () async {
+      final data = await _get('/kiosk/schools/');
+      if (data is! List || data.isEmpty) return [];
+      return data.cast<Map<String, dynamic>>();
+    });
   }
 
-  /// `[{attempt_id, student_name, class_label, language}]` — never
-  /// `parent_phone`.
-  Future<List<Map<String, dynamic>>> listStudents(
-      String schoolId, String classLabel) async {
-    final query = Uri.encodeQueryComponent(classLabel);
-    final data =
-        await _get('/kiosk/schools/$schoolId/students/?class_label=$query');
-    if (data is! List || data.isEmpty) return [];
-    return data.cast<Map<String, dynamic>>();
+  /// `(rows, fromCache)` — `rows`: `[{class_label, language}]`, defensively
+  /// also accepting the old bare `["1-A", "1-B", ...]` shape (rolled-back/
+  /// cached backend), defaulting `language` to `'uz'` in that case.
+  Future<(List<Map<String, dynamic>>, bool)> listClasses(String schoolId) {
+    return _listWithCacheFallback('classes_$schoolId', () async {
+      final data = await _get('/kiosk/schools/$schoolId/classes/');
+      if (data is! List || data.isEmpty) return [];
+      return data.map(parseDiagnosticClassRow).toList();
+    });
+  }
+
+  /// `(rows, fromCache)` — `rows`: `[{attempt_id, student_name, class_label,
+  /// language}]` — never `parent_phone`.
+  Future<(List<Map<String, dynamic>>, bool)> listStudents(
+      String schoolId, String classLabel) {
+    return _listWithCacheFallback('students_${schoolId}_$classLabel', () async {
+      final query = Uri.encodeQueryComponent(classLabel);
+      final data =
+          await _get('/kiosk/schools/$schoolId/students/?class_label=$query');
+      if (data is! List || data.isEmpty) return [];
+      return data.cast<Map<String, dynamic>>();
+    });
   }
 
   /// Delegates into the (fixed) CAT engine's start flow — loosely-typed

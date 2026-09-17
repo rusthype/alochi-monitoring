@@ -320,7 +320,9 @@ class DiagnosticLanguageBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(100),
       ),
       child: Text(
-        isRu ? (l10n?.languageRussian ?? 'Русский') : (l10n?.languageUzbek ?? "O'zbek"),
+        isRu
+            ? (l10n?.languageRussian ?? 'Русский')
+            : (l10n?.languageUzbek ?? "O'zbek"),
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
@@ -408,6 +410,44 @@ class DiagnosticBottomCta extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Small "showing cached/stale data" indicator for the kiosk roster/school
+/// screens — shown only when a live fetch failed and cached data is being
+/// rendered instead (see DiagnosticKioskApi's cache-fallback + the screens'
+/// `_fromCache` flag). Never shown while the live fetch is working.
+class DiagnosticOfflineBadge extends StatelessWidget {
+  const DiagnosticOfflineBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.cloud_off_rounded, size: 16, color: Colors.amber),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              l10n.diagnosticOfflineCached,
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.amber),
+            ),
+          ),
+        ],
       ),
     );
   }

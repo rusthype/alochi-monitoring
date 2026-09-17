@@ -55,6 +55,7 @@ class _DiagnosticStudentSelectScreenState
   bool _starting = false;
   String? _error;
   List<Map<String, dynamic>> _students = [];
+  bool _fromCache = false;
   Map<String, dynamic>? _selected;
   final _searchCtrl = TextEditingController();
   String _query = '';
@@ -80,11 +81,12 @@ class _DiagnosticStudentSelectScreenState
       _error = null;
     });
     try {
-      final students = await diagnosticKioskApi.listStudents(
+      final (students, fromCache) = await diagnosticKioskApi.listStudents(
           widget.schoolId, widget.classLabel);
       if (!mounted) return;
       setState(() {
         _students = students;
+        _fromCache = fromCache;
         _loading = false;
       });
     } catch (e) {
@@ -227,6 +229,8 @@ class _DiagnosticStudentSelectScreenState
                                 ),
                               ),
                               const SizedBox(height: 20),
+                              if (_error == null && _fromCache)
+                                const DiagnosticOfflineBadge(),
                               if (_error != null)
                                 Container(
                                   padding: const EdgeInsets.all(12),

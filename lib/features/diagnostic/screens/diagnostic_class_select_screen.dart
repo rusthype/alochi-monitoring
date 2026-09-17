@@ -54,6 +54,7 @@ class _DiagnosticClassSelectScreenState
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _classes = [];
+  bool _fromCache = false;
 
   @override
   void initState() {
@@ -67,13 +68,15 @@ class _DiagnosticClassSelectScreenState
       _error = null;
     });
     try {
-      final classes = await diagnosticKioskApi.listClasses(widget.schoolId);
+      final (classes, fromCache) =
+          await diagnosticKioskApi.listClasses(widget.schoolId);
       if (!mounted) return;
       classes.sort((a, b) => compareClassLabels(
           (a['class_label'] ?? '').toString(),
           (b['class_label'] ?? '').toString()));
       setState(() {
         _classes = classes;
+        _fromCache = fromCache;
         _loading = false;
       });
     } catch (e) {
@@ -135,6 +138,8 @@ class _DiagnosticClassSelectScreenState
                                 ),
                               ),
                               const SizedBox(height: 24),
+                              if (_error == null && _fromCache)
+                                const DiagnosticOfflineBadge(),
                               if (_error != null) ...[
                                 Container(
                                   padding: const EdgeInsets.all(12),

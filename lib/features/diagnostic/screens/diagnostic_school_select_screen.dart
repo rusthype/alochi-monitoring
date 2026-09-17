@@ -26,6 +26,7 @@ class _DiagnosticSchoolSelectScreenState
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _schools = [];
+  bool _fromCache = false;
 
   @override
   void initState() {
@@ -39,10 +40,11 @@ class _DiagnosticSchoolSelectScreenState
       _error = null;
     });
     try {
-      final schools = await diagnosticKioskApi.listSchools();
+      final (schools, fromCache) = await diagnosticKioskApi.listSchools();
       if (!mounted) return;
       setState(() {
         _schools = schools;
+        _fromCache = fromCache;
         _loading = false;
       });
     } catch (e) {
@@ -130,6 +132,8 @@ class _DiagnosticSchoolSelectScreenState
                                 ),
                               ),
                               const SizedBox(height: 24),
+                              if (_error == null && _fromCache)
+                                const DiagnosticOfflineBadge(),
                               if (_error != null) ...[
                                 Container(
                                   padding: const EdgeInsets.all(12),
