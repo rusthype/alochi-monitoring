@@ -506,6 +506,23 @@ class _DiagnosticTestRunnerScreenState
     } catch (e) {
       if (!mounted) return;
       debugPrint('Diagnostic submit-answer error: $e');
+      // Same "stale local state" class as _confirmAndFinishPackage's
+      // self-heal: the server's current_subject/question tracking has
+      // drifted from what this screen still thinks it's answering (e.g.
+      // "Bu savol joriy fanga tegishli emas."). A plain retry would resend
+      // the exact same questionId/selected forever. Re-run _startSubject
+      // for the CURRENT subject instead — it re-fetches the server's real
+      // current question and fully resets local state from that response,
+      // rather than trying to patch just this one submit.
+      final message = e is ApiException ? e.message : '';
+      final isStaleState = message.contains("Noma'lum savol") ||
+          message.contains('joriy fanga tegishli emas') ||
+          message.contains('joriy variantga tegishli emas');
+      if (isStaleState) {
+        setState(() => _submitting = false);
+        await _startSubject(_currentSubject);
+        return;
+      }
       setState(() {
         _error = AppLocalizations.of(context)!.serverErrorRetry;
       });
