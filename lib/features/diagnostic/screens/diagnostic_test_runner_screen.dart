@@ -542,6 +542,30 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       }
     } catch (e) {
       if (!mounted) return;
+      // `_bootstrap()` always starts from `_allSubjects.first` — correct for
+      // a brand-new attempt, but a device that closed/reopened after the
+      // backend already recorded this subject as finished (e.g. the
+      // subject-transition network call itself failed, see the "math
+      // allaqachon yakunlangan" incident) gets this 400 back forever on
+      // every reselect. Treat it the same as a normal subject-complete and
+      // advance, instead of stranding the student on a "Server xatosi" that
+      // a plain retry can never clear (the request never changes).
+      final message = e is ApiException ? e.message : '';
+      final isAlreadyCompleted =
+          message.contains('$subject allaqachon yakunlangan');
+      if (isAlreadyCompleted) {
+        _subjectsCompleted.add(subject);
+        final nextSubject = _allSubjects.firstWhere(
+          (s) => !_subjectsCompleted.contains(s),
+          orElse: () => '',
+        );
+        if (nextSubject.isEmpty) {
+          _finishTest();
+          return;
+        }
+        await _startSubject(nextSubject);
+        return;
+      }
       debugPrint('Diagnostic start-subject "$subject" error: $e');
       setState(() {
         _loading = false;
