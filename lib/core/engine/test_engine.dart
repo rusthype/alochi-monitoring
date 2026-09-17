@@ -83,7 +83,8 @@ class _ToastEntry {
   _ToastEntry(this.kind, this.message);
 }
 
-class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
+class _TestEngineState extends State<TestEngine>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   // ── State ──────────────────────────────────────────────────────────────────
 
   int _sectionIdx = 0;
@@ -166,6 +167,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _secs = widget.duration.inSeconds; // fresh-start default; may be
     // corrected once _restoreAttempt() resolves (crash-recovery resume).
 
@@ -194,7 +196,12 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
       }
       ..onExtendSeconds = (secs) {
         if (mounted) {
+          // Bump the deadline too, not just the displayed _secs — otherwise
+          // the next tick's _syncSecsFromDeadline() would immediately
+          // recompute _secs from the OLD deadline and undo this extension.
+          if (_deadlineMs != null) _deadlineMs = _deadlineMs! + secs * 1000;
           setState(() => _secs += secs);
+          unawaited(_persistNow());
           var minutes = (secs / 60).round();
           if (minutes < 1) minutes = 1;
           _pushToast(
@@ -349,16 +356,37 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {
-        if (_secs > 0) {
-          _secs--;
-        } else {
-          _timer?.cancel();
-          _finishNow();
-        }
-      });
+      _syncSecsFromDeadline();
     });
+  }
+
+  /// Recomputes `_secs` from `_deadlineMs` vs the real clock instead of
+  /// trusting the tick count — a long-unfocused/minimized/sleeping window
+  /// can have its `Timer.periodic` callbacks paused by the OS for minutes,
+  /// which a naive `_secs--` would read as "no time passed" (see the
+  /// diagnostic-timer-freezes-when-unfocused investigation; this engine has
+  /// the same underlying flaw, only masked by `_restoreAttempt`'s deadline
+  /// check on a full app relaunch). Called on every periodic tick AND once
+  /// immediately on app resume via `didChangeAppLifecycleState`.
+  void _syncSecsFromDeadline() {
+    final deadlineMs = _deadlineMs;
+    if (deadlineMs == null) return;
+    if (!mounted) return;
+    final remainingMs = deadlineMs - DateTime.now().millisecondsSinceEpoch;
+    if (remainingMs <= 0) {
+      _timer?.cancel();
+      setState(() => _secs = 0);
+      _finishNow();
+      return;
+    }
+    setState(() => _secs = (remainingMs / 1000).ceil());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _syncSecsFromDeadline();
+    }
   }
 
   // ── Proctor notification overlays ───────────────────────────────────────────
@@ -388,6 +416,7 @@ class _TestEngineState extends State<TestEngine> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _saveDebounce?.cancel();
     _lockShieldTimer?.cancel();

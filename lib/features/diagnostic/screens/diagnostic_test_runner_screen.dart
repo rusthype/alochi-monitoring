@@ -115,7 +115,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
 }
 
 class _DiagnosticTestRunnerScreenState
-    extends State<DiagnosticTestRunnerScreen> {
+    extends State<DiagnosticTestRunnerScreen> with WidgetsBindingObserver {
   bool _loading = true;
   bool _submitting = false;
   String? _error;
@@ -154,6 +154,20 @@ class _DiagnosticTestRunnerScreenState
   int? _remainingSeconds;
   Timer? _timer;
 
+  /// Wall-clock deadline the countdown is measured against — set once in
+  /// `_startCountdownIfNeeded`. Ticking recomputes `_remainingSeconds` from
+  /// `_deadline!.difference(DateTime.now())` instead of decrementing by one
+  /// per fired callback: on Windows, a long-unfocused/idle/sleeping app can
+  /// have its `Timer.periodic` callbacks paused for minutes or hours by the
+  /// OS (a naive `remaining - 1` would then simply freeze while the student
+  /// works elsewhere, effectively handing them unlimited extra real time —
+  /// see the diagnostic-timer-freezes-when-unfocused investigation). Measuring
+  /// against a fixed deadline makes the displayed value self-correct the
+  /// moment a tick DOES fire, and `didChangeAppLifecycleState` below forces
+  /// an immediate correction the moment the window regains focus, instead of
+  /// waiting for the next 1-second tick.
+  DateTime? _deadline;
+
   /// Auto-advance timer after a fixed-variant option select (mirrors
   /// test_screen.dart's `_autoAdv`, but 500ms per this feature's spec).
   Timer? _autoAdvance;
@@ -181,24 +195,45 @@ class _DiagnosticTestRunnerScreenState
     _timer?.cancel();
     _timer = null;
     if (minutes == null) {
+      _deadline = null;
       setState(() => _remainingSeconds = null);
       return;
     }
+    _deadline = DateTime.now().add(Duration(minutes: minutes));
     setState(() => _remainingSeconds = minutes * 60);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      final remaining = _remainingSeconds;
-      if (remaining == null) {
-        timer.cancel();
-        return;
-      }
-      if (remaining <= 1) {
-        timer.cancel();
-        setState(() => _remainingSeconds = 0);
-        _finishTest();
-        return;
-      }
-      setState(() => _remainingSeconds = remaining - 1);
+      _syncRemainingFromDeadline(timer);
     });
+  }
+
+  /// Recomputes `_remainingSeconds` from `_deadline` vs the real clock (see
+  /// `_deadline`'s doc comment) instead of trusting the tick count — called
+  /// on every periodic tick AND once immediately on app resume.
+  void _syncRemainingFromDeadline(Timer? timer) {
+    final deadline = _deadline;
+    if (deadline == null) {
+      timer?.cancel();
+      return;
+    }
+    final remaining = deadline.difference(DateTime.now()).inSeconds;
+    if (remaining <= 0) {
+      timer?.cancel();
+      if (mounted) setState(() => _remainingSeconds = 0);
+      _finishTest();
+      return;
+    }
+    if (mounted) setState(() => _remainingSeconds = remaining);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // The window may have sat unfocused/minimized/asleep for a long
+      // stretch, during which the OS can pause this process's Timer
+      // callbacks entirely — correct the displayed countdown immediately
+      // instead of waiting for the next 1-second tick to catch up.
+      _syncRemainingFromDeadline(_timer);
+    }
   }
 
   DiagnosticAvailableSubjectsFn get _availableSubjects =>
@@ -213,6 +248,7 @@ class _DiagnosticTestRunnerScreenState
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _bootstrap();
     _initProctoring();
   }
@@ -258,6 +294,7 @@ class _DiagnosticTestRunnerScreenState
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _autoAdvance?.cancel();
     ProctorService.instance.stop();
@@ -489,6 +526,23 @@ class _DiagnosticTestRunnerScreenState
     });
   }
 
+  /// Maps [_answers] (position -> selected letter) onto [questions] by
+  /// position, in the `kiosk/finish/` payload shape. Extracted so the
+  /// self-heal retry in `_confirmAndFinishPackage` can rebuild the payload
+  /// against a freshly-refetched package without duplicating this logic.
+  List<Map<String, dynamic>> _buildFinishAnswers(
+      List<Map<String, dynamic>> questions) {
+    final answers = <Map<String, dynamic>>[];
+    _answers.forEach((position, selected) {
+      final idx = position - 1;
+      if (idx < 0 || idx >= questions.length) return;
+      final qid = _questionId(questions[idx]);
+      if (qid.isEmpty) return;
+      answers.add({'question_id': qid, 'selected': selected});
+    });
+    return answers;
+  }
+
   /// Finish path for a fixed-variant attempt: warns about unanswered
   /// questions (same dialog pattern as test_screen.dart's `_finish`), then
   /// submits every locally-collected answer in one `finishAttempt` call.
@@ -522,14 +576,7 @@ class _DiagnosticTestRunnerScreenState
       );
       if (ok != true) return;
     }
-    final answers = <Map<String, dynamic>>[];
-    _answers.forEach((position, selected) {
-      final idx = position - 1;
-      if (idx < 0 || idx >= _questions.length) return;
-      final qid = _questionId(_questions[idx]);
-      if (qid.isEmpty) return;
-      answers.add({'question_id': qid, 'selected': selected});
-    });
+    final answers = _buildFinishAnswers(_questions);
     if (!mounted) return;
     _retryAction = _confirmAndFinishPackage;
     setState(() => _submitting = true);
@@ -582,13 +629,55 @@ class _DiagnosticTestRunnerScreenState
         await _startSubject(nextSubject);
         return;
       }
-      if (!mounted) return;
-      debugPrint('Diagnostic finish-package error: $e');
-      setState(() {
-        _submitting = false;
-        _error = AppLocalizations.of(context)!.serverErrorRetry;
-      });
-      return;
+      // Stale local package: server rejects a question_id/subject it no
+      // longer recognizes for this attempt (e.g. a locally-cached package
+      // that has drifted from the one the server actually persisted).
+      // `build_full_variant_package` is idempotent per (attempt, subject) —
+      // a second start-call for the SAME subject replays the persisted
+      // option_map, never reshuffles — so refetching it and remapping the
+      // student's already-picked answers onto it by POSITION is safe, and
+      // makes the retry self-healing instead of resending the exact same
+      // payload forever (a plain retry button would otherwise 400 in a
+      // loop, since nothing about the stale local state ever changes).
+      final message = e is ApiException ? e.message : '';
+      final isStalePackage = message.contains("Noma'lum savol") ||
+          message.contains('joriy fanga tegishli emas') ||
+          message.contains('joriy variantga tegishli emas');
+      if (!isStalePackage) {
+        if (!mounted) return;
+        debugPrint('Diagnostic finish-package error: $e');
+        setState(() {
+          _submitting = false;
+          _error = AppLocalizations.of(context)!.serverErrorRetry;
+        });
+        return;
+      }
+      try {
+        final freshResp = await _startAttemptCall(
+          attemptId: widget.attemptId,
+          subject: _currentSubject,
+        );
+        final freshQuestions = (freshResp['questions'] as List?)
+            ?.whereType<Map>()
+            .map((q) => Map<String, dynamic>.from(q))
+            .toList();
+        if (freshQuestions == null || freshQuestions.isEmpty) {
+          rethrow;
+        }
+        _questions = freshQuestions;
+        resp = await _finishAttemptCall(
+          attemptId: widget.attemptId,
+          answers: _buildFinishAnswers(freshQuestions),
+        );
+      } catch (_) {
+        if (!mounted) return;
+        debugPrint('Diagnostic finish-package error (self-heal failed): $e');
+        setState(() {
+          _submitting = false;
+          _error = AppLocalizations.of(context)!.serverErrorRetry;
+        });
+        return;
+      }
     }
     _timer?.cancel();
     _subjectsCompleted.add(_currentSubject);
