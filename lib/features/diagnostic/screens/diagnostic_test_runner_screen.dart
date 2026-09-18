@@ -644,11 +644,18 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // for the CURRENT subject instead — it re-fetches the server's real
       // current question and fully resets local state from that response,
       // rather than trying to patch just this one submit.
-      final message = e is ApiException ? e.message : '';
-      final isStaleState = message.contains("Noma'lum savol") ||
-          message.contains('joriy fanga tegishli emas') ||
-          message.contains('joriy variantga tegishli emas');
-      if (isStaleState) {
+      // 2026-09-18: matching a fixed allowlist of exact Uzbek error strings
+      // ("Noma'lum savol" etc.) was a whack-a-mole — any NEW/unanticipated
+      // stale-state message from the backend fell straight through to the
+      // scary "Server xatosi" dead-end with no retry, right when a student
+      // was finishing. Any 4xx here (not a network failure, not a 5xx) means
+      // the SERVER responded and rejected this specific request — self-heal
+      // is safe to attempt unconditionally: it just re-fetches the server's
+      // authoritative current state, worst case it fails too and we fall
+      // back to the exact same error as before.
+      final status = e is ApiException ? e.statusCode : 0;
+      final isClientRejection = status >= 400 && status < 500;
+      if (isClientRejection) {
         setState(() => _submitting = false);
         await _startSubject(_currentSubject);
         return;
@@ -777,6 +784,28 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         await _startSubject(nextSubject);
         return;
       }
+      // An earlier finish-call already succeeded server-side, but its
+      // response never made it back here (e.g. the connection dropped right
+      // after the server wrote the result) — retrying finish again would
+      // just 400 forever. Treat this exactly like a successful finish: mark
+      // the subject done and let the normal flow decide the next step.
+      final message = e is ApiException ? e.message : '';
+      if (message.contains('allaqachon yakunlangan')) {
+        _timer?.cancel();
+        _subjectsCompleted.add(_currentSubject);
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        final nextSubject = _allSubjects.firstWhere(
+          (s) => !_subjectsCompleted.contains(s),
+          orElse: () => '',
+        );
+        if (nextSubject.isEmpty) {
+          _finishTest();
+        } else {
+          await _startSubject(nextSubject);
+        }
+        return;
+      }
       // Stale local package: server rejects a question_id/subject it no
       // longer recognizes for this attempt (e.g. a locally-cached package
       // that has drifted from the one the server actually persisted).
@@ -787,11 +816,18 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // makes the retry self-healing instead of resending the exact same
       // payload forever (a plain retry button would otherwise 400 in a
       // loop, since nothing about the stale local state ever changes).
-      final message = e is ApiException ? e.message : '';
-      final isStalePackage = message.contains("Noma'lum savol") ||
-          message.contains('joriy fanga tegishli emas') ||
-          message.contains('joriy variantga tegishli emas');
-      if (!isStalePackage) {
+      //
+      // 2026-09-18: previously this only self-healed for a fixed allowlist
+      // of exact Uzbek message substrings ("Noma'lum savol" etc.) — any
+      // NEW/unanticipated 400 fell straight through to the scary "Server
+      // xatosi" dead-end right when a student was finishing (the incident
+      // this file's finish-offline classifier comment above also
+      // describes). Any 4xx here means the server responded and rejected
+      // this specific request — self-heal is safe to attempt
+      // unconditionally; worst case it fails too and we fall back to the
+      // exact same error as before.
+      final isClientRejection = status >= 400 && status < 500;
+      if (!isClientRejection) {
         if (!mounted) return;
         debugPrint('Diagnostic finish-package error: $e');
         setState(() {
