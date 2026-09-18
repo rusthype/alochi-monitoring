@@ -59,6 +59,8 @@ class HeartbeatService with WidgetsBindingObserver {
   List<int>? _questionTimes;
   String? _currentQuestionText;
   String? _selectedOptionText;
+  Map<String, dynamic>? _answers;
+  int? _elapsedSeconds;
 
   String? _cachedPlatform;
   String? _cachedAppVersion;
@@ -182,6 +184,8 @@ class HeartbeatService with WidgetsBindingObserver {
     _currentQuestionText = null;
     _selectedOptionText = null;
     _proctorToken = null;
+    _answers = null;
+    _elapsedSeconds = null;
   }
 
   /// Login qilgan talaba identitini idle-presence heartbeat'ga (start()
@@ -222,6 +226,18 @@ class HeartbeatService with WidgetsBindingObserver {
     _selectedOptionText = selectedOptionText;
   }
 
+  /// Called by TestEngine on every answer change (power-outage-tolerant
+  /// live sync). Fire-and-forget — fires an immediate ping carrying the
+  /// full answers map + foreground-active elapsed seconds, instead of
+  /// waiting up to 30s for the periodic timer, so a student who loses
+  /// power mid-test can resume on any PC via SessionResumeView. Must never
+  /// be awaited by the caller (answer-tap callback stays non-blocking).
+  void reportAnswers(Map<String, dynamic> answers, int elapsedSeconds) {
+    _answers = answers;
+    _elapsedSeconds = elapsedSeconds;
+    unawaited(_ping('active'));
+  }
+
   Future<Map<String, dynamic>?> _ping(String status) async {
     final id = _activeSessionId;
     if (id == null) return null;
@@ -242,6 +258,8 @@ class HeartbeatService with WidgetsBindingObserver {
         platform: _cachedPlatform,
         appVersion: _cachedAppVersion,
         deviceName: _cachedDeviceName,
+        answers: _answers,
+        elapsedSeconds: _elapsedSeconds,
       );
       // `terminated` is returned on every ping for a session an admin ended
       // remotely via the panel (not just the one that caused it), so this

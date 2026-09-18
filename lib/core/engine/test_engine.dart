@@ -10,6 +10,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
+import '../api/api_client.dart';
 import '../db/attempt_store.dart';
 import 'test_models.dart';
 import 'test_scorer.dart';
@@ -101,6 +102,14 @@ class _TestEngineState extends State<TestEngine>
 
   final Stopwatch _questionStopwatch = Stopwatch()..start();
   final List<int> _questionTimes = [];
+
+  /// Foreground-active time tracker for live-sync `elapsed_seconds`
+  /// (power-outage tolerance — see HeartbeatService.reportAnswers). Kiosk
+  /// app is single-purpose/full-screen for the test duration, so a plain
+  /// running Stopwatch is sufficient per the approved plan: if the process
+  /// isn't running (power loss), it can't increment, which is the whole
+  /// point — no lifecycle pause/resume wiring needed.
+  final Stopwatch _activeStopwatch = Stopwatch()..start();
 
   /// Crash-recovery attempt bookkeeping (attempt_store.dart).
   int? _startedAtMs;
@@ -224,30 +233,84 @@ class _TestEngineState extends State<TestEngine>
   /// its deadline immediately so a crash right after start can still resume.
   Future<void> _restoreAttempt() async {
     final testKey = widget.spec.testKey;
-    final saved = await AttemptStore.loadForStudent(testKey, widget.studentId);
     final nowMs = DateTime.now().millisecondsSinceEpoch;
-    bool resumed = false;
 
-    if (saved != null) {
-      final savedVariant = int.tryParse(saved['variant']?.toString() ?? '');
-      final deadlineRaw = saved['deadline_epoch_ms'];
-      final deadlineMs = deadlineRaw is num ? deadlineRaw.toInt() : null;
-      if (savedVariant == widget.variant && deadlineMs != null) {
-        final ans = saved['answers'];
-        if (ans is Map) {
-          for (final entry in ans.entries) {
-            final key = entry.key.toString();
-            _answers[key] = entry.value;
-            if (entry.value is String) {
-              _ctrl(key).text = entry.value as String;
-            }
-          }
-        }
-        final startedRaw = saved['started_at'];
-        _startedAtMs = startedRaw is num ? startedRaw.toInt() : nowMs;
-        _deadlineMs = deadlineMs;
-        resumed = true;
+    // Race local (AttemptStore) vs server (SessionResumeView) resume
+    // candidates in parallel — whichever has MORE answered questions wins.
+    // This is what makes the sync power-outage-tolerant: local alone only
+    // survives a crash on the SAME PC, server alone loses the last <30s of
+    // typing on a genuine crash. See sessionPing/reportAnswers for the
+    // write side of this contract.
+    final localAnswers =
+        await AttemptStore.loadForStudent(testKey, widget.studentId);
+    Map<String, dynamic>? serverAnswers;
+    // Only ping the server when a real session is active (i.e. the normal
+    // app flow already called HeartbeatService.startTest before pushing
+    // this widget — see runner_dispatch.dart). Mirrors HeartbeatService's
+    // own `_activeSessionId == null` short-circuit and keeps TestEngine
+    // network-free when rendered without that flow (widget tests).
+    if (HeartbeatService.instance.activeSessionId != null) {
+      try {
+        final resp = await api.sessionResume(testKey);
+        if (resp['exists'] == true) serverAnswers = resp;
+      } catch (_) {
+        // Best-effort — a network/HTTP failure here just falls back to
+        // local resume (or a fresh start), same posture as every ping call.
       }
+    }
+
+    final localVariant =
+        int.tryParse(localAnswers?['variant']?.toString() ?? '');
+    final localDeadline = localAnswers?['deadline_epoch_ms'];
+    final localCount =
+        (localVariant == widget.variant && localDeadline is num)
+            ? ((localAnswers?['answers'] as Map?)?.length ?? 0)
+            : -1; // disqualified: wrong variant or no usable deadline
+
+    // Server resume must match the variant this session was actually
+    // started with (see SessionResumeView doc) — the client cannot re-pick
+    // a variant on resume, so a mismatch disqualifies the server candidate.
+    final serverVariant =
+        int.tryParse(serverAnswers?['variant']?.toString() ?? '');
+    final serverCount = (serverVariant == widget.variant)
+        ? ((serverAnswers?['answers'] as Map?)?.length ?? 0)
+        : -1;
+
+    bool resumed = false;
+    if (serverCount >= 0 && serverCount > localCount) {
+      final ans = serverAnswers!['answers'];
+      if (ans is Map) {
+        for (final entry in ans.entries) {
+          final key = entry.key.toString();
+          _answers[key] = entry.value;
+          if (entry.value is String) _ctrl(key).text = entry.value as String;
+        }
+      }
+      final remaining = serverAnswers['remaining_seconds'];
+      final elapsed = serverAnswers['elapsed_seconds'];
+      if (remaining is num) {
+        _deadlineMs = nowMs + remaining.toInt() * 1000;
+      } else {
+        // Backend not yet reporting remaining_seconds — fall back to the
+        // full duration rather than guessing from started_at alone.
+        _deadlineMs = nowMs + widget.duration.inMilliseconds;
+      }
+      _startedAtMs = elapsed is num ? nowMs - elapsed.toInt() * 1000 : nowMs;
+      resumed = true;
+      await _persistNow(); // mirror server state into local WAL too
+    } else if (localCount >= 0) {
+      final ans = localAnswers?['answers'];
+      if (ans is Map) {
+        for (final entry in ans.entries) {
+          final key = entry.key.toString();
+          _answers[key] = entry.value;
+          if (entry.value is String) _ctrl(key).text = entry.value as String;
+        }
+      }
+      final startedRaw = localAnswers?['started_at'];
+      _startedAtMs = startedRaw is num ? startedRaw.toInt() : nowMs;
+      _deadlineMs = (localAnswers?['deadline_epoch_ms'] as num).toInt();
+      resumed = true;
     }
 
     if (!resumed) {
@@ -296,6 +359,9 @@ class _TestEngineState extends State<TestEngine>
     setState(() => _answers[key] = value);
     _scheduleSave();
     _reportProgress();
+    // Fire-and-forget: must not block this callback/UI thread.
+    HeartbeatService.instance
+        .reportAnswers(Map<String, dynamic>.from(_answers), _activeStopwatch.elapsed.inSeconds);
   }
 
   /// The AnswerSlot the student is currently on (next unanswered slot in the
@@ -420,6 +486,7 @@ class _TestEngineState extends State<TestEngine>
     _timer?.cancel();
     _saveDebounce?.cancel();
     _lockShieldTimer?.cancel();
+    _activeStopwatch.stop();
     for (final t in _toasts) {
       t.timer?.cancel();
     }

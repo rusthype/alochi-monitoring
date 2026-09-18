@@ -201,6 +201,8 @@ class MonitoringApi {
     String? platform,
     String? appVersion,
     String? deviceName,
+    Map<String, dynamic>? answers,
+    int? elapsedSeconds,
   }) async {
     return _post('/session/ping/', {
       'session_id': sessionId,
@@ -221,7 +223,23 @@ class MonitoringApi {
         'app_version': appVersion,
       if (deviceName != null && deviceName.isNotEmpty)
         'device_name': deviceName,
+      if (answers != null) 'answers': answers,
+      if (elapsedSeconds != null) 'elapsed_seconds': elapsedSeconds,
     });
+  }
+
+  /// Server-side resume check for power-outage tolerance — the student's
+  /// in-progress (finished=False) session for [testKey], if any. Used
+  /// alongside AttemptStore's local resume so a student who loses power
+  /// can resume on any PC, not just the one that crashed.
+  ///
+  /// Returns `{'exists': false}` shape on "no active session", same as the
+  /// backend. Never throws for a plain "not found" — only network/HTTP
+  /// failures propagate as [ApiException], same posture as every other
+  /// `_get`-based call.
+  Future<Map<String, dynamic>> sessionResume(String testKey) async {
+    final data = await _get('/session/resume/$testKey/');
+    return data as Map<String, dynamic>;
   }
 
   /// Uploads one live-proctoring screen frame (see ProctorService). Best
