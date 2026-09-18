@@ -455,6 +455,13 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
 
   Future<void> _bootstrap() async {
     _retryAction = _bootstrap;
+    // Cancel any stale auto-retry listener from a previous failed attempt —
+    // otherwise a successful manual retry here (e.g. a stale OS connectivity
+    // reading that never fired the listener) leaves it armed, and a later
+    // unrelated connectivity blip would invoke whatever `_retryAction` has
+    // since become (e.g. `_submit`), causing a spurious duplicate submit.
+    _bootstrapRetrySub?.cancel();
+    _bootstrapRetrySub = null;
     setState(() {
       _loading = true;
       _error = null;

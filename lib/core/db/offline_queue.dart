@@ -198,6 +198,14 @@ class OfflineQueue {
     return (res.first['c'] as int?) ?? 0;
   }
 
+  /// Combined queue + local_queue pending count, run concurrently (see
+  /// SyncService._flushAll and SyncStatusBadge._refreshPending, the two
+  /// former call sites that used to compute this separately/sequentially).
+  static Future<int> totalPendingCount() async {
+    final counts = await Future.wait([pendingCount(), pendingLocalCount()]);
+    return counts[0] + counts[1];
+  }
+
   // ── Cleanup ────────────────────────────────────────────────────────────────
   static const int _maxAttempts = 10;
   static const int _maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 kun

@@ -52,8 +52,7 @@ class _SyncStatusBadgeState extends State<SyncStatusBadge> {
     try {
       final pending = widget.pendingCountOverride != null
           ? await widget.pendingCountOverride!()
-          : await OfflineQueue.pendingCount() +
-              await OfflineQueue.pendingLocalCount();
+          : await OfflineQueue.totalPendingCount();
       if (mounted) setState(() => _pending = pending);
     } catch (e) {
       // Non-fatal: this is a UI indicator, not the sync path itself (see
@@ -78,7 +77,12 @@ class _SyncStatusBadgeState extends State<SyncStatusBadge> {
       builder: (context, flushing, _) {
         final Color color;
         final Widget icon;
-        final String message;
+        // The persistent tooltip (hover/long-press) and the one-shot tap
+        // SnackBar are two different UI surfaces — the tooltip explains the
+        // offline-pending state in full (syncOfflineBanner), while the
+        // SnackBar on tap gives the specific count (syncPendingCount).
+        final String tooltipMessage;
+        final String snackMessage;
         if (flushing) {
           color = Colors.amber;
           icon = const SizedBox(
@@ -87,7 +91,8 @@ class _SyncStatusBadgeState extends State<SyncStatusBadge> {
             child:
                 CircularProgressIndicator(strokeWidth: 2, color: Colors.amber),
           );
-          message = l10n.syncStatusSyncing;
+          tooltipMessage = l10n.syncStatusSyncing;
+          snackMessage = l10n.syncStatusSyncing;
         } else if (_pending > 0) {
           color = AppColors.error;
           icon = Stack(
@@ -120,18 +125,20 @@ class _SyncStatusBadgeState extends State<SyncStatusBadge> {
               ),
             ],
           );
-          message = l10n.syncPendingCount(_pending);
+          tooltipMessage = l10n.syncOfflineBanner;
+          snackMessage = l10n.syncPendingCount(_pending);
         } else {
           color = AppColors.success;
           icon = const Icon(Icons.check_circle_rounded,
               size: 20, color: AppColors.success);
-          message = l10n.syncStatusSynced;
+          tooltipMessage = l10n.syncStatusSynced;
+          snackMessage = l10n.syncStatusSynced;
         }
         return Tooltip(
-          message: message,
+          message: tooltipMessage,
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
-            onTap: () => _onTap(message),
+            onTap: () => _onTap(snackMessage),
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(

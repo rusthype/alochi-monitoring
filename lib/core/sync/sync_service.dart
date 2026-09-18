@@ -42,8 +42,7 @@ class SyncService {
     flushing.value = true;
     try {
       // Navbat bo'sh bo'lsa tarmoqqa umuman tegmaymiz (behuda 60s flush yo'q).
-      final pending = await OfflineQueue.pendingCount() +
-          await OfflineQueue.pendingLocalCount();
+      final pending = await OfflineQueue.totalPendingCount();
       if (pending == 0) return;
       // Haqiqiy internetni 1 ta arzon GET bilan tekshiramiz. Interfeys "ulangan"
       // bo'lsa-da internet yo'q bo'lsa, bu N ta 20s timeout urinishidan saqlaydi.

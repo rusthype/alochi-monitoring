@@ -1206,5 +1206,74 @@ void main() {
       expect(find.text(l10n.serverErrorRetry), findsNothing);
       await unmount(tester);
     });
+
+    testWidgets(
+        'a successful manual retry after a bootstrap failure cancels the '
+        'auto-retry listener, so a later connectivity blip does not '
+        'spuriously re-invoke whatever _retryAction has since become',
+        (tester) async {
+      var subjectsCalls = 0;
+      var startCalls = 0;
+      final connController =
+          StreamController<List<ConnectivityResult>>.broadcast();
+      addTearDown(connController.close);
+
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        connectivityStreamOverride: connController.stream,
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async {
+          subjectsCalls++;
+          if (subjectsCalls == 1) {
+            throw const ApiException(0, 'no internet');
+          }
+          return {
+            'subjects': ['math']
+          };
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          startCalls++;
+          return _withMeta({
+            'position': 1,
+            'total_questions': 1,
+            'subject': subject,
+            'questions': fullPackageQuestions(1),
+          }, isFixedVariant: true);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      // First fetch failed — auto-retry listener is now armed.
+      expect(subjectsCalls, 1);
+      expect(startCalls, 0);
+
+      // Manual retry succeeds (e.g. a stale connectivity reading that never
+      // actually fires the listener) — this must cancel the stale
+      // subscription, not just move on.
+      await tester.tap(find.text('Qayta urinish'));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(subjectsCalls, 2);
+      expect(startCalls, 1);
+      expect(find.byType(DiagnosticQuestionCard), findsOneWidget);
+
+      // A later, unrelated connectivity blip must NOT re-invoke whatever
+      // `_retryAction` has since become (`_startSubject('math')` at this
+      // point) — the bug this test guards against was a spurious duplicate
+      // network call/submission mid-test from a stale listener.
+      connController.add([ConnectivityResult.wifi]);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(subjectsCalls, 2);
+      expect(startCalls, 1);
+      await unmount(tester);
+    });
   });
 }
