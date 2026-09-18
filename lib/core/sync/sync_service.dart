@@ -12,7 +12,10 @@ class SyncService {
 
   StreamSubscription<List<ConnectivityResult>>? _connSub;
   Timer? _timer;
-  bool _flushing = false;
+
+  /// Exposed so UI (e.g. [SyncStatusBadge]) can show a live "syncing" state.
+  /// App-lifetime singleton — intentionally never disposed by [dispose].
+  final ValueNotifier<bool> flushing = ValueNotifier<bool>(false);
   bool _started = false;
   int _consecutiveFailures = 0;
   static const Duration _interval = Duration(seconds: 60);
@@ -35,8 +38,8 @@ class SyncService {
   Future<void> flushNow() => _flushAll();
 
   Future<void> _flushAll() async {
-    if (_flushing) return;
-    _flushing = true;
+    if (flushing.value) return;
+    flushing.value = true;
     try {
       // Navbat bo'sh bo'lsa tarmoqqa umuman tegmaymiz (behuda 60s flush yo'q).
       final pending = await OfflineQueue.pendingCount() +
@@ -55,13 +58,15 @@ class SyncService {
             '⚠️ SyncService: $_consecutiveFailures consecutive flush failures — results may not be reaching the server');
       }
     } finally {
-      _flushing = false;
+      flushing.value = false;
     }
   }
 
   void dispose() {
-    _connSub?.cancel(); _connSub = null;
-    _timer?.cancel(); _timer = null;
+    _connSub?.cancel();
+    _connSub = null;
+    _timer?.cancel();
+    _timer = null;
     _started = false;
   }
 }

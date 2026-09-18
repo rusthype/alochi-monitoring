@@ -297,6 +297,17 @@
   "totalScoreLabel": "Общий балл",
   "syncedSuccess": "Результат успешно отправлен на сервер",
   "savedOffline": "Сохранено офлайн. Будет отправлено при наличии интернета",
+  "syncStatusSynced": "Синхронизировано",
+  "syncStatusSyncing": "Синхронизация...",
+  "syncOfflineBanner": "Офлайн: ответы надежно сохранены. Будут отправлены при подключении к интернету.",
+  "syncPendingCount": "Сохранено неотправленных ответов: {count}",
+  "@syncPendingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "pdfReady": "PDF готов",
   "downloadPdf": "Скачать PDF",
   "nextStudent": "Следующий ученик",

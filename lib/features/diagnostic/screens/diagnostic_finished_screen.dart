@@ -9,6 +9,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/utils/student_name_formatter.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../widgets/celebration_particles.dart';
+import '../widgets/sync_status_badge.dart';
 
 const _kAutoReturnSeconds = 15;
 
@@ -101,6 +102,7 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
                 child: CelebrationParticles(animation: _particlesController),
               ),
             ),
+            const Positioned(top: 12, right: 12, child: SyncStatusBadge()),
             Center(
               child: SingleChildScrollView(
                 child: Padding(

@@ -12,6 +12,7 @@
 // image_url/svg_visual, and POST cat/answer/ requires `selected` to be
 // exactly "A"|"B"|"C"|"D".
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
@@ -32,6 +33,7 @@ import '../widgets/diagnostic_options_grid.dart';
 import '../widgets/diagnostic_question_card.dart';
 import '../widgets/diagnostic_question_dots.dart';
 import '../widgets/diagnostic_scratchpad.dart';
+import '../widgets/sync_status_badge.dart';
 import '../../../core/utils/student_name_formatter.dart';
 
 export '../data/diagnostic_option_item.dart';
@@ -96,6 +98,11 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic> payload, String token)?
       enqueueLocalOverride;
 
+  /// Test-only override for the connectivity stream `_bootstrap()` listens
+  /// on to auto-retry after the very first (no-cache-yet) subject fetch
+  /// fails offline. Defaults to `Connectivity().onConnectivityChanged`.
+  final Stream<List<ConnectivityResult>>? connectivityStreamOverride;
+
   const DiagnosticTestRunnerScreen({
     super.key,
     required this.attemptId,
@@ -108,6 +115,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
     this.submitAnswerOverride,
     this.finishAttemptOverride,
     this.enqueueLocalOverride,
+    this.connectivityStreamOverride,
   });
 
   @override
@@ -143,6 +151,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// / resubmit-this-answer / finish-this-package) instead of always
   /// restarting from the first subject (see diagnostic-retry-subject-bug).
   Future<void> Function() _retryAction = () async {};
+
+  /// Auto-retries `_bootstrap()` once connectivity comes back, for the case
+  /// where the very first subject fetch fails with nothing cached yet (see
+  /// `_armBootstrapAutoRetry`).
+  StreamSubscription<List<ConnectivityResult>>? _bootstrapRetrySub;
 
   /// Local UI-only bookmark state, keyed by question_id (YAGNI — no backend
   /// field/API call, see DiagnosticQuestionCard's doc comment).
@@ -400,10 +413,30 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _autoAdvance?.cancel();
+    _bootstrapRetrySub?.cancel();
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
     HeartbeatService.instance.onTerminated = null;
     super.dispose();
+  }
+
+  /// Listens for connectivity to come back and re-runs `_bootstrap()` once
+  /// — covers the "no internet at all yet, nothing cached" case where the
+  /// first subject's question-list fetch fails and only a manual Retry
+  /// button was previously available.
+  void _armBootstrapAutoRetry() {
+    _bootstrapRetrySub?.cancel();
+    final stream = widget.connectivityStreamOverride ??
+        Connectivity().onConnectivityChanged;
+    _bootstrapRetrySub = stream.listen((results) {
+      final online = results.isNotEmpty &&
+          results.any((r) => r != ConnectivityResult.none);
+      if (online) {
+        _bootstrapRetrySub?.cancel();
+        _bootstrapRetrySub = null;
+        _retryAction();
+      }
+    });
   }
 
   /// Shared "end the test now" path — used both when the backend reports
@@ -462,6 +495,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         _loading = false;
         _error = AppLocalizations.of(context)!.serverErrorRetry;
       });
+      _armBootstrapAutoRetry();
     }
   }
 
@@ -1273,6 +1307,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
             ),
           ),
         ),
+        const Positioned(top: 12, right: 12, child: SyncStatusBadge()),
         if (_scratchpadOpen)
           Positioned.fill(
             child: DiagnosticScratchpad(

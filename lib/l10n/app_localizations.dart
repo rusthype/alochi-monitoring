@@ -1209,6 +1209,30 @@ abstract class AppLocalizations {
   /// **'Offline saqlandi. Internet bo\'lganda avtomatik yuboriladi'**
   String get savedOffline;
 
+  /// No description provided for @syncStatusSynced.
+  ///
+  /// In uz, this message translates to:
+  /// **'Serverga yuborildi'**
+  String get syncStatusSynced;
+
+  /// No description provided for @syncStatusSyncing.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinxronlanmoqda...'**
+  String get syncStatusSyncing;
+
+  /// No description provided for @syncOfflineBanner.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oflayn: javoblar xavfsiz saqlangan. Internet ulanganda yuboriladi.'**
+  String get syncOfflineBanner;
+
+  /// No description provided for @syncPendingCount.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} ta yuborilmagan javob saqlangan'**
+  String syncPendingCount(int count);
+
   /// No description provided for @pdfReady.
   ///
   /// In uz, this message translates to:

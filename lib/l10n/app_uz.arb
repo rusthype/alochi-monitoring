@@ -311,6 +311,17 @@
   "totalScoreLabel": "Jami ball",
   "syncedSuccess": "Natija serverga muvaffaqiyatli yuborildi",
   "savedOffline": "Offline saqlandi. Internet bo'lganda avtomatik yuboriladi",
+  "syncStatusSynced": "Serverga yuborildi",
+  "syncStatusSyncing": "Sinxronlanmoqda...",
+  "syncOfflineBanner": "Oflayn: javoblar xavfsiz saqlangan. Internet ulanganda yuboriladi.",
+  "syncPendingCount": "{count} ta yuborilmagan javob saqlangan",
+  "@syncPendingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "pdfReady": "PDF tayyor",
   "downloadPdf": "PDF yuklab olish",
   "nextStudent": "Keyingi talaba",

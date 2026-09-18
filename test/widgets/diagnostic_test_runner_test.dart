@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:alochi_monitoring/core/api/api_client.dart' show ApiException;
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_bottom_nav.dart';
@@ -6,6 +8,7 @@ import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_questio
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_question_dots.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:alochi_monitoring/shared/widgets/app_network_image.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -1148,6 +1151,59 @@ void main() {
       // no 2nd 'english' startAttempt call.
       expect(startCalls, ['math', 'english']);
       expect(find.text('Savol (english)'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'bootstrap failure (nothing cached yet) auto-retries once '
+        'connectivity comes back, with no manual Retry tap', (tester) async {
+      var subjectsCalls = 0;
+      final connController =
+          StreamController<List<ConnectivityResult>>.broadcast();
+      addTearDown(connController.close);
+
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        connectivityStreamOverride: connController.stream,
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async {
+          subjectsCalls++;
+          if (subjectsCalls == 1) {
+            throw const ApiException(0, 'no internet');
+          }
+          return {
+            'subjects': ['math']
+          };
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 1,
+            'subject': subject,
+            'questions': fullPackageQuestions(1),
+          }, isFixedVariant: true);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      // First fetch failed — generic error view shown, only 1 call so far.
+      expect(subjectsCalls, 1);
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      expect(find.text(l10n.serverErrorRetry), findsOneWidget);
+
+      // Connectivity comes back — no manual Retry tap needed.
+      connController.add([ConnectivityResult.wifi]);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(subjectsCalls, 2);
+      expect(find.text(l10n.serverErrorRetry), findsNothing);
       await unmount(tester);
     });
   });

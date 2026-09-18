@@ -620,6 +620,21 @@ class AppLocalizationsUz extends AppLocalizations {
       'Offline saqlandi. Internet bo\'lganda avtomatik yuboriladi';
 
   @override
+  String get syncStatusSynced => 'Serverga yuborildi';
+
+  @override
+  String get syncStatusSyncing => 'Sinxronlanmoqda...';
+
+  @override
+  String get syncOfflineBanner =>
+      'Oflayn: javoblar xavfsiz saqlangan. Internet ulanganda yuboriladi.';
+
+  @override
+  String syncPendingCount(int count) {
+    return '$count ta yuborilmagan javob saqlangan';
+  }
+
+  @override
   String get pdfReady => 'PDF tayyor';
 
   @override

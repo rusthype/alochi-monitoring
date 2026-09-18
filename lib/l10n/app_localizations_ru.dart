@@ -617,6 +617,21 @@ class AppLocalizationsRu extends AppLocalizations {
       'Сохранено офлайн. Будет отправлено при наличии интернета';
 
   @override
+  String get syncStatusSynced => 'Синхронизировано';
+
+  @override
+  String get syncStatusSyncing => 'Синхронизация...';
+
+  @override
+  String get syncOfflineBanner =>
+      'Офлайн: ответы надежно сохранены. Будут отправлены при подключении к интернету.';
+
+  @override
+  String syncPendingCount(int count) {
+    return 'Сохранено неотправленных ответов: $count';
+  }
+
+  @override
   String get pdfReady => 'PDF готов';
 
   @override
