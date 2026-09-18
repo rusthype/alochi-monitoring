@@ -29,34 +29,61 @@ class _DiagnosticScratchpadState extends State<DiagnosticScratchpad> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final screen = MediaQuery.sizeOf(context);
+    // Scale with the available window instead of a fixed 500x400 — on the
+    // kiosk's large desktop displays a small fixed box looked cramped and
+    // left most of the dimmed backdrop unused.
+    final maxWidth = (screen.width * 0.92).clamp(320.0, 1100.0);
+    final maxHeight = (screen.height * 0.88).clamp(360.0, 820.0);
     return Container(
-      color: Colors.black.withValues(alpha: 0.4),
+      color: Colors.black.withValues(alpha: 0.55),
       alignment: Alignment.center,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 400),
+        constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
         child: Container(
           margin: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 32,
+                offset: const Offset(0, 12),
+              ),
+            ],
           ),
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+                decoration: const BoxDecoration(
+                  color: AppColors.secondaryMuted,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '✏️ ${l10n.diagnosticScratchpadButton}',
-                      style: const TextStyle(
-                        color: AppColors.ink1,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
+                    Row(
+                      children: [
+                        const Text('✏️', style: TextStyle(fontSize: 22)),
+                        const SizedBox(width: 10),
+                        Text(
+                          l10n.diagnosticScratchpadButton,
+                          style: const TextStyle(
+                            color: AppColors.ink1,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 20,
+                          ),
+                        ),
+                      ],
                     ),
                     IconButton(
                       onPressed: widget.onClose,
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.surface,
+                        shape: const CircleBorder(),
+                      ),
                       icon: const Icon(Icons.close, color: AppColors.ink2),
                     ),
                   ],
@@ -64,11 +91,15 @@ class _DiagnosticScratchpadState extends State<DiagnosticScratchpad> {
               ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(20),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     child: Container(
-                      color: AppColors.pageBg,
+                      decoration: BoxDecoration(
+                        color: AppColors.pageBg,
+                        border: Border.all(color: AppColors.border, width: 1.5),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: GestureDetector(
                         key: const Key('diagnosticScratchpadCanvas'),
                         onPanStart: (details) {
@@ -88,20 +119,32 @@ class _DiagnosticScratchpadState extends State<DiagnosticScratchpad> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 child: Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
+                      child: OutlinedButton.icon(
                         onPressed: _strokes.isEmpty ? null : _undo,
-                        child: Text(l10n.diagnosticScratchpadUndo),
+                        icon: const Icon(Icons.undo_rounded),
+                        label: Text(l10n.diagnosticScratchpadUndo),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          textStyle: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: OutlinedButton(
+                      child: OutlinedButton.icon(
                         onPressed: _strokes.isEmpty ? null : _clear,
-                        child: Text(l10n.clearSelectionBtn),
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        label: Text(l10n.clearSelectionBtn),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          textStyle: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                   ],
@@ -124,8 +167,9 @@ class _ScratchPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = AppColors.ink1
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
     for (final stroke in strokes) {
       for (var i = 0; i < stroke.length - 1; i++) {
         canvas.drawLine(stroke[i], stroke[i + 1], paint);
