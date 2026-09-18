@@ -219,6 +219,11 @@ class _GradePill extends StatelessWidget {
       2: (AppColors.tealMuted, AppColors.tealInk, const Color(0xFF99F6E4)),
       3: (AppColors.blueMuted, AppColors.blueInk, AppColors.blueBorder),
       4: (AppColors.violetMuted, AppColors.violetInk, AppColors.violetBorder),
+      5: (
+        AppColors.emeraldMuted,
+        AppColors.emeraldInk,
+        const Color(0xFFA7F3D0),
+      ),
     };
     final c = colors[grade] ?? colors[1]!;
     return Container(
