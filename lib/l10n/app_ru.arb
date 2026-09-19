@@ -393,7 +393,6 @@
   "diagnosticHistoryFilterPending": "Ожидающие",
   "diagnosticHistoryResendRow": "Отправить сейчас",
   "diagnosticHistorySendAll": "Отправить все",
-  "diagnosticHistoryStudentLabel": "Ученик",
   "syncCompleteMsg": "Синхронизация завершена! Сохранено офлайн {done} изображений.",
   "@syncCompleteMsg": {
     "placeholders": {

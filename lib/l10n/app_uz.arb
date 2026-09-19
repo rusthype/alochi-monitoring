@@ -431,7 +431,6 @@
   "diagnosticHistoryFilterPending": "Kutilmoqda",
   "diagnosticHistoryResendRow": "Qayta yuborish",
   "diagnosticHistorySendAll": "Barchasini yuborish",
-  "diagnosticHistoryStudentLabel": "O'quvchi",
   "syncCompleteMsg": "Sinxronizatsiya yakunlandi! {done} ta rasm oflayn saqlandi.",
   "@syncCompleteMsg": {
     "placeholders": {

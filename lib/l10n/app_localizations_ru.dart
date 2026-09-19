@@ -903,9 +903,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticHistorySendAll => 'Отправить все';
 
   @override
-  String get diagnosticHistoryStudentLabel => 'Ученик';
-
-  @override
   String syncCompleteMsg(String done) {
     return 'Синхронизация завершена! Сохранено офлайн $done изображений.';
   }

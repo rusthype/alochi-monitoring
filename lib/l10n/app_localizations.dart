@@ -1743,12 +1743,6 @@ abstract class AppLocalizations {
   /// **'Barchasini yuborish'**
   String get diagnosticHistorySendAll;
 
-  /// No description provided for @diagnosticHistoryStudentLabel.
-  ///
-  /// In uz, this message translates to:
-  /// **'O\'quvchi'**
-  String get diagnosticHistoryStudentLabel;
-
   /// No description provided for @syncCompleteMsg.
   ///
   /// In uz, this message translates to:

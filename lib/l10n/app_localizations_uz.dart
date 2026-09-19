@@ -911,9 +911,6 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticHistorySendAll => 'Barchasini yuborish';
 
   @override
-  String get diagnosticHistoryStudentLabel => 'O\'quvchi';
-
-  @override
   String syncCompleteMsg(String done) {
     return 'Sinxronizatsiya yakunlandi! $done ta rasm oflayn saqlandi.';
   }

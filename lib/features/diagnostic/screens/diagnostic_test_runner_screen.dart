@@ -956,7 +956,14 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       if (message.contains('allaqachon yakunlangan')) {
         _timer?.cancel();
         _subjectsCompleted.add(_currentSubject);
-        unawaited(_upsertHistoryRow(status: 'sent'));
+        // No response body on this code path (the server rejected the
+        // finish-call itself), so the actual score isn't available here —
+        // write 'pending' rather than 'sent' so the history row doesn't
+        // falsely render a blank/'-' score as if that were the real
+        // result. There's no local running-score state and no GET-score
+        // endpoint to backfill it from; a later sync (if this attempt ever
+        // gets re-queried) can still upgrade the row via markSent.
+        unawaited(_upsertHistoryRow(status: 'pending'));
         if (!mounted) return;
         setState(() => _submitting = false);
         final nextSubject = _allSubjects.firstWhere(
