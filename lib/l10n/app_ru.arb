@@ -385,6 +385,15 @@
   "dateLabel": "Дата",
   "mathShort": "Мат",
   "engShort": "Англ",
+  "offlineHistoryTabGeneral": "Общая",
+  "offlineHistoryTabDiagnostic": "Диагностика",
+  "diagnosticHistoryNoRecords": "История диагностики пока пуста",
+  "diagnosticHistoryFilterAll": "Все",
+  "diagnosticHistoryFilterSent": "Отправленные",
+  "diagnosticHistoryFilterPending": "Ожидающие",
+  "diagnosticHistoryResendRow": "Отправить сейчас",
+  "diagnosticHistorySendAll": "Отправить все",
+  "diagnosticHistoryStudentLabel": "Ученик",
   "syncCompleteMsg": "Синхронизация завершена! Сохранено офлайн {done} изображений.",
   "@syncCompleteMsg": {
     "placeholders": {

@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 import '../../features/combined/combined_screen.dart';
-import '../../features/local_test/history_screen.dart';
+import '../../features/offline/offline_history_hub_screen.dart';
 import '../../features/local_test/local_grade_screen.dart';
 
 class CommandPalette extends StatefulWidget {
@@ -32,7 +32,7 @@ class _CommandPaletteState extends State<CommandPalette> {
   Widget? _extraFor(String route) {
     switch (route) {
       case '/history':
-        return const HistoryScreen();
+        return const OfflineHistoryHubScreen();
       case '/local_grade':
         return const LocalGradeScreen();
       case '/combined':

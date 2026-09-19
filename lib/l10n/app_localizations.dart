@@ -1695,6 +1695,60 @@ abstract class AppLocalizations {
   /// **'Ing'**
   String get engShort;
 
+  /// No description provided for @offlineHistoryTabGeneral.
+  ///
+  /// In uz, this message translates to:
+  /// **'Umumiy'**
+  String get offlineHistoryTabGeneral;
+
+  /// No description provided for @offlineHistoryTabDiagnostic.
+  ///
+  /// In uz, this message translates to:
+  /// **'Diagnostika'**
+  String get offlineHistoryTabDiagnostic;
+
+  /// No description provided for @diagnosticHistoryNoRecords.
+  ///
+  /// In uz, this message translates to:
+  /// **'Diagnostika tarixi hozircha yo\'q'**
+  String get diagnosticHistoryNoRecords;
+
+  /// No description provided for @diagnosticHistoryFilterAll.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barchasi'**
+  String get diagnosticHistoryFilterAll;
+
+  /// No description provided for @diagnosticHistoryFilterSent.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuborilgan'**
+  String get diagnosticHistoryFilterSent;
+
+  /// No description provided for @diagnosticHistoryFilterPending.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kutilmoqda'**
+  String get diagnosticHistoryFilterPending;
+
+  /// No description provided for @diagnosticHistoryResendRow.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qayta yuborish'**
+  String get diagnosticHistoryResendRow;
+
+  /// No description provided for @diagnosticHistorySendAll.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barchasini yuborish'**
+  String get diagnosticHistorySendAll;
+
+  /// No description provided for @diagnosticHistoryStudentLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'quvchi'**
+  String get diagnosticHistoryStudentLabel;
+
   /// No description provided for @syncCompleteMsg.
   ///
   /// In uz, this message translates to:

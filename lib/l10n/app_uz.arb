@@ -423,6 +423,15 @@
   "dateLabel": "Sana",
   "mathShort": "Mat",
   "engShort": "Ing",
+  "offlineHistoryTabGeneral": "Umumiy",
+  "offlineHistoryTabDiagnostic": "Diagnostika",
+  "diagnosticHistoryNoRecords": "Diagnostika tarixi hozircha yo'q",
+  "diagnosticHistoryFilterAll": "Barchasi",
+  "diagnosticHistoryFilterSent": "Yuborilgan",
+  "diagnosticHistoryFilterPending": "Kutilmoqda",
+  "diagnosticHistoryResendRow": "Qayta yuborish",
+  "diagnosticHistorySendAll": "Barchasini yuborish",
+  "diagnosticHistoryStudentLabel": "O'quvchi",
   "syncCompleteMsg": "Sinxronizatsiya yakunlandi! {done} ta rasm oflayn saqlandi.",
   "@syncCompleteMsg": {
     "placeholders": {

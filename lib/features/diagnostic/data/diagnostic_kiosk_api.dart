@@ -202,6 +202,43 @@ class DiagnosticKioskApi {
     });
   }
 
+  /// Side-effect-free peek at a subject's package (2026-09 resilience
+  /// backend) — never mutates attempt state, safe to call repeatedly and,
+  /// unlike [startAttempt], exempt from the backend's subject-ordering guard
+  /// (CATStartView.post 400s a real start-attempt call for subject N+1 until
+  /// subject N is completed). Used to warm the diagnostic student-select
+  /// screen's prefetch cache for EVERY subject the moment a student is
+  /// tapped, including the first one. Returns `{'fixed_variant': false}`
+  /// verbatim when the grade/subject isn't fixed-variant delivery — callers
+  /// must check that field before trusting the rest of the shape (which
+  /// otherwise mirrors a real start response: attempt_id, variant_number,
+  /// total_questions, duration_minutes, remaining_seconds, questions, ...).
+  Future<Map<String, dynamic>> peekSubject({
+    required String attemptId,
+    required String subject,
+  }) {
+    return _post('/kiosk/peek/', {
+      'attempt_id': attemptId,
+      'subject': subject,
+    });
+  }
+
+  /// Reports the client's own locally-tracked "seconds actively spent on the
+  /// current subject" (2026-09 resilience backend) — best-effort, the caller
+  /// decides whether to swallow errors (see the runner screen's
+  /// `_pingElapsed`, which does). The server keeps the max of what's already
+  /// stored, so [elapsedSeconds] must always be the real running total, never
+  /// a delta.
+  Future<Map<String, dynamic>> pingElapsed({
+    required String attemptId,
+    required int elapsedSeconds,
+  }) {
+    return _post('/kiosk/ping/', {
+      'attempt_id': attemptId,
+      'elapsed_seconds': elapsedSeconds,
+    });
+  }
+
   /// `{exchange_code}` — starts the web-test bridge session for a class
   /// whose row had `has_web_test: true`. Per the S-003 fix, the backend no
   /// longer returns a raw JWT here (never wanted in a URL) — only an opaque
@@ -246,7 +283,10 @@ class DiagnosticKioskApi {
   /// (`_offlineKind: 'diagnostic_finish'`, see api_client.dart's
   /// `_dispatchLocalQueueItem`) — returns the `{synced, permanent}` shape
   /// that contract expects instead of throwing, same posture as
-  /// `MonitoringApi.submitQuestionReport`.
+  /// `MonitoringApi.submitQuestionReport`. On success, also passes through
+  /// the response's nullable `score_math`/`score_english` fields so the
+  /// caller can backfill `DiagnosticHistoryDb` at the single replay choke
+  /// point instead of re-fetching them.
   Future<Map<String, dynamic>> submitFinishOffline(
       Map<String, dynamic> payload, String token) async {
     try {
@@ -261,7 +301,17 @@ class DiagnosticKioskApi {
       if (resp.statusCode >= 400) {
         return classifyFinishOfflineResponse(resp.statusCode, resp.body);
       }
-      return {'synced': true};
+      Map<String, dynamic> data = const {};
+      try {
+        data = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
+      } catch (_) {
+        // Non-JSON success body — still synced, just no score backfill.
+      }
+      return {
+        'synced': true,
+        'score_math': data['score_math'],
+        'score_english': data['score_english'],
+      };
     } on ApiException {
       return {'synced': false, 'permanent': false};
     } catch (e) {

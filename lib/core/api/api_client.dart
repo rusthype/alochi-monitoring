@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../models/test_catalog.dart';
 import '../db/offline_queue.dart';
+import '../db/diagnostic_history_db.dart';
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart'
     show diagnosticKioskApi;
 
@@ -885,7 +886,22 @@ class MonitoringApi {
     }
     if (payload['_offlineKind'] == 'diagnostic_finish') {
       final body = Map<String, dynamic>.from(payload)..remove('_offlineKind');
-      return diagnosticKioskApi.submitFinishOffline(body, token);
+      final result = await diagnosticKioskApi.submitFinishOffline(body, token);
+      // Single central replay choke point (both the background auto-flush
+      // and any manual "flush now" trigger route through here) — flip the
+      // matching diagnostic_history row to 'sent' and backfill its scores,
+      // instead of duplicating this at every call site.
+      if (result['synced'] == true) {
+        final attemptId = (body['attempt_id'] ?? '').toString();
+        if (attemptId.isNotEmpty) {
+          unawaited(DiagnosticHistoryDb.markSent(
+            attemptId: attemptId,
+            mathScore: (result['score_math'] as num?)?.toInt(),
+            englishScore: (result['score_english'] as num?)?.toInt(),
+          ));
+        }
+      }
+      return result;
     }
     return submitLocalResultFull(payload, token);
   }

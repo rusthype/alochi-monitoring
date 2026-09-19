@@ -23,8 +23,7 @@ class DiagnosticQuestionDots extends StatefulWidget {
   });
 
   @override
-  State<DiagnosticQuestionDots> createState() =>
-      _DiagnosticQuestionDotsState();
+  State<DiagnosticQuestionDots> createState() => _DiagnosticQuestionDotsState();
 }
 
 class _DiagnosticQuestionDotsState extends State<DiagnosticQuestionDots> {

@@ -887,6 +887,33 @@ class AppLocalizationsUz extends AppLocalizations {
   String get engShort => 'Ing';
 
   @override
+  String get offlineHistoryTabGeneral => 'Umumiy';
+
+  @override
+  String get offlineHistoryTabDiagnostic => 'Diagnostika';
+
+  @override
+  String get diagnosticHistoryNoRecords => 'Diagnostika tarixi hozircha yo\'q';
+
+  @override
+  String get diagnosticHistoryFilterAll => 'Barchasi';
+
+  @override
+  String get diagnosticHistoryFilterSent => 'Yuborilgan';
+
+  @override
+  String get diagnosticHistoryFilterPending => 'Kutilmoqda';
+
+  @override
+  String get diagnosticHistoryResendRow => 'Qayta yuborish';
+
+  @override
+  String get diagnosticHistorySendAll => 'Barchasini yuborish';
+
+  @override
+  String get diagnosticHistoryStudentLabel => 'O\'quvchi';
+
+  @override
   String syncCompleteMsg(String done) {
     return 'Sinxronizatsiya yakunlandi! $done ta rasm oflayn saqlandi.';
   }

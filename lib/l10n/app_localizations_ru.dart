@@ -879,6 +879,33 @@ class AppLocalizationsRu extends AppLocalizations {
   String get engShort => 'Англ';
 
   @override
+  String get offlineHistoryTabGeneral => 'Общая';
+
+  @override
+  String get offlineHistoryTabDiagnostic => 'Диагностика';
+
+  @override
+  String get diagnosticHistoryNoRecords => 'История диагностики пока пуста';
+
+  @override
+  String get diagnosticHistoryFilterAll => 'Все';
+
+  @override
+  String get diagnosticHistoryFilterSent => 'Отправленные';
+
+  @override
+  String get diagnosticHistoryFilterPending => 'Ожидающие';
+
+  @override
+  String get diagnosticHistoryResendRow => 'Отправить сейчас';
+
+  @override
+  String get diagnosticHistorySendAll => 'Отправить все';
+
+  @override
+  String get diagnosticHistoryStudentLabel => 'Ученик';
+
+  @override
   String syncCompleteMsg(String done) {
     return 'Синхронизация завершена! Сохранено офлайн $done изображений.';
   }

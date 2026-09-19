@@ -1381,5 +1381,79 @@ void main() {
       expect(startCalls, 1);
       await unmount(tester);
     });
+
+    testWidgets(
+        'header countdown is seeded from remaining_seconds when present, '
+        'overriding duration_minutes', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return {
+            ..._withMeta({
+              'position': 1,
+              'total_questions': 5,
+              'subject': subject,
+              'question': _question(),
+            }, durationMinutes: 20),
+            // Backend now also sends remaining_seconds — must win over the
+            // 20-minute duration_minutes value (which would show 20:00).
+            'remaining_seconds': 90,
+          };
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('01:30'), findsOneWidget);
+      expect(find.textContaining('20:00'), findsNothing);
+      await tester.pump(const Duration(seconds: 4));
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'prefetchedSubjects seeds the first subject from a warm cache — no '
+        'startAttemptOverride call for it', (tester) async {
+      var startCalls = 0;
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        prefetchedSubjects: {
+          'math': _withMeta({
+            'position': 1,
+            'total_questions': 3,
+            'subject': 'math',
+            'questions': [
+              _question(id: 'q1'),
+              _question(id: 'q2'),
+              _question(id: 'q3'),
+            ],
+          }, isFixedVariant: true),
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          startCalls++;
+          throw Exception('must not be called — subject was prefetched');
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(startCalls, 0);
+      expect(find.byType(DiagnosticQuestionCard), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+      await unmount(tester);
+    });
   });
 }

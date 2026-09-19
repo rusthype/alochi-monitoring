@@ -7,13 +7,16 @@
 // repeat attempt surfaces the CAT engine's own "already finished" error.
 // `parent_phone` is never requested/rendered here (the backend never sends
 // it for this endpoint).
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
+import '../utils/diagnostic_image_prefetch.dart';
 import '../widgets/diagnostic_widgets.dart';
 import '../../../core/utils/student_name_formatter.dart';
 
@@ -33,6 +36,19 @@ class DiagnosticStudentSelectScreen extends StatefulWidget {
   final bool hasWebTest;
   final String webTestKey;
 
+  /// Test-only overrides — default to the real [diagnosticKioskApi] methods.
+  /// Mirrors the *Override convention already used in
+  /// diagnostic_test_runner_screen.dart, extended to this screen so the
+  /// Task 2 background-prefetch-on-tap flow (and the Task 1 Enter shortcut
+  /// that depends on a selected student) is testable without real HTTP.
+  final Future<(List<Map<String, dynamic>>, bool)> Function(
+      String schoolId, String classLabel)? listStudentsOverride;
+  final Future<Map<String, dynamic>> Function(int grade, {String language})?
+      availableSubjectsOverride;
+  final Future<Map<String, dynamic>> Function(
+      {required String attemptId,
+      required String subject})? peekSubjectOverride;
+
   const DiagnosticStudentSelectScreen({
     super.key,
     required this.schoolId,
@@ -42,6 +58,9 @@ class DiagnosticStudentSelectScreen extends StatefulWidget {
     required this.language,
     this.hasWebTest = false,
     this.webTestKey = '',
+    this.listStudentsOverride,
+    this.availableSubjectsOverride,
+    this.peekSubjectOverride,
   });
 
   @override
@@ -60,6 +79,18 @@ class _DiagnosticStudentSelectScreenState
   final _searchCtrl = TextEditingController();
   String _query = '';
 
+  /// Keyboard-focus node for the Enter/NumpadEnter shortcut (Task 1) — must
+  /// be focused for `CallbackShortcuts` bindings to fire.
+  final _focusNode = FocusNode();
+
+  /// Task 2: every subject's `kiosk/peek/` result for the currently-tapped
+  /// student's attempt, keyed by `attempt_id` then subject — threaded into
+  /// `DiagnosticTestRunnerScreen.prefetchedSubjects` on start so even the
+  /// FIRST subject can begin from a warm cache. Peek is side-effect-free
+  /// (see diagnostic_kiosk_api.dart), so unlike a real start-attempt call it
+  /// is safe to fire for every subject up front, not just the current one.
+  final Map<String, Map<String, Map<String, dynamic>>> _peekCache = {};
+
   @override
   void initState() {
     super.initState();
@@ -72,7 +103,56 @@ class _DiagnosticStudentSelectScreenState
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  /// Task 2: background, best-effort warm-up fired the moment a student
+  /// card is tapped — never awaited by the tap handler, never surfaces an
+  /// error to the UI. Peeks EVERY subject the student's grade actually has
+  /// (via `availableSubjects`, the same call the runner screen's own
+  /// `_bootstrap` makes) and caches only the fixed-variant ones (a `false`
+  /// `fixed_variant` means nothing to prefetch for that subject).
+  Future<void> _prefetchSubjectsForStudent(Map<String, dynamic> student) async {
+    final attemptId = (student['attempt_id'] ?? '').toString();
+    if (attemptId.isEmpty) return;
+    final grade =
+        (student['session_grade'] as num?)?.toInt() ?? _gradeFromClassLabel();
+    try {
+      final availableSubjects = widget.availableSubjectsOverride ??
+          diagnosticKioskApi.availableSubjects;
+      final subjectsResp =
+          await availableSubjects(grade, language: widget.language);
+      final subjects = (subjectsResp['subjects'] as List?)
+              ?.map((e) => e.toString())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          const <String>[];
+      for (final subject in subjects) {
+        unawaited(_peekAndCache(attemptId, subject));
+      }
+    } catch (e) {
+      debugPrint('Diagnostic subject-prefetch (availableSubjects) failed: $e');
+    }
+  }
+
+  Future<void> _peekAndCache(String attemptId, String subject) async {
+    try {
+      final peekSubject =
+          widget.peekSubjectOverride ?? diagnosticKioskApi.peekSubject;
+      final resp = await peekSubject(attemptId: attemptId, subject: subject);
+      if (resp['fixed_variant'] == false) return;
+      _peekCache.putIfAbsent(attemptId, () => {})[subject] = resp;
+      final questions = (resp['questions'] as List?)
+          ?.whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      if (questions != null && questions.isNotEmpty) {
+        prefetchDiagnosticImages(questions);
+      }
+    } catch (e) {
+      debugPrint('Diagnostic peek prefetch for "$subject" failed: $e');
+    }
   }
 
   Future<void> _load() async {
@@ -81,8 +161,10 @@ class _DiagnosticStudentSelectScreenState
       _error = null;
     });
     try {
-      final (students, fromCache) = await diagnosticKioskApi.listStudents(
-          widget.schoolId, widget.classLabel);
+      final listStudents =
+          widget.listStudentsOverride ?? diagnosticKioskApi.listStudents;
+      final (students, fromCache) =
+          await listStudents(widget.schoolId, widget.classLabel);
       if (!mounted) return;
       setState(() {
         _students = students;
@@ -136,8 +218,9 @@ class _DiagnosticStudentSelectScreenState
   }
 
   void _startCat(Map<String, dynamic> s) {
+    final attemptId = (s['attempt_id'] ?? '').toString();
     context.push('/diagnostic_test_runner', extra: {
-      'attemptId': (s['attempt_id'] ?? '').toString(),
+      'attemptId': attemptId,
       // Raw (unformatted) name on purpose — this flows into
       // HeartbeatService.startTest() and becomes the identity shown in the
       // live monitoring/proctoring feed. Stripping the patronymic there
@@ -148,6 +231,13 @@ class _DiagnosticStudentSelectScreenState
       'grade': (s['session_grade'] as num?)?.toInt() ?? _gradeFromClassLabel(),
       'schoolCode': widget.schoolCode,
       'language': widget.language,
+      // Display-only, for DiagnosticHistoryDb (Task 4).
+      'schoolName': widget.schoolName,
+      'classLabel': widget.classLabel,
+      // Task 2: whatever this student's subjects were already peeked into
+      // while they sat selected on this screen (may be empty/absent if the
+      // peeks are still in flight or all came back non-fixed-variant).
+      'prefetchedSubjects': _peekCache[attemptId] ?? const {},
     });
   }
 
@@ -191,138 +281,163 @@ class _DiagnosticStudentSelectScreenState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final filtered = _filtered;
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.only(
-                          top: 90, bottom: 140, left: 16, right: 16),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 768),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              DiagnosticStepIndicator(l10n.diagnosticStep(3)),
-                              const SizedBox(height: 12),
-                              Text(
-                                l10n.diagnosticWhoTakesTest,
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: -0.5,
-                                  color: AppColors.ink1,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              TextField(
-                                controller: _searchCtrl,
-                                decoration: InputDecoration(
-                                  hintText: l10n.searchStudents,
-                                  prefixIcon: const Icon(Icons.search_rounded,
-                                      size: 20),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              if (_error == null && _fromCache)
-                                const DiagnosticOfflineBadge(),
-                              if (_error != null)
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.errorMuted,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                        color: AppColors.error
-                                            .withValues(alpha: 0.2)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.warning_rounded,
-                                          color: AppColors.error, size: 20),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(_error!,
-                                            style: const TextStyle(
-                                                color: AppColors.error,
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500)),
-                                      ),
-                                      TextButton(
-                                        onPressed: _load,
-                                        child: Text(l10n.retry),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              else if (filtered.isEmpty)
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 40),
-                                  child: Text(
-                                    l10n.diagnosticNoStudents,
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.enter): () {
+          if (_selected != null && !_starting) _start();
+        },
+        const SingleActivator(LogicalKeyboardKey.numpadEnter): () {
+          if (_selected != null && !_starting) _start();
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        focusNode: _focusNode,
+        child: Scaffold(
+          backgroundColor: AppColors.bg,
+          body: SafeArea(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.only(
+                              top: 90, bottom: 140, left: 16, right: 16),
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 768),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  DiagnosticStepIndicator(
+                                      l10n.diagnosticStep(3)),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    l10n.diagnosticWhoTakesTest,
                                     style: const TextStyle(
-                                        fontSize: 16, color: AppColors.ink3),
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: -0.5,
+                                      color: AppColors.ink1,
+                                    ),
                                   ),
-                                )
-                              else
-                                GridView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2,
-                                    mainAxisSpacing: 8,
-                                    crossAxisSpacing: 8,
-                                    childAspectRatio: 4.2,
+                                  const SizedBox(height: 20),
+                                  TextField(
+                                    controller: _searchCtrl,
+                                    decoration: InputDecoration(
+                                      hintText: l10n.searchStudents,
+                                      prefixIcon: const Icon(
+                                          Icons.search_rounded,
+                                          size: 20),
+                                    ),
                                   ),
-                                  itemCount: filtered.length,
-                                  itemBuilder: (context, index) {
-                                    final student = filtered[index];
-                                    return DiagnosticStudentCard(
-                                      name: formatStudentDisplayName(
-                                          (student['student_name'] ?? '')
-                                              .toString()),
-                                      isSelected: _selected == student,
-                                      onTap: () =>
-                                          setState(() => _selected = student),
-                                    );
-                                  },
-                                ),
-                            ],
+                                  const SizedBox(height: 20),
+                                  if (_error == null && _fromCache)
+                                    const DiagnosticOfflineBadge(),
+                                  if (_error != null)
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.errorMuted,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                            color: AppColors.error
+                                                .withValues(alpha: 0.2)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.warning_rounded,
+                                              color: AppColors.error, size: 20),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(_error!,
+                                                style: const TextStyle(
+                                                    color: AppColors.error,
+                                                    fontSize: 14,
+                                                    fontWeight:
+                                                        FontWeight.w500)),
+                                          ),
+                                          TextButton(
+                                            onPressed: _load,
+                                            child: Text(l10n.retry),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  else if (filtered.isEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 40),
+                                      child: Text(
+                                        l10n.diagnosticNoStudents,
+                                        style: const TextStyle(
+                                            fontSize: 16,
+                                            color: AppColors.ink3),
+                                      ),
+                                    )
+                                  else
+                                    GridView.builder(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        mainAxisSpacing: 8,
+                                        crossAxisSpacing: 8,
+                                        childAspectRatio: 4.2,
+                                      ),
+                                      itemCount: filtered.length,
+                                      itemBuilder: (context, index) {
+                                        final student = filtered[index];
+                                        return DiagnosticStudentCard(
+                                          name: formatStudentDisplayName(
+                                              (student['student_name'] ?? '')
+                                                  .toString()),
+                                          isSelected: _selected == student,
+                                          onTap: () {
+                                            setState(() => _selected = student);
+                                            // Task 2: best-effort, fire-and-forget —
+                                            // never awaited, never blocks selection.
+                                            unawaited(
+                                                _prefetchSubjectsForStudent(
+                                                    student));
+                                          },
+                                        );
+                                      },
+                                    ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-            ),
-            Positioned(
-              top: 16,
-              left: 16,
-              right: 16,
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 600),
-                  child: DiagnosticTopBar(title: widget.classLabel),
                 ),
-              ),
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  right: 16,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 600),
+                      child: DiagnosticTopBar(title: widget.classLabel),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 20,
+                  left: 20,
+                  right: 20,
+                  child: DiagnosticBottomCta(
+                    label: l10n.diagnosticStartTest,
+                    enabled: _selected != null && !_starting,
+                    loading: _starting,
+                    onTap: _start,
+                  ),
+                ),
+              ],
             ),
-            Positioned(
-              bottom: 20,
-              left: 20,
-              right: 20,
-              child: DiagnosticBottomCta(
-                label: l10n.diagnosticStartTest,
-                enabled: _selected != null && !_starting,
-                loading: _starting,
-                onTap: _start,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

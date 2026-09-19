@@ -22,7 +22,7 @@ import '../models/models.dart';
 
 // Test screens
 import '../../features/test/package_screen.dart';
-import '../../features/local_test/history_screen.dart';
+import '../../features/offline/offline_history_hub_screen.dart';
 import '../../features/local_test/local_grade_screen.dart';
 import '../../features/combined/combined_screen.dart';
 import '../../features/test/engine_host_screen.dart';
@@ -199,7 +199,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/history',
           builder: (context, state) {
-            return const HistoryScreen();
+            // Task 4: wraps the existing (unmodified-internally, now
+            // embeddable) HistoryScreen as one tab of a 2-tab hub, alongside
+            // the new diagnostic-attempt history — same destination, no new
+            // button anywhere (locked navigation decision).
+            return const OfflineHistoryHubScreen();
           }),
       GoRoute(
           path: '/local_grade',
@@ -407,12 +411,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           path: '/diagnostic_test_runner',
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
+            final rawPrefetched = extra['prefetchedSubjects'];
             return DiagnosticTestRunnerScreen(
               attemptId: extra['attemptId'] as String? ?? '',
               studentName: extra['studentName'] as String? ?? '',
               grade: extra['grade'] as int? ?? 1,
               schoolCode: extra['schoolCode'] as String? ?? '',
               language: extra['language'] as String? ?? 'uz',
+              schoolName: extra['schoolName'] as String? ?? '',
+              classLabel: extra['classLabel'] as String? ?? '',
+              prefetchedSubjects: rawPrefetched is Map
+                  ? rawPrefetched.map((k, v) => MapEntry(
+                      k.toString(), Map<String, dynamic>.from(v as Map)))
+                  : null,
             );
           }),
       GoRoute(

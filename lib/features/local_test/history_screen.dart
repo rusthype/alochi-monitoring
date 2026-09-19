@@ -5,7 +5,15 @@ import '../../shared/theme/app_theme.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  /// True when hosted as a tab body inside OfflineHistoryHubScreen
+  /// (Task 4) — skips this screen's own Scaffold+AppBar (the hub provides
+  /// one shared AppBar+TabBar for both tabs) while keeping every other
+  /// internal behavior identical. Defaults to false so both existing
+  /// callers (app_router.dart's old direct '/history' route usage,
+  /// command_palette.dart's quick preview) keep compiling/behaving
+  /// unchanged if ever reused standalone.
+  final bool embedded;
+  const HistoryScreen({super.key, this.embedded = false});
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
@@ -35,11 +43,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
       context: context,
       builder: (c) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: Text(AppLocalizations.of(context)!.clearHistoryTitle, style: const TextStyle(color: AppColors.ink1)),
-        content: Text(AppLocalizations.of(context)!.clearHistoryConfirm, style: const TextStyle(color: AppColors.ink2)),
+        title: Text(AppLocalizations.of(context)!.clearHistoryTitle,
+            style: const TextStyle(color: AppColors.ink1)),
+        content: Text(AppLocalizations.of(context)!.clearHistoryConfirm,
+            style: const TextStyle(color: AppColors.ink2)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(AppLocalizations.of(context)!.noWord, style: const TextStyle(color: AppColors.ink3))),
-          TextButton(onPressed: () => Navigator.pop(c, true), child: Text(AppLocalizations.of(context)!.yesDelete, style: const TextStyle(color: AppColors.err))),
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: Text(AppLocalizations.of(context)!.noWord,
+                  style: const TextStyle(color: AppColors.ink3))),
+          TextButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: Text(AppLocalizations.of(context)!.yesDelete,
+                  style: const TextStyle(color: AppColors.err))),
         ],
       ),
     );
@@ -50,14 +66,143 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  Widget _buildBody(BuildContext context) {
+    return _loading
+        ? const Center(child: CircularProgressIndicator(color: AppColors.brand))
+        : _records.isEmpty
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.history_toggle_off_rounded,
+                        size: 64, color: AppColors.ink3.withValues(alpha: .5)),
+                    const SizedBox(height: 16),
+                    Text(AppLocalizations.of(context)!.noHistoryYet,
+                        style: const TextStyle(
+                            color: AppColors.ink2, fontSize: 16)),
+                  ],
+                ),
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: _records.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (ctx, i) {
+                  final r = _records[i];
+                  final date = DateTime.fromMillisecondsSinceEpoch(
+                      r['date_taken'] as int);
+                  final dateStr = DateFormat('dd.MM.yyyy HH:mm').format(date);
+                  final pct = r['total_pct'] as double;
+                  final isPass = pct >= 60.0;
+
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: isPass
+                                ? AppColors.ok.withValues(alpha: .1)
+                                : AppColors.err.withValues(alpha: .1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${pct.toInt()}%',
+                              style: TextStyle(
+                                color: isPass ? AppColors.ok : AppColors.err,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('${r['first_name']} ${r['last_name']}',
+                                  style: const TextStyle(
+                                      color: AppColors.ink1,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 4),
+                              Text(
+                                  '${AppLocalizations.of(context)!.schoolLabel}: ${r['school']} | ${AppLocalizations.of(context)!.groupGradeLabel}: ${r['grade_group']}',
+                                  style: const TextStyle(
+                                      color: AppColors.ink2, fontSize: 12)),
+                              const SizedBox(height: 2),
+                              Text(
+                                  '${AppLocalizations.of(context)!.dateLabel}: $dateStr',
+                                  style: const TextStyle(
+                                      color: AppColors.ink3, fontSize: 11)),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                                '${AppLocalizations.of(context)!.mathShort}: ${r['math_score']}',
+                                style: const TextStyle(
+                                    color: AppColors.brand,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600)),
+                            Text(
+                                '${AppLocalizations.of(context)!.engShort}: ${r['eng_score']}',
+                                style: const TextStyle(
+                                    color: AppColors.ok,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return Container(
+        color: AppColors.bg,
+        child: Stack(
+          children: [
+            _buildBody(context),
+            if (_records.isNotEmpty)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppColors.err),
+                  tooltip: AppLocalizations.of(context)!.clearHistoryTitle,
+                  onPressed: _clear,
+                ),
+              ),
+          ],
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 1,
-        title: Text(AppLocalizations.of(context)!.offlineHistoryTitle, style: const TextStyle(color: AppColors.ink1, fontSize: 16, fontWeight: FontWeight.bold)),
+        title: Text(AppLocalizations.of(context)!.offlineHistoryTitle,
+            style: const TextStyle(
+                color: AppColors.ink1,
+                fontSize: 16,
+                fontWeight: FontWeight.bold)),
         iconTheme: const IconThemeData(color: AppColors.ink1),
         actions: [
           if (_records.isNotEmpty)
@@ -68,82 +213,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             )
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.brand))
-          : _records.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.history_toggle_off_rounded, size: 64, color: AppColors.ink3.withValues(alpha: .5)),
-                      const SizedBox(height: 16),
-                      Text(AppLocalizations.of(context)!.noHistoryYet, style: const TextStyle(color: AppColors.ink2, fontSize: 16)),
-                    ],
-                  ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _records.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (ctx, i) {
-                    final r = _records[i];
-                    final date = DateTime.fromMillisecondsSinceEpoch(r['date_taken'] as int);
-                    final dateStr = DateFormat('dd.MM.yyyy HH:mm').format(date);
-                    final pct = r['total_pct'] as double;
-                    final isPass = pct >= 60.0;
-
-                    return Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: isPass ? AppColors.ok.withValues(alpha: .1) : AppColors.err.withValues(alpha: .1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${pct.toInt()}%',
-                                style: TextStyle(
-                                  color: isPass ? AppColors.ok : AppColors.err,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('${r['first_name']} ${r['last_name']}', style: const TextStyle(color: AppColors.ink1, fontSize: 15, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 4),
-                                Text('${AppLocalizations.of(context)!.schoolLabel}: ${r['school']} | ${AppLocalizations.of(context)!.groupGradeLabel}: ${r['grade_group']}', style: const TextStyle(color: AppColors.ink2, fontSize: 12)),
-                                const SizedBox(height: 2),
-                                Text('${AppLocalizations.of(context)!.dateLabel}: $dateStr', style: const TextStyle(color: AppColors.ink3, fontSize: 11)),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text('${AppLocalizations.of(context)!.mathShort}: ${r['math_score']}', style: const TextStyle(color: AppColors.brand, fontSize: 12, fontWeight: FontWeight.w600)),
-                              Text('${AppLocalizations.of(context)!.engShort}: ${r['eng_score']}', style: const TextStyle(color: AppColors.ok, fontSize: 12, fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+      body: _buildBody(context),
     );
   }
 }

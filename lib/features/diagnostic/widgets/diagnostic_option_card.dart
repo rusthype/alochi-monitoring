@@ -72,8 +72,7 @@ class DiagnosticOptionCard extends StatelessWidget {
                     text,
                     style: TextStyle(
                       color: selected ? AppColors.brand : AppColors.ink1,
-                      fontWeight:
-                          selected ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                       fontSize: 15,
                     ),
                   ),

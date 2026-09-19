@@ -20,12 +20,14 @@ import '../../../core/api/api_client.dart'
     show ApiException, MonitoringApi, newIdempotencyToken;
 import '../../../core/cache/image_cache_manager.dart';
 import '../../../core/db/attempt_store.dart';
+import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/db/offline_queue.dart';
 import '../../../core/services/heartbeat_service.dart';
 import '../../../core/services/proctor_service.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../data/diagnostic_option_item.dart';
+import '../utils/diagnostic_image_prefetch.dart';
 import '../widgets/diagnostic_bottom_nav.dart';
 import '../widgets/diagnostic_header_bar.dart';
 import '../widgets/diagnostic_option_card.dart';
@@ -67,6 +69,10 @@ typedef DiagnosticFinishAttemptFn = Future<Map<String, dynamic>> Function({
   required String attemptId,
   required List<Map<String, dynamic>> answers,
 });
+typedef DiagnosticPingElapsedFn = Future<Map<String, dynamic>> Function({
+  required String attemptId,
+  required int elapsedSeconds,
+});
 
 class DiagnosticTestRunnerScreen extends StatefulWidget {
   final String attemptId;
@@ -81,6 +87,21 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   final String schoolCode;
   final String language;
 
+  /// Display-only fields threaded through purely for `DiagnosticHistoryDb`
+  /// (Task 4) — never sent to any endpoint. Default to '' so every existing
+  /// caller/test that doesn't pass them keeps compiling unchanged.
+  final String schoolName;
+  final String classLabel;
+
+  /// Subject packages the student-select screen already warmed via the
+  /// side-effect-free `kiosk/peek/` endpoint (see
+  /// `DiagnosticStudentSelectScreen._prefetchSubjectsForStudent`) — seeded
+  /// straight into `_prefetchedSubjectPackages` in `initState`, so even the
+  /// FIRST subject can start from a warm cache when the operator tapped the
+  /// student a few seconds earlier. A missing/empty map just falls back to
+  /// today's live-fetch-on-first-subject behavior.
+  final Map<String, Map<String, dynamic>>? prefetchedSubjects;
+
   /// Test-only overrides — default to the real [diagnosticKioskApi] methods.
   /// `diagnosticKioskApi` is a bare top-level singleton with no injectable
   /// HTTP client, so this is the smallest seam that lets widget tests fake
@@ -89,6 +110,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   final DiagnosticStartAttemptFn? startAttemptOverride;
   final DiagnosticSubmitAnswerFn? submitAnswerOverride;
   final DiagnosticFinishAttemptFn? finishAttemptOverride;
+  final DiagnosticPingElapsedFn? pingElapsedOverride;
 
   /// Test-only override for [OfflineQueue.enqueueLocal] — the real one opens
   /// the platform sqflite plugin, which has no channel binding under plain
@@ -110,10 +132,14 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
     required this.grade,
     this.schoolCode = '',
     required this.language,
+    this.schoolName = '',
+    this.classLabel = '',
+    this.prefetchedSubjects,
     this.availableSubjectsOverride,
     this.startAttemptOverride,
     this.submitAnswerOverride,
     this.finishAttemptOverride,
+    this.pingElapsedOverride,
     this.enqueueLocalOverride,
     this.connectivityStreamOverride,
   });
@@ -181,6 +207,18 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// an immediate correction the moment the window regains focus, instead of
   /// waiting for the next 1-second tick.
   DateTime? _deadline;
+
+  /// Seconds actively spent on the CURRENT subject since its countdown was
+  /// last (re)seeded — a plain local counter, reset to 0 on every subject
+  /// change (`_startCountdownIfNeeded`/`_restoreCountdown`). Reported to the
+  /// backend's `kiosk/ping/` resilience endpoint every 30s (matching
+  /// `HeartbeatService`'s own 30s ping interval) via [_pingTimer]. Not
+  /// paused on app-background — the screen has no such concept today (see
+  /// `didChangeAppLifecycleState`, which only corrects the countdown
+  /// display), and this is a best-effort resilience signal, not the source
+  /// of truth for the countdown itself.
+  int _elapsedOnSubject = 0;
+  Timer? _pingTimer;
 
   /// Auto-advance timer after a fixed-variant option select (mirrors
   /// test_screen.dart's `_autoAdv`, but 500ms per this feature's spec).
@@ -304,22 +342,62 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     setState(() => _remainingSeconds = remaining > 0 ? remaining : 0);
     _timer =
         Timer.periodic(const Duration(seconds: 1), _syncRemainingFromDeadline);
+    _armElapsedPingTimer();
   }
 
+  /// Seeds the countdown from the backend's `remaining_seconds` field (2026-09
+  /// resilience backend — accounts for time already spent, e.g. resuming
+  /// after a power outage) when present, falling back to computing a fresh
+  /// window from `duration_minutes` for older/mocked responses that don't
+  /// carry it yet. `duration_minutes` alone is otherwise unused for the
+  /// countdown from here on (kept only for backward compat elsewhere).
   void _startCountdownIfNeeded(Map<String, dynamic> resp) {
+    final remainingFromServer = (resp['remaining_seconds'] as num?)?.toInt();
     final minutes = (resp['duration_minutes'] as num?)?.toInt();
     _timer?.cancel();
     _timer = null;
-    if (minutes == null) {
+    final seconds =
+        remainingFromServer ?? (minutes != null ? minutes * 60 : null);
+    if (seconds == null) {
       _deadline = null;
       setState(() => _remainingSeconds = null);
       return;
     }
-    _deadline = DateTime.now().add(Duration(minutes: minutes));
-    setState(() => _remainingSeconds = minutes * 60);
+    _deadline = DateTime.now().add(Duration(seconds: seconds));
+    setState(() => _remainingSeconds = seconds);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _syncRemainingFromDeadline(timer);
     });
+    _armElapsedPingTimer();
+  }
+
+  /// (Re)starts the per-subject elapsed-time counter and its 30s
+  /// `kiosk/ping/` heartbeat — called every time a subject's countdown is
+  /// (re)seeded, so Math finishing and English starting a fresh timer at 0
+  /// mirrors the backend's own per-subject reset.
+  void _armElapsedPingTimer() {
+    _pingTimer?.cancel();
+    _elapsedOnSubject = 0;
+    _pingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _elapsedOnSubject++;
+      if (_elapsedOnSubject % 30 == 0) {
+        unawaited(_pingElapsed());
+      }
+    });
+  }
+
+  /// Fire-and-forget resilience ping — never surfaced to the UI, never
+  /// blocks/fails the test on error (see file header's `kiosk/ping/`
+  /// contract: a nice-to-have, not a hard requirement for the test to work).
+  Future<void> _pingElapsed() async {
+    try {
+      await _pingElapsedCall(
+        attemptId: widget.attemptId,
+        elapsedSeconds: _elapsedOnSubject,
+      );
+    } catch (e) {
+      debugPrint('Diagnostic elapsed-ping failed: $e');
+    }
   }
 
   /// Recomputes `_remainingSeconds` from `_deadline` vs the real clock (see
@@ -360,11 +438,17 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       widget.submitAnswerOverride ?? diagnosticKioskApi.submitAnswer;
   DiagnosticFinishAttemptFn get _finishAttemptCall =>
       widget.finishAttemptOverride ?? diagnosticKioskApi.finishAttempt;
+  DiagnosticPingElapsedFn get _pingElapsedCall =>
+      widget.pingElapsedOverride ?? diagnosticKioskApi.pingElapsed;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final prefetched = widget.prefetchedSubjects;
+    if (prefetched != null && prefetched.isNotEmpty) {
+      _prefetchedSubjectPackages.addAll(prefetched);
+    }
     _bootstrap();
     _initProctoring();
   }
@@ -412,6 +496,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    _pingTimer?.cancel();
     _autoAdvance?.cancel();
     _bootstrapRetrySub?.cancel();
     ProctorService.instance.stop();
@@ -842,6 +927,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           'attempt_id': widget.attemptId,
           'answers': answers,
         }, newIdempotencyToken());
+        unawaited(_upsertHistoryRow(status: 'pending'));
         if (!mounted) return;
         _timer?.cancel();
         _subjectsCompleted.add(_currentSubject);
@@ -870,6 +956,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       if (message.contains('allaqachon yakunlangan')) {
         _timer?.cancel();
         _subjectsCompleted.add(_currentSubject);
+        unawaited(_upsertHistoryRow(status: 'sent'));
         if (!mounted) return;
         setState(() => _submitting = false);
         final nextSubject = _allSubjects.firstWhere(
@@ -942,6 +1029,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     }
     _timer?.cancel();
     _subjectsCompleted.add(_currentSubject);
+    unawaited(_upsertHistoryRow(
+      status: 'sent',
+      mathScore: (resp['score_math'] as num?)?.toInt(),
+      englishScore: (resp['score_english'] as num?)?.toInt(),
+    ));
     final nextSubject = (resp['next_subject'] ?? '').toString();
     if (nextSubject.isNotEmpty) {
       if (!mounted) return;
@@ -960,6 +1052,31 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     _finishTest();
   }
 
+  /// Upserts this attempt's `diagnostic_history` row (Task 4) — best-effort,
+  /// swallows its own errors so a local-DB hiccup never blocks the finish
+  /// flow. A null score arg leaves that column untouched (see
+  /// `DiagnosticHistoryDb.upsert`) — the backend only ever returns a
+  /// non-null `score_math`/`score_english` for a subject once it's scored.
+  Future<void> _upsertHistoryRow({
+    required String status,
+    int? mathScore,
+    int? englishScore,
+  }) async {
+    try {
+      await DiagnosticHistoryDb.upsert(
+        attemptId: widget.attemptId,
+        studentName: widget.studentName,
+        classLabel: widget.classLabel,
+        school: widget.schoolName,
+        status: status,
+        mathScore: mathScore,
+        englishScore: englishScore,
+      );
+    } catch (e) {
+      debugPrint('DiagnosticHistoryDb.upsert failed: $e');
+    }
+  }
+
   Map<String, dynamic>? _extractQuestion(Map<String, dynamic> data) {
     final nested = data['question'];
     if (nested is Map) return Map<String, dynamic>.from(nested);
@@ -967,26 +1084,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     return null;
   }
 
-  /// Best-effort image prefetch for a batch of questions — same
-  /// fire-and-forget pattern as `TestCatalogService._prefetchImages`
-  /// (monitoring). `image_url`/`svg_visual` per the backend contract (see
-  /// file header), but walked generically since either can be nested or a
-  /// bare string.
-  void _prefetchImages(List<Map<String, dynamic>> questions) {
-    final cacheManager = AlochiImageCacheManager();
-    for (final q in questions) {
-      for (final rawUrl in _collectImageUrls(q)) {
-        // Must match the exact key AppNetworkImage/CachedNetworkImage
-        // renders with (MonitoringApi.fixImageUrl(url)) — prefetching the
-        // raw url writes a cache entry the renderer never looks up.
-        final url = MonitoringApi.fixImageUrl(rawUrl);
-        if (url.isEmpty) continue;
-        cacheManager.downloadFile(url).then((_) {}).catchError((Object e) {
-          debugPrint('Diagnostic image prefetch failed for $url: $e');
-        });
-      }
-    }
-  }
+  /// Best-effort image prefetch for a batch of questions — delegates to the
+  /// shared helper (`diagnostic_image_prefetch.dart`) also used by
+  /// `DiagnosticStudentSelectScreen`'s student-tap prefetch, so there's
+  /// exactly one URL-normalization + cache-manager call pattern.
+  void _prefetchImages(List<Map<String, dynamic>> questions) =>
+      prefetchDiagnosticImages(questions);
 
   /// Background subject-package warm-up (Bug 1) — same live call
   /// `_startSubject` would eventually make, just kicked off early and
@@ -1025,7 +1128,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// a short timeout means a slow/broken image never blocks the UI.
   Future<void> _awaitFirstImage(Map<String, dynamic>? question) async {
     if (question == null) return;
-    final urls = _collectImageUrls(question)
+    final urls = collectDiagnosticImageUrls(question)
         .map(MonitoringApi.fixImageUrl)
         .where((u) => u.isNotEmpty)
         .toList();
@@ -1037,17 +1140,6 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     } catch (_) {
       // Best-effort — proceed to reveal the question regardless.
     }
-  }
-
-  List<String> _collectImageUrls(dynamic node) {
-    if (node is String) {
-      return node.startsWith('http://') || node.startsWith('https://')
-          ? [node]
-          : const [];
-    }
-    if (node is List) return node.expand(_collectImageUrls).toList();
-    if (node is Map) return node.values.expand(_collectImageUrls).toList();
-    return const [];
   }
 
   String _questionId(Map<String, dynamic> q) =>
