@@ -738,6 +738,42 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     return answers;
   }
 
+  /// "Quit this subject early" entry point from the bottom-nav button shown
+  /// on any non-last question. Asks a distinct "are you sure" question (the
+  /// student is choosing to stop, not just hitting the natural last
+  /// question), then defers to [_confirmAndFinishPackage] for the actual
+  /// submit — that function already re-warns about unanswered questions and
+  /// already handles offline queueing / next-subject routing, so this only
+  /// adds the up-front "do you really want to quit" gate.
+  Future<void> _onEarlyFinishTap() async {
+    if (_submitting) return;
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(l10n.earlyFinishConfirmTitle,
+            style: const TextStyle(fontWeight: FontWeight.w800)),
+        content: Text(l10n.earlyFinishConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.brand,
+                minimumSize: const Size(100, 40)),
+            child: Text(l10n.earlyFinishConfirmButton),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _confirmAndFinishPackage();
+  }
+
   /// Finish path for a fixed-variant attempt: warns about unanswered
   /// questions (same dialog pattern as test_screen.dart's `_finish`), then
   /// submits every locally-collected answer in one `finishAttempt` call.
@@ -1352,6 +1388,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                     onFinish: _isFixedVariant
                         ? _confirmAndFinishPackage
                         : _finishTest,
+                    onEarlyFinish: _onEarlyFinishTap,
                     isLast: (_position - 1) >= (_total - 1),
                     submitting: _submitting,
                     hasNextSubject: _hasNextSubject,

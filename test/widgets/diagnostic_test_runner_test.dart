@@ -683,6 +683,106 @@ void main() {
       await unmount(tester);
     });
 
+    testWidgets(
+        'early-finish button is shown on non-last questions and hidden on '
+        'the last one', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 2,
+            'subject': subject,
+            'questions': fullPackageQuestions(2),
+          }, isFixedVariant: true);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      // Position 1/2: not the last question — the early-finish label (which
+      // reuses finishTestButton's string) is the only "Testni yakunlash"
+      // text on screen, since the last-question Finish button isn't shown.
+      expect(find.text(l10n.finishTestButton), findsOneWidget);
+
+      await tester.tap(find.text('02'));
+      await tester.pump();
+
+      // Position 2/2: last question — the last-question Finish button now
+      // covers it, the early-finish button must not duplicate it.
+      expect(find.text(l10n.finishTestButton), findsOneWidget);
+      expect(find.byIcon(Icons.flag_outlined), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'tapping early-finish asks to confirm, then defers to the normal '
+        'finish flow (which re-warns about unanswered questions)',
+        (tester) async {
+      var finishCalls = 0;
+      await tester.pumpWidget(_wrapWithRouter(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          return _withMeta({
+            'position': 1,
+            'total_questions': 2,
+            'subject': subject,
+            'questions': fullPackageQuestions(2),
+          }, isFixedVariant: true);
+        },
+        finishAttemptOverride: ({required attemptId, required answers}) async {
+          finishCalls++;
+          return {'finished': true};
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+
+      // Nothing answered yet, still on question 1 of 2 (not the last one).
+      await tester.tap(find.text(l10n.finishTestButton));
+      await tester.pump();
+
+      // Early-finish's own "are you sure" gate.
+      expect(find.text(l10n.earlyFinishConfirmTitle), findsOneWidget);
+      expect(finishCalls, 0);
+
+      await tester.tap(find.text(l10n.earlyFinishConfirmButton));
+      await tester.pump();
+
+      // Defers straight into _confirmAndFinishPackage, which re-warns since
+      // both questions are unanswered — no duplicate warning was built here.
+      expect(find.text(l10n.finishConfirmTitle), findsOneWidget);
+      expect(finishCalls, 0);
+
+      await tester.tap(find.text(l10n.finishTest));
+      await tester.pump();
+      await tester.pump();
+
+      expect(finishCalls, 1);
+      await unmount(tester);
+    });
+
     // NOTE: a widget-level test asserting the finish-failure path actually
     // lands a row in OfflineQueue's `local_queue` table was attempted here
     // and removed — `OfflineQueue.db` opens the real sqflite plugin (not
@@ -1003,7 +1103,10 @@ void main() {
           tester.widget<OutlinedButton>(find.byType(OutlinedButton));
       expect(prevButton.onPressed, isNull);
       expect(find.text('Keyingi'), findsOneWidget);
-      expect(find.text('Testni yakunlash'), findsNothing);
+      // "Testni yakunlash" DOES appear here, but as the early-finish button
+      // (Icons.flag_outlined) — not the last-question Finish button.
+      expect(find.text('Testni yakunlash'), findsOneWidget);
+      expect(find.byIcon(Icons.flag_outlined), findsOneWidget);
 
       await tester.tap(find.text('02'));
       await tester.pump();
@@ -1011,7 +1114,10 @@ void main() {
       final prevButton2 =
           tester.widget<OutlinedButton>(find.byType(OutlinedButton));
       expect(prevButton2.onPressed, isNotNull);
+      // Last question: only the Finish button remains, the early-finish
+      // button is hidden so there is no duplicate.
       expect(find.text('Testni yakunlash'), findsOneWidget);
+      expect(find.byIcon(Icons.flag_outlined), findsNothing);
       expect(find.text('Keyingi'), findsNothing);
       await unmount(tester);
     });

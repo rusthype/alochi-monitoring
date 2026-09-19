@@ -15,6 +15,7 @@ class DiagnosticBottomNav extends StatelessWidget {
   final VoidCallback? onPrevious;
   final VoidCallback onNext;
   final VoidCallback onFinish;
+  final VoidCallback onEarlyFinish;
   final bool isLast;
   final bool submitting;
   final bool hasNextSubject;
@@ -23,6 +24,7 @@ class DiagnosticBottomNav extends StatelessWidget {
     super.key,
     required this.onNext,
     required this.onFinish,
+    required this.onEarlyFinish,
     required this.isLast,
     required this.submitting,
     this.onPrevious,
@@ -59,6 +61,19 @@ class DiagnosticBottomNav extends StatelessWidget {
           ),
         ),
         const Spacer(),
+        // Only offered mid-subject — on the last question the Finish/Next-
+        // subject button below already covers ending the subject, a second
+        // button there would be redundant.
+        if (!isLast) ...[
+          TextButton.icon(
+            onPressed: submitting ? null : onEarlyFinish,
+            icon: const Icon(Icons.flag_outlined, size: 18),
+            label: Text(l10n.finishTestButton,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            style: TextButton.styleFrom(foregroundColor: AppColors.ink2),
+          ),
+          const SizedBox(width: 4),
+        ],
         if (isLast)
           SizedBox(
             // 220, not 172: still wrapped "Testni yakunlash" onto 2 lines

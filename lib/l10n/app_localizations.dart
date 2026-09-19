@@ -1035,6 +1035,24 @@ abstract class AppLocalizations {
   /// **'Barcha javoblar belgilandi. Testni yakunlaysizmi?'**
   String get finishConfirmAllAnsweredPrompt;
 
+  /// No description provided for @earlyFinishConfirmTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Haqiqatan ham testni yakunlamoqchimisiz?'**
+  String get earlyFinishConfirmTitle;
+
+  /// No description provided for @earlyFinishConfirmBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Belgilanmagan savollar hisobga olinmaydi.'**
+  String get earlyFinishConfirmBody;
+
+  /// No description provided for @earlyFinishConfirmButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ha, yakunlash'**
+  String get earlyFinishConfirmButton;
+
   /// No description provided for @testAutoSubmittedNotice.
   ///
   /// In uz, this message translates to:

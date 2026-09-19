@@ -523,6 +523,16 @@ class AppLocalizationsRu extends AppLocalizations {
       'Все ответы отмечены. Завершить тест?';
 
   @override
+  String get earlyFinishConfirmTitle =>
+      'Вы уверены, что хотите завершить тест?';
+
+  @override
+  String get earlyFinishConfirmBody => 'Неотвеченные вопросы будут пропущены.';
+
+  @override
+  String get earlyFinishConfirmButton => 'Да, завершить';
+
+  @override
   String get testAutoSubmittedNotice =>
       'Время теста истекло, ваши сохранённые ответы были отправлены автоматически.';
 

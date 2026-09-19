@@ -526,6 +526,17 @@ class AppLocalizationsUz extends AppLocalizations {
       'Barcha javoblar belgilandi. Testni yakunlaysizmi?';
 
   @override
+  String get earlyFinishConfirmTitle =>
+      'Haqiqatan ham testni yakunlamoqchimisiz?';
+
+  @override
+  String get earlyFinishConfirmBody =>
+      'Belgilanmagan savollar hisobga olinmaydi.';
+
+  @override
+  String get earlyFinishConfirmButton => 'Ha, yakunlash';
+
+  @override
   String get testAutoSubmittedNotice =>
       'Test vaqti tugadi, saqlangan javoblaringiz avtomatik yuborildi.';
 
