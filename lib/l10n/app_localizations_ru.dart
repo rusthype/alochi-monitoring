@@ -903,6 +903,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticHistorySendAll => 'Отправить все';
 
   @override
+  String get diagnosticHistorySendSuccess => 'Отправлено';
+
+  @override
+  String get diagnosticHistorySendError =>
+      'Не удалось отправить. Повторите попытку позже';
+
+  @override
+  String get diagnosticHistorySendNoNetwork =>
+      'Нет интернета. Отправится автоматически при подключении';
+
+  @override
+  String get diagnosticHistorySendBusy => 'Отправка уже выполняется';
+
+  @override
   String syncCompleteMsg(String done) {
     return 'Синхронизация завершена! Сохранено офлайн $done изображений.';
   }

@@ -393,6 +393,10 @@
   "diagnosticHistoryFilterPending": "Ожидающие",
   "diagnosticHistoryResendRow": "Отправить сейчас",
   "diagnosticHistorySendAll": "Отправить все",
+  "diagnosticHistorySendSuccess": "Отправлено",
+  "diagnosticHistorySendError": "Не удалось отправить. Повторите попытку позже",
+  "diagnosticHistorySendNoNetwork": "Нет интернета. Отправится автоматически при подключении",
+  "diagnosticHistorySendBusy": "Отправка уже выполняется",
   "syncCompleteMsg": "Синхронизация завершена! Сохранено офлайн {done} изображений.",
   "@syncCompleteMsg": {
     "placeholders": {

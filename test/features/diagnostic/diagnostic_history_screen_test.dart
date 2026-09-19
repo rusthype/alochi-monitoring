@@ -1,3 +1,4 @@
+import 'package:alochi_monitoring/core/sync/sync_service.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_history_screen.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -123,6 +124,7 @@ void main() {
       getAllOverride: () async => _fixture,
       flushNowOverride: () async {
         flushCalls++;
+        return SyncFlushOutcome.success;
       },
     )));
     await tester.pumpAndSettle();
@@ -133,5 +135,69 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(flushCalls, equals(1));
+  });
+
+  // Regression coverage for the real bug: "otpravitni bossam serverga
+  // ketganmi ketmaganmi bilib bo'lmayapti" — the button gave zero feedback
+  // either way. These pin down that the screen now shows a SnackBar that
+  // actually reflects what happened, not just "I called flush".
+
+  testWidgets(
+      'shows a success snackbar when the flush actually clears a pending row',
+      (tester) async {
+    var sent = false;
+    await tester.pumpWidget(_wrap(DiagnosticHistoryScreen(
+      getAllOverride: () async => sent
+          ? _fixture
+              .map((r) =>
+                  r['attempt_id'] == 'a2' ? {...r, 'status': 'sent'} : r)
+              .toList()
+          : _fixture,
+      flushNowOverride: () async {
+        sent = true;
+        return SyncFlushOutcome.success;
+      },
+    )));
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+        tester.element(find.byType(DiagnosticHistoryScreen)))!;
+    await tester.tap(find.text(l10n.diagnosticHistorySendAll));
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.diagnosticHistorySendSuccess), findsOneWidget);
+  });
+
+  testWidgets('shows a no-network snackbar without pretending it worked',
+      (tester) async {
+    await tester.pumpWidget(_wrap(DiagnosticHistoryScreen(
+      getAllOverride: () async => _fixture,
+      flushNowOverride: () async => SyncFlushOutcome.noNetwork,
+    )));
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+        tester.element(find.byType(DiagnosticHistoryScreen)))!;
+    await tester.tap(find.text(l10n.diagnosticHistorySendAll));
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.diagnosticHistorySendNoNetwork), findsOneWidget);
+  });
+
+  testWidgets(
+      'shows an error snackbar when the outcome says success but no row actually cleared',
+      (tester) async {
+    await tester.pumpWidget(_wrap(DiagnosticHistoryScreen(
+      getAllOverride: () async => _fixture,
+      flushNowOverride: () async => SyncFlushOutcome.success,
+    )));
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+        tester.element(find.byType(DiagnosticHistoryScreen)))!;
+    await tester.tap(find.text(l10n.diagnosticHistorySendAll));
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.diagnosticHistorySendError), findsOneWidget);
   });
 }

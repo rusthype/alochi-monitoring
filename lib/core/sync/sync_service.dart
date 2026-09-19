@@ -6,6 +6,11 @@ import 'package:flutter/foundation.dart';
 import '../api/api_client.dart';
 import '../db/offline_queue.dart';
 
+/// Outcome of a single flush attempt — lets a manual "Yuborish" button (e.g.
+/// [DiagnosticHistoryScreen]) tell the user what actually happened instead
+/// of always going quiet, since [SyncService._flushAll] itself never throws.
+enum SyncFlushOutcome { success, nothingPending, noNetwork, busy, error }
+
 class SyncService {
   SyncService._();
   static final SyncService instance = SyncService._();
@@ -37,18 +42,24 @@ class SyncService {
 
   Future<void> flushNow() => _flushAll();
 
-  Future<void> _flushAll() async {
-    if (flushing.value) return;
+  /// Same flush, but reports what happened — for UI that needs to tell the
+  /// user whether their tap actually reached the server (see
+  /// diagnostic_history_screen.dart).
+  Future<SyncFlushOutcome> flushNowWithResult() => _flushAll();
+
+  Future<SyncFlushOutcome> _flushAll() async {
+    if (flushing.value) return SyncFlushOutcome.busy;
     flushing.value = true;
     try {
       // Navbat bo'sh bo'lsa tarmoqqa umuman tegmaymiz (behuda 60s flush yo'q).
       final pending = await OfflineQueue.totalPendingCount();
-      if (pending == 0) return;
+      if (pending == 0) return SyncFlushOutcome.nothingPending;
       // Haqiqiy internetni 1 ta arzon GET bilan tekshiramiz. Interfeys "ulangan"
       // bo'lsa-da internet yo'q bo'lsa, bu N ta 20s timeout urinishidan saqlaydi.
-      if (!await api.ping()) return;
+      if (!await api.ping()) return SyncFlushOutcome.noNetwork;
       await api.flushOfflineQueue();
       _consecutiveFailures = 0;
+      return SyncFlushOutcome.success;
     } catch (e) {
       _consecutiveFailures++;
       debugPrint('SyncService._flushAll error: $e');
@@ -56,6 +67,7 @@ class SyncService {
         debugPrint(
             '⚠️ SyncService: $_consecutiveFailures consecutive flush failures — results may not be reaching the server');
       }
+      return SyncFlushOutcome.error;
     } finally {
       flushing.value = false;
     }

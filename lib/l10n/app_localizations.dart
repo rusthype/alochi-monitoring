@@ -1743,6 +1743,30 @@ abstract class AppLocalizations {
   /// **'Barchasini yuborish'**
   String get diagnosticHistorySendAll;
 
+  /// No description provided for @diagnosticHistorySendSuccess.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuborildi'**
+  String get diagnosticHistorySendSuccess;
+
+  /// No description provided for @diagnosticHistorySendError.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuborib bo\'lmadi. Birozdan keyin qayta urinib ko\'ring'**
+  String get diagnosticHistorySendError;
+
+  /// No description provided for @diagnosticHistorySendNoNetwork.
+  ///
+  /// In uz, this message translates to:
+  /// **'Internet yo\'q. Ulanish tiklangach avtomatik yuboriladi'**
+  String get diagnosticHistorySendNoNetwork;
+
+  /// No description provided for @diagnosticHistorySendBusy.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuborish allaqachon davom etmoqda'**
+  String get diagnosticHistorySendBusy;
+
   /// No description provided for @syncCompleteMsg.
   ///
   /// In uz, this message translates to:

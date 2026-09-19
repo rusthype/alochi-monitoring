@@ -431,6 +431,10 @@
   "diagnosticHistoryFilterPending": "Kutilmoqda",
   "diagnosticHistoryResendRow": "Qayta yuborish",
   "diagnosticHistorySendAll": "Barchasini yuborish",
+  "diagnosticHistorySendSuccess": "Yuborildi",
+  "diagnosticHistorySendError": "Yuborib bo'lmadi. Birozdan keyin qayta urinib ko'ring",
+  "diagnosticHistorySendNoNetwork": "Internet yo'q. Ulanish tiklangach avtomatik yuboriladi",
+  "diagnosticHistorySendBusy": "Yuborish allaqachon davom etmoqda",
   "syncCompleteMsg": "Sinxronizatsiya yakunlandi! {done} ta rasm oflayn saqlandi.",
   "@syncCompleteMsg": {
     "placeholders": {

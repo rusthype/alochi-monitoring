@@ -911,6 +911,20 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticHistorySendAll => 'Barchasini yuborish';
 
   @override
+  String get diagnosticHistorySendSuccess => 'Yuborildi';
+
+  @override
+  String get diagnosticHistorySendError =>
+      'Yuborib bo\'lmadi. Birozdan keyin qayta urinib ko\'ring';
+
+  @override
+  String get diagnosticHistorySendNoNetwork =>
+      'Internet yo\'q. Ulanish tiklangach avtomatik yuboriladi';
+
+  @override
+  String get diagnosticHistorySendBusy => 'Yuborish allaqachon davom etmoqda';
+
+  @override
   String syncCompleteMsg(String done) {
     return 'Sinxronizatsiya yakunlandi! $done ta rasm oflayn saqlandi.';
   }

@@ -18,7 +18,7 @@ class DiagnosticHistoryScreen extends StatefulWidget {
   /// convention as SyncStatusBadge's `pendingCountOverride`/
   /// `flushNowOverride`.
   final Future<List<Map<String, dynamic>>> Function()? getAllOverride;
-  final Future<void> Function()? flushNowOverride;
+  final Future<SyncFlushOutcome> Function()? flushNowOverride;
 
   const DiagnosticHistoryScreen({
     super.key,
@@ -71,15 +71,58 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
   /// anywhere in this codebase, and a full flush is fast/cheap enough that
   /// this acceptable simplification (per the feature brief) beats building
   /// new per-item retry plumbing.
+  ///
+  /// The flush itself never throws (SyncService swallows internal errors),
+  /// so without this the button gave zero feedback either way — a real bug
+  /// report ("bosganda serverga ketganmi bilib bo'lmayapti"). We now surface
+  /// [SyncFlushOutcome] plus a before/after pending-count comparison (the
+  /// outcome alone can be "success" even when this particular item's send
+  /// was rejected — flushOfflineQueue swallows per-item failures too).
   Future<void> _flushThenReload() async {
     if (_sending) return;
     setState(() => _sending = true);
+    final pendingBefore = _records.where((r) => r['status'] == 'pending').length;
+    SyncFlushOutcome outcome;
     try {
-      await (widget.flushNowOverride ?? SyncService.instance.flushNow)();
+      outcome = await (widget.flushNowOverride ??
+          SyncService.instance.flushNowWithResult)();
     } finally {
       await _load();
       if (mounted) setState(() => _sending = false);
     }
+    if (!mounted) return;
+    final pendingAfter = _records.where((r) => r['status'] == 'pending').length;
+    final l10n = AppLocalizations.of(context)!;
+    String message;
+    bool isError;
+    switch (outcome) {
+      case SyncFlushOutcome.noNetwork:
+        message = l10n.diagnosticHistorySendNoNetwork;
+        isError = true;
+        break;
+      case SyncFlushOutcome.busy:
+        message = l10n.diagnosticHistorySendBusy;
+        isError = false;
+        break;
+      case SyncFlushOutcome.error:
+        message = l10n.diagnosticHistorySendError;
+        isError = true;
+        break;
+      case SyncFlushOutcome.nothingPending:
+      case SyncFlushOutcome.success:
+        if (pendingAfter < pendingBefore) {
+          message = l10n.diagnosticHistorySendSuccess;
+          isError = false;
+        } else {
+          message = l10n.diagnosticHistorySendError;
+          isError = true;
+        }
+        break;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: isError ? AppColors.err : AppColors.ok,
+    ));
   }
 
   @override
