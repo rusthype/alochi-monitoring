@@ -1455,5 +1455,208 @@ void main() {
       await tester.pump(const Duration(seconds: 4));
       await unmount(tester);
     });
+
+    testWidgets(
+        'bootstrap falls back to prefetchedAllSubjects + a cached package '
+        'when the live availableSubjects call fails offline (fresh, '
+        'non-resumed attempt)', (tester) async {
+      var subjectsCalls = 0;
+      var startCalls = 0;
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        // The live call always fails (device went offline right after the
+        // student card was tapped) — this must NOT strand the attempt when
+        // the student-select screen already resolved the subject list and
+        // warmed 'math' via kiosk/peek/.
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async {
+          subjectsCalls++;
+          throw const ApiException(0, 'no internet');
+        },
+        prefetchedAllSubjects: const ['math', 'english'],
+        prefetchedSubjects: {
+          'math': _withMeta({
+            'position': 1,
+            'total_questions': 3,
+            'subject': 'math',
+            'questions': [
+              _question(id: 'q1'),
+              _question(id: 'q2'),
+              _question(id: 'q3'),
+            ],
+          }, isFixedVariant: true),
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          startCalls++;
+          throw Exception('must not be called — subject was prefetched');
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      // Started straight from the cached package — no live start-attempt
+      // call, and no generic error/retry dead-end shown.
+      expect(subjectsCalls, 1);
+      expect(startCalls, 0);
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      expect(find.text(l10n.serverErrorRetry), findsNothing);
+      expect(find.byType(DiagnosticQuestionCard), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'bootstrap still shows the generic error when availableSubjects '
+        'fails and no prefetched fallback is available', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async {
+          throw const ApiException(0, 'no internet');
+        },
+        // No prefetchedAllSubjects/prefetchedSubjects at all — nothing to
+        // fall back to, so the old hard-error behavior must still apply.
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      expect(find.text(l10n.serverErrorRetry), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        '429 (rate limit) during answer submit falls to the retry banner, '
+        'not the stale-state self-heal that would just 429 again',
+        (tester) async {
+      var startCalls = 0;
+      var submitCalls = 0;
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          startCalls++;
+          return _withMeta({
+            'position': 1,
+            'total_questions': 2,
+            'subject': subject,
+            'question_id': 'q1',
+            'question_text': 'Savol 1',
+            'option_a': 'A',
+            'option_b': 'B',
+            'option_c': 'C',
+            'option_d': 'D',
+          });
+        },
+        submitAnswerOverride: (
+            {required attemptId,
+            required questionId,
+            required selected}) async {
+          submitCalls++;
+          throw const ApiException(429, "Ko'p urinish, biroz kuting");
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(startCalls, 1);
+      await tester.tap(find.text('A').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // A 429 must NOT be treated as a client rejection of THIS answer's
+      // content — the self-heal (_startSubject re-fetch) would very likely
+      // just 429 again inside the same throttle window. It falls to the
+      // generic retry banner instead, with no extra startAttempt call.
+      expect(startCalls, 1);
+      expect(submitCalls, 1);
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      expect(find.text(l10n.serverErrorRetry), findsOneWidget);
+
+      await tester.tap(find.text(l10n.retry));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Retry re-attempts the exact same submit, not a fresh startAttempt.
+      expect(startCalls, 1);
+      expect(submitCalls, 2);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        '429 (rate limit) on the finish call queues the answers and moves '
+        'on like a transient network failure, ending the test when there is '
+        'no next subject (not the "already finished" self-heal remap)',
+        (tester) async {
+      Object? capturedExtra;
+      var enqueueCalls = 0;
+      await tester.pumpWidget(_wrapWithRouter(
+        DiagnosticTestRunnerScreen(
+          attemptId: 'att-1',
+          studentName: 'Aliyev Ali',
+          grade: 3,
+          language: 'uz',
+          availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+              {
+            'subjects': ['math']
+          },
+          startAttemptOverride: ({required attemptId, required subject}) async {
+            return _withMeta({
+              'position': 1,
+              'total_questions': 1,
+              'subject': subject,
+              'questions': fullPackageQuestions(1),
+            }, isFixedVariant: true);
+          },
+          finishAttemptOverride: (
+              {required attemptId, required answers}) async {
+            // The diagnostic_guest throttle scope is shared by every kiosk
+            // endpoint — a busy QA session can plausibly exhaust it right on
+            // a legitimate finish call.
+            throw const ApiException(429, "Ko'p urinish, biroz kuting");
+          },
+          enqueueLocalOverride: (payload, token) async {
+            enqueueCalls++;
+          },
+        ),
+        onFinished: (extra) => capturedExtra = extra,
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+      await tester.tap(find.text('Testni yakunlash'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+
+      // Queued for later sync and ended the test locally — did NOT run the
+      // self-heal remap (which would re-call startAttempt/finishAttempt and,
+      // on failure, dead-end on the generic error banner instead of
+      // navigating away).
+      expect(enqueueCalls, 1);
+      final extraMap = capturedExtra as Map<String, dynamic>?;
+      expect(extraMap?['subjectsCompleted'], ['math']);
+      await unmount(tester);
+    });
   });
 }

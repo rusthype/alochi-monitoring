@@ -412,6 +412,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             final rawPrefetched = extra['prefetchedSubjects'];
+            final rawAllSubjects = extra['prefetchedAllSubjects'];
             return DiagnosticTestRunnerScreen(
               attemptId: extra['attemptId'] as String? ?? '',
               studentName: extra['studentName'] as String? ?? '',
@@ -423,6 +424,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               prefetchedSubjects: rawPrefetched is Map
                   ? rawPrefetched.map((k, v) => MapEntry(
                       k.toString(), Map<String, dynamic>.from(v as Map)))
+                  : null,
+              prefetchedAllSubjects: rawAllSubjects is List
+                  ? rawAllSubjects.map((e) => e.toString()).toList()
                   : null,
             );
           }),

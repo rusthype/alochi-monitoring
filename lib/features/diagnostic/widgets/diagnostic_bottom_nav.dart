@@ -63,7 +63,11 @@ class DiagnosticBottomNav extends StatelessWidget {
         const Spacer(),
         // Only offered mid-subject — on the last question the Finish/Next-
         // subject button below already covers ending the subject, a second
-        // button there would be redundant.
+        // button there would be redundant. Spacer on BOTH sides (not a
+        // trailing SizedBox gap) so it sits centered between Previous and
+        // Next regardless of whether Previous is visible — it's wrapped in
+        // Visibility(maintainSize: true, ...) above, so that slot is always
+        // reserved.
         if (!isLast) ...[
           TextButton.icon(
             onPressed: submitting ? null : onEarlyFinish,
@@ -72,7 +76,7 @@ class DiagnosticBottomNav extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w600)),
             style: TextButton.styleFrom(foregroundColor: AppColors.ink2),
           ),
-          const SizedBox(width: 4),
+          const Spacer(),
         ],
         if (isLast)
           SizedBox(

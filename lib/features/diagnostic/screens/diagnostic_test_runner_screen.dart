@@ -102,6 +102,17 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   /// today's live-fetch-on-first-subject behavior.
   final Map<String, Map<String, dynamic>>? prefetchedSubjects;
 
+  /// The full subject list this attempt's grade actually has, already
+  /// resolved by the student-select screen's own `availableSubjects` call
+  /// (see `DiagnosticStudentSelectScreen._prefetchSubjectsForStudent`).
+  /// `_bootstrap()` normally re-fetches this itself, but that live call has
+  /// nothing to do with the already-cached [prefetchedSubjects] packages and
+  /// its failure (e.g. offline) previously stranded a fresh attempt even
+  /// when the first subject's content was sitting ready to go — see
+  /// `_bootstrap`'s catch block, which falls back to this list instead of a
+  /// hard error when it and a matching prefetched package are both present.
+  final List<String>? prefetchedAllSubjects;
+
   /// Test-only overrides — default to the real [diagnosticKioskApi] methods.
   /// `diagnosticKioskApi` is a bare top-level singleton with no injectable
   /// HTTP client, so this is the smallest seam that lets widget tests fake
@@ -135,6 +146,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
     this.schoolName = '',
     this.classLabel = '',
     this.prefetchedSubjects,
+    this.prefetchedAllSubjects,
     this.availableSubjectsOverride,
     this.startAttemptOverride,
     this.submitAnswerOverride,
@@ -582,6 +594,23 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       await _startSubject(subjects.first);
     } catch (e) {
       if (!mounted) return;
+      // The live `availableSubjects` call has nothing to do with content —
+      // it only learns the subject list — but a fresh (non-resumed) attempt
+      // used to die here even when the student-select screen already
+      // resolved that same list AND warmed the first subject's package via
+      // `kiosk/peek/` (e.g. offline right after tapping a student card).
+      // Fall back to that already-known list/package instead of the hard
+      // error whenever both are actually available.
+      final fallbackSubjects = widget.prefetchedAllSubjects;
+      if (fallbackSubjects != null &&
+          fallbackSubjects.isNotEmpty &&
+          _prefetchedSubjectPackages.containsKey(fallbackSubjects.first)) {
+        debugPrint('Diagnostic bootstrap: live availableSubjects failed ($e), '
+            'starting from prefetched subject list/package instead');
+        _allSubjects = fallbackSubjects;
+        await _startSubject(fallbackSubjects.first);
+        return;
+      }
       debugPrint('Diagnostic bootstrap error: $e');
       setState(() {
         _loading = false;
@@ -779,8 +808,15 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // is safe to attempt unconditionally: it just re-fetches the server's
       // authoritative current state, worst case it fails too and we fall
       // back to the exact same error as before.
+      // EXCEPT 429: a rate limit is not a rejection of this request's
+      // content (same distinction api_client.dart's submitLocalResultFull/
+      // submitQuestionReport already make for the offline queue) — the
+      // self-heal's own _startSubject call would likely just 429 again in
+      // the same throttle window. Fall through to the generic retry banner
+      // instead, which reuses `_retryAction = _submit` set above (retries
+      // this exact answer once the window clears) rather than discarding it.
       final status = e is ApiException ? e.statusCode : 0;
-      final isClientRejection = status >= 400 && status < 500;
+      final isClientRejection = status >= 400 && status < 500 && status != 429;
       if (isClientRejection) {
         setState(() => _submitting = false);
         await _startSubject(_currentSubject);
@@ -909,9 +945,14 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // already finished, etc.) is not a "queue and retry" case — the
       // ApiException statusCode distinguishes the two the same way
       // submitLocalResultFull/submitQuestionReport already do in
-      // api_client.dart.
+      // api_client.dart. 429 is folded in here too, same as those two
+      // functions: it's a rate limit, not a rejection of this finish
+      // payload, and every diagnostic kiosk endpoint (start/answer/finish)
+      // shares one `diagnostic_guest` throttle scope — the self-heal path
+      // below (re-fetch package, re-finish) would very likely just 429
+      // again inside the same throttle window instead of succeeding.
       final status = e is ApiException ? e.statusCode : 0;
-      final isNetworkFailure = status == 0 || status >= 500;
+      final isNetworkFailure = status == 0 || status >= 500 || status == 429;
       if (isNetworkFailure) {
         // The finish-call itself failed transiently, but we still know the
         // full subject order locally — don't end the whole diagnostic if
@@ -996,8 +1037,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // describes). Any 4xx here means the server responded and rejected
       // this specific request — self-heal is safe to attempt
       // unconditionally; worst case it fails too and we fall back to the
-      // exact same error as before.
-      final isClientRejection = status >= 400 && status < 500;
+      // exact same error as before. (429 never reaches this line — it's
+      // already folded into isNetworkFailure above; `status != 429` here is
+      // just a defensive belt-and-suspenders in case that changes.)
+      final isClientRejection = status >= 400 && status < 500 && status != 429;
       if (!isClientRejection) {
         if (!mounted) return;
         debugPrint('Diagnostic finish-package error: $e');

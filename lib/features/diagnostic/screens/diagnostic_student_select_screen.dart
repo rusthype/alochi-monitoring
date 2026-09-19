@@ -91,6 +91,14 @@ class _DiagnosticStudentSelectScreenState
   /// is safe to fire for every subject up front, not just the current one.
   final Map<String, Map<String, Map<String, dynamic>>> _peekCache = {};
 
+  /// The exact subject list `_prefetchSubjectsForStudent` already resolved
+  /// via `availableSubjects`, keyed by attempt_id — threaded into
+  /// `DiagnosticTestRunnerScreen.prefetchedAllSubjects` so a fresh attempt
+  /// can start from the cached [_peekCache] package even when the runner's
+  /// own live `availableSubjects` re-fetch fails offline (see that screen's
+  /// `_bootstrap` catch block).
+  final Map<String, List<String>> _allSubjectsCache = {};
+
   @override
   void initState() {
     super.initState();
@@ -128,6 +136,7 @@ class _DiagnosticStudentSelectScreenState
               .where((e) => e.isNotEmpty)
               .toList() ??
           const <String>[];
+      _allSubjectsCache[attemptId] = subjects;
       for (final subject in subjects) {
         unawaited(_peekAndCache(attemptId, subject));
       }
@@ -238,6 +247,9 @@ class _DiagnosticStudentSelectScreenState
       // while they sat selected on this screen (may be empty/absent if the
       // peeks are still in flight or all came back non-fixed-variant).
       'prefetchedSubjects': _peekCache[attemptId] ?? const {},
+      // Same "may still be in flight" caveat as prefetchedSubjects above —
+      // an empty/absent list just falls back to the runner's own live fetch.
+      'prefetchedAllSubjects': _allSubjectsCache[attemptId] ?? const <String>[],
     });
   }
 
