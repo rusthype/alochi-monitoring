@@ -283,7 +283,8 @@ $_headStyle
         if (a is! Map) continue;
         final qid = (a['question_id'] ?? '').toString();
         final selected = a['selected'];
-        if (correctAnswers.containsKey(qid) && correctAnswers[qid] == selected) {
+        if (correctAnswers.containsKey(qid) &&
+            correctAnswers[qid] == selected) {
           correct++;
         }
       }

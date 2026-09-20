@@ -96,7 +96,8 @@ class OfflineQueue {
     await d.insert(
       'queue',
       {
-        'payload': await QueueCrypto.encryptPayload(jsonEncode(result.toJson())),
+        'payload':
+            await QueueCrypto.encryptPayload(jsonEncode(result.toJson())),
         'created': DateTime.now().millisecondsSinceEpoch,
         'attempts': 0,
         'token': t,
@@ -106,13 +107,15 @@ class OfflineQueue {
   }
 
   static Future<int> flush(
-      Future<Map<String, dynamic>> Function(TestResult, String) submitFn) async {
+      Future<Map<String, dynamic>> Function(TestResult, String)
+          submitFn) async {
     final d = await db;
     final rows = await d.query('queue', orderBy: 'created ASC');
     int synced = 0;
     for (final row in rows) {
       try {
-        final json = jsonDecode(await QueueCrypto.decryptPayload(row['payload'] as String));
+        final json = jsonDecode(
+            await QueueCrypto.decryptPayload(row['payload'] as String));
         final result = TestResult(
           packageId: json['package_id'],
           variant: json['variant'],
@@ -132,7 +135,8 @@ class OfflineQueue {
         } else if (permanent) {
           // Server permanently rejected payload — drop to avoid endless retry
           await d.delete('queue', where: 'id = ?', whereArgs: [row['id']]);
-          debugPrint('OfflineQueue.flush: id=${row['id']} permanent error, dropping');
+          debugPrint(
+              'OfflineQueue.flush: id=${row['id']} permanent error, dropping');
         } else {
           await d.update('queue', {'attempts': (row['attempts'] as int) + 1},
               where: 'id = ?', whereArgs: [row['id']]);
@@ -151,7 +155,8 @@ class OfflineQueue {
   }
 
   // ── Local Result Offline Queue ──────────────────────────────────────────────
-  static Future<void> enqueueLocal(Map<String, dynamic> payload, String token) async {
+  static Future<void> enqueueLocal(
+      Map<String, dynamic> payload, String token) async {
     final d = await db;
     await d.insert(
       'local_queue',
@@ -166,23 +171,30 @@ class OfflineQueue {
   }
 
   static Future<int> flushLocal(
-      Future<Map<String, dynamic>> Function(Map<String, dynamic> payload, String token) submitFn) async {
+      Future<Map<String, dynamic>> Function(
+              Map<String, dynamic> payload, String token)
+          submitFn) async {
     final d = await db;
     final rows = await d.query('local_queue', orderBy: 'created ASC');
     int synced = 0;
     for (final row in rows) {
       try {
-        final json = jsonDecode(await QueueCrypto.decryptPayload(row['payload'] as String));
+        final json = jsonDecode(
+            await QueueCrypto.decryptPayload(row['payload'] as String));
         final token = (row['token'] as String?) ?? newIdempotencyToken();
         final r = await submitFn(json, token);
         final ok = r['synced'] as bool? ?? false;
         final permanent = r['permanent'] as bool? ?? false;
         if (ok || permanent) {
-          await d.delete('local_queue', where: 'id = ?', whereArgs: [row['id']]);
+          await d
+              .delete('local_queue', where: 'id = ?', whereArgs: [row['id']]);
           if (ok) synced++;
-          if (permanent) debugPrint('OfflineQueue.flushLocal: id=${row['id']} permanent error, dropping');
+          if (permanent)
+            debugPrint(
+                'OfflineQueue.flushLocal: id=${row['id']} permanent error, dropping');
         } else {
-          await d.update('local_queue', {'attempts': (row['attempts'] as int) + 1},
+          await d.update(
+              'local_queue', {'attempts': (row['attempts'] as int) + 1},
               where: 'id = ?', whereArgs: [row['id']]);
         }
       } catch (e) {
@@ -203,10 +215,12 @@ class OfflineQueue {
     final result = <Map<String, dynamic>>[];
     for (final row in rows) {
       try {
-        final json = jsonDecode(await QueueCrypto.decryptPayload(row['payload'] as String));
+        final json = jsonDecode(
+            await QueueCrypto.decryptPayload(row['payload'] as String));
         if (json is Map) result.add(Map<String, dynamic>.from(json));
       } catch (e) {
-        debugPrint('OfflineQueue.peekLocalQueue decrypt error (id=${row['id']}): $e');
+        debugPrint(
+            'OfflineQueue.peekLocalQueue decrypt error (id=${row['id']}): $e');
       }
     }
     return result;
@@ -245,10 +259,11 @@ class OfflineQueue {
           whereArgs: [_maxAttempts, cutoff]);
     }
     // legacy tg_queue: attempts ustuni yo'q — faqat yosh bo'yicha
-    removed += await d.delete('tg_queue', where: 'created < ?', whereArgs: [cutoff]);
-    if (removed > 0) debugPrint('OfflineQueue.purgeStale: $removed eski/o\'lik qator o\'chirildi');
+    removed +=
+        await d.delete('tg_queue', where: 'created < ?', whereArgs: [cutoff]);
+    if (removed > 0)
+      debugPrint(
+          'OfflineQueue.purgeStale: $removed eski/o\'lik qator o\'chirildi');
     return removed;
   }
-
-
 }

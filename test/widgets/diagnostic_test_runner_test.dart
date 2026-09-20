@@ -33,7 +33,8 @@ Map<String, dynamic> _question({
     'option_d': d,
     'image_url': imageUrl,
     'svg_visual': '',
-    if (correctDisplayLetter != null) 'correct_display_letter': correctDisplayLetter,
+    if (correctDisplayLetter != null)
+      'correct_display_letter': correctDisplayLetter,
   };
 }
 

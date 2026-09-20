@@ -1033,7 +1033,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           '_offlineKind': 'diagnostic_finish',
           'attempt_id': widget.attemptId,
           'answers': answers,
-          '_offline_answer_key': _buildOfflineAnswerKey(_currentSubject, _questions),
+          '_offline_answer_key':
+              _buildOfflineAnswerKey(_currentSubject, _questions),
         }, newIdempotencyToken());
         unawaited(_upsertHistoryRow(status: 'pending'));
         if (!mounted) return;
