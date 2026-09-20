@@ -507,7 +507,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
             name: widget.studentName,
             variant: 'CAT',
             testKey: 'diag_${widget.attemptId}',
-            studentCode: widget.attemptId,
+            // DIAG- prefix matches DIAGNOSTIC_KIOSK_STUDENT_CODE_PREFIX
+            // (backend apps/monitoring/selectors.py) so this session is
+            // scoped to the diagnostic school's own live-monitoring tab,
+            // not the global /monitoring dashboard.
+            studentCode: 'DIAG-${widget.attemptId}',
           )
           .timeout(const Duration(seconds: 3));
     } catch (_) {}
