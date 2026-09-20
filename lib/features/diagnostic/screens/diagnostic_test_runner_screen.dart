@@ -190,9 +190,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// restarting from the first subject (see diagnostic-retry-subject-bug).
   Future<void> Function() _retryAction = () async {};
 
-  /// Auto-retries `_bootstrap()` once connectivity comes back, for the case
-  /// where the very first subject fetch fails with nothing cached yet (see
-  /// `_armBootstrapAutoRetry`).
+  /// Auto-retries whatever `_retryAction` currently points to once
+  /// connectivity comes back — used by `_bootstrap()` (first subject fetch
+  /// fails with nothing cached yet) AND `_startSubject()` (a later subject's
+  /// live start-call fails offline with no prefetched package), see
+  /// `_armBootstrapAutoRetry`.
   StreamSubscription<List<ConnectivityResult>>? _bootstrapRetrySub;
 
   /// Local UI-only bookmark state, keyed by question_id (YAGNI — no backend
@@ -517,10 +519,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     super.dispose();
   }
 
-  /// Listens for connectivity to come back and re-runs `_bootstrap()` once
-  /// — covers the "no internet at all yet, nothing cached" case where the
-  /// first subject's question-list fetch fails and only a manual Retry
-  /// button was previously available.
+  /// Listens for connectivity to come back and re-runs whatever
+  /// `_retryAction` currently points to — covers both the "no internet at
+  /// all yet, nothing cached" case in `_bootstrap()` and a later subject's
+  /// live start-call failing offline in `_startSubject()`, where only a
+  /// manual Retry button was previously available.
   void _armBootstrapAutoRetry() {
     _bootstrapRetrySub?.cancel();
     final stream = widget.connectivityStreamOverride ??
@@ -726,6 +729,19 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         _loading = false;
         _error = AppLocalizations.of(context)!.serverErrorRetry;
       });
+      // Bu fan uchun hech qanday prefetch kelib tushmagan (masalan
+      // "Boshlash" bosilishidan oldin peek tugamagan, yoki o'tish paytidagi
+      // fon-prefetch o'zi oflaynda muvaffaqiyatsiz bo'lgan) va shu jonli
+      // chaqiruvning o'z zaxira-yo'li yo'q — `_confirmAndFinishPackage`dagi
+      // bilan bir xil tarmoq-xatosi klassifikatsiyasi (status 0/5xx/429) va
+      // `_bootstrap` allaqachon ishlatayotgan connectivity-auto-retry
+      // mexanizmi orqali, faqat qo'lda "Qayta urinish" tugmasiga tayanish
+      // o'rniga.
+      final status = e is ApiException ? e.statusCode : 0;
+      final isNetworkFailure = status == 0 || status >= 500 || status == 429;
+      if (isNetworkFailure) {
+        _armBootstrapAutoRetry();
+      }
     }
   }
 

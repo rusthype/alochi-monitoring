@@ -1383,6 +1383,58 @@ void main() {
     });
 
     testWidgets(
+        '_startSubject auto-retries via connectivity once online again after '
+        'a network failure with no prefetched package', (tester) async {
+      var startAttemptCalls = 0;
+      final connController =
+          StreamController<List<ConnectivityResult>>.broadcast();
+      addTearDown(connController.close);
+
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        connectivityStreamOverride: connController.stream,
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          startAttemptCalls++;
+          if (startAttemptCalls == 1) {
+            throw const ApiException(0, 'no internet');
+          }
+          return _withMeta({
+            'position': 1,
+            'total_questions': 1,
+            'subject': subject,
+            'questions': fullPackageQuestions(1),
+          }, isFixedVariant: true);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      // First live start-call failed offline, nothing prefetched — generic
+      // error view shown, only 1 call so far.
+      expect(startAttemptCalls, 1);
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      expect(find.text(l10n.serverErrorRetry), findsOneWidget);
+
+      // Connectivity comes back — no manual Retry tap needed.
+      connController.add([ConnectivityResult.wifi]);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(startAttemptCalls, 2);
+      expect(find.text(l10n.serverErrorRetry), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets(
         'header countdown is seeded from remaining_seconds when present, '
         'overriding duration_minutes', (tester) async {
       await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
