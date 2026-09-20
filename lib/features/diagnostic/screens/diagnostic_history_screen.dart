@@ -5,10 +5,12 @@
 // No own AppBar/Scaffold — it's a TabBarView body, the hub provides the
 // shared chrome.
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:path/path.dart' as p;
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/services/diagnostic_export_service.dart';
@@ -178,9 +180,26 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
       action: SnackBarAction(
         label: l10n.diagnosticExportOpenAction,
         textColor: Colors.white,
-        onPressed: () => OpenFilex.open(savedPath!),
+        onPressed: () => _revealSavedFile(savedPath!),
       ),
     ));
+  }
+
+  /// Reveals the saved zip in its actual Downloads folder instead of
+  /// double-clicking the .zip itself: opening a .zip via OpenFilex hands it
+  /// to Windows Explorer's built-in "compressed folder" viewer, which
+  /// extracts any file the operator then opens into a throwaway
+  /// %TEMP%\<guid>_<name>.zip.<n>\ path — a real bug report, the operator
+  /// saw that temp path and concluded the export never reached Downloads
+  /// at all. Selecting the file in its real folder proves it's really there.
+  static Future<void> _revealSavedFile(String filePath) async {
+    if (Platform.isWindows) {
+      await Process.run('explorer.exe', ['/select,$filePath']);
+    } else if (Platform.isMacOS) {
+      await Process.run('open', ['-R', filePath]);
+    } else {
+      await OpenFilex.open(p.dirname(filePath));
+    }
   }
 
   @override
