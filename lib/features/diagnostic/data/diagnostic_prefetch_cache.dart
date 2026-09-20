@@ -25,6 +25,17 @@ class DiagnosticPrefetchCache {
   final Map<String, StudentPrefetchStatus> studentStatus = {};
   final Map<String, bool> studentHasOnlineOnlySubject = {};
 
+  /// `GET /cat/subjects/?grade=X&language=Y` result, keyed by `"X|Y"` —
+  /// EVERY student in the same class shares the same grade+language, so
+  /// this response is identical for all of them. Before this cache
+  /// existed, `_prefetchSubjectsForStudent` called it once PER STUDENT
+  /// during bulk classroom prefetch, which alone could exceed 30 calls/min
+  /// and 429 the last few students in a large class (2026-09-20 incident —
+  /// the endpoint's own missing throttle_scope was the other half of that
+  /// fix, on the backend). Caching here eliminates the redundant calls at
+  /// the root instead of just tolerating them.
+  final Map<String, Map<String, dynamic>> subjectsByGradeLanguage = {};
+
   /// Test-only — clears all cached state so widget tests don't leak data
   /// between test cases (this is a real global singleton, shared across
   /// the whole test process unlike a fresh State object per test).
@@ -34,5 +45,6 @@ class DiagnosticPrefetchCache {
     allSubjectsCache.clear();
     studentStatus.clear();
     studentHasOnlineOnlySubject.clear();
+    subjectsByGradeLanguage.clear();
   }
 }

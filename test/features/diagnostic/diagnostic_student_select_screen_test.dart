@@ -335,6 +335,50 @@ void main() {
   });
 
   testWidgets(
+      'bulk prefetch calls availableSubjects only ONCE for the whole class, '
+      'not once per student (2026-09-20 incident: this call had no backend '
+      'throttle_scope of its own, so N students x 1 call each could exceed '
+      'the shared classroom IP\'s rate limit and 429 the last few students)',
+      (tester) async {
+    final students = <Map<String, dynamic>>[
+      {'attempt_id': 'att-1', 'student_name': 'Aliyev Ali', 'session_grade': 4},
+      {
+        'attempt_id': 'att-2',
+        'student_name': 'Valiyev Vali',
+        'session_grade': 4
+      },
+      {
+        'attempt_id': 'att-3',
+        'student_name': 'Karimov Karim',
+        'session_grade': 4
+      },
+    ];
+    var availableSubjectsCalls = 0;
+    await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+      schoolId: 's1',
+      schoolName: 'Maktab 1',
+      classLabel: '4-A',
+      language: 'uz',
+      listStudentsOverride: (schoolId, classLabel) async => (students, false),
+      availableSubjectsOverride: (grade, {String language = 'uz'}) async {
+        availableSubjectsCalls++;
+        return {
+          'subjects': ['math']
+        };
+      },
+      peekSubjectOverride: ({required attemptId, required subject}) async =>
+          {'fixed_variant': true, 'questions': []},
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.download_for_offline_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.check_circle_outline), findsNWidgets(3));
+    expect(availableSubjectsCalls, 1);
+  });
+
+  testWidgets(
       'Start waits for an in-flight prefetch before navigating to the runner',
       (tester) async {
     final completer = Completer<Map<String, dynamic>>();

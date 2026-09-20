@@ -132,6 +132,13 @@ class _DiagnosticStudentSelectScreenState
   Map<String, List<String>> get _allSubjectsCache =>
       DiagnosticPrefetchCache.instance.allSubjectsCache;
 
+  /// `availableSubjects(grade, language)` result cache, keyed by
+  /// `"grade|language"` — shared across every student in the class instead
+  /// of re-fetched per student (see [DiagnosticPrefetchCache.
+  /// subjectsByGradeLanguage] doc for the 2026-09-20 incident this fixes).
+  Map<String, Map<String, dynamic>> get _subjectsByGradeLanguage =>
+      DiagnosticPrefetchCache.instance.subjectsByGradeLanguage;
+
   /// Task: har bir o'quvchining fixed-variant fanlari bo'yicha offline-
   /// tayyorlik holati. Yozuv yo'q = hali umuman urinilmagan (belgi
   /// ko'rsatilmaydi).
@@ -210,10 +217,14 @@ class _DiagnosticStudentSelectScreenState
       setState(() => _studentStatus[attemptId] = StudentPrefetchStatus.loading);
     }
     try {
-      final availableSubjects = widget.availableSubjectsOverride ??
-          diagnosticKioskApi.availableSubjects;
-      final subjectsResp =
-          await availableSubjects(grade, language: widget.language);
+      final subjectsCacheKey = '$grade|${widget.language}';
+      var subjectsResp = _subjectsByGradeLanguage[subjectsCacheKey];
+      if (subjectsResp == null) {
+        final availableSubjects = widget.availableSubjectsOverride ??
+            diagnosticKioskApi.availableSubjects;
+        subjectsResp = await availableSubjects(grade, language: widget.language);
+        _subjectsByGradeLanguage[subjectsCacheKey] = subjectsResp;
+      }
       final subjects = (subjectsResp['subjects'] as List?)
               ?.map((e) => e.toString())
               .where((e) => e.isNotEmpty)
