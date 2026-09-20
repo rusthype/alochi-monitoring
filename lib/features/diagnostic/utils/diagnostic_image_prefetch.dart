@@ -11,18 +11,44 @@ import '../../../core/api/api_client.dart' show MonitoringApi;
 import '../../../core/cache/image_cache_manager.dart';
 
 /// Walks a (possibly nested) question map/list for `image_url`/`svg_visual`-
-/// style string values that look like an http(s) URL.
+/// style string values that look like an image URL — absolute (`http(s)://`,
+/// `//`) OR relative (`/media/...`, `media/...`, or any string ending in a
+/// known image extension) — and returns them already fixed via
+/// `MonitoringApi.fixImageUrl`, so callers never need to re-map. Root-cause
+/// fix for diagnostic-image-eternal-spinner: relative URLs used to be
+/// silently dropped here, before `fixImageUrl` ever saw them.
 List<String> collectDiagnosticImageUrls(dynamic node) {
-  if (node is String) {
-    return node.startsWith('http://') || node.startsWith('https://')
-        ? [node]
-        : const [];
+  final urls = <String>{};
+
+  void extract(dynamic current) {
+    if (current is String) {
+      final s = current.trim();
+      if (s.isEmpty) return;
+      final looksLikeImage = s.startsWith('http://') ||
+          s.startsWith('https://') ||
+          s.startsWith('//') ||
+          s.startsWith('/media/') ||
+          s.startsWith('media/') ||
+          RegExp(r'\.(png|jpe?g|webp|gif|svg)(\?.*)?$', caseSensitive: false)
+              .hasMatch(s);
+      if (!looksLikeImage) return;
+      final fixed = MonitoringApi.fixImageUrl(s);
+      if (fixed.isNotEmpty) urls.add(fixed);
+      return;
+    }
+    if (current is List) {
+      for (final item in current) {
+        extract(item);
+      }
+    } else if (current is Map) {
+      for (final value in current.values) {
+        extract(value);
+      }
+    }
   }
-  if (node is List) return node.expand(collectDiagnosticImageUrls).toList();
-  if (node is Map) {
-    return node.values.expand(collectDiagnosticImageUrls).toList();
-  }
-  return const [];
+
+  extract(node);
+  return urls.toList();
 }
 
 /// Best-effort, fire-and-forget image prefetch for a batch of questions —

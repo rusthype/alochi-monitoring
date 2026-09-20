@@ -4,13 +4,14 @@ import 'package:flutter/material.dart';
 import '../../core/api/api_client.dart';
 import '../../core/cache/image_cache_manager.dart';
 import '../../core/theme/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Barcha server rasmlar uchun shu widget ishlatiladi.
 /// Bir marta yuklab, diskda saqlaydi (30 kun)
 /// Offline bo'lsa ham ko'rsatadi (cached versiya)
 /// Windows SSL muammosi yo'q
 /// Loading va error holatlari bor
-class AppNetworkImage extends StatelessWidget {
+class AppNetworkImage extends StatefulWidget {
   final String? url;
   final double? height;
   final double? width;
@@ -35,29 +36,40 @@ class AppNetworkImage extends StatelessWidget {
   });
 
   @override
+  State<AppNetworkImage> createState() => _AppNetworkImageState();
+}
+
+class _AppNetworkImageState extends State<AppNetworkImage> {
+  /// Bumped on tap-to-retry — forces `CachedNetworkImage` to rebuild with a
+  /// fresh key after the previous failed cache entry is evicted, instead of
+  /// re-rendering the same stuck error widget.
+  int _retryNonce = 0;
+
+  @override
   Widget build(BuildContext context) {
-    final fixedUrl = MonitoringApi.fixImageUrl(url);
+    final fixedUrl = MonitoringApi.fixImageUrl(widget.url);
     if (fixedUrl.isEmpty) {
-      return errorWidget ??
+      return widget.errorWidget ??
           SizedBox(
-            height: height ?? 80,
-            width: width,
+            height: widget.height ?? 80,
+            width: widget.width,
           );
     }
 
     Widget img = CachedNetworkImage(
+      key: ValueKey('$fixedUrl#$_retryNonce'),
       imageUrl: fixedUrl,
       cacheManager: AlochiImageCacheManager(),
-      height: height,
-      width: width,
-      fit: fit,
-      alignment: alignment,
+      height: widget.height,
+      width: widget.width,
+      fit: widget.fit,
+      alignment: widget.alignment,
       filterQuality: FilterQuality.medium,
       httpHeaders: const {'User-Agent': 'AlochiMonitoring/1.0'},
       placeholder: (ctx, url) => SizedBox(
-        height: height ?? 80,
-        width: width,
-        child: placeholder ??
+        height: widget.height ?? 80,
+        width: widget.width,
+        child: widget.placeholder ??
             const Center(
               child: CircularProgressIndicator(
                 strokeWidth: 2,
@@ -66,19 +78,32 @@ class AppNetworkImage extends StatelessWidget {
             ),
       ),
       errorWidget: (ctx, url, err) =>
-          errorWidget ??
-          Icon(
-            Icons.broken_image_outlined,
-            size: 24,
-            color: Colors.grey[400],
+          widget.errorWidget ??
+          InkWell(
+            onTap: () async {
+              await AlochiImageCacheManager().removeFile(fixedUrl);
+              if (mounted) setState(() => _retryNonce++);
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.broken_image_outlined,
+                    size: 24, color: Colors.grey[400]),
+                const SizedBox(height: 4),
+                Text(
+                  AppLocalizations.of(context)!.retry,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                ),
+              ],
+            ),
           ),
     );
 
-    if (borderRadius != null) {
-      img = ClipRRect(borderRadius: borderRadius!, child: img);
+    if (widget.borderRadius != null) {
+      img = ClipRRect(borderRadius: widget.borderRadius!, child: img);
     }
-    
-    if (showZoom) {
+
+    if (widget.showZoom) {
       img = GestureDetector(
         onTap: () {
           showDialog(
@@ -101,9 +126,12 @@ class AppNetworkImage extends StatelessWidget {
                           cacheManager: AlochiImageCacheManager(),
                           fit: BoxFit.contain,
                           filterQuality: FilterQuality.medium,
-                          httpHeaders: const {'User-Agent': 'AlochiMonitoring/1.0'},
+                          httpHeaders: const {
+                            'User-Agent': 'AlochiMonitoring/1.0'
+                          },
                           placeholder: (c, u) => const Center(
-                            child: CircularProgressIndicator(color: Colors.white),
+                            child:
+                                CircularProgressIndicator(color: Colors.white),
                           ),
                         ),
                       ),
@@ -112,7 +140,8 @@ class AppNetworkImage extends StatelessWidget {
                       top: 20,
                       right: 20,
                       child: IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                        icon: const Icon(Icons.close,
+                            color: Colors.white, size: 32),
                         onPressed: () => Navigator.pop(ctx),
                       ),
                     ),

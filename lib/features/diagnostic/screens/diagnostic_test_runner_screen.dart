@@ -17,9 +17,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart'
-    show ApiException, MonitoringApi, newIdempotencyToken;
+    show ApiException, newIdempotencyToken;
 import '../../../core/cache/image_cache_manager.dart';
 import '../../../core/db/attempt_store.dart';
+import '../../../core/db/diagnostic_package_cache.dart';
 import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/db/offline_queue.dart';
 import '../../../core/services/heartbeat_service.dart';
@@ -640,6 +641,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
             attemptId: widget.attemptId,
             subject: subject,
           );
+      unawaited(DiagnosticPackageCache.delete(widget.attemptId, subject));
       if (!mounted) return;
       // Re-entering an attempt the backend already finished (see
       // CATStartView's `existing.finished_at` branch) returns
@@ -1086,6 +1088,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     ));
     final nextSubject = (resp['next_subject'] ?? '').toString();
     if (nextSubject.isNotEmpty) {
+      // Same offline-resilience warm-up as the answer-submit path above
+      // (see `_submit`'s identical call) — the finish-button flow reaches
+      // "next_subject" just as often and deserves the same background
+      // prefetch instead of only warming it from one of the two paths.
+      unawaited(_prefetchSubjectInBackground(nextSubject));
       if (!mounted) return;
       setState(() {
         _submitting = false;
@@ -1155,6 +1162,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       );
       if (resp['finished'] == true) return;
       _prefetchedSubjectPackages[subject] = resp;
+      unawaited(DiagnosticPackageCache.put(widget.attemptId, subject, resp));
       final questionsList = (resp['questions'] as List?)
           ?.whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
@@ -1178,10 +1186,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// a short timeout means a slow/broken image never blocks the UI.
   Future<void> _awaitFirstImage(Map<String, dynamic>? question) async {
     if (question == null) return;
-    final urls = collectDiagnosticImageUrls(question)
-        .map(MonitoringApi.fixImageUrl)
-        .where((u) => u.isNotEmpty)
-        .toList();
+    final urls = collectDiagnosticImageUrls(question);
     if (urls.isEmpty) return;
     try {
       await AlochiImageCacheManager()
