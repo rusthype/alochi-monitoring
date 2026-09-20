@@ -207,6 +207,11 @@ class DiagnosticPillButton extends StatelessWidget {
   }
 }
 
+/// O'quvchining diagnostika paketlari qanchalik offline-tayyor ekanligi —
+/// faqat FIXED-VARIANT fanlar bo'yicha hisoblanadi (CAT/adaptiv fanlar
+/// tabiatan oldindan yuklab bo'lmaydi, alohida belgi bilan ko'rsatiladi).
+enum StudentPrefetchStatus { loading, ready, error }
+
 /// 2-column avatar-initial card, copied from student_entry_screen's
 /// private `_StudentCard` (context-menu/copy-name affordance dropped —
 /// not part of this kiosk flow's scope).

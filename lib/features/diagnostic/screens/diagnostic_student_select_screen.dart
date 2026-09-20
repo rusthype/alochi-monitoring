@@ -27,6 +27,9 @@ import '../../../core/utils/student_name_formatter.dart';
 const String _kWebTestEntryUrl =
     'https://alochi-unit-tests.vercel.app/kiosk-entry';
 
+/// `_peekAndCache`ning ichki natijasi — status-hisoblash uchun.
+enum _PeekOutcome { cached, skippedCat, failed }
+
 class DiagnosticStudentSelectScreen extends StatefulWidget {
   final String schoolId;
   final String schoolName;
@@ -99,6 +102,25 @@ class _DiagnosticStudentSelectScreenState
   /// `_bootstrap` catch block).
   final Map<String, List<String>> _allSubjectsCache = {};
 
+  /// Task: har bir o'quvchining fixed-variant fanlari bo'yicha offline-
+  /// tayyorlik holati. Yozuv yo'q = hali umuman urinilmagan (belgi
+  /// ko'rsatilmaydi).
+  final Map<String, StudentPrefetchStatus> _studentStatus = {};
+
+  /// Shu o'quvchida kamida bitta CAT/adaptiv (fixed_variant==false) fan
+  /// borligi — status-hisobiga kirmaydi, alohida neytral belgi bilan
+  /// ko'rsatiladi.
+  final Map<String, bool> _studentHasOnlineOnlySubject = {};
+
+  /// Har bir o'quvchining joriy prefetch operatsiyasi — "Boshlash" tugmasi
+  /// va bulk-yuklash shu Future'ni kutishi mumkin (status enumning o'zi
+  /// kutilmaydigan, shuning uchun alohida saqlanadi).
+  final Map<String, Future<void>> _prefetchInFlight = {};
+
+  bool _prefetchingAll = false;
+  int _prefetchedCount = 0;
+  bool _waitingForPrefetch = false;
+
   @override
   void initState() {
     super.initState();
@@ -126,6 +148,9 @@ class _DiagnosticStudentSelectScreenState
     if (attemptId.isEmpty) return;
     final grade =
         (student['session_grade'] as num?)?.toInt() ?? _gradeFromClassLabel();
+    if (mounted) {
+      setState(() => _studentStatus[attemptId] = StudentPrefetchStatus.loading);
+    }
     try {
       final availableSubjects = widget.availableSubjectsOverride ??
           diagnosticKioskApi.availableSubjects;
@@ -137,20 +162,54 @@ class _DiagnosticStudentSelectScreenState
               .toList() ??
           const <String>[];
       _allSubjectsCache[attemptId] = subjects;
+      var cachedCount = 0;
+      var anyFailed = false;
+      var anyOnlineOnly = false;
+      // Ketma-ket (parallel emas) — 20-30 o'quvchilik sinf uchun bulk-
+      // yuklashda tarmoq/throttle xavfini oshirmaslik uchun ataylab shunday
+      // (avvalgi seansda tasdiqlangan qaror).
       for (final subject in subjects) {
-        unawaited(_peekAndCache(attemptId, subject));
+        final outcome = await _peekAndCache(attemptId, subject);
+        switch (outcome) {
+          case _PeekOutcome.cached:
+            cachedCount++;
+            break;
+          case _PeekOutcome.skippedCat:
+            anyOnlineOnly = true;
+            break;
+          case _PeekOutcome.failed:
+            anyFailed = true;
+            break;
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _studentHasOnlineOnlySubject[attemptId] = anyOnlineOnly;
+          if (anyFailed) {
+            _studentStatus[attemptId] = StudentPrefetchStatus.error;
+          } else if (cachedCount > 0) {
+            _studentStatus[attemptId] = StudentPrefetchStatus.ready;
+          } else {
+            // Fanlarning barchasi CAT/adaptiv — hech narsa keshlanmadi,
+            // "tayyor" deb da'vo qilib bo'lmaydi.
+            _studentStatus.remove(attemptId);
+          }
+        });
       }
     } catch (e) {
       debugPrint('Diagnostic subject-prefetch (availableSubjects) failed: $e');
+      if (mounted) {
+        setState(() => _studentStatus[attemptId] = StudentPrefetchStatus.error);
+      }
     }
   }
 
-  Future<void> _peekAndCache(String attemptId, String subject) async {
+  Future<_PeekOutcome> _peekAndCache(String attemptId, String subject) async {
     try {
       final peekSubject =
           widget.peekSubjectOverride ?? diagnosticKioskApi.peekSubject;
       final resp = await peekSubject(attemptId: attemptId, subject: subject);
-      if (resp['fixed_variant'] == false) return;
+      if (resp['fixed_variant'] == false) return _PeekOutcome.skippedCat;
       _peekCache.putIfAbsent(attemptId, () => {})[subject] = resp;
       final questions = (resp['questions'] as List?)
           ?.whereType<Map>()
@@ -159,8 +218,10 @@ class _DiagnosticStudentSelectScreenState
       if (questions != null && questions.isNotEmpty) {
         prefetchDiagnosticImages(questions);
       }
+      return _PeekOutcome.cached;
     } catch (e) {
       debugPrint('Diagnostic peek prefetch for "$subject" failed: $e');
+      return _PeekOutcome.failed;
     }
   }
 
