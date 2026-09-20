@@ -96,6 +96,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticStartTest => 'Начать диагностику';
 
   @override
+  String get diagnosticDownloadAllOffline => 'Скачать все тесты (Оффлайн)';
+
+  @override
+  String diagnosticDownloadAllProgress(int done, int total) {
+    return '$done/$total готово...';
+  }
+
+  @override
   String get diagnosticFinishedTitle => 'Диагностика завершена';
 
   @override

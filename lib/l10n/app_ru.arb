@@ -29,6 +29,18 @@
   "diagnosticSelectClass": "Выберите класс",
   "diagnosticWhoTakesTest": "Кто сдаёт тест?",
   "diagnosticStartTest": "Начать диагностику",
+  "diagnosticDownloadAllOffline": "Скачать все тесты (Оффлайн)",
+  "@diagnosticDownloadAllOffline": {
+    "description": "Button that bulk-prefetches all visible students' diagnostic packages for offline use."
+  },
+  "diagnosticDownloadAllProgress": "{done}/{total} готово...",
+  "@diagnosticDownloadAllProgress": {
+    "description": "Progress label shown while bulk-prefetching all students.",
+    "placeholders": {
+      "done": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
   "diagnosticFinishedTitle": "Диагностика завершена",
   "diagnosticFinishedSubtitle": "Спасибо! Результаты будут переданы учителю.",
   "diagnosticFinishedInfoNote": "Результаты готовятся для администрации школы и учителей.",

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_student_select_screen.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -184,5 +186,70 @@ void main() {
 
     expect(find.byIcon(Icons.wifi_tethering), findsOneWidget);
     expect(find.byIcon(Icons.check_circle_outline), findsNothing);
+  });
+
+  testWidgets(
+      'Barcha testlarni yuklash button prefetches every visible student '
+      'sequentially', (tester) async {
+    final students = <Map<String, dynamic>>[
+      {'attempt_id': 'att-1', 'student_name': 'Aliyev Ali', 'session_grade': 4},
+      {
+        'attempt_id': 'att-2',
+        'student_name': 'Valiyev Vali',
+        'session_grade': 4
+      },
+    ];
+    await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+      schoolId: 's1',
+      schoolName: 'Maktab 1',
+      classLabel: '4-A',
+      language: 'uz',
+      listStudentsOverride: (schoolId, classLabel) async => (students, false),
+      availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+          {
+            'subjects': ['math']
+          },
+      peekSubjectOverride: ({required attemptId, required subject}) async =>
+          {'fixed_variant': true, 'questions': []},
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.download_for_offline_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.check_circle_outline), findsNWidgets(2));
+  });
+
+  testWidgets(
+      'Start waits for an in-flight prefetch before navigating to the runner',
+      (tester) async {
+    final completer = Completer<Map<String, dynamic>>();
+    await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+      schoolId: 's1',
+      schoolName: 'Maktab 1',
+      classLabel: '4-A',
+      language: 'uz',
+      listStudentsOverride: (schoolId, classLabel) async => (_students, false),
+      availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+          {
+            'subjects': ['math']
+          },
+      peekSubjectOverride: ({required attemptId, required subject}) =>
+          completer.future,
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aliyev Ali'));
+    await tester.pump();
+
+    await tester.tap(find.text('Diagnostikani boshlash'));
+    await tester.pump();
+    // Prefetch hali tugamagan — runner ekraniga hali o'tmagan bo'lishi kerak.
+    expect(find.text('RUNNER'), findsNothing);
+
+    completer.complete({'fixed_variant': true, 'questions': []});
+    await tester.pumpAndSettle();
+
+    expect(find.text('RUNNER'), findsOneWidget);
   });
 }

@@ -272,6 +272,18 @@ abstract class AppLocalizations {
   /// **'Diagnostikani boshlash'**
   String get diagnosticStartTest;
 
+  /// Button that bulk-prefetches all visible students' diagnostic packages for offline use.
+  ///
+  /// In uz, this message translates to:
+  /// **'Barcha testlarni yuklash (Oflayn)'**
+  String get diagnosticDownloadAllOffline;
+
+  /// Progress label shown while bulk-prefetching all students.
+  ///
+  /// In uz, this message translates to:
+  /// **'{done}/{total} tayyor...'**
+  String diagnosticDownloadAllProgress(int done, int total);
+
   /// No description provided for @diagnosticFinishedTitle.
   ///
   /// In uz, this message translates to:

@@ -98,6 +98,15 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticStartTest => 'Diagnostikani boshlash';
 
   @override
+  String get diagnosticDownloadAllOffline =>
+      'Barcha testlarni yuklash (Oflayn)';
+
+  @override
+  String diagnosticDownloadAllProgress(int done, int total) {
+    return '$done/$total tayyor...';
+  }
+
+  @override
   String get diagnosticFinishedTitle => 'Diagnostika yakunlandi';
 
   @override

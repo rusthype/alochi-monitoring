@@ -29,6 +29,18 @@
   "diagnosticSelectClass": "Sinfni tanlang",
   "diagnosticWhoTakesTest": "Kim test topshiradi?",
   "diagnosticStartTest": "Diagnostikani boshlash",
+  "diagnosticDownloadAllOffline": "Barcha testlarni yuklash (Oflayn)",
+  "@diagnosticDownloadAllOffline": {
+    "description": "Button that bulk-prefetches all visible students' diagnostic packages for offline use."
+  },
+  "diagnosticDownloadAllProgress": "{done}/{total} tayyor...",
+  "@diagnosticDownloadAllProgress": {
+    "description": "Progress label shown while bulk-prefetching all students.",
+    "placeholders": {
+      "done": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
   "diagnosticFinishedTitle": "Diagnostika yakunlandi",
   "diagnosticFinishedSubtitle": "Rahmat! Natijalar o'qituvchiga yuboriladi.",
   "diagnosticFinishedInfoNote": "Natijalar maktab ma'muriyati va o'qituvchilar uchun tayyorlanmoqda.",

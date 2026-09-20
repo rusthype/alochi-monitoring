@@ -204,6 +204,32 @@ class _DiagnosticStudentSelectScreenState
     }
   }
 
+  /// Header'dagi "Barcha testlarni yuklash" tugmasi — joriy (qidiruv bilan
+  /// filtrlangan) ro'yxat bo'yicha KETMA-KET (parallel emas — throttle
+  /// xavfsizligi) har bir hali `ready` bo'lmagan o'quvchini prefetch qiladi.
+  Future<void> _prefetchAllStudents() async {
+    if (_prefetchingAll) return;
+    final targets = _filtered;
+    setState(() {
+      _prefetchingAll = true;
+      _prefetchedCount = 0;
+    });
+    for (final student in targets) {
+      final attemptId = (student['attempt_id'] ?? '').toString();
+      if (attemptId.isEmpty) {
+        if (mounted) setState(() => _prefetchedCount++);
+        continue;
+      }
+      if (_studentStatus[attemptId] != StudentPrefetchStatus.ready) {
+        final future = _prefetchSubjectsForStudent(student);
+        _prefetchInFlight[attemptId] = future;
+        await future;
+      }
+      if (mounted) setState(() => _prefetchedCount++);
+    }
+    if (mounted) setState(() => _prefetchingAll = false);
+  }
+
   Future<_PeekOutcome> _peekAndCache(String attemptId, String subject) async {
     try {
       final peekSubject =
@@ -269,6 +295,19 @@ class _DiagnosticStudentSelectScreenState
   Future<void> _start() async {
     final s = _selected;
     if (s == null) return;
+    final attemptId = (s['attempt_id'] ?? '').toString();
+    if (_studentStatus[attemptId] == StudentPrefetchStatus.loading) {
+      final inFlight = _prefetchInFlight[attemptId];
+      if (inFlight != null) {
+        setState(() => _waitingForPrefetch = true);
+        // Himoya-таймаut — tarmoq osilib qolsa ham "Boshlash" abadiy
+        // bloklanmasin (runner ekranining o'z _bootstrap zaxira yo'li
+        // baribir ishlaydi, prefetch tugamagan bo'lsa ham).
+        await inFlight.timeout(const Duration(seconds: 5), onTimeout: () {});
+        if (mounted) setState(() => _waitingForPrefetch = false);
+      }
+    }
+    if (!mounted) return;
     if (!widget.hasWebTest) {
       _startCat(s);
       return;
@@ -405,6 +444,30 @@ class _DiagnosticStudentSelectScreenState
                                           size: 20),
                                     ),
                                   ),
+                                  const SizedBox(height: 12),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: OutlinedButton.icon(
+                                      onPressed: _prefetchingAll
+                                          ? null
+                                          : _prefetchAllStudents,
+                                      icon: _prefetchingAll
+                                          ? const SizedBox(
+                                              width: 14,
+                                              height: 14,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 2),
+                                            )
+                                          : const Icon(
+                                              Icons.download_for_offline_outlined,
+                                              size: 16),
+                                      label: Text(_prefetchingAll
+                                          ? l10n.diagnosticDownloadAllProgress(
+                                              _prefetchedCount,
+                                              _filtered.length)
+                                          : l10n.diagnosticDownloadAllOffline),
+                                    ),
+                                  ),
                                   const SizedBox(height: 20),
                                   if (_error == null && _fromCache)
                                     const DiagnosticOfflineBadge(),
@@ -524,8 +587,9 @@ class _DiagnosticStudentSelectScreenState
                   right: 20,
                   child: DiagnosticBottomCta(
                     label: l10n.diagnosticStartTest,
-                    enabled: _selected != null && !_starting,
-                    loading: _starting,
+                    enabled:
+                        _selected != null && !_starting && !_waitingForPrefetch,
+                    loading: _starting || _waitingForPrefetch,
                     onTap: _start,
                   ),
                 ),
