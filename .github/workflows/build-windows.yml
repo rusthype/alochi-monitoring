@@ -297,6 +297,7 @@ jobs:
 
       - name: Notify alochi.org to revalidate the download page
         if: github.ref == 'refs/heads/main' && success()
+        shell: bash
         run: |
           curl -sf -X POST "https://alochi.org/revalidate-download" \
             -H "x-revalidate-secret: ${{ secrets.DOWNLOAD_REVALIDATE_SECRET }}" \
