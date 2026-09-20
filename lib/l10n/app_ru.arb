@@ -400,6 +400,7 @@
   "offlineHistoryTabGeneral": "Общая",
   "offlineHistoryTabDiagnostic": "Диагностика",
   "diagnosticHistoryNoRecords": "История диагностики пока пуста",
+  "diagnosticPinDialogTitle": "Введите PIN-код",
   "diagnosticHistoryFilterAll": "Все",
   "diagnosticHistoryFilterSent": "Отправленные",
   "diagnosticHistoryFilterPending": "Ожидающие",

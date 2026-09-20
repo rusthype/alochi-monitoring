@@ -905,6 +905,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticHistoryNoRecords => 'Diagnostika tarixi hozircha yo\'q';
 
   @override
+  String get diagnosticPinDialogTitle => 'PIN-kodni kiriting';
+
+  @override
   String get diagnosticHistoryFilterAll => 'Barchasi';
 
   @override

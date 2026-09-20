@@ -896,6 +896,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticHistoryNoRecords => 'История диагностики пока пуста';
 
   @override
+  String get diagnosticPinDialogTitle => 'Введите PIN-код';
+
+  @override
   String get diagnosticHistoryFilterAll => 'Все';
 
   @override

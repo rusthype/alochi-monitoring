@@ -438,6 +438,7 @@
   "offlineHistoryTabGeneral": "Umumiy",
   "offlineHistoryTabDiagnostic": "Diagnostika",
   "diagnosticHistoryNoRecords": "Diagnostika tarixi hozircha yo'q",
+  "diagnosticPinDialogTitle": "PIN-kodni kiriting",
   "diagnosticHistoryFilterAll": "Barchasi",
   "diagnosticHistoryFilterSent": "Yuborilgan",
   "diagnosticHistoryFilterPending": "Kutilmoqda",

@@ -1725,6 +1725,12 @@ abstract class AppLocalizations {
   /// **'Diagnostika tarixi hozircha yo\'q'**
   String get diagnosticHistoryNoRecords;
 
+  /// No description provided for @diagnosticPinDialogTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'PIN-kodni kiriting'**
+  String get diagnosticPinDialogTitle;
+
   /// No description provided for @diagnosticHistoryFilterAll.
   ///
   /// In uz, this message translates to:
