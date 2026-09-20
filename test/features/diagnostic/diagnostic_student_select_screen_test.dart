@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_prefetch_cache.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_student_select_screen.dart';
+import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_widgets.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -296,5 +298,76 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('RUNNER'), findsOneWidget);
+  });
+
+  testWidgets('offline badge clears automatically once connectivity comes back',
+      (tester) async {
+    var listCalls = 0;
+    final connController =
+        StreamController<List<ConnectivityResult>>.broadcast();
+    addTearDown(connController.close);
+
+    await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+      schoolId: 's1',
+      schoolName: 'Maktab 1',
+      classLabel: '4-A',
+      language: 'uz',
+      connectivityStreamOverride: connController.stream,
+      listStudentsOverride: (schoolId, classLabel) async {
+        listCalls++;
+        return (_students, listCalls == 1);
+      },
+      availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+          {'subjects': <String>[]},
+      peekSubjectOverride: ({required attemptId, required subject}) async =>
+          {'fixed_variant': false},
+    )));
+    await tester.pumpAndSettle();
+
+    // First load came from cache — badge showing.
+    expect(find.byType(DiagnosticOfflineBadge), findsOneWidget);
+
+    // Connectivity comes back — screen re-fetches, this time fresh.
+    connController.add([ConnectivityResult.wifi]);
+    await tester.pumpAndSettle();
+
+    expect(listCalls, 2);
+    expect(find.byType(DiagnosticOfflineBadge), findsNothing);
+  });
+
+  testWidgets(
+      'a selected student stays selected after a reconnect-triggered reload',
+      (tester) async {
+    var listCalls = 0;
+    final connController =
+        StreamController<List<ConnectivityResult>>.broadcast();
+    addTearDown(connController.close);
+
+    await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+      schoolId: 's1',
+      schoolName: 'Maktab 1',
+      classLabel: '4-A',
+      language: 'uz',
+      connectivityStreamOverride: connController.stream,
+      listStudentsOverride: (schoolId, classLabel) async {
+        listCalls++;
+        return (_students, listCalls == 1);
+      },
+      availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+          {'subjects': <String>[]},
+      peekSubjectOverride: ({required attemptId, required subject}) async =>
+          {'fixed_variant': false},
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aliyev Ali'));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+
+    connController.add([ConnectivityResult.wifi]);
+    await tester.pumpAndSettle();
+
+    expect(listCalls, 2);
+    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
   });
 }

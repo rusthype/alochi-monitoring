@@ -8,6 +8,7 @@
 // `parent_phone` is never requested/rendered here (the backend never sends
 // it for this endpoint).
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -53,6 +54,12 @@ class DiagnosticStudentSelectScreen extends StatefulWidget {
       {required String attemptId,
       required String subject})? peekSubjectOverride;
 
+  /// Test-only override for the connectivity stream — lets tests inject a
+  /// fake stream instead of the real `Connectivity()` plugin, which doesn't
+  /// work in the test environment. Mirrors the same convention in
+  /// diagnostic_test_runner_screen.dart.
+  final Stream<List<ConnectivityResult>>? connectivityStreamOverride;
+
   const DiagnosticStudentSelectScreen({
     super.key,
     required this.schoolId,
@@ -65,6 +72,7 @@ class DiagnosticStudentSelectScreen extends StatefulWidget {
     this.listStudentsOverride,
     this.availableSubjectsOverride,
     this.peekSubjectOverride,
+    this.connectivityStreamOverride,
   });
 
   @override
@@ -132,6 +140,8 @@ class _DiagnosticStudentSelectScreenState
   int _prefetchedCount = 0;
   bool _waitingForPrefetch = false;
 
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+
   @override
   void initState() {
     super.initState();
@@ -139,13 +149,37 @@ class _DiagnosticStudentSelectScreenState
       setState(() => _query = _searchCtrl.text.trim().toLowerCase());
     });
     _load();
+    _armConnectivityRefresh();
   }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
     _focusNode.dispose();
+    _connectivitySub?.cancel();
     super.dispose();
+  }
+
+  /// Reuses diagnostic_test_runner_screen.dart's `_armBootstrapAutoRetry`
+  /// connectivity-listener pattern — the roster can load from a stale local
+  /// cache while offline (see `_load()`'s `fromCache` flag /
+  /// `DiagnosticOfflineBadge`), and without this, that "Офлайн" banner
+  /// stays stuck showing forever even after the network actually comes
+  /// back, since nothing else ever re-triggers `_load()`. Unlike the
+  /// runner's one-shot version, this keeps listening for the screen's
+  /// whole lifetime (network can flap more than once while an operator
+  /// lingers here) and only re-fetches when currently showing stale data
+  /// or an error — a clean load has nothing to refresh.
+  void _armConnectivityRefresh() {
+    final stream = widget.connectivityStreamOverride ??
+        Connectivity().onConnectivityChanged;
+    _connectivitySub = stream.listen((results) {
+      final online = results.isNotEmpty &&
+          results.any((r) => r != ConnectivityResult.none);
+      if (online && mounted && (_fromCache || _error != null)) {
+        _load();
+      }
+    });
   }
 
   /// Task 2: background, best-effort warm-up fired the moment a student
@@ -277,6 +311,15 @@ class _DiagnosticStudentSelectScreenState
         _students = students;
         _fromCache = fromCache;
         _loading = false;
+        final selectedId = _selected != null
+            ? (_selected!['attempt_id'] ?? '').toString()
+            : '';
+        if (selectedId.isNotEmpty) {
+          _selected = students.cast<Map<String, dynamic>?>().firstWhere(
+                (s) => (s?['attempt_id'] ?? '').toString() == selectedId,
+                orElse: () => null,
+              );
+        }
       });
     } catch (e) {
       if (!mounted) return;
