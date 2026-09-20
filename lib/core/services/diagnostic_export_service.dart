@@ -17,6 +17,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:path_provider/path_provider.dart';
+import '../db/offline_queue.dart';
 
 /// Flat max question count per fixed-variant diagnostic subject (both
 /// math and english) — backend `apps/diagnostic/fixed_variant.py`'s
@@ -51,6 +52,7 @@ class DiagnosticExportService {
       dateStr: dateStr,
       mathScore: mathScore ?? 0,
       englishScore: englishScore ?? 0,
+      isLocalEstimate: record['_local_estimate'] == true,
     );
   }
 
@@ -113,6 +115,7 @@ $_headStyle
     required String dateStr,
     required int mathScore,
     required int englishScore,
+    bool isLocalEstimate = false,
   }) {
     final mathPct = (mathScore * 100 / kDiagnosticSubjectMax).round();
     final engPct = (englishScore * 100 / kDiagnosticSubjectMax).round();
@@ -166,6 +169,7 @@ $_headStyle
     <div style='font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555'>A'lochi — Diagnostik Pasport</div>
     <div style='font-size:10px;color:#888'>$dateStr</div>
   </div>
+  ${isLocalEstimate ? "<div style='background:#FFF7ED;border:1.5px solid #F97316;border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:11px;font-weight:700;color:#9A3412'>Taxminiy natija — qurilmada hisoblangan, hali serverga tasdiqlanmagan</div>" : ''}
   <div style='display:flex;align-items:center;gap:18px;background:#f7f7f7;border-radius:12px;padding:16px 20px;margin-bottom:16px'>
     <div style='width:54px;height:54px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0'>${_initial(studentName)}</div>
     <div style='flex:1'>
@@ -335,7 +339,12 @@ $_headStyle
     List<Map<String, dynamic>> records, {
     void Function(int done)? onProgress,
   }) async {
-    final zipBytes = buildZipBytes(records, onProgress: onProgress);
+    final hasPending = records.any((r) => r['status'] == 'pending');
+    final queued = hasPending
+        ? await OfflineQueue.peekLocalQueue()
+        : const <Map<String, dynamic>>[];
+    final enrichedRecords = withLocalEstimates(records, queued);
+    final zipBytes = buildZipBytes(enrichedRecords, onProgress: onProgress);
 
     final now = DateTime.now();
     String two(int n) => n.toString().padLeft(2, '0');

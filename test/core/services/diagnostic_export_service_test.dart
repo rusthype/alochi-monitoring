@@ -77,6 +77,26 @@ void main() {
         returnsNormally,
       );
     });
+
+    test('a locally-estimated "pending" record shows the unofficial-estimate banner', () {
+      final html = DiagnosticExportService.generateStudentPassportHtml({
+        'attempt_id': 'est1',
+        'student_name': 'Estimated Student',
+        'class_label': '3-A',
+        'school': '7-maktab',
+        'math_score': 20,
+        'english_score': 22,
+        'status': 'pending',
+        'date_taken': 1735689600000,
+        '_local_estimate': true,
+      });
+
+      expect(html, contains('Estimated Student'));
+      expect(html, contains('20/30'));
+      expect(html, contains('22/30'));
+      expect(html, contains('Taxminiy natija'));
+      expect(html, isNot(contains('Natija hali serverga yuborilmagan')));
+    });
   });
 
   group('DiagnosticExportService.buildZipBytes', () {
