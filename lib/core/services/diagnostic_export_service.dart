@@ -13,6 +13,11 @@
 /// generated — fabricating one would be dishonest.
 library;
 
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:archive/archive.dart';
+import 'package:path_provider/path_provider.dart';
+
 /// Flat max question count per fixed-variant diagnostic subject (both
 /// math and english) — backend `apps/diagnostic/fixed_variant.py`'s
 /// `QUESTIONS_PER_VARIANT = 30`, confirmed by
@@ -211,5 +216,83 @@ $_headStyle
   </div>
 </div></body></html>
 ''';
+  }
+
+  /// Builds the raw ZIP bytes for [records] — pure, no disk I/O, easily
+  /// unit-testable. [onProgress] fires once per record, after that
+  /// record's HTML has been added to the archive.
+  static Uint8List buildZipBytes(
+    List<Map<String, dynamic>> records, {
+    void Function(int done)? onProgress,
+  }) {
+    final archive = Archive();
+    final usedNames = <String>{};
+    for (var i = 0; i < records.length; i++) {
+      final record = records[i];
+      final html = generateStudentPassportHtml(record);
+      final attemptId = (record['attempt_id'] ?? '').toString();
+      final shortId =
+          attemptId.length >= 8 ? attemptId.substring(0, 8) : attemptId;
+      final studentSlug = (record['student_name'] ?? 'student')
+          .toString()
+          .trim()
+          .replaceAll(RegExp(r'\s+'), '_');
+      var filename = 'natija_${studentSlug}_$shortId.html';
+      // attempt_id is unique per DiagnosticHistoryDb row, but guard
+      // against a blank/duplicate attempt_id silently overwriting a
+      // previous entry inside the zip.
+      var suffix = 1;
+      while (!usedNames.add(filename)) {
+        filename = 'natija_${studentSlug}_${shortId}_$suffix.html';
+        suffix++;
+      }
+      archive.addFile(ArchiveFile.string(filename, html));
+      onProgress?.call(i + 1);
+    }
+    return Uint8List.fromList(ZipEncoder().encode(archive));
+  }
+
+  /// Builds the zip and saves it to the platform Downloads folder (same
+  /// fallback chain as `engine_host_screen.dart`'s PDF export — see plan
+  /// Context), returning the saved file's path. Does NOT open the file;
+  /// the caller decides whether/when to do that (e.g. a SnackBar action).
+  static Future<String> exportResultsToZip(
+    List<Map<String, dynamic>> records, {
+    void Function(int done)? onProgress,
+  }) async {
+    final zipBytes = buildZipBytes(records, onProgress: onProgress);
+
+    final now = DateTime.now();
+    String two(int n) => n.toString().padLeft(2, '0');
+    final dateSuffix = '${now.year}-${two(now.month)}-${two(now.day)}';
+    final filename = 'alochi_diagnostika_$dateSuffix.zip';
+
+    String? path;
+    if (!Platform.isIOS && !Platform.isAndroid) {
+      try {
+        Directory? dir;
+        if (Platform.isMacOS) {
+          final home = Platform.environment['HOME'];
+          if (home != null) {
+            final parts = home.split('/');
+            if (parts.length >= 3 && parts[1] == 'Users') {
+              dir = Directory('/Users/${parts[2]}/Downloads');
+            }
+          }
+        }
+        dir ??= await getDownloadsDirectory();
+        if (dir != null) {
+          final testPath = '${dir.path}/$filename';
+          await File(testPath).writeAsBytes(zipBytes);
+          path = testPath;
+        }
+      } catch (_) {}
+    }
+    if (path == null) {
+      final fallbackDir = await getApplicationSupportDirectory();
+      path = '${fallbackDir.path}/$filename';
+      await File(path).writeAsBytes(zipBytes);
+    }
+    return path;
   }
 }

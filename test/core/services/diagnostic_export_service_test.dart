@@ -1,4 +1,5 @@
 import 'package:alochi_monitoring/core/services/diagnostic_export_service.dart';
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -75,6 +76,78 @@ void main() {
         }),
         returnsNormally,
       );
+    });
+  });
+
+  group('DiagnosticExportService.buildZipBytes', () {
+    test('produces one HTML entry per record, named collision-safely', () {
+      final bytes = DiagnosticExportService.buildZipBytes([
+        {
+          'attempt_id': 'aaaa1111-xxxx',
+          'student_name': 'Aliyev Ali',
+          'class_label': '4-A',
+          'school': '56-maktab',
+          'math_score': 20,
+          'english_score': 22,
+          'status': 'sent',
+          'date_taken': 1735689600000,
+        },
+        {
+          'attempt_id': 'bbbb2222-xxxx',
+          'student_name': 'Aliyev Ali', // same name+class, different attempt
+          'class_label': '4-A',
+          'school': '56-maktab',
+          'math_score': null,
+          'english_score': null,
+          'status': 'pending',
+          'date_taken': 1735689600000,
+        },
+      ]);
+
+      final archive = ZipDecoder().decodeBytes(bytes);
+      expect(archive.length, equals(2));
+      final names = archive.map((f) => f.name).toSet();
+      expect(names.length, equals(2)); // no filename collision
+      for (final name in names) {
+        expect(name, endsWith('.html'));
+      }
+    });
+
+    test('reports progress once per record via onProgress', () {
+      final progressCalls = <int>[];
+      DiagnosticExportService.buildZipBytes(
+        [
+          {
+            'attempt_id': 'a1',
+            'student_name': 'A',
+            'class_label': '1-A',
+            'school': 'S',
+            'math_score': 10,
+            'english_score': 10,
+            'status': 'sent',
+            'date_taken': 1,
+          },
+          {
+            'attempt_id': 'a2',
+            'student_name': 'B',
+            'class_label': '1-A',
+            'school': 'S',
+            'math_score': null,
+            'english_score': null,
+            'status': 'pending',
+            'date_taken': 2,
+          },
+        ],
+        onProgress: progressCalls.add,
+      );
+
+      expect(progressCalls, equals([1, 2]));
+    });
+
+    test('an empty record list produces a valid, empty zip', () {
+      final bytes = DiagnosticExportService.buildZipBytes(const []);
+      final archive = ZipDecoder().decodeBytes(bytes);
+      expect(archive.length, equals(0));
     });
   });
 }
