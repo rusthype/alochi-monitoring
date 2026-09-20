@@ -903,6 +903,28 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     return answers;
   }
 
+  /// Bundles this subject's correct-answer key (from the ALREADY-downloaded
+  /// [questions] package's `correct_display_letter` fields — see backend
+  /// `_build_cat_question_response`) alongside the offline-queued finish
+  /// payload, so a finish that never reaches the server can still be
+  /// self-scored later, export-time-only (DiagnosticExportService). Never
+  /// null-safety-crashes on an older/stale cached package that predates
+  /// this field — those entries are simply omitted from `answers`, and
+  /// DiagnosticExportService treats a missing question_id as "can't score
+  /// this one" rather than throwing.
+  Map<String, dynamic> _buildOfflineAnswerKey(
+      String subject, List<Map<String, dynamic>> questions) {
+    final answers = <String, String>{};
+    for (final q in questions) {
+      final qid = _questionId(q);
+      final letter = q['correct_display_letter'];
+      if (qid.isNotEmpty && letter is String && letter.isNotEmpty) {
+        answers[qid] = letter;
+      }
+    }
+    return {'subject': subject, 'answers': answers};
+  }
+
   /// "Quit this subject early" entry point from the bottom-nav button shown
   /// on any non-last question. Asks a distinct "are you sure" question (the
   /// student is choosing to stop, not just hitting the natural last
@@ -1011,6 +1033,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           '_offlineKind': 'diagnostic_finish',
           'attempt_id': widget.attemptId,
           'answers': answers,
+          '_offline_answer_key':
+              _buildOfflineAnswerKey(_currentSubject, _questions),
         }, newIdempotencyToken());
         unawaited(_upsertHistoryRow(status: 'pending'));
         if (!mounted) return;

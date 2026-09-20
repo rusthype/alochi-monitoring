@@ -885,7 +885,13 @@ class MonitoringApi {
       return submitQuestionReport(body, token);
     }
     if (payload['_offlineKind'] == 'diagnostic_finish') {
-      final body = Map<String, dynamic>.from(payload)..remove('_offlineKind');
+      // `_offline_answer_key` is a LOCAL-ONLY self-scoring aid (see
+      // DiagnosticExportService) — it must never leave the device. Stripped
+      // here, at this single central replay choke point, the same way
+      // `_offlineKind` itself already is.
+      final body = Map<String, dynamic>.from(payload)
+        ..remove('_offlineKind')
+        ..remove('_offline_answer_key');
       final result = await diagnosticKioskApi.submitFinishOffline(body, token);
       // Single central replay choke point (both the background auto-flush
       // and any manual "flush now" trigger route through here) — flip the

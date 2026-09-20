@@ -22,6 +22,7 @@ Map<String, dynamic> _question({
   String c = 'Variant C',
   String d = 'Variant D',
   String imageUrl = '',
+  String? correctDisplayLetter,
 }) {
   return {
     'question_id': id,
@@ -32,6 +33,8 @@ Map<String, dynamic> _question({
     'option_d': d,
     'image_url': imageUrl,
     'svg_visual': '',
+    if (correctDisplayLetter != null)
+      'correct_display_letter': correctDisplayLetter,
   };
 }
 
@@ -1720,6 +1723,7 @@ void main() {
         (tester) async {
       Object? capturedExtra;
       var enqueueCalls = 0;
+      Map<String, dynamic>? capturedPayload;
       await tester.pumpWidget(_wrapWithRouter(
         DiagnosticTestRunnerScreen(
           attemptId: 'att-1',
@@ -1735,7 +1739,7 @@ void main() {
               'position': 1,
               'total_questions': 1,
               'subject': subject,
-              'questions': fullPackageQuestions(1),
+              'questions': [_question(id: 'q1', correctDisplayLetter: 'A')],
             }, isFixedVariant: true);
           },
           finishAttemptOverride: (
@@ -1747,6 +1751,7 @@ void main() {
           },
           enqueueLocalOverride: (payload, token) async {
             enqueueCalls++;
+            capturedPayload = payload;
           },
         ),
         onFinished: (extra) => capturedExtra = extra,
@@ -1770,6 +1775,15 @@ void main() {
       expect(enqueueCalls, 1);
       final extraMap = capturedExtra as Map<String, dynamic>?;
       expect(extraMap?['subjectsCompleted'], ['math']);
+      // The queued finish payload carries its own self-scoring answer key —
+      // built from the ALREADY-downloaded package's correct_display_letter
+      // fields — so a genuinely-never-synced attempt can still be locally
+      // scored, export-time-only, later (see DiagnosticExportService).
+      final answerKey =
+          capturedPayload?['_offline_answer_key'] as Map<String, dynamic>?;
+      expect(answerKey, isNotNull);
+      expect(answerKey!['subject'], 'math');
+      expect(answerKey['answers'], {'q1': 'A'});
       await unmount(tester);
     });
   });

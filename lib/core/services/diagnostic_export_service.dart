@@ -17,6 +17,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:path_provider/path_provider.dart';
+import '../db/offline_queue.dart';
 
 /// Flat max question count per fixed-variant diagnostic subject (both
 /// math and english) — backend `apps/diagnostic/fixed_variant.py`'s
@@ -51,6 +52,7 @@ class DiagnosticExportService {
       dateStr: dateStr,
       mathScore: mathScore ?? 0,
       englishScore: englishScore ?? 0,
+      isLocalEstimate: record['_local_estimate'] == true,
     );
   }
 
@@ -113,6 +115,7 @@ $_headStyle
     required String dateStr,
     required int mathScore,
     required int englishScore,
+    bool isLocalEstimate = false,
   }) {
     final mathPct = (mathScore * 100 / kDiagnosticSubjectMax).round();
     final engPct = (englishScore * 100 / kDiagnosticSubjectMax).round();
@@ -166,6 +169,7 @@ $_headStyle
     <div style='font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555'>A'lochi — Diagnostik Pasport</div>
     <div style='font-size:10px;color:#888'>$dateStr</div>
   </div>
+  ${isLocalEstimate ? "<div style='background:#FFF7ED;border:1.5px solid #F97316;border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:11px;font-weight:700;color:#9A3412'>Taxminiy natija — qurilmada hisoblangan, hali serverga tasdiqlanmagan</div>" : ''}
   <div style='display:flex;align-items:center;gap:18px;background:#f7f7f7;border-radius:12px;padding:16px 20px;margin-bottom:16px'>
     <div style='width:54px;height:54px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0'>${_initial(studentName)}</div>
     <div style='flex:1'>
@@ -218,6 +222,82 @@ $_headStyle
 ''';
   }
 
+  /// Enriches [records] with a best-effort local score estimate for any
+  /// still-'pending' row this device's own offline queue has enough data to
+  /// self-score — see plan doc Context. [queuedFinishPayloads] is the
+  /// already-decrypted contents of `OfflineQueue.peekLocalQueue()` (pure,
+  /// no I/O here — the caller does the reading). A record with no matching
+  /// or usable queued answer-key data (older app version, different
+  /// attempt, wrong `_offlineKind`, or genuinely nothing queued yet) is
+  /// returned completely unchanged — this must never invent a score.
+  ///
+  /// The estimate is deliberately NOT written back to DiagnosticHistoryDb
+  /// anywhere in this codebase — it only ever flows into the export ZIP's
+  /// HTML (see `_sentHtml`'s `isLocalEstimate` banner), never into the
+  /// app's own history list UI (`DiagnosticHistoryScreen._row`).
+  static List<Map<String, dynamic>> withLocalEstimates(
+    List<Map<String, dynamic>> records,
+    List<Map<String, dynamic>> queuedFinishPayloads,
+  ) {
+    final byAttempt = <String, List<Map<String, dynamic>>>{};
+    for (final item in queuedFinishPayloads) {
+      if (item['_offlineKind'] != 'diagnostic_finish') continue;
+      final attemptId = (item['attempt_id'] ?? '').toString();
+      if (attemptId.isEmpty) continue;
+      byAttempt.putIfAbsent(attemptId, () => []).add(item);
+    }
+    return records.map((record) {
+      if (record['status'] != 'pending') return record;
+      final attemptId = (record['attempt_id'] ?? '').toString();
+      final queuedForAttempt = byAttempt[attemptId];
+      if (queuedForAttempt == null) return record;
+      final estimate = _localScoreFromQueuedFinishes(queuedForAttempt);
+      if (estimate == null) return record;
+      return {
+        ...record,
+        'math_score': estimate['math'],
+        'english_score': estimate['english'],
+        '_local_estimate': true,
+      };
+    }).toList();
+  }
+
+  /// Sums correct answers per subject from this attempt's queued finish
+  /// payloads, comparing each `answers` entry's `selected` display letter
+  /// against `_offline_answer_key.answers[question_id]`. Returns null when
+  /// no queued row for this attempt carries a usable answer key at all.
+  static Map<String, int?>? _localScoreFromQueuedFinishes(
+    List<Map<String, dynamic>> queuedForAttempt,
+  ) {
+    int? mathCorrect;
+    int? englishCorrect;
+    for (final item in queuedForAttempt) {
+      final key = item['_offline_answer_key'];
+      final answers = item['answers'];
+      if (key is! Map || answers is! List) continue;
+      final correctAnswers = key['answers'];
+      if (correctAnswers is! Map) continue;
+      final subject = (key['subject'] ?? '').toString();
+      var correct = 0;
+      for (final a in answers) {
+        if (a is! Map) continue;
+        final qid = (a['question_id'] ?? '').toString();
+        final selected = a['selected'];
+        if (correctAnswers.containsKey(qid) &&
+            correctAnswers[qid] == selected) {
+          correct++;
+        }
+      }
+      if (subject == 'math') {
+        mathCorrect = correct;
+      } else if (subject == 'english') {
+        englishCorrect = correct;
+      }
+    }
+    if (mathCorrect == null && englishCorrect == null) return null;
+    return {'math': mathCorrect, 'english': englishCorrect};
+  }
+
   /// Builds the raw ZIP bytes for [records] — pure, no disk I/O, easily
   /// unit-testable. [onProgress] fires once per record, after that
   /// record's HTML has been added to the archive.
@@ -260,7 +340,12 @@ $_headStyle
     List<Map<String, dynamic>> records, {
     void Function(int done)? onProgress,
   }) async {
-    final zipBytes = buildZipBytes(records, onProgress: onProgress);
+    final hasPending = records.any((r) => r['status'] == 'pending');
+    final queued = hasPending
+        ? await OfflineQueue.peekLocalQueue()
+        : const <Map<String, dynamic>>[];
+    final enrichedRecords = withLocalEstimates(records, queued);
+    final zipBytes = buildZipBytes(enrichedRecords, onProgress: onProgress);
 
     final now = DateTime.now();
     String two(int n) => n.toString().padLeft(2, '0');
