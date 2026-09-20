@@ -298,7 +298,7 @@ jobs:
       - name: Notify alochi.org to revalidate the download page
         if: github.ref == 'refs/heads/main' && success()
         run: |
-          curl -sf -X POST "https://alochi.org/api/revalidate-download" \
+          curl -sf -X POST "https://alochi.org/revalidate-download" \
             -H "x-revalidate-secret: ${{ secrets.DOWNLOAD_REVALIDATE_SECRET }}" \
             || echo "::warning::Failed to notify alochi.org download-page revalidation — page will still refresh within its normal 1-hour cache window"
         continue-on-error: true
