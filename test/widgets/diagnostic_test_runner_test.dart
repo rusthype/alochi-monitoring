@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:alochi_monitoring/core/api/api_client.dart' show ApiException;
-import 'package:alochi_monitoring/core/db/diagnostic_package_cache.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_bottom_nav.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_option_card.dart';
@@ -14,7 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Map<String, dynamic> _question({
   String id = 'q1',
@@ -85,14 +83,9 @@ Widget _wrapWithRouter(Widget child, {void Function(Object?)? onFinished}) {
 }
 
 void main() {
-  setUp(() async {
+  setUp(() {
     SharedPreferences.setMockInitialValues({});
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-    await DiagnosticPackageCache.openInMemory();
   });
-
-  tearDown(() => DiagnosticPackageCache.reset());
 
   group('extractDiagnosticOptions', () {
     test('reads option_a..option_d into A..D items', () {
@@ -852,73 +845,6 @@ void main() {
       // Advanced into a second fixed-variant subject instead of finishing.
       expect(startCalls, 2);
       expect(capturedExtra, isNull);
-      await unmount(tester);
-    });
-
-    testWidgets(
-        'Task 6: background next-subject prefetch writes a disk cache entry, '
-        'and actually starting that subject deletes it', (tester) async {
-      var startCalls = 0;
-      Object? capturedExtra;
-      await tester.pumpWidget(_wrapWithRouter(
-        DiagnosticTestRunnerScreen(
-          attemptId: 'att-cache-1',
-          studentName: 'Aliyev Ali',
-          grade: 3,
-          language: 'uz',
-          availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
-              {
-            'subjects': ['math']
-          },
-          startAttemptOverride: ({required attemptId, required subject}) async {
-            startCalls++;
-            return _withMeta({
-              'position': 1,
-              'total_questions': 1,
-              'subject': subject,
-              'questions': fullPackageQuestions(1),
-            }, isFixedVariant: true);
-          },
-          finishAttemptOverride: (
-              {required attemptId, required answers}) async {
-            return {'finished': true, 'next_subject': 'english'};
-          },
-        ),
-        onFinished: (extra) => capturedExtra = extra,
-      ));
-      await tester.pump();
-      await tester.pump();
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 4));
-
-      expect(startCalls, 1);
-      expect(
-          await DiagnosticPackageCache.get('att-cache-1', 'english'), isNull);
-
-      await tester.tap(find.text('Variant A'));
-      await tester.pump();
-      await tester.tap(find.text('Testni yakunlash'));
-      // Background prefetch for 'english' is kicked off right here, running
-      // in parallel with the 1500ms transition delay below — give it a
-      // moment to land on disk before that delay elapses.
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-
-      final cached = await DiagnosticPackageCache.get('att-cache-1', 'english');
-      expect(cached, isNotNull);
-      expect(cached!['subject'], 'english');
-
-      // Let the transition finish — this actually starts 'english' via
-      // `_startSubject`, which must delete the disk entry now that
-      // AttemptStore is the sole source of truth for the in-progress subject.
-      await tester.pump(const Duration(milliseconds: 1600));
-      await tester.pump();
-      await tester.pump();
-
-      expect(startCalls, 2);
-      expect(capturedExtra, isNull);
-      expect(
-          await DiagnosticPackageCache.get('att-cache-1', 'english'), isNull);
       await unmount(tester);
     });
 

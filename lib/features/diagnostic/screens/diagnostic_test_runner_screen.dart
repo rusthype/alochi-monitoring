@@ -20,7 +20,6 @@ import '../../../core/api/api_client.dart'
     show ApiException, newIdempotencyToken;
 import '../../../core/cache/image_cache_manager.dart';
 import '../../../core/db/attempt_store.dart';
-import '../../../core/db/diagnostic_package_cache.dart';
 import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/db/offline_queue.dart';
 import '../../../core/services/heartbeat_service.dart';
@@ -641,7 +640,6 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
             attemptId: widget.attemptId,
             subject: subject,
           );
-      unawaited(DiagnosticPackageCache.delete(widget.attemptId, subject));
       if (!mounted) return;
       // Re-entering an attempt the backend already finished (see
       // CATStartView's `existing.finished_at` branch) returns
@@ -1162,7 +1160,6 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       );
       if (resp['finished'] == true) return;
       _prefetchedSubjectPackages[subject] = resp;
-      unawaited(DiagnosticPackageCache.put(widget.attemptId, subject, resp));
       final questionsList = (resp['questions'] as List?)
           ?.whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))

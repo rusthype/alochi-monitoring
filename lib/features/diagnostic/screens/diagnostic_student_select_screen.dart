@@ -14,7 +14,6 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
-import '../../../core/db/diagnostic_package_cache.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../utils/diagnostic_image_prefetch.dart';
@@ -127,21 +126,6 @@ class _DiagnosticStudentSelectScreenState
     if (attemptId.isEmpty) return;
     final grade =
         (student['session_grade'] as num?)?.toInt() ?? _gradeFromClassLabel();
-
-    // Diskdan darhol (0 ms) o'qish — ilova qayta ochilgan bo'lsa ham, oldin
-    // peek qilingan fan(lar) shu yerda tarmoqsiz ko'rinadi.
-    final cachedSubjects =
-        await DiagnosticPackageCache.getSubjectList(attemptId);
-    if (cachedSubjects != null && cachedSubjects.isNotEmpty) {
-      _allSubjectsCache[attemptId] = cachedSubjects;
-      for (final subject in cachedSubjects) {
-        final cached = await DiagnosticPackageCache.get(attemptId, subject);
-        if (cached != null) {
-          _peekCache.putIfAbsent(attemptId, () => {})[subject] = cached;
-        }
-      }
-    }
-
     try {
       final availableSubjects = widget.availableSubjectsOverride ??
           diagnosticKioskApi.availableSubjects;
@@ -153,7 +137,6 @@ class _DiagnosticStudentSelectScreenState
               .toList() ??
           const <String>[];
       _allSubjectsCache[attemptId] = subjects;
-      unawaited(DiagnosticPackageCache.putSubjectList(attemptId, subjects));
       for (final subject in subjects) {
         unawaited(_peekAndCache(attemptId, subject));
       }
@@ -169,7 +152,6 @@ class _DiagnosticStudentSelectScreenState
       final resp = await peekSubject(attemptId: attemptId, subject: subject);
       if (resp['fixed_variant'] == false) return;
       _peekCache.putIfAbsent(attemptId, () => {})[subject] = resp;
-      unawaited(DiagnosticPackageCache.put(attemptId, subject, resp));
       final questions = (resp['questions'] as List?)
           ?.whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
