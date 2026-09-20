@@ -32,6 +32,19 @@ const String _kWebTestEntryUrl =
 /// `_peekAndCache`ning ichki natijasi — status-hisoblash uchun.
 enum _PeekOutcome { cached, skippedCat, failed }
 
+/// `_peekAndCache` retry jadvali — bitta tranzit tarmoq/429 xatosi butun
+/// sinfni "error" qilib ko'rsatmasligi uchun (real maktab operatori "yarim
+/// sinfda error bo'ldi" deb xabar bergan, 2026-09-20 — sequential bulk
+/// prefetch'da bitta uzilish keyingi bir nechta o'quvchiga ham ta'sir
+/// qilishi mumkin edi, chunki hech qanday avtomatik retry yo'q edi).
+/// Jami 3 ta urinish (bu ro'yxat + boshlang'ich urinish). Flat backoff — bu
+/// repo'da hali Retry-After header ishlatilmagan (grep tasdiqlangan), shuning
+/// uchun 429 uchun ham xuddi shu jadval yetarli.
+const _peekRetryDelays = [
+  Duration(milliseconds: 500),
+  Duration(milliseconds: 1500),
+];
+
 class DiagnosticStudentSelectScreen extends StatefulWidget {
   final String schoolId;
   final String schoolName;
@@ -276,23 +289,29 @@ class _DiagnosticStudentSelectScreenState
   }
 
   Future<_PeekOutcome> _peekAndCache(String attemptId, String subject) async {
-    try {
-      final peekSubject =
-          widget.peekSubjectOverride ?? diagnosticKioskApi.peekSubject;
-      final resp = await peekSubject(attemptId: attemptId, subject: subject);
-      if (resp['fixed_variant'] == false) return _PeekOutcome.skippedCat;
-      _peekCache.putIfAbsent(attemptId, () => {})[subject] = resp;
-      final questions = (resp['questions'] as List?)
-          ?.whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
-      if (questions != null && questions.isNotEmpty) {
-        prefetchDiagnosticImages(questions);
+    for (var attempt = 0;; attempt++) {
+      try {
+        final peekSubject =
+            widget.peekSubjectOverride ?? diagnosticKioskApi.peekSubject;
+        final resp = await peekSubject(attemptId: attemptId, subject: subject);
+        if (resp['fixed_variant'] == false) return _PeekOutcome.skippedCat;
+        _peekCache.putIfAbsent(attemptId, () => {})[subject] = resp;
+        final questions = (resp['questions'] as List?)
+            ?.whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        if (questions != null && questions.isNotEmpty) {
+          prefetchDiagnosticImages(questions);
+        }
+        return _PeekOutcome.cached;
+      } catch (e) {
+        if (attempt >= _peekRetryDelays.length) {
+          debugPrint('Diagnostic peek prefetch for "$subject" failed after '
+              '${_peekRetryDelays.length + 1} attempts: $e');
+          return _PeekOutcome.failed;
+        }
+        await Future.delayed(_peekRetryDelays[attempt]);
       }
-      return _PeekOutcome.cached;
-    } catch (e) {
-      debugPrint('Diagnostic peek prefetch for "$subject" failed: $e');
-      return _PeekOutcome.failed;
     }
   }
 

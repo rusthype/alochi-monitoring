@@ -190,6 +190,63 @@ void main() {
     expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
   });
 
+  testWidgets(
+      'a transient peek failure is retried and the student still ends up '
+      'ready, not error', (tester) async {
+    var callCount = 0;
+    await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+      schoolId: 's1',
+      schoolName: 'Maktab 1',
+      classLabel: '4-A',
+      language: 'uz',
+      listStudentsOverride: (schoolId, classLabel) async => (_students, false),
+      availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+        'subjects': ['math']
+      },
+      peekSubjectOverride: ({required attemptId, required subject}) async {
+        callCount++;
+        if (callCount == 1) throw Exception('transient network blip');
+        return {'fixed_variant': true, 'questions': []};
+      },
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aliyev Ali'));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    expect(find.byIcon(Icons.error_outline), findsNothing);
+    expect(callCount, greaterThan(1));
+  });
+
+  testWidgets(
+      'a peek failure that persists through every retry still ends up '
+      'marked as error, and stops after exactly 3 attempts (regression '
+      'guard against an infinite retry loop)', (tester) async {
+    var callCount = 0;
+    await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+      schoolId: 's1',
+      schoolName: 'Maktab 1',
+      classLabel: '4-A',
+      language: 'uz',
+      listStudentsOverride: (schoolId, classLabel) async => (_students, false),
+      availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+        'subjects': ['math']
+      },
+      peekSubjectOverride: ({required attemptId, required subject}) async {
+        callCount++;
+        throw Exception('permanent failure');
+      },
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aliyev Ali'));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.error_outline), findsOneWidget);
+    expect(callCount, equals(3));
+  });
+
   testWidgets('student card shows error badge when a subject peek throws',
       (tester) async {
     await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
