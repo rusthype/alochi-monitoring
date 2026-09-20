@@ -64,6 +64,23 @@ Map<String, dynamic> classifyFinishOfflineResponse(
   return {'synced': isAlreadyFinished, 'permanent': permanent};
 }
 
+/// Merges a best-effort `kiosk/peek/` recovery result into an
+/// already-decided [classified] `{synced, permanent}` verdict — pure and
+/// unit-testable on its own so `submitFinishOffline`'s score-recovery logic
+/// (see its doc comment) doesn't need an HTTP mock. [peekResult] is `null`
+/// when the peek call itself failed/threw (best-effort — never a new
+/// failure mode) or wasn't attempted; either that or a peek that didn't
+/// come back `finished: true` leaves [classified] unchanged.
+Map<String, dynamic> withRecoveredScore(
+    Map<String, dynamic> classified, Map<String, dynamic>? peekResult) {
+  if (peekResult == null || peekResult['finished'] != true) return classified;
+  return {
+    ...classified,
+    'score_math': peekResult['score_math'],
+    'score_english': peekResult['score_english'],
+  };
+}
+
 class DiagnosticKioskApi {
   // Reads the same API_BASE_URL override as MonitoringApi (api_client.dart)
   // so one --dart-define configures the whole app's backend host.
@@ -287,8 +304,22 @@ class DiagnosticKioskApi {
   /// the response's nullable `score_math`/`score_english` fields so the
   /// caller can backfill `DiagnosticHistoryDb` at the single replay choke
   /// point instead of re-fetching them.
+  ///
+  /// When the retry hits the "already yakunlangan" 400 (this exact
+  /// finish call already succeeded server-side before an earlier response
+  /// was lost — see `classifyFinishOfflineResponse`'s doc comment), that
+  /// 400 body carries no score data. [subject] (the finish call's subject,
+  /// threaded through by `api_client.dart`'s `_dispatchLocalQueueItem` from
+  /// the offline queue row's `_offline_answer_key`) lets this method make
+  /// one best-effort recovery call to `kiosk/peek/` — which already returns
+  /// the real `score_math`/`score_english` for a subject that's in
+  /// `attempt.subjects_completed` (`KioskPeekView`, views_kiosk.py) — so the
+  /// caller's `markSent()` backfills the real score instead of null. Purely
+  /// best-effort: a failed peek falls back to today's no-score behavior,
+  /// never turning a correct "stop retrying" verdict into a retry loop.
   Future<Map<String, dynamic>> submitFinishOffline(
-      Map<String, dynamic> payload, String token) async {
+      Map<String, dynamic> payload, String token,
+      {String subject = ''}) async {
     try {
       final resp = await _send(() => http.post(
             Uri.parse('$_base/kiosk/finish/'),
@@ -299,7 +330,21 @@ class DiagnosticKioskApi {
             body: jsonEncode(payload),
           ));
       if (resp.statusCode >= 400) {
-        return classifyFinishOfflineResponse(resp.statusCode, resp.body);
+        final classified =
+            classifyFinishOfflineResponse(resp.statusCode, resp.body);
+        if (classified['synced'] == true && subject.isNotEmpty) {
+          final attemptId = (payload['attempt_id'] ?? '').toString();
+          if (attemptId.isNotEmpty) {
+            Map<String, dynamic>? peek;
+            try {
+              peek = await peekSubject(attemptId: attemptId, subject: subject);
+            } catch (_) {
+              // Best-effort recovery only — see the doc comment above.
+            }
+            return withRecoveredScore(classified, peek);
+          }
+        }
+        return classified;
       }
       Map<String, dynamic> data = const {};
       try {
