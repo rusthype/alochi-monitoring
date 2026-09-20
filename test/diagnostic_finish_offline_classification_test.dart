@@ -49,4 +49,40 @@ void main() {
       expect(result['permanent'], false);
     });
   });
+
+  // Regression for the score-loss half of the same incident family: an
+  // offline retry that hits "already yakunlangan" is correctly classified
+  // as synced+permanent above, but that 400 body carries no score — so
+  // without recovery, DiagnosticHistoryDb.markSent() permanently wrote
+  // null scores over a real server-side result. withRecoveredScore is the
+  // pure merge step submitFinishOffline uses after a best-effort
+  // kiosk/peek/ call to backfill the real score in that case.
+  group('withRecoveredScore', () {
+    final classified = {'synced': true, 'permanent': true};
+
+    test('merges score_math/score_english from a finished peek result', () {
+      final result = withRecoveredScore(classified, {
+        'finished': true,
+        'score_math': 6,
+        'score_english': 3,
+      });
+      expect(result['synced'], true);
+      expect(result['permanent'], true);
+      expect(result['score_math'], 6);
+      expect(result['score_english'], 3);
+    });
+
+    test('leaves classified unchanged when peek result is null (peek threw)',
+        () {
+      final result = withRecoveredScore(classified, null);
+      expect(result, classified);
+      expect(result.containsKey('score_math'), false);
+    });
+
+    test('leaves classified unchanged when peek did not report finished', () {
+      final result = withRecoveredScore(classified, {'finished': false});
+      expect(result, classified);
+      expect(result.containsKey('score_math'), false);
+    });
+  });
 }
