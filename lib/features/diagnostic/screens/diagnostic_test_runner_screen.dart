@@ -594,7 +594,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // after the current one is confirmed finished server-side (see the
       // `nextSubject` branches in `_submit` and `_confirmAndFinishPackage`),
       // which is the earliest point the backend will actually serve it.
-      await _startSubject(subjects.first);
+      await _startSubject(subjects.first, preferCache: false);
     } catch (e) {
       if (!mounted) return;
       // The live `availableSubjects` call has nothing to do with content —
@@ -623,8 +623,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     }
   }
 
-  Future<void> _startSubject(String subject) async {
-    _retryAction = () => _startSubject(subject);
+  Future<void> _startSubject(String subject, {bool preferCache = true}) async {
+    _retryAction = () => _startSubject(subject, preferCache: preferCache);
     setState(() {
       _loading = true;
       _error = null;
@@ -638,11 +638,39 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // instead of a live call, so an offline subject switch still works.
       // Falls back to the old live fetch when it wasn't prefetched (e.g.
       // the device was offline from the very start).
-      final resp = _prefetchedSubjectPackages.remove(subject) ??
-          await _startAttemptCall(
+      Map<String, dynamic> resp;
+      if (preferCache) {
+        resp = _prefetchedSubjectPackages.remove(subject) ??
+            await _startAttemptCall(
+              attemptId: widget.attemptId,
+              subject: subject,
+            );
+      } else {
+        // Called only from `_bootstrap()`'s normal (non-offline-fallback)
+        // path for an attempt's FIRST subject — any cache entry here can
+        // only have come from DiagnosticStudentSelectScreen's kiosk/peek/
+        // prefetch (dry_run=True, NEVER persisted server-side), never from
+        // `_prefetchSubjectInBackground` (which only ever runs for a LATER
+        // subject, after the current one is confirmed finished — there is
+        // no "previous subject" for the first one). Using that peek data
+        // directly here would skip the real kiosk/start/ call, leaving
+        // `attempt.variant_number` unset server-side forever — confirmed in
+        // production logs as the dominant cause of kiosk/finish/ failing
+        // with `no_variant_number` (45 occurrences / 72h, 100% reproducible
+        // for any prefetched student, not an intermittent/offline-only
+        // issue). Always try the real call first; fall back to the peeked
+        // package ONLY if the device is genuinely offline right now.
+        try {
+          resp = await _startAttemptCall(
             attemptId: widget.attemptId,
             subject: subject,
           );
+        } catch (e) {
+          final cached = _prefetchedSubjectPackages.remove(subject);
+          if (cached == null) rethrow;
+          resp = cached;
+        }
+      }
       if (!mounted) return;
       // Re-entering an attempt the backend already finished (see
       // CATStartView's `existing.finished_at` branch) returns

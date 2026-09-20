@@ -1470,8 +1470,9 @@ void main() {
     });
 
     testWidgets(
-        'prefetchedSubjects seeds the first subject from a warm cache — no '
-        'startAttemptOverride call for it', (tester) async {
+        'prefetchedSubjects does NOT skip the real first-subject start call '
+        '(would never persist variant_number — see kiosk/finish 400 '
+        'no_variant_number regression)', (tester) async {
       var startCalls = 0;
       await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
         attemptId: 'att-1',
@@ -1493,17 +1494,78 @@ void main() {
             ],
           }, isFixedVariant: true),
         },
+        // The first subject must always go through a real kiosk/start/ call
+        // (this is what persists `attempt.variant_number` server-side) —
+        // a peeked (dry_run) package alone is never enough. Return a valid
+        // response instead of throwing.
         startAttemptOverride: ({required attemptId, required subject}) async {
           startCalls++;
-          throw Exception('must not be called — subject was prefetched');
+          return _withMeta({
+            'position': 1,
+            'total_questions': 3,
+            'subject': 'math',
+            'questions': [
+              _question(id: 'q1'),
+              _question(id: 'q2'),
+              _question(id: 'q3'),
+            ],
+          }, isFixedVariant: true);
         },
       )));
       await tester.pump();
       await tester.pump();
       await tester.pump();
 
-      expect(startCalls, 0);
+      // The real call now DOES happen, exactly once — it must never be
+      // skipped in favor of the warm peek cache for the first subject.
+      expect(startCalls, 1);
       expect(find.byType(DiagnosticQuestionCard), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'first subject prefers the LIVE start-attempt response over a '
+        'stale peeked package when online (production no_variant_number '
+        'regression: peek is dry_run and never persists variant_number)',
+        (tester) async {
+      var startCalls = 0;
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        // A stale peeked package — must be ignored while the device is
+        // online, since it was never persisted server-side.
+        prefetchedSubjects: {
+          'math': _withMeta({
+            'position': 1,
+            'total_questions': 3,
+            'subject': 'math',
+            'questions': [_question(id: 'peeked-q1', text: 'Peeked savol')],
+          }, isFixedVariant: true),
+        },
+        // The real, persisted response — must be what actually renders.
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          startCalls++;
+          return _withMeta({
+            'position': 1,
+            'total_questions': 5,
+            'subject': 'math',
+            'questions': [_question(id: 'live-q1', text: 'Live savol')],
+          }, isFixedVariant: true);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(startCalls, 1);
+      expect(find.text('Live savol'), findsOneWidget);
+      expect(find.text('Peeked savol'), findsNothing);
       await tester.pump(const Duration(seconds: 4));
       await unmount(tester);
     });
