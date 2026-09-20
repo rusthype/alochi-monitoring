@@ -937,6 +937,25 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticHistorySendBusy => 'Yuborish allaqachon davom etmoqda';
 
   @override
+  String get diagnosticExportZipButton => 'Natijalarni yuklab olish (ZIP)';
+
+  @override
+  String diagnosticExportProgress(int done, int total) {
+    return '$done/$total tayyor...';
+  }
+
+  @override
+  String get diagnosticExportSuccess =>
+      'Natijalar Downloads papkasiga saqlandi';
+
+  @override
+  String get diagnosticExportError =>
+      'Eksport qilib bo\'lmadi. Qayta urinib ko\'ring';
+
+  @override
+  String get diagnosticExportOpenAction => 'Ochish';
+
+  @override
   String syncCompleteMsg(String done) {
     return 'Sinxronizatsiya yakunlandi! $done ta rasm oflayn saqlandi.';
   }

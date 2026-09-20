@@ -448,6 +448,21 @@
   "diagnosticHistorySendError": "Yuborib bo'lmadi. Birozdan keyin qayta urinib ko'ring",
   "diagnosticHistorySendNoNetwork": "Internet yo'q. Ulanish tiklangach avtomatik yuboriladi",
   "diagnosticHistorySendBusy": "Yuborish allaqachon davom etmoqda",
+  "diagnosticExportZipButton": "Natijalarni yuklab olish (ZIP)",
+  "@diagnosticExportZipButton": {
+    "description": "Button that exports the currently filtered diagnostic history records as a ZIP of HTML passports."
+  },
+  "diagnosticExportProgress": "{done}/{total} tayyor...",
+  "@diagnosticExportProgress": {
+    "description": "Progress label shown while generating the ZIP export.",
+    "placeholders": {
+      "done": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "diagnosticExportSuccess": "Natijalar Downloads papkasiga saqlandi",
+  "diagnosticExportError": "Eksport qilib bo'lmadi. Qayta urinib ko'ring",
+  "diagnosticExportOpenAction": "Ochish",
   "syncCompleteMsg": "Sinxronizatsiya yakunlandi! {done} ta rasm oflayn saqlandi.",
   "@syncCompleteMsg": {
     "placeholders": {

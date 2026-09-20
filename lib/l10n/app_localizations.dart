@@ -1785,6 +1785,36 @@ abstract class AppLocalizations {
   /// **'Yuborish allaqachon davom etmoqda'**
   String get diagnosticHistorySendBusy;
 
+  /// Button that exports the currently filtered diagnostic history records as a ZIP of HTML passports.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijalarni yuklab olish (ZIP)'**
+  String get diagnosticExportZipButton;
+
+  /// Progress label shown while generating the ZIP export.
+  ///
+  /// In uz, this message translates to:
+  /// **'{done}/{total} tayyor...'**
+  String diagnosticExportProgress(int done, int total);
+
+  /// No description provided for @diagnosticExportSuccess.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijalar Downloads papkasiga saqlandi'**
+  String get diagnosticExportSuccess;
+
+  /// No description provided for @diagnosticExportError.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eksport qilib bo\'lmadi. Qayta urinib ko\'ring'**
+  String get diagnosticExportError;
+
+  /// No description provided for @diagnosticExportOpenAction.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ochish'**
+  String get diagnosticExportOpenAction;
+
   /// No description provided for @syncCompleteMsg.
   ///
   /// In uz, this message translates to:
