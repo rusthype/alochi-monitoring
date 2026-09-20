@@ -909,6 +909,87 @@ void main() {
     });
 
     testWidgets(
+        'a later subject also prefers a real start-attempt call over a '
+        'stale peeked package instead of silently reusing it (regression: '
+        'previously only the FIRST subject was protected against the '
+        'no_variant_number bug class)', (tester) async {
+      var englishStartCalls = 0;
+      await tester.pumpWidget(_wrapWithRouter(
+        DiagnosticTestRunnerScreen(
+          attemptId: 'att-1',
+          studentName: 'Aliyev Ali',
+          grade: 3,
+          language: 'uz',
+          availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+              {
+            'subjects': ['math', 'english']
+          },
+          // Simulates DiagnosticStudentSelectScreen's bulk "download whole
+          // class" prefetch already having peeked BOTH subjects ahead of
+          // time via kiosk/peek/ (dry_run) — 'english' has a stale peeked
+          // package cached from initState that was never confirmed by a
+          // real kiosk/start/ call.
+          prefetchedSubjects: {
+            'english': _withMeta({
+              'position': 1,
+              'total_questions': 1,
+              'subject': 'english',
+              'questions': [
+                _question(id: 'peeked-e1', text: 'Peeked ingliz savoli')
+              ],
+            }, isFixedVariant: true),
+          },
+          startAttemptOverride: ({required attemptId, required subject}) async {
+            if (subject == 'english') {
+              englishStartCalls++;
+              return _withMeta({
+                'position': 1,
+                'total_questions': 1,
+                'subject': 'english',
+                'questions': [
+                  _question(id: 'live-e1', text: 'Live ingliz savoli')
+                ],
+              }, isFixedVariant: true);
+            }
+            return _withMeta({
+              'position': 1,
+              'total_questions': 1,
+              'subject': 'math',
+              'questions': fullPackageQuestions(1),
+            }, isFixedVariant: true);
+          },
+          finishAttemptOverride: (
+              {required attemptId, required answers}) async {
+            // math's finish call fails offline — the exact scenario this
+            // whole offline-queue feature exists for.
+            throw const ApiException(0, 'no internet');
+          },
+          enqueueLocalOverride: (payload, token) async {},
+        ),
+        onFinished: (extra) {},
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+      await tester.tap(find.text(l10n.nextSubjectButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(englishStartCalls, 1);
+      expect(find.text('Live ingliz savoli'), findsOneWidget);
+      expect(find.text('Peeked ingliz savoli'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets(
         'transient finish-call failure with no next subject left still '
         'ends the test', (tester) async {
       Object? capturedExtra;

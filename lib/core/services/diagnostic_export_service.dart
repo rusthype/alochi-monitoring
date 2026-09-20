@@ -266,6 +266,10 @@ $_headStyle
   /// payloads, comparing each `answers` entry's `selected` display letter
   /// against `_offline_answer_key.answers[question_id]`. Returns null when
   /// no queued row for this attempt carries a usable answer key at all.
+  /// An empty `answers` map counts as "no usable key" too — that happens
+  /// when the subject was started from a `kiosk/peek/` (dry_run) fallback
+  /// package, which never carries `correct_display_letter`, and must not
+  /// be scored as a confirmed 0 correct.
   static Map<String, int?>? _localScoreFromQueuedFinishes(
     List<Map<String, dynamic>> queuedForAttempt,
   ) {
@@ -276,7 +280,7 @@ $_headStyle
       final answers = item['answers'];
       if (key is! Map || answers is! List) continue;
       final correctAnswers = key['answers'];
-      if (correctAnswers is! Map) continue;
+      if (correctAnswers is! Map || correctAnswers.isEmpty) continue;
       final subject = (key['subject'] ?? '').toString();
       var correct = 0;
       for (final a in answers) {

@@ -96,10 +96,10 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   /// Subject packages the student-select screen already warmed via the
   /// side-effect-free `kiosk/peek/` endpoint (see
   /// `DiagnosticStudentSelectScreen._prefetchSubjectsForStudent`) — seeded
-  /// straight into `_prefetchedSubjectPackages` in `initState`, so even the
-  /// FIRST subject can start from a warm cache when the operator tapped the
-  /// student a few seconds earlier. A missing/empty map just falls back to
-  /// today's live-fetch-on-first-subject behavior.
+  /// straight into `_peekedFallbackPackages` in `initState`, used only as a
+  /// last-resort fallback if a real `kiosk/start/` call fails (or is
+  /// skipped for the one call site that already knows it's offline). A
+  /// missing/empty map just falls back to today's live-fetch behavior.
   final Map<String, Map<String, dynamic>>? prefetchedSubjects;
 
   /// The full subject list this attempt's grade actually has, already
@@ -175,12 +175,25 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   List<String> _allSubjects = [];
   final List<String> _subjectsCompleted = [];
 
-  /// Subject packages fetched ahead of time in the background (every subject
-  /// but the one currently being taken) so an offline mid-test subject
-  /// switch never needs a live network call — see `_prefetchSubjectInBackground`
-  /// and `_startSubject`. Consumed (removed) once a subject is actually
-  /// started; a missing entry just falls back to the old live fetch.
+  /// Real, confirmed `kiosk/start/` (dry_run=False) responses fetched ahead
+  /// of time in the background (every subject but the one currently being
+  /// taken) so an offline mid-test subject switch never needs a live network
+  /// call — see `_prefetchSubjectInBackground` and `_startSubject`. Populated
+  /// EXCLUSIVELY by `_prefetchSubjectInBackground`'s success path — never
+  /// seeded from `widget.prefetchedSubjects` (see [_peekedFallbackPackages]
+  /// for that). Consumed (removed) once a subject is actually started; a
+  /// missing entry just falls back to a live call.
   final Map<String, Map<String, dynamic>> _prefetchedSubjectPackages = {};
+
+  /// Raw `kiosk/peek/` (dry_run=True) packages passed in from
+  /// `DiagnosticStudentSelectScreen`'s bulk "download whole class" prefetch —
+  /// see `widget.prefetchedSubjects`. NEVER carries `correct_display_letter`
+  /// and NEVER persists `attempt.variant_number` server-side. Used ONLY as a
+  /// last-resort fallback after a genuine `kiosk/start/` attempt has failed
+  /// (or, for the one call site that already knows it's offline, skipped) —
+  /// never trusted as a substitute for a real start on its own (see the
+  /// `no_variant_number` history in `_startSubject`).
+  final Map<String, Map<String, dynamic>> _peekedFallbackPackages = {};
   _SubjectTransition? _transition;
 
   /// Whatever network operation last failed and produced [_error] — set
@@ -461,7 +474,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     WidgetsBinding.instance.addObserver(this);
     final prefetched = widget.prefetchedSubjects;
     if (prefetched != null && prefetched.isNotEmpty) {
-      _prefetchedSubjectPackages.addAll(prefetched);
+      _peekedFallbackPackages.addAll(prefetched);
     }
     _bootstrap();
     _initProctoring();
@@ -594,7 +607,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // after the current one is confirmed finished server-side (see the
       // `nextSubject` branches in `_submit` and `_confirmAndFinishPackage`),
       // which is the earliest point the backend will actually serve it.
-      await _startSubject(subjects.first, preferCache: false);
+      await _startSubject(subjects.first);
     } catch (e) {
       if (!mounted) return;
       // The live `availableSubjects` call has nothing to do with content —
@@ -607,11 +620,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       final fallbackSubjects = widget.prefetchedAllSubjects;
       if (fallbackSubjects != null &&
           fallbackSubjects.isNotEmpty &&
-          _prefetchedSubjectPackages.containsKey(fallbackSubjects.first)) {
+          _peekedFallbackPackages.containsKey(fallbackSubjects.first)) {
         debugPrint('Diagnostic bootstrap: live availableSubjects failed ($e), '
             'starting from prefetched subject list/package instead');
         _allSubjects = fallbackSubjects;
-        await _startSubject(fallbackSubjects.first);
+        await _startSubject(fallbackSubjects.first, skipLiveCallForPeek: true);
         return;
       }
       debugPrint('Diagnostic bootstrap error: $e');
@@ -623,8 +636,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     }
   }
 
-  Future<void> _startSubject(String subject, {bool preferCache = true}) async {
-    _retryAction = () => _startSubject(subject, preferCache: preferCache);
+  Future<void> _startSubject(String subject,
+      {bool skipLiveCallForPeek = false}) async {
+    _retryAction =
+        () => _startSubject(subject, skipLiveCallForPeek: skipLiveCallForPeek);
     setState(() {
       _loading = true;
       _error = null;
@@ -633,42 +648,42 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       _currentSubject = subject;
     });
     try {
-      // A background prefetch (see `_prefetchSubjectInBackground`) already
-      // has this subject's package + images cached — use it directly
-      // instead of a live call, so an offline subject switch still works.
-      // Falls back to the old live fetch when it wasn't prefetched (e.g.
-      // the device was offline from the very start).
+      // Always prefer a REAL, confirmed kiosk/start/ response (from
+      // `_prefetchSubjectInBackground`'s success path) when one is already
+      // cached — safe to use directly, no redundant live call needed.
+      //
+      // Otherwise, EVERY subject (first or later) always attempts the real,
+      // persisting kiosk/start/ call before ever trusting a raw kiosk/peek/
+      // (dry_run) fallback from `widget.prefetchedSubjects` — using peek data
+      // directly would skip the real call, leaving `attempt.variant_number`
+      // unset server-side forever — confirmed in production logs as the
+      // dominant cause of kiosk/finish/ failing with `no_variant_number` (45
+      // occurrences / 72h, 100% reproducible for any prefetched student, not
+      // an intermittent/offline-only issue). This used to only be enforced
+      // for the attempt's first subject (`preferCache: false` from
+      // `_bootstrap`) — a later subject reached via an offline finish (no
+      // background prefetch ever ran, or it ran and failed) still blindly
+      // trusted whatever stale peek entry was sitting in the old shared
+      // cache. Only [skipLiveCallForPeek] (the one `_bootstrap` offline-
+      // fallback call site, which already knows the live call would be
+      // doomed) skips straight to the peeked package instead of retrying.
       Map<String, dynamic> resp;
-      if (preferCache) {
-        resp = _prefetchedSubjectPackages.remove(subject) ??
-            await _startAttemptCall(
-              attemptId: widget.attemptId,
-              subject: subject,
-            );
+      final realCached = _prefetchedSubjectPackages.remove(subject);
+      if (realCached != null) {
+        resp = realCached;
+      } else if (skipLiveCallForPeek &&
+          _peekedFallbackPackages.containsKey(subject)) {
+        resp = _peekedFallbackPackages.remove(subject)!;
       } else {
-        // Called only from `_bootstrap()`'s normal (non-offline-fallback)
-        // path for an attempt's FIRST subject — any cache entry here can
-        // only have come from DiagnosticStudentSelectScreen's kiosk/peek/
-        // prefetch (dry_run=True, NEVER persisted server-side), never from
-        // `_prefetchSubjectInBackground` (which only ever runs for a LATER
-        // subject, after the current one is confirmed finished — there is
-        // no "previous subject" for the first one). Using that peek data
-        // directly here would skip the real kiosk/start/ call, leaving
-        // `attempt.variant_number` unset server-side forever — confirmed in
-        // production logs as the dominant cause of kiosk/finish/ failing
-        // with `no_variant_number` (45 occurrences / 72h, 100% reproducible
-        // for any prefetched student, not an intermittent/offline-only
-        // issue). Always try the real call first; fall back to the peeked
-        // package ONLY if the device is genuinely offline right now.
         try {
           resp = await _startAttemptCall(
             attemptId: widget.attemptId,
             subject: subject,
           );
         } catch (e) {
-          final cached = _prefetchedSubjectPackages.remove(subject);
-          if (cached == null) rethrow;
-          resp = cached;
+          final peeked = _peekedFallbackPackages.remove(subject);
+          if (peeked == null) rethrow;
+          resp = peeked;
         }
       }
       if (!mounted) return;

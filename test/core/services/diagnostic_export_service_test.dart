@@ -264,6 +264,44 @@ void main() {
       expect(result.first['english_score'], equals(1));
     });
 
+    test(
+        'an empty answer-key map (subject started from a peeked/dry_run '
+        'fallback package, never carries correct_display_letter) must not '
+        'report a false 0 score', () {
+      final records = [
+        {
+          'attempt_id': 'att-peek-fallback',
+          'student_name': 'Q',
+          'class_label': '3-A',
+          'school': 'S',
+          'math_score': null,
+          'english_score': null,
+          'status': 'pending',
+          'date_taken': 1,
+        },
+      ];
+      final queued = [
+        {
+          '_offlineKind': 'diagnostic_finish',
+          'attempt_id': 'att-peek-fallback',
+          'answers': [
+            {'question_id': 'q1', 'selected': 'A'},
+            {'question_id': 'q2', 'selected': 'B'},
+          ],
+          '_offline_answer_key': {
+            'subject': 'math',
+            'answers': <String, String>{}, // peeked package: no key data at all
+          },
+        },
+      ];
+
+      final result =
+          DiagnosticExportService.withLocalEstimates(records, queued);
+
+      expect(result.first['math_score'], isNull);
+      expect(result.first.containsKey('_local_estimate'), isFalse);
+    });
+
     test('leaves a pending record untouched when no matching queue data exists',
         () {
       final records = [
