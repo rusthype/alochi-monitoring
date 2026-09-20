@@ -219,11 +219,17 @@ class DiagnosticStudentCard extends StatelessWidget {
   final String name;
   final bool isSelected;
   final VoidCallback onTap;
+  final StudentPrefetchStatus? status;
+  final bool hasOnlineOnlySubject;
+  final VoidCallback? onRetryTap;
   const DiagnosticStudentCard({
     super.key,
     required this.name,
     required this.isSelected,
     required this.onTap,
+    this.status,
+    this.hasOnlineOnlySubject = false,
+    this.onRetryTap,
   });
 
   @override
@@ -284,6 +290,19 @@ class DiagnosticStudentCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (hasOnlineOnlySubject) ...[
+                const SizedBox(width: 6),
+                const Tooltip(
+                  message: 'Onlayn kerak',
+                  child: Icon(Icons.wifi_tethering,
+                      size: 14, color: AppColors.ink3),
+                ),
+              ],
+              if (status != null) ...[
+                const SizedBox(width: 6),
+                _StudentStatusBadge(status: status!, onRetryTap: onRetryTap),
+              ],
+              const SizedBox(width: 8),
               Container(
                 width: 20,
                 height: 20,
@@ -305,6 +324,33 @@ class DiagnosticStudentCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _StudentStatusBadge extends StatelessWidget {
+  final StudentPrefetchStatus status;
+  final VoidCallback? onRetryTap;
+  const _StudentStatusBadge({required this.status, this.onRetryTap});
+
+  @override
+  Widget build(BuildContext context) {
+    switch (status) {
+      case StudentPrefetchStatus.ready:
+        return const Icon(Icons.check_circle_outline,
+            size: 16, color: Colors.green);
+      case StudentPrefetchStatus.loading:
+        return const SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        );
+      case StudentPrefetchStatus.error:
+        return InkWell(
+          onTap: onRetryTap,
+          child: const Icon(Icons.error_outline,
+              size: 16, color: AppColors.error),
+        );
+    }
   }
 }
 

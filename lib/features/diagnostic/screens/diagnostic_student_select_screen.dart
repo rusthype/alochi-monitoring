@@ -464,18 +464,39 @@ class _DiagnosticStudentSelectScreenState
                                       itemCount: filtered.length,
                                       itemBuilder: (context, index) {
                                         final student = filtered[index];
+                                        final attemptId =
+                                            (student['attempt_id'] ?? '')
+                                                .toString();
                                         return DiagnosticStudentCard(
                                           name: formatStudentDisplayName(
                                               (student['student_name'] ?? '')
                                                   .toString()),
                                           isSelected: _selected == student,
+                                          status: _studentStatus[attemptId],
+                                          hasOnlineOnlySubject:
+                                              _studentHasOnlineOnlySubject[
+                                                      attemptId] ??
+                                                  false,
+                                          onRetryTap: () {
+                                            final future =
+                                                _prefetchSubjectsForStudent(
+                                                    student);
+                                            if (attemptId.isNotEmpty) {
+                                              _prefetchInFlight[attemptId] =
+                                                  future;
+                                            }
+                                            unawaited(future);
+                                          },
                                           onTap: () {
                                             setState(() => _selected = student);
-                                            // Task 2: best-effort, fire-and-forget —
-                                            // never awaited, never blocks selection.
-                                            unawaited(
+                                            final future =
                                                 _prefetchSubjectsForStudent(
-                                                    student));
+                                                    student);
+                                            if (attemptId.isNotEmpty) {
+                                              _prefetchInFlight[attemptId] =
+                                                  future;
+                                            }
+                                            unawaited(future);
                                           },
                                         );
                                       },

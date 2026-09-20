@@ -113,4 +113,76 @@ void main() {
     expect(availableSubjectsCalls, equals(1));
     expect(peekCalls, containsAll(['math', 'english']));
   });
+
+  testWidgets('student card shows ready badge after a fixed-variant subject '
+      'is successfully prefetched', (tester) async {
+    await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+      schoolId: 's1',
+      schoolName: 'Maktab 1',
+      classLabel: '4-A',
+      language: 'uz',
+      listStudentsOverride: (schoolId, classLabel) async => (_students, false),
+      availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+          {
+            'subjects': ['math']
+          },
+      peekSubjectOverride: ({required attemptId, required subject}) async =>
+          {'fixed_variant': true, 'questions': []},
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aliyev Ali'));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+  });
+
+  testWidgets('student card shows error badge when a subject peek throws',
+      (tester) async {
+    await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+      schoolId: 's1',
+      schoolName: 'Maktab 1',
+      classLabel: '4-A',
+      language: 'uz',
+      listStudentsOverride: (schoolId, classLabel) async => (_students, false),
+      availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+          {
+            'subjects': ['math']
+          },
+      peekSubjectOverride: ({required attemptId, required subject}) async {
+        throw Exception('network down');
+      },
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aliyev Ali'));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.error_outline), findsOneWidget);
+  });
+
+  testWidgets(
+      'student card shows online-only badge (no ready check) for CAT-only '
+      'subjects', (tester) async {
+    await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+      schoolId: 's1',
+      schoolName: 'Maktab 1',
+      classLabel: '4-A',
+      language: 'uz',
+      listStudentsOverride: (schoolId, classLabel) async => (_students, false),
+      availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+          {
+            'subjects': ['math']
+          },
+      peekSubjectOverride: ({required attemptId, required subject}) async =>
+          {'fixed_variant': false},
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aliyev Ali'));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.wifi_tethering), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle_outline), findsNothing);
+  });
 }
