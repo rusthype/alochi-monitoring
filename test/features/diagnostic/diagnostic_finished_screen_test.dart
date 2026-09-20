@@ -15,6 +15,18 @@ Widget _wrap([Widget screen = const DiagnosticFinishedScreen()]) {
         path: '/diagnostic_finished',
         builder: (context, state) => screen,
       ),
+      GoRoute(
+        path: '/diagnostic_student_select',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return Scaffold(
+            body: Text('STUDENT_SELECT:${extra['schoolId']}:'
+                '${extra['classLabel']}:${extra['schoolName']}:'
+                '${extra['schoolCode']}:${extra['language']}:'
+                '${extra['hasWebTest']}:${extra['webTestKey']}'),
+          );
+        },
+      ),
     ],
   );
   return MaterialApp.router(
@@ -137,5 +149,56 @@ void main() {
     await tester.pump();
     expect(find.text('Diagnostika yakunlandi'), findsOneWidget);
     await tester.pump(const Duration(seconds: 15));
+  });
+
+  testWidgets(
+      'tapping return with full class context navigates to student-select '
+      'for that class, not home', (tester) async {
+    await tester.pumpWidget(_wrap(const DiagnosticFinishedScreen(
+      schoolId: 'sch-1',
+      schoolName: 'Maktab 1',
+      schoolCode: 'M1',
+      classLabel: '5-A',
+      language: 'ru',
+      hasWebTest: true,
+      webTestKey: 'wt-1',
+    )));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    await tester.tap(find.byType(ElevatedButton));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('HOME'), findsNothing);
+    expect(
+      find.text('STUDENT_SELECT:sch-1:5-A:Maktab 1:M1:ru:true:wt-1'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+      'the 15s auto-return countdown also navigates to student-select when '
+      'class context is provided', (tester) async {
+    await tester.pumpWidget(_wrap(const DiagnosticFinishedScreen(
+      schoolId: 'sch-1',
+      schoolName: 'Maktab 1',
+      schoolCode: 'M1',
+      classLabel: '5-A',
+      language: 'ru',
+      hasWebTest: true,
+      webTestKey: 'wt-1',
+    )));
+    await tester.pump();
+
+    for (var i = 0; i < 15; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    await tester.pumpAndSettle();
+
+    expect(find.text('HOME'), findsNothing);
+    expect(
+      find.text('STUDENT_SELECT:sch-1:5-A:Maktab 1:M1:ru:true:wt-1'),
+      findsOneWidget,
+    );
   });
 }

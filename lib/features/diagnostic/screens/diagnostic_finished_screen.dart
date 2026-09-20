@@ -18,10 +18,33 @@ class DiagnosticFinishedScreen extends StatefulWidget {
     super.key,
     this.studentName,
     this.subjectsCompleted = const [],
+    this.schoolId = '',
+    this.schoolName = '',
+    this.schoolCode = '',
+    this.classLabel = '',
+    this.language = '',
+    this.hasWebTest = false,
+    this.webTestKey = '',
   });
 
   final String? studentName;
   final List<String> subjectsCompleted;
+
+  /// Class context the just-finished student belongs to — when both
+  /// [schoolId] and [classLabel] are present, both the "Davom ettirish"
+  /// button and the auto-return countdown navigate straight back to that
+  /// class's roster (`DiagnosticStudentSelectScreen`) instead of the kiosk
+  /// root, so the operator doesn't have to re-navigate
+  /// school-select -> session-setup -> class-select for every student.
+  /// Defaults to '' / false so every existing caller/test (none of which
+  /// pass these) keeps falling back to today's `context.go('/')` behavior.
+  final String schoolId;
+  final String schoolName;
+  final String schoolCode;
+  final String classLabel;
+  final String language;
+  final bool hasWebTest;
+  final String webTestKey;
 
   @override
   State<DiagnosticFinishedScreen> createState() =>
@@ -57,7 +80,7 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
       if (_isPaused) return;
       if (_secondsLeft <= 1) {
         timer.cancel();
-        if (mounted) context.go('/');
+        if (mounted) _returnToClassOrHome();
         return;
       }
       setState(() => _secondsLeft--);
@@ -75,7 +98,27 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
 
   void _returnNow() {
     _autoReturnTimer?.cancel();
-    context.go('/');
+    _returnToClassOrHome();
+  }
+
+  /// Returns to this student's class roster when there's enough context to
+  /// know which class that is; otherwise falls back to the kiosk root
+  /// exactly as before (e.g. some other, currently-untraced code path that
+  /// still constructs this screen with no school/class info).
+  void _returnToClassOrHome() {
+    if (widget.schoolId.isNotEmpty && widget.classLabel.isNotEmpty) {
+      context.go('/diagnostic_student_select', extra: {
+        'schoolId': widget.schoolId,
+        'schoolName': widget.schoolName,
+        'schoolCode': widget.schoolCode,
+        'classLabel': widget.classLabel,
+        'language': widget.language.isEmpty ? 'uz' : widget.language,
+        'hasWebTest': widget.hasWebTest,
+        'webTestKey': widget.webTestKey,
+      });
+    } else {
+      context.go('/');
+    }
   }
 
   @override

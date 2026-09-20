@@ -93,6 +93,14 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   final String schoolName;
   final String classLabel;
 
+  /// Also display-only, threaded through to `DiagnosticFinishedScreen` so it
+  /// can navigate straight back to this same class's roster (school id +
+  /// class label) instead of the kiosk root once the student finishes.
+  /// Default to '' / false so every existing caller/test keeps compiling.
+  final String schoolId;
+  final bool hasWebTest;
+  final String webTestKey;
+
   /// Subject packages the student-select screen already warmed via the
   /// side-effect-free `kiosk/peek/` endpoint (see
   /// `DiagnosticStudentSelectScreen._prefetchSubjectsForStudent`) — seeded
@@ -145,6 +153,9 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
     required this.language,
     this.schoolName = '',
     this.classLabel = '',
+    this.schoolId = '',
+    this.hasWebTest = false,
+    this.webTestKey = '',
     this.prefetchedSubjects,
     this.prefetchedAllSubjects,
     this.availableSubjectsOverride,
@@ -485,10 +496,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       ProctorService.instance.stop();
       HeartbeatService.instance.finishTest();
       if (mounted) {
-        context.pushReplacement('/diagnostic_finished', extra: {
-          'studentName': widget.studentName,
-          'subjectsCompleted': _subjectsCompleted,
-        });
+        context.pushReplacement('/diagnostic_finished',
+            extra: _finishedExtra());
       }
     };
     try {
@@ -560,11 +569,24 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     HeartbeatService.instance.finishTest();
     unawaited(AttemptStore.clear(_diagKey));
     if (!mounted) return;
-    context.pushReplacement('/diagnostic_finished', extra: {
-      'studentName': widget.studentName,
-      'subjectsCompleted': _subjectsCompleted,
-    });
+    context.pushReplacement('/diagnostic_finished', extra: _finishedExtra());
   }
+
+  /// Extra payload for `/diagnostic_finished` — carries the class context
+  /// through so that screen can navigate straight back to this same class's
+  /// roster instead of the kiosk root. Shared by both `pushReplacement` call
+  /// sites (proctoring termination + normal finish) so they can't drift.
+  Map<String, dynamic> _finishedExtra() => {
+        'studentName': widget.studentName,
+        'subjectsCompleted': _subjectsCompleted,
+        'schoolId': widget.schoolId,
+        'schoolName': widget.schoolName,
+        'schoolCode': widget.schoolCode,
+        'classLabel': widget.classLabel,
+        'language': widget.language,
+        'hasWebTest': widget.hasWebTest,
+        'webTestKey': widget.webTestKey,
+      };
 
   Future<void> _bootstrap() async {
     _retryAction = _bootstrap;

@@ -421,6 +421,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               language: extra['language'] as String? ?? 'uz',
               schoolName: extra['schoolName'] as String? ?? '',
               classLabel: extra['classLabel'] as String? ?? '',
+              schoolId: extra['schoolId'] as String? ?? '',
+              hasWebTest: extra['hasWebTest'] as bool? ?? false,
+              webTestKey: extra['webTestKey'] as String? ?? '',
               prefetchedSubjects: rawPrefetched is Map
                   ? rawPrefetched.map((k, v) => MapEntry(
                       k.toString(), Map<String, dynamic>.from(v as Map)))
@@ -439,6 +442,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               subjectsCompleted:
                   (extra['subjectsCompleted'] as List?)?.cast<String>() ??
                       const [],
+              schoolId: extra['schoolId'] as String? ?? '',
+              schoolName: extra['schoolName'] as String? ?? '',
+              schoolCode: extra['schoolCode'] as String? ?? '',
+              classLabel: extra['classLabel'] as String? ?? '',
+              language: extra['language'] as String? ?? '',
+              hasWebTest: extra['hasWebTest'] as bool? ?? false,
+              webTestKey: extra['webTestKey'] as String? ?? '',
             );
           }),
       GoRoute(

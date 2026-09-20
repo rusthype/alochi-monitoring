@@ -416,6 +416,11 @@ class _DiagnosticStudentSelectScreenState
       // Display-only, for DiagnosticHistoryDb (Task 4).
       'schoolName': widget.schoolName,
       'classLabel': widget.classLabel,
+      // Carried through to DiagnosticFinishedScreen so it can navigate
+      // straight back to this same class's roster instead of the kiosk root.
+      'schoolId': widget.schoolId,
+      'hasWebTest': widget.hasWebTest,
+      'webTestKey': widget.webTestKey,
       // Task 2: whatever this student's subjects were already peeked into
       // while they sat selected on this screen (may be empty/absent if the
       // peeks are still in flight or all came back non-fixed-variant).

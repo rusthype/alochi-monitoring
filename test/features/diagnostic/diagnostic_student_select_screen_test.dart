@@ -14,14 +14,23 @@ final _students = <Map<String, dynamic>>[
   {'attempt_id': 'att-1', 'student_name': 'Aliyev Ali', 'session_grade': 4},
 ];
 
+/// Captures the `extra` map handed to `/diagnostic_test_runner` by the most
+/// recent `_wrap()`'d pump, so tests can assert on it without disturbing the
+/// existing `find.text('RUNNER')` navigation assertions.
+Map<String, dynamic>? lastRunnerExtra;
+
 Widget _wrap(Widget screen) {
+  lastRunnerExtra = null;
   final router = GoRouter(
     initialLocation: '/select',
     routes: [
       GoRoute(path: '/select', builder: (_, __) => screen),
       GoRoute(
         path: '/diagnostic_test_runner',
-        builder: (_, state) => const Scaffold(body: Text('RUNNER')),
+        builder: (_, state) {
+          lastRunnerExtra = state.extra as Map<String, dynamic>?;
+          return const Scaffold(body: Text('RUNNER'));
+        },
       ),
     ],
   );
@@ -426,5 +435,40 @@ void main() {
 
     expect(listCalls, 2);
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+  });
+
+  testWidgets(
+      'tapping a student to start their test includes schoolId, hasWebTest '
+      'and webTestKey in the extra passed to /diagnostic_test_runner',
+      (tester) async {
+    await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+      schoolId: 's1',
+      schoolName: 'Maktab 1',
+      schoolCode: 'M1',
+      classLabel: '4-A',
+      language: 'uz',
+      // hasWebTest: false so tapping starts the CAT test directly, without
+      // the CAT-vs-web bottom sheet — that choice flow is exercised by
+      // other tests, not the concern here.
+      hasWebTest: false,
+      webTestKey: 'wt-9',
+      listStudentsOverride: (schoolId, classLabel) async => (_students, false),
+      availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+          {'subjects': <String>[]},
+      peekSubjectOverride: ({required attemptId, required subject}) async =>
+          {'fixed_variant': false},
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aliyev Ali'));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(find.text('RUNNER'), findsOneWidget);
+    expect(lastRunnerExtra, isNotNull);
+    expect(lastRunnerExtra!['schoolId'], 's1');
+    expect(lastRunnerExtra!['hasWebTest'], false);
+    expect(lastRunnerExtra!['webTestKey'], 'wt-9');
   });
 }

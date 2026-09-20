@@ -687,6 +687,67 @@ void main() {
     });
 
     testWidgets(
+        'finishing carries schoolId, schoolName, schoolCode, classLabel, '
+        'language, hasWebTest and webTestKey through to /diagnostic_finished',
+        (tester) async {
+      Object? capturedExtra;
+      await tester.pumpWidget(_wrapWithRouter(
+        DiagnosticTestRunnerScreen(
+          attemptId: 'att-1',
+          studentName: 'Aliyev Ali',
+          grade: 3,
+          language: 'ru',
+          schoolCode: 'M1',
+          schoolName: 'Maktab 1',
+          classLabel: '5-A',
+          schoolId: 'sch-1',
+          hasWebTest: true,
+          webTestKey: 'wt-1',
+          availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+              {
+            'subjects': ['math']
+          },
+          startAttemptOverride: ({required attemptId, required subject}) async {
+            return _withMeta({
+              'position': 1,
+              'total_questions': 1,
+              'subject': subject,
+              'questions': fullPackageQuestions(1),
+            }, isFixedVariant: true);
+          },
+          finishAttemptOverride: (
+              {required attemptId, required answers}) async {
+            return {'finished': true};
+          },
+        ),
+        onFinished: (extra) => capturedExtra = extra,
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+
+      await tester.tap(find.text('Testni yakunlash'));
+      await tester.pump();
+      await tester.pump();
+
+      final extra = capturedExtra as Map<String, dynamic>?;
+      expect(extra, isNotNull);
+      expect(extra!['studentName'], 'Aliyev Ali');
+      expect(extra['schoolId'], 'sch-1');
+      expect(extra['schoolName'], 'Maktab 1');
+      expect(extra['schoolCode'], 'M1');
+      expect(extra['classLabel'], '5-A');
+      expect(extra['language'], 'ru');
+      expect(extra['hasWebTest'], true);
+      expect(extra['webTestKey'], 'wt-1');
+      await unmount(tester);
+    });
+
+    testWidgets(
         'early-finish button is shown on non-last questions and hidden on '
         'the last one', (tester) async {
       await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
