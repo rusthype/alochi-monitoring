@@ -150,4 +150,175 @@ void main() {
       expect(archive.length, equals(0));
     });
   });
+
+  group('DiagnosticExportService.withLocalEstimates', () {
+    test('scores a pending record from its queued diagnostic_finish payloads', () {
+      final records = [
+        {
+          'attempt_id': 'att-1',
+          'student_name': 'Karimov Karim',
+          'class_label': '3-A',
+          'school': '7-maktab',
+          'math_score': null,
+          'english_score': null,
+          'status': 'pending',
+          'date_taken': 1735689600000,
+        },
+      ];
+      final queued = [
+        {
+          '_offlineKind': 'diagnostic_finish',
+          'attempt_id': 'att-1',
+          'answers': [
+            {'question_id': 'q1', 'selected': 'A'},
+            {'question_id': 'q2', 'selected': 'B'},
+          ],
+          '_offline_answer_key': {
+            'subject': 'math',
+            'answers': {'q1': 'A', 'q2': 'C'},
+          },
+        },
+      ];
+
+      final result = DiagnosticExportService.withLocalEstimates(records, queued);
+
+      expect(result.length, equals(1));
+      expect(result.first['math_score'], equals(1)); // q1 correct, q2 wrong
+      expect(result.first['english_score'], isNull); // no english row queued
+      expect(result.first['_local_estimate'], isTrue);
+      expect(result.first['status'], equals('pending')); // status unchanged
+    });
+
+    test('combines separate math and english queued rows for the same attempt', () {
+      final records = [
+        {
+          'attempt_id': 'att-2',
+          'student_name': 'X',
+          'class_label': '3-A',
+          'school': 'S',
+          'math_score': null,
+          'english_score': null,
+          'status': 'pending',
+          'date_taken': 1,
+        },
+      ];
+      final queued = [
+        {
+          '_offlineKind': 'diagnostic_finish',
+          'attempt_id': 'att-2',
+          'answers': [
+            {'question_id': 'm1', 'selected': 'A'},
+          ],
+          '_offline_answer_key': {
+            'subject': 'math',
+            'answers': {'m1': 'A'},
+          },
+        },
+        {
+          '_offlineKind': 'diagnostic_finish',
+          'attempt_id': 'att-2',
+          'answers': [
+            {'question_id': 'e1', 'selected': 'B'},
+            {'question_id': 'e2', 'selected': 'B'},
+          ],
+          '_offline_answer_key': {
+            'subject': 'english',
+            'answers': {'e1': 'A', 'e2': 'B'},
+          },
+        },
+      ];
+
+      final result = DiagnosticExportService.withLocalEstimates(records, queued);
+
+      expect(result.first['math_score'], equals(1));
+      expect(result.first['english_score'], equals(1));
+    });
+
+    test('leaves a pending record untouched when no matching queue data exists', () {
+      final records = [
+        {
+          'attempt_id': 'att-3',
+          'student_name': 'Y',
+          'class_label': '3-A',
+          'school': 'S',
+          'math_score': null,
+          'english_score': null,
+          'status': 'pending',
+          'date_taken': 1,
+        },
+      ];
+
+      final result = DiagnosticExportService.withLocalEstimates(records, const []);
+
+      expect(result.first['math_score'], isNull);
+      expect(result.first['english_score'], isNull);
+      expect(result.first.containsKey('_local_estimate'), isFalse);
+    });
+
+    test('never touches an already-"sent" record even if stale queue data exists', () {
+      final records = [
+        {
+          'attempt_id': 'att-4',
+          'student_name': 'Z',
+          'class_label': '3-A',
+          'school': 'S',
+          'math_score': 25,
+          'english_score': 28,
+          'status': 'sent',
+          'date_taken': 1,
+        },
+      ];
+      final queued = [
+        {
+          '_offlineKind': 'diagnostic_finish',
+          'attempt_id': 'att-4',
+          'answers': [
+            {'question_id': 'q1', 'selected': 'A'},
+          ],
+          '_offline_answer_key': {
+            'subject': 'math',
+            'answers': {'q1': 'A'},
+          },
+        },
+      ];
+
+      final result = DiagnosticExportService.withLocalEstimates(records, queued);
+
+      expect(result.first['math_score'], equals(25)); // official score, unchanged
+      expect(result.first.containsKey('_local_estimate'), isFalse);
+    });
+
+    test('ignores queue rows that are not diagnostic_finish or belong to a different attempt', () {
+      final records = [
+        {
+          'attempt_id': 'att-5',
+          'student_name': 'W',
+          'class_label': '3-A',
+          'school': 'S',
+          'math_score': null,
+          'english_score': null,
+          'status': 'pending',
+          'date_taken': 1,
+        },
+      ];
+      final queued = [
+        {'_offlineKind': 'question_report', 'attempt_id': 'att-5', 'answers': []},
+        {
+          '_offlineKind': 'diagnostic_finish',
+          'attempt_id': 'some-other-attempt',
+          'answers': [
+            {'question_id': 'q1', 'selected': 'A'}
+          ],
+          '_offline_answer_key': {
+            'subject': 'math',
+            'answers': {'q1': 'A'},
+          },
+        },
+      ];
+
+      final result = DiagnosticExportService.withLocalEstimates(records, queued);
+
+      expect(result.first['math_score'], isNull);
+    });
+  });
 }
