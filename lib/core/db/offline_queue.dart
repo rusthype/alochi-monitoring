@@ -192,6 +192,26 @@ class OfflineQueue {
     return synced;
   }
 
+  /// Read-only snapshot of every not-yet-flushed `local_queue` row,
+  /// decrypted — NEVER deletes, updates attempts, or races the background
+  /// auto-flush (unlike [flushLocal]). Used by DiagnosticExportService to
+  /// self-score a still-pending diagnostic attempt for the offline ZIP
+  /// export, export-time-only — never during normal app operation.
+  static Future<List<Map<String, dynamic>>> peekLocalQueue() async {
+    final d = await db;
+    final rows = await d.query('local_queue', orderBy: 'created ASC');
+    final result = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      try {
+        final json = jsonDecode(await QueueCrypto.decryptPayload(row['payload'] as String));
+        if (json is Map) result.add(Map<String, dynamic>.from(json));
+      } catch (e) {
+        debugPrint('OfflineQueue.peekLocalQueue decrypt error (id=${row['id']}): $e');
+      }
+    }
+    return result;
+  }
+
   static Future<int> pendingLocalCount() async {
     final d = await db;
     final res = await d.rawQuery('SELECT COUNT(*) as c FROM local_queue');
