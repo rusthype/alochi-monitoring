@@ -16,6 +16,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
+import '../data/diagnostic_prefetch_cache.dart';
 import '../utils/diagnostic_image_prefetch.dart';
 import '../widgets/diagnostic_widgets.dart';
 import '../../../core/utils/student_name_formatter.dart';
@@ -92,7 +93,14 @@ class _DiagnosticStudentSelectScreenState
   /// FIRST subject can begin from a warm cache. Peek is side-effect-free
   /// (see diagnostic_kiosk_api.dart), so unlike a real start-attempt call it
   /// is safe to fire for every subject up front, not just the current one.
-  final Map<String, Map<String, Map<String, dynamic>>> _peekCache = {};
+  /// Hoisted into [DiagnosticPrefetchCache] (app-process-lifetime singleton)
+  /// instead of a plain field — `diagnostic_finished_screen.dart`'s
+  /// `context.go('/')` resets the whole go_router stack on every single
+  /// student finish, which would otherwise destroy this State object (and
+  /// silently wipe a bulk "download whole class" pass) the moment the FIRST
+  /// student completes their test.
+  Map<String, Map<String, Map<String, dynamic>>> get _peekCache =>
+      DiagnosticPrefetchCache.instance.peekCache;
 
   /// The exact subject list `_prefetchSubjectsForStudent` already resolved
   /// via `availableSubjects`, keyed by attempt_id — threaded into
@@ -100,17 +108,20 @@ class _DiagnosticStudentSelectScreenState
   /// can start from the cached [_peekCache] package even when the runner's
   /// own live `availableSubjects` re-fetch fails offline (see that screen's
   /// `_bootstrap` catch block).
-  final Map<String, List<String>> _allSubjectsCache = {};
+  Map<String, List<String>> get _allSubjectsCache =>
+      DiagnosticPrefetchCache.instance.allSubjectsCache;
 
   /// Task: har bir o'quvchining fixed-variant fanlari bo'yicha offline-
   /// tayyorlik holati. Yozuv yo'q = hali umuman urinilmagan (belgi
   /// ko'rsatilmaydi).
-  final Map<String, StudentPrefetchStatus> _studentStatus = {};
+  Map<String, StudentPrefetchStatus> get _studentStatus =>
+      DiagnosticPrefetchCache.instance.studentStatus;
 
   /// Shu o'quvchida kamida bitta CAT/adaptiv (fixed_variant==false) fan
   /// borligi — status-hisobiga kirmaydi, alohida neytral belgi bilan
   /// ko'rsatiladi.
-  final Map<String, bool> _studentHasOnlineOnlySubject = {};
+  Map<String, bool> get _studentHasOnlineOnlySubject =>
+      DiagnosticPrefetchCache.instance.studentHasOnlineOnlySubject;
 
   /// Har bir o'quvchining joriy prefetch operatsiyasi — "Boshlash" tugmasi
   /// va bulk-yuklash shu Future'ni kutishi mumkin (status enumning o'zi
@@ -459,7 +470,8 @@ class _DiagnosticStudentSelectScreenState
                                                   strokeWidth: 2),
                                             )
                                           : const Icon(
-                                              Icons.download_for_offline_outlined,
+                                              Icons
+                                                  .download_for_offline_outlined,
                                               size: 16),
                                       label: Text(_prefetchingAll
                                           ? l10n.diagnosticDownloadAllProgress(
