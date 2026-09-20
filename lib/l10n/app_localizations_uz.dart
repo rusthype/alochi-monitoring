@@ -905,6 +905,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticHistoryNoRecords => 'Diagnostika tarixi hozircha yo\'q';
 
   @override
+  String get diagnosticPinDialogTitle => 'PIN-kodni kiriting';
+
+  @override
   String get diagnosticHistoryFilterAll => 'Barchasi';
 
   @override
@@ -932,6 +935,25 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get diagnosticHistorySendBusy => 'Yuborish allaqachon davom etmoqda';
+
+  @override
+  String get diagnosticExportZipButton => 'Natijalarni yuklab olish (ZIP)';
+
+  @override
+  String diagnosticExportProgress(int done, int total) {
+    return '$done/$total tayyor...';
+  }
+
+  @override
+  String get diagnosticExportSuccess =>
+      'Natijalar Downloads papkasiga saqlandi';
+
+  @override
+  String get diagnosticExportError =>
+      'Eksport qilib bo\'lmadi. Qayta urinib ko\'ring';
+
+  @override
+  String get diagnosticExportOpenAction => 'Ochish';
 
   @override
   String syncCompleteMsg(String done) {

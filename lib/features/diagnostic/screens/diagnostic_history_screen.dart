@@ -4,12 +4,17 @@
 // OfflineHistoryHubScreen alongside the existing (unmodified) HistoryScreen.
 // No own AppBar/Scaffold — it's a TabBarView body, the hub provides the
 // shared chrome.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/db/diagnostic_history_db.dart';
+import '../../../core/services/diagnostic_export_service.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../dialogs/diagnostic_export_pin_dialog.dart';
 
 enum DiagnosticHistoryFilter { all, sent, pending }
 
@@ -19,11 +24,16 @@ class DiagnosticHistoryScreen extends StatefulWidget {
   /// `flushNowOverride`.
   final Future<List<Map<String, dynamic>>> Function()? getAllOverride;
   final Future<SyncFlushOutcome> Function()? flushNowOverride;
+  final Future<String> Function(
+    List<Map<String, dynamic>> records, {
+    void Function(int done)? onProgress,
+  })? exportToZipOverride;
 
   const DiagnosticHistoryScreen({
     super.key,
     this.getAllOverride,
     this.flushNowOverride,
+    this.exportToZipOverride,
   });
 
   @override
@@ -125,6 +135,54 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
     ));
   }
 
+  bool _exporting = false;
+  int _exportedCount = 0;
+
+  Future<void> _handleExportZip() async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDiagnosticExportPinDialog(context);
+    if (confirmed != true || !mounted) return;
+
+    final records = _filtered;
+    if (records.isEmpty) return;
+    setState(() {
+      _exporting = true;
+      _exportedCount = 0;
+    });
+    String? savedPath;
+    try {
+      final exportToZip = widget.exportToZipOverride ??
+          DiagnosticExportService.exportResultsToZip;
+      savedPath = await exportToZip(
+        records,
+        onProgress: (done) {
+          if (mounted) setState(() => _exportedCount = done);
+        },
+      );
+    } catch (e) {
+      debugPrint('DiagnosticHistoryScreen._handleExportZip failed: $e');
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+    if (!mounted) return;
+    if (savedPath == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.diagnosticExportError),
+        backgroundColor: AppColors.err,
+      ));
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(l10n.diagnosticExportSuccess),
+      backgroundColor: AppColors.ok,
+      action: SnackBarAction(
+        label: l10n.diagnosticExportOpenAction,
+        textColor: Colors.white,
+        onPressed: () => OpenFilex.open(savedPath!),
+      ),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -157,17 +215,45 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
                 ),
                 if (hasPending) ...[
                   const SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: _sending ? null : _flushThenReload,
-                    icon: _sending
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 160),
+                    child: TextButton.icon(
+                      onPressed: _sending ? null : _flushThenReload,
+                      icon: _sending
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.cloud_upload_rounded, size: 18),
+                      label: Text(
+                        l10n.diagnosticHistorySendAll,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 160),
+                  child: OutlinedButton.icon(
+                    onPressed: (_exporting || filtered.isEmpty)
+                        ? null
+                        : _handleExportZip,
+                    icon: _exporting
                         ? const SizedBox(
                             width: 14,
                             height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.cloud_upload_rounded, size: 18),
-                    label: Text(l10n.diagnosticHistorySendAll),
+                        : const Icon(Icons.folder_zip_outlined, size: 18),
+                    label: Text(
+                      _exporting
+                          ? l10n.diagnosticExportProgress(
+                              _exportedCount, filtered.length)
+                          : l10n.diagnosticExportZipButton,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ],
+                ),
               ],
             ),
           ),

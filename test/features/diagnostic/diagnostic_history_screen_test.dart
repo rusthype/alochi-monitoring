@@ -200,4 +200,122 @@ void main() {
 
     expect(find.text(l10n.diagnosticHistorySendError), findsOneWidget);
   });
+
+  group('ZIP export', () {
+    testWidgets('export button is disabled when the filtered list is empty',
+        (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticHistoryScreen(
+        getAllOverride: () async => const [],
+      )));
+      await tester.pumpAndSettle();
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticHistoryScreen)))!;
+      final button = tester.widget<OutlinedButton>(find.ancestor(
+        of: find.text(l10n.diagnosticExportZipButton),
+        matching: find.byType(OutlinedButton),
+      ));
+      expect(button.onPressed, isNull);
+    });
+
+    testWidgets(
+        'entering the correct PIN calls exportToZipOverride with the filtered records',
+        (tester) async {
+      List<Map<String, dynamic>>? exported;
+      await tester.pumpWidget(_wrap(DiagnosticHistoryScreen(
+        getAllOverride: () async => _fixture,
+        exportToZipOverride: (records, {onProgress}) async {
+          exported = records;
+          onProgress?.call(records.length);
+          return '/tmp/alochi_diagnostika_test.zip';
+        },
+      )));
+      await tester.pumpAndSettle();
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticHistoryScreen)))!;
+      await tester.tap(find.text(l10n.diagnosticExportZipButton));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), '0555');
+      await tester.tap(find.text(l10n.confirmBtn));
+      await tester.pumpAndSettle();
+
+      expect(exported, isNotNull);
+      expect(exported!.length, equals(_fixture.length));
+      expect(find.text(l10n.diagnosticExportSuccess), findsOneWidget);
+    });
+
+    testWidgets('wrong PIN never triggers the export override', (tester) async {
+      var exportCalls = 0;
+      await tester.pumpWidget(_wrap(DiagnosticHistoryScreen(
+        getAllOverride: () async => _fixture,
+        exportToZipOverride: (records, {onProgress}) async {
+          exportCalls++;
+          return '/tmp/x.zip';
+        },
+      )));
+      await tester.pumpAndSettle();
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticHistoryScreen)))!;
+      await tester.tap(find.text(l10n.diagnosticExportZipButton));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), '1111');
+      await tester.tap(find.text(l10n.confirmBtn));
+      await tester.pumpAndSettle();
+
+      expect(exportCalls, equals(0));
+    });
+
+    testWidgets('respects the currently selected filter chip when exporting',
+        (tester) async {
+      List<Map<String, dynamic>>? exported;
+      await tester.pumpWidget(_wrap(DiagnosticHistoryScreen(
+        getAllOverride: () async => _fixture,
+        exportToZipOverride: (records, {onProgress}) async {
+          exported = records;
+          return '/tmp/x.zip';
+        },
+      )));
+      await tester.pumpAndSettle();
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticHistoryScreen)))!;
+      await tester.ensureVisible(find.text(l10n.diagnosticHistoryFilterPending));
+      await tester.tap(find.text(l10n.diagnosticHistoryFilterPending));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(l10n.diagnosticExportZipButton));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '0555');
+      await tester.tap(find.text(l10n.confirmBtn));
+      await tester.pumpAndSettle();
+
+      expect(exported!.length, equals(1));
+      expect(exported!.first['student_name'], equals('Valiyeva Vali'));
+    });
+
+    testWidgets('a failed export shows the error snackbar, not a fake success',
+        (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticHistoryScreen(
+        getAllOverride: () async => _fixture,
+        exportToZipOverride: (records, {onProgress}) async {
+          throw Exception('disk full');
+        },
+      )));
+      await tester.pumpAndSettle();
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticHistoryScreen)))!;
+      await tester.tap(find.text(l10n.diagnosticExportZipButton));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '0555');
+      await tester.tap(find.text(l10n.confirmBtn));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l10n.diagnosticExportError), findsOneWidget);
+    });
+  });
 }

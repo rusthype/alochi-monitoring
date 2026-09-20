@@ -896,6 +896,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticHistoryNoRecords => 'История диагностики пока пуста';
 
   @override
+  String get diagnosticPinDialogTitle => 'Введите PIN-код';
+
+  @override
   String get diagnosticHistoryFilterAll => 'Все';
 
   @override
@@ -923,6 +926,24 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get diagnosticHistorySendBusy => 'Отправка уже выполняется';
+
+  @override
+  String get diagnosticExportZipButton => 'Скачать результаты (ZIP)';
+
+  @override
+  String diagnosticExportProgress(int done, int total) {
+    return '$done/$total готово...';
+  }
+
+  @override
+  String get diagnosticExportSuccess => 'Результаты сохранены в папку Загрузки';
+
+  @override
+  String get diagnosticExportError =>
+      'Не удалось экспортировать. Попробуйте снова';
+
+  @override
+  String get diagnosticExportOpenAction => 'Открыть';
 
   @override
   String syncCompleteMsg(String done) {
