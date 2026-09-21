@@ -336,6 +336,15 @@ void main() {
       expect(find.text('Savol (english)'), findsOneWidget);
       expect(find.text('Savol (math)'), findsNothing);
       expect(startCalls, 2);
+      // Same _initProctoring()/HeartbeatService.startTest() package-info
+      // settling as the very first test in this file (see its comment) —
+      // when this test is the FIRST in the process to hit that platform
+      // channel (e.g. run in isolation via --plain-name, or under test
+      // sharding/reordering), its `.timeout(Duration(seconds: 3))` Timer
+      // isn't guaranteed to have resolved/cancelled by the earlier
+      // zero-duration pumps alone, and unmounting with it still pending
+      // fails the framework's post-test "Timer still pending" invariant.
+      await tester.pump(const Duration(seconds: 4));
       await unmount(tester);
     });
 
