@@ -10,8 +10,10 @@ import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_questio
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_question_dots.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:alochi_monitoring/shared/widgets/app_network_image.dart';
+import 'package:alochi_monitoring/core/locale/locale_provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,12 +57,21 @@ Map<String, dynamic> _withMeta(
   };
 }
 
+// Set in main()'s top-level setUp — DiagnosticTestRunnerScreen now reads
+// localeProvider (via ProviderScope.containerOf) to pick the display script
+// for school/student names, so every _wrap*/pumpWidget site needs a real
+// ProviderScope ancestor, matching the app's actual root (main.dart).
+late SharedPreferences _prefs;
+
 Widget _wrap(Widget child) {
-  return MaterialApp(
-    locale: const Locale('uz'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: child,
+  return ProviderScope(
+    overrides: [sharedPreferencesProvider.overrideWithValue(_prefs)],
+    child: MaterialApp(
+      locale: const Locale('uz'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 
@@ -80,17 +91,21 @@ Widget _wrapWithRouter(Widget child, {void Function(Object?)? onFinished}) {
           }),
     ],
   );
-  return MaterialApp.router(
-    locale: const Locale('uz'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    routerConfig: router,
+  return ProviderScope(
+    overrides: [sharedPreferencesProvider.overrideWithValue(_prefs)],
+    child: MaterialApp.router(
+      locale: const Locale('uz'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: router,
+    ),
   );
 }
 
 void main() {
-  setUp(() {
+  setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    _prefs = await SharedPreferences.getInstance();
   });
 
   group('extractDiagnosticOptions', () {

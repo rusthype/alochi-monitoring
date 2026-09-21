@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:alochi_monitoring/core/locale/locale_provider.dart';
 import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_prefetch_cache.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_student_select_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_widgets.dart';
@@ -7,8 +8,10 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final _students = <Map<String, dynamic>>[
   {'attempt_id': 'att-1', 'student_name': 'Aliyev Ali', 'session_grade': 4},
@@ -18,6 +21,12 @@ final _students = <Map<String, dynamic>>[
 /// recent `_wrap()`'d pump, so tests can assert on it without disturbing the
 /// existing `find.text('RUNNER')` navigation assertions.
 Map<String, dynamic>? lastRunnerExtra;
+
+// DiagnosticStudentSelectScreen now reads localeProvider (via
+// ProviderScope.containerOf) to pick the display script for student names,
+// so _wrap needs a real ProviderScope ancestor, matching the app's actual
+// root (main.dart). Set in main()'s setUp.
+late SharedPreferences _prefs;
 
 Widget _wrap(Widget screen) {
   lastRunnerExtra = null;
@@ -34,16 +43,23 @@ Widget _wrap(Widget screen) {
       ),
     ],
   );
-  return MaterialApp.router(
-    routerConfig: router,
-    locale: const Locale('uz'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+  return ProviderScope(
+    overrides: [sharedPreferencesProvider.overrideWithValue(_prefs)],
+    child: MaterialApp.router(
+      routerConfig: router,
+      locale: const Locale('uz'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
   );
 }
 
 void main() {
-  setUp(() => DiagnosticPrefetchCache.instance.reset());
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    _prefs = await SharedPreferences.getInstance();
+    DiagnosticPrefetchCache.instance.reset();
+  });
 
   testWidgets(
       'prefetch cache survives the State object being destroyed and '

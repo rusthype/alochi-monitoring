@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:alochi_monitoring/core/locale/locale_provider.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_finished_screen.dart';
+
+// DiagnosticFinishedScreen now reads localeProvider (via
+// ProviderScope.containerOf) to pick the display script for the student
+// name greeting, so _wrap needs a real ProviderScope ancestor, matching the
+// app's actual root (main.dart). Set in main()'s setUp.
+late SharedPreferences _prefs;
 
 Widget _wrap([Widget screen = const DiagnosticFinishedScreen()]) {
   final router = GoRouter(
@@ -29,15 +38,23 @@ Widget _wrap([Widget screen = const DiagnosticFinishedScreen()]) {
       ),
     ],
   );
-  return MaterialApp.router(
-    routerConfig: router,
-    locale: const Locale('uz'),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+  return ProviderScope(
+    overrides: [sharedPreferencesProvider.overrideWithValue(_prefs)],
+    child: MaterialApp.router(
+      routerConfig: router,
+      locale: const Locale('uz'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
   );
 }
 
 void main() {
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    _prefs = await SharedPreferences.getInstance();
+  });
+
   testWidgets('never shows score/percentage-like text', (tester) async {
     await tester.pumpWidget(_wrap());
     await tester.pump();
