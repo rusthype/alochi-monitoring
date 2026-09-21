@@ -6,9 +6,12 @@
 // session_setup_screen.dart's `_expectedPin`/`_confirm` logic verbatim
 // (client-side-only UX deterrent, no network call for the check itself).
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
+import '../../../core/locale/locale_provider.dart';
+import '../../../core/utils/student_name_formatter.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../widgets/diagnostic_widgets.dart';
@@ -81,6 +84,8 @@ class _DiagnosticSchoolSelectScreenState
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final locale =
+        ProviderScope.containerOf(context, listen: false).read(localeProvider);
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -180,8 +185,10 @@ class _DiagnosticSchoolSelectScreenState
                                   runSpacing: 12,
                                   children: _schools
                                       .map((s) => DiagnosticPillButton(
-                                            label: (s['school_name'] ?? '')
-                                                .toString(),
+                                            label: toDisplayScript(
+                                                (s['school_name'] ?? '')
+                                                    .toString(),
+                                                locale),
                                             isSelected: false,
                                             onTap: () => _selectSchool(s),
                                           ))
