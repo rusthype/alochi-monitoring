@@ -472,7 +472,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     if (remaining <= 0) {
       timer?.cancel();
       if (mounted) setState(() => _remainingSeconds = 0);
-      _finishTest();
+      // Timing out mid-subject must advance to the next incomplete subject
+      // (e.g. Math -> English) exactly like a normal subject finish, not end
+      // the whole attempt — see `_completeSubjectAndAdvance`. This callback
+      // is sync (a `Timer.periodic` tick), so fire-and-forget it the same
+      // way `_armElapsedPingTimer` does for `_pingElapsed()`.
+      unawaited(_completeSubjectAndAdvance(_currentSubject));
       return;
     }
     if (mounted) setState(() => _remainingSeconds = remaining);
@@ -595,7 +600,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     unawaited(AttemptStore.clear(_diagKey));
     // Best-effort cleanup — a failure here must never block navigating to
     // the finished screen (see the matching saveAnswer catchError above).
-    unawaited(DiagnosticAnswerStore.clearAttempt(widget.attemptId).catchError((e) {
+    unawaited(
+        DiagnosticAnswerStore.clearAttempt(widget.attemptId).catchError((e) {
       debugPrint('DiagnosticAnswerStore.clearAttempt error: $e');
     }));
     if (!mounted) return;
@@ -617,6 +623,27 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         'hasWebTest': widget.hasWebTest,
         'webTestKey': widget.webTestKey,
       };
+
+  /// Marks [subject] completed and either starts the next incomplete
+  /// subject in `_allSubjects` or ends the whole attempt via `_finishTest`
+  /// when none remain. Shared by every subject-transition site that has to
+  /// compute the next subject itself (subject-timeout, the offline-finish
+  /// self-heal, and the "allaqachon yakunlangan" self-heal in
+  /// `_confirmAndFinishPackage`) — `_submit`'s and `_confirmAndFinishPackage`'s
+  /// own success paths don't use this, since the backend already tells them
+  /// `next_subject` directly.
+  Future<void> _completeSubjectAndAdvance(String subject) async {
+    _subjectsCompleted.add(subject);
+    final nextSubject = _allSubjects.firstWhere(
+      (s) => !_subjectsCompleted.contains(s),
+      orElse: () => '',
+    );
+    if (nextSubject.isEmpty) {
+      _finishTest();
+      return;
+    }
+    await _startSubject(nextSubject);
+  }
 
   Future<void> _bootstrap() async {
     _retryAction = _bootstrap;
@@ -807,16 +834,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       final isAlreadyCompleted =
           message.contains('$subject allaqachon yakunlangan');
       if (isAlreadyCompleted) {
-        _subjectsCompleted.add(subject);
-        final nextSubject = _allSubjects.firstWhere(
-          (s) => !_subjectsCompleted.contains(s),
-          orElse: () => '',
-        );
-        if (nextSubject.isEmpty) {
-          _finishTest();
-          return;
-        }
-        await _startSubject(nextSubject);
+        await _completeSubjectAndAdvance(subject);
         return;
       }
       debugPrint('Diagnostic start-subject "$subject" error: $e');
@@ -1106,21 +1124,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         unawaited(_upsertHistoryRow(status: 'pending'));
         if (!mounted) return;
         _timer?.cancel();
-        _subjectsCompleted.add(_currentSubject);
-        final nextSubject = _allSubjects.firstWhere(
-          (s) => !_subjectsCompleted.contains(s),
-          orElse: () => '',
-        );
-        if (nextSubject.isEmpty) {
-          _finishTest();
-          return;
-        }
         setState(() => _submitting = false);
         // No local prefetch to warm here — the finish-call's own failure
         // means we can't confirm server-side completion, so `_startSubject`
         // falls through to its normal live-call path (and surfaces its
         // existing error/retry UI if that also fails, e.g. genuine offline).
-        await _startSubject(nextSubject);
+        await _completeSubjectAndAdvance(_currentSubject);
         return;
       }
       // An earlier finish-call already succeeded server-side, but its
@@ -1131,7 +1140,6 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       final message = e is ApiException ? e.message : '';
       if (message.contains('allaqachon yakunlangan')) {
         _timer?.cancel();
-        _subjectsCompleted.add(_currentSubject);
         // No response body on this code path (the server rejected the
         // finish-call itself), so the actual score isn't available here —
         // write 'pending' rather than 'sent' so the history row doesn't
@@ -1142,15 +1150,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         unawaited(_upsertHistoryRow(status: 'pending'));
         if (!mounted) return;
         setState(() => _submitting = false);
-        final nextSubject = _allSubjects.firstWhere(
-          (s) => !_subjectsCompleted.contains(s),
-          orElse: () => '',
-        );
-        if (nextSubject.isEmpty) {
-          _finishTest();
-        } else {
-          await _startSubject(nextSubject);
-        }
+        await _completeSubjectAndAdvance(_currentSubject);
         return;
       }
       // Stale local package: server rejects a question_id/subject it no
@@ -1611,7 +1611,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                             questionId: questionId,
                             selectedOption: key,
                           ).catchError((e) {
-                            debugPrint('DiagnosticAnswerStore.saveAnswer error: $e');
+                            debugPrint(
+                                'DiagnosticAnswerStore.saveAnswer error: $e');
                           }));
                           HeartbeatService.instance.updateProgress(
                               _position, _total, [], _questionText(q), key);
