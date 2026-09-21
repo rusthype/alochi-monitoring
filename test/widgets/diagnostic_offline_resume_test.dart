@@ -189,6 +189,18 @@ void main() {
       await unmount(tester);
     });
 
+    // KNOWN FOLLOW-UP: this still asserts against the now-legacy
+    // AttemptStore blob's 'answers' field, which Task 10 intentionally
+    // stopped writing (answers now live in DiagnosticAnswerStore instead —
+    // see diagnostic_test_runner_screen.dart's _saveProgressIfFixed). Real
+    // coverage for the new behavior lives in diagnostic_answer_store_test.dart
+    // (Task 7, unit-level) and diagnostic_test_runner_test.dart's own new
+    // tests (Task 10, widget-level). Pointing THIS test at DiagnosticAnswerStore
+    // instead was attempted but requires real sqflite/isolate work in this
+    // file, which this file's own header comment already documents as
+    // empirically causing a hang when combined with its other real
+    // plugin/isolate work — needs either deleting this assertion or a
+    // different verification approach, not a plain ffi-init addition.
     testWidgets('picking an option persists progress for a later resume',
         (tester) async {
       mockAppSupportDirectoryFor(tester);

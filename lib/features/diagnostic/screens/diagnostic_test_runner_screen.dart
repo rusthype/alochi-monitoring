@@ -350,11 +350,18 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     // then Ingliz tili 1-30 for the same attempt_id), so an unscoped read
     // would collide the two subjects' answers onto the same indexes.
     final answers = <int, String>{};
-    for (final row in await DiagnosticAnswerStore.loadAll(widget.attemptId,
-        subject: currentSubject)) {
-      final pos = (row['question_index'] as num?)?.toInt();
-      final selected = row['selected_option'] as String?;
-      if (pos != null && selected != null) answers[pos] = selected;
+    try {
+      for (final row in await DiagnosticAnswerStore.loadAll(widget.attemptId,
+          subject: currentSubject)) {
+        final pos = (row['question_index'] as num?)?.toInt();
+        final selected = row['selected_option'] as String?;
+        if (pos != null && selected != null) answers[pos] = selected;
+      }
+    } catch (e) {
+      // A local SQLite read failure must not crash restore — degrade to
+      // "no locally-saved answers found" (same tolerance as the saveAnswer/
+      // clearAttempt catchError call sites above).
+      debugPrint('DiagnosticAnswerStore.loadAll error: $e');
     }
     final position =
         ((saved['position'] as num?)?.toInt() ?? 1).clamp(1, questions.length);
