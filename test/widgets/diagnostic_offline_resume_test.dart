@@ -240,6 +240,16 @@ void main() {
       expect(saved!['answers'], {'1': 'A'});
       expect(saved!['current_subject'], 'math');
       await unmount(tester);
-    });
+      // SKIPPED (see `skip:` below): asserts against the now-legacy
+      // AttemptStore blob's 'answers' field, which Task 10 intentionally
+      // stopped writing (see the KNOWN FOLLOW-UP comment above this test —
+      // answers now live in DiagnosticAnswerStore instead). Real coverage
+      // for the new behavior lives in diagnostic_answer_store_test.dart
+      // (Task 7, unit-level) and diagnostic_test_runner_test.dart's own new
+      // tests (Task 10, widget-level). Left in place (not deleted) for a
+      // future fix attempt that repoints this assertion at
+      // DiagnosticAnswerStore without hitting this file's documented
+      // sqflite/isolate hang risk.
+    }, skip: true);
   });
 }
