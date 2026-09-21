@@ -292,6 +292,63 @@ void main() {
     });
 
     testWidgets(
+        'the countdown expiring on a non-last subject advances to the next '
+        'subject instead of ending the whole attempt', (tester) async {
+      // Regression test for the "Math timeout ends the whole diagnostic
+      // instead of moving to English" bug — `_syncRemainingFromDeadline`'s
+      // timeout branch used to call `_finishTest()` unconditionally. Uses
+      // `_wrap` (no GoRouter) on purpose: if the bug regresses, `_finishTest`
+      // calling `context.pushReplacement` with no GoRouter in the tree throws
+      // instead of silently passing.
+      var startCalls = 0;
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math', 'english']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          startCalls++;
+          // duration_minutes: 0 seeds a deadline that's already spent by the
+          // time the first 1-second timer tick re-checks DateTime.now() —
+          // english gets no duration at all (untimed), matching a real
+          // subject that doesn't need this test to also fake its countdown.
+          return _withMeta({
+            'position': 1,
+            'total_questions': 5,
+            'subject': subject,
+            'question': _question(id: 'q-$subject', text: 'Savol ($subject)'),
+          }, durationMinutes: subject == 'math' ? 0 : null);
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Savol (math)'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Savol (english)'), findsOneWidget);
+      expect(find.text('Savol (math)'), findsNothing);
+      expect(startCalls, 2);
+      // Same _initProctoring()/HeartbeatService.startTest() package-info
+      // settling as the very first test in this file (see its comment) —
+      // when this test is the FIRST in the process to hit that platform
+      // channel (e.g. run in isolation via --plain-name, or under test
+      // sharding/reordering), its `.timeout(Duration(seconds: 3))` Timer
+      // isn't guaranteed to have resolved/cancelled by the earlier
+      // zero-duration pumps alone, and unmounting with it still pending
+      // fails the framework's post-test "Timer still pending" invariant.
+      await tester.pump(const Duration(seconds: 4));
+      await unmount(tester);
+    });
+
+    testWidgets(
         'DiagnosticBottomNav is not rendered when is_fixed_variant is false '
         '(adaptive CAT flow)', (tester) async {
       await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
@@ -417,9 +474,8 @@ void main() {
             studentName: 'Aliyev Ali',
             grade: 3,
             language: 'uz',
-            availableSubjectsOverride: (grade,
-                    {String language = 'uz'}) async =>
-                {
+            availableSubjectsOverride:
+                (grade, {String language = 'uz'}) async => {
               'subjects': ['math']
             },
             startAttemptOverride: (
@@ -443,8 +499,8 @@ void main() {
           // its background isolate write a beat before reading it back.
           await Future<void>.delayed(const Duration(milliseconds: 50));
 
-          rows = await DiagnosticAnswerStore.loadAll(
-              'att-answer-store-1', subject: 'math');
+          rows = await DiagnosticAnswerStore.loadAll('att-answer-store-1',
+              subject: 'math');
         });
         expect(rows, hasLength(1));
         expect(rows!.first['question_id'], 'q1');
@@ -486,9 +542,8 @@ void main() {
             studentName: 'Aliyev Ali',
             grade: 3,
             language: 'uz',
-            availableSubjectsOverride: (grade,
-                    {String language = 'uz'}) async =>
-                {
+            availableSubjectsOverride:
+                (grade, {String language = 'uz'}) async => {
               'subjects': ['math']
             },
           )));
