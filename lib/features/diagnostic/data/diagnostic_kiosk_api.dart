@@ -256,6 +256,24 @@ class DiagnosticKioskApi {
     });
   }
 
+  /// Fixed-variant kiosk oqimining jonli telemetriya + butun
+  /// qurilma-yo'qolishidan himoya uchun best-effort inkremental javob
+  /// sinxronizatsiyasi — qarang: SyncService'ning 60s flush tsikli.
+  /// Server tomonida idempotent (attempt+question bo'yicha upsert qiladi),
+  /// demak takroriy/dublikat batch'ni qayta yuborish har doim xavfsiz;
+  /// hech qachon baholamaydi (is_correct server tomonida null qoladi) va
+  /// kiosk/finish/'ning o'zining, o'zgarishsiz batch-finish kontraktiga
+  /// hech qachon tegmaydi.
+  Future<Map<String, dynamic>> syncAnswers({
+    required String attemptId,
+    required List<Map<String, dynamic>> answers,
+  }) {
+    return _post('/kiosk/sync/', {
+      'attempt_id': attemptId,
+      'answers': answers,
+    });
+  }
+
   /// `{exchange_code}` — starts the web-test bridge session for a class
   /// whose row had `has_web_test: true`. Per the S-003 fix, the backend no
   /// longer returns a raw JWT here (never wanted in a URL) — only an opaque
