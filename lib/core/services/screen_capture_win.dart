@@ -427,7 +427,15 @@ Uint8List? _grabBgra(CaptureProfile profile) {
 
     final bufSize = width * height * 4;
     buf = calloc<Uint8>(bufSize);
-    final lines = GetDIBits(hdcMem, hBmp, 0, height, buf, bi, DIB_RGB_COLORS);
+    // GetDIBits' hdc must be the SCREEN dc (hScreen), not the memory dc the
+    // bitmap is selected into (hdcMem) — passing the memory DC is a
+    // documented driver-dependent GDI pitfall (notably on Intel iGPU
+    // drivers): the call "succeeds" (nonzero scan lines) but the DIB comes
+    // back as the bitmap's untouched default-initialized content — i.e. a
+    // solid white frame — instead of the blitted screen pixels. The
+    // canonical MSDN screen-capture sample passes the screen DC here for
+    // exactly this reason.
+    final lines = GetDIBits(hScreen, hBmp, 0, height, buf, bi, DIB_RGB_COLORS);
     if (lines == 0) return null;
     return Uint8List.fromList(buf.asTypedList(bufSize)); // copy before free
   } catch (_) {
