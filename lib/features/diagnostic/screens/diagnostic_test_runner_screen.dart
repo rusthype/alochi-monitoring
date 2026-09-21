@@ -20,6 +20,7 @@ import '../../../core/api/api_client.dart'
     show ApiException, newIdempotencyToken;
 import '../../../core/cache/image_cache_manager.dart';
 import '../../../core/db/attempt_store.dart';
+import '../../../core/db/diagnostic_answer_store.dart';
 import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/db/offline_queue.dart';
 import '../../../core/services/heartbeat_service.dart';
@@ -301,7 +302,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       'current_subject': _currentSubject,
       'is_fixed_variant': true,
       'questions': _questions,
-      'answers': _answers.map((k, v) => MapEntry(k.toString(), v)),
+      // 'answers' intentionally dropped — DiagnosticAnswerStore (SQLite,
+      // written per-tap in onSelect) is now the source of truth for
+      // fixed-variant answers on restore (see _tryRestore); this blob's
+      // debounced save is no longer the only copy, so duplicating answers
+      // here would just be redundant, staler data.
       'position': _position,
       'total': _total,
       'deadline_epoch_ms': _deadline?.millisecondsSinceEpoch,
@@ -337,11 +342,20 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // correct here (the server itself decides what happens next).
       if (!deadline.isAfter(DateTime.now())) return false;
     }
+    // Answers now come from DiagnosticAnswerStore (SQLite), not the blob's
+    // own 'answers' field (see _saveProgressIfFixed) — it's written on every
+    // single tap, so it survives a crash even when this debounced blob save
+    // never landed. Subject-scoped for the same reason as loadAll's own doc
+    // comment: question_index is reused across subjects (Matematika 1-30,
+    // then Ingliz tili 1-30 for the same attempt_id), so an unscoped read
+    // would collide the two subjects' answers onto the same indexes.
     final answers = <int, String>{};
-    ((saved['answers'] as Map?) ?? {}).forEach((k, v) {
-      final pos = int.tryParse(k.toString());
-      if (pos != null) answers[pos] = v.toString();
-    });
+    for (final row in await DiagnosticAnswerStore.loadAll(widget.attemptId,
+        subject: currentSubject)) {
+      final pos = (row['question_index'] as num?)?.toInt();
+      final selected = row['selected_option'] as String?;
+      if (pos != null && selected != null) answers[pos] = selected;
+    }
     final position =
         ((saved['position'] as num?)?.toInt() ?? 1).clamp(1, questions.length);
     if (!mounted) return false;
@@ -572,6 +586,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
     unawaited(AttemptStore.clear(_diagKey));
+    // Best-effort cleanup — a failure here must never block navigating to
+    // the finished screen (see the matching saveAnswer catchError above).
+    unawaited(DiagnosticAnswerStore.clearAttempt(widget.attemptId).catchError((e) {
+      debugPrint('DiagnosticAnswerStore.clearAttempt error: $e');
+    }));
     if (!mounted) return;
     context.pushReplacement('/diagnostic_finished', extra: _finishedExtra());
   }
@@ -1566,16 +1585,38 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                         selectedOption: _selectedOption,
                         interactive: !_submitting,
                         onSelect: (key) {
-                          // Local-only: pick/change the answer for the
-                          // current position, no network call (mirrors the
-                          // CAT branch below's HeartbeatService update).
                           setState(() {
                             _selectedOption = key;
                             _answers[_position] = key;
                           });
                           unawaited(_saveProgressIfFixed());
+                          // Instant crash-recovery write — SQLite, not the
+                          // AttemptStore blob (see DiagnosticAnswerStore's
+                          // header comment for why these two stores split).
+                          // A local SQLite failure (e.g. a locked disk on
+                          // some real device) must never crash/interrupt the
+                          // exam flow — same best-effort tolerance as
+                          // AttemptStore.save's own try/catch.
+                          unawaited(DiagnosticAnswerStore.saveAnswer(
+                            attemptId: widget.attemptId,
+                            subject: _currentSubject,
+                            questionIndex: _position,
+                            questionId: questionId,
+                            selectedOption: key,
+                          ).catchError((e) {
+                            debugPrint('DiagnosticAnswerStore.saveAnswer error: $e');
+                          }));
                           HeartbeatService.instance.updateProgress(
                               _position, _total, [], _questionText(q), key);
+                          // Live telemetry: reuses the existing proctor
+                          // heartbeat channel (already-merged origin/main
+                          // fix) + HeartbeatService's existing
+                          // reportAnswers() (already used by TestEngine, not
+                          // previously called from here).
+                          HeartbeatService.instance.reportAnswers(
+                            _answers.map((k, v) => MapEntry(k.toString(), v)),
+                            _elapsedOnSubject,
+                          );
                           _autoAdvance?.cancel();
                           if (!((_position - 1) >= (_total - 1))) {
                             _autoAdvance =

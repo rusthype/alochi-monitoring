@@ -49,14 +49,29 @@ class QueueCrypto {
   }
 
   static Future<enc.Key> _loadOrCreateFallbackKey() async {
-    final dir = await getApplicationSupportDirectory();
-    final file = File(p.join(dir.path, _fallbackKeyFileName));
-    if (await file.exists()) {
-      return enc.Key(base64Decode(base64.normalize(await file.readAsString())));
+    try {
+      final dir = await getApplicationSupportDirectory();
+      final file = File(p.join(dir.path, _fallbackKeyFileName));
+      if (await file.exists()) {
+        return enc.Key(
+            base64Decode(base64.normalize(await file.readAsString())));
+      }
+      final generated = enc.Key.fromSecureRandom(32);
+      await file.writeAsString(base64Encode(generated.bytes));
+      return generated;
+    } catch (e) {
+      // Neither the OS keychain (caught one level up, in _loadOrCreateKey)
+      // nor this on-disk fallback is reachable — e.g. no path_provider
+      // platform implementation at all, as in a plain `flutter test` with
+      // no mock registered for it. Degrade to an ephemeral, non-persisted
+      // key instead of leaving this uncaught: _getKey()'s cached _keyFuture
+      // keeps every encrypt/decrypt in THIS process run internally
+      // consistent, it just won't survive a real restart — acceptable since
+      // on-disk persistence was already unreachable if we got here.
+      debugPrint(
+          'QueueCrypto: fallback key file unavailable ($e), using ephemeral key');
+      return enc.Key.fromSecureRandom(32);
     }
-    final generated = enc.Key.fromSecureRandom(32);
-    await file.writeAsString(base64Encode(generated.bytes));
-    return generated;
   }
 
   /// Pure encrypt given an explicit key — split out from [encryptPayload]

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:alochi_monitoring/core/api/api_client.dart' show ApiException;
+import 'package:alochi_monitoring/core/db/attempt_store.dart';
+import 'package:alochi_monitoring/core/db/diagnostic_answer_store.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_bottom_nav.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_option_card.dart';
@@ -13,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Map<String, dynamic> _question({
   String id = 'q1',
@@ -379,6 +382,132 @@ void main() {
           for (var i = 1; i <= count; i++)
             _question(id: 'q$i', text: 'Savol $i')
         ];
+
+    // Scoped to just these 2 tests: sqfliteFfiInit()/databaseFactory here
+    // only auto-inits on Windows/Linux (see DiagnosticAnswerStore.db), so
+    // without an explicit openInMemory() the other ~38 tests in this file
+    // get the same safe, fast MissingPluginException DiagnosticAnswerStore
+    // now handles via catchError (mirrors AttemptStore's own behavior) — no
+    // isolate spawn, no lingering Timer. Only these 2 tests actually need a
+    // real, working DiagnosticAnswerStore to assert against.
+    group('DiagnosticAnswerStore-backed persistence (real sqflite)', () {
+      setUp(() async {
+        sqfliteFfiInit();
+        databaseFactory = databaseFactoryFfi;
+        await DiagnosticAnswerStore.openInMemory();
+      });
+
+      tearDown(() async => DiagnosticAnswerStore.reset());
+
+      testWidgets(
+          'selecting an answer in full-package mode writes it to '
+          'DiagnosticAnswerStore immediately', (tester) async {
+        List<Map<String, dynamic>>? rows;
+        // DiagnosticAnswerStore is sqflite_common_ffi-backed (a real
+        // cross-isolate round trip) — directly awaiting it (or triggering
+        // it via a tap) from a bare testWidgets body hangs instead of
+        // completing, same class of problem as AttemptStore's
+        // crypto/path_provider path documented in
+        // diagnostic_offline_resume_test.dart's mockAppSupportDirectoryFor
+        // doc comment. runAsync escapes the FakeAsync zone so the real
+        // isolate round trip can actually resolve.
+        await tester.runAsync(() async {
+          await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+            attemptId: 'att-answer-store-1',
+            studentName: 'Aliyev Ali',
+            grade: 3,
+            language: 'uz',
+            availableSubjectsOverride: (grade,
+                    {String language = 'uz'}) async =>
+                {
+              'subjects': ['math']
+            },
+            startAttemptOverride: (
+                {required attemptId, required subject}) async {
+              return _withMeta({
+                'position': 1,
+                'total_questions': 2,
+                'subject': subject,
+                'questions': fullPackageQuestions(2),
+              }, isFixedVariant: true);
+            },
+          )));
+          await tester.pump();
+          await tester.pump();
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 4));
+
+          await tester.tap(find.text('Variant B'));
+          await tester.pump();
+          // saveAnswer is fire-and-forget (unawaited) from onSelect — give
+          // its background isolate write a beat before reading it back.
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+
+          rows = await DiagnosticAnswerStore.loadAll(
+              'att-answer-store-1', subject: 'math');
+        });
+        expect(rows, hasLength(1));
+        expect(rows!.first['question_id'], 'q1');
+        expect(rows!.first['selected_option'], 'B');
+        await unmount(tester);
+      });
+
+      testWidgets(
+          'restoring a fixed-variant attempt reads answers from '
+          'DiagnosticAnswerStore, not the AttemptStore blob', (tester) async {
+        // Both the DiagnosticAnswerStore seed write and AttemptStore.save's
+        // own crypto/plugin path are real async plugin/isolate work — same
+        // FakeAsync-vs-real-isolate reasoning as the test above, so the
+        // whole seed-then-restore exchange runs inside runAsync (mirrors
+        // diagnostic_offline_resume_test.dart's established pattern).
+        await tester.runAsync(() async {
+          await DiagnosticAnswerStore.saveAnswer(
+            attemptId: 'att-restore-1',
+            subject: 'math',
+            questionIndex: 1,
+            questionId: 'q1',
+            selectedOption: 'C',
+          );
+          await AttemptStore.save('diag_att-restore-1', {
+            'all_subjects': ['math'],
+            'subjects_completed': <String>[],
+            'current_subject': 'math',
+            'is_fixed_variant': true,
+            'questions': fullPackageQuestions(2),
+            'position': 1,
+            'total': 2,
+            'deadline_epoch_ms': DateTime.now()
+                .add(const Duration(minutes: 10))
+                .millisecondsSinceEpoch,
+          });
+
+          await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+            attemptId: 'att-restore-1',
+            studentName: 'Aliyev Ali',
+            grade: 3,
+            language: 'uz',
+            availableSubjectsOverride: (grade,
+                    {String language = 'uz'}) async =>
+                {
+              'subjects': ['math']
+            },
+          )));
+          // _tryRestore's chain is real async I/O (AttemptStore.load +
+          // DiagnosticAnswerStore.loadAll) — unlike the test above's fresh
+          // start (test-double overrides resolve instantly), a fixed
+          // pump() count isn't guaranteed to outlast it. pumpAndSettle
+          // isn't safe here either: SyncStatusBadge/ProctorService's own
+          // periodic timers keep scheduling frames and never let it
+          // settle. A real delay lets the restore's actual async chain
+          // finish before the next pump renders it.
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          await tester.pump();
+        });
+
+        expect(find.text('Savol 1'), findsOneWidget);
+        await unmount(tester);
+      });
+    });
 
     testWidgets(
         'full-package mode: tapping a question dot jumps position with no '
