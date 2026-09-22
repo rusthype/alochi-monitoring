@@ -1648,6 +1648,19 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                                 ? () {}
                                 : () {
                                     setState(() => _selectedOption = opt.key);
+                                    // CAT never populates _answers (each
+                                    // pick is submitted immediately, unlike
+                                    // the fixed-variant grid's offline-sync
+                                    // map above), so only the live
+                                    // proctor/spotlight "selected option"
+                                    // needs updating here — reportAnswers()
+                                    // would just resend a stale/empty map.
+                                    HeartbeatService.instance.updateProgress(
+                                        _position,
+                                        _total,
+                                        [],
+                                        _questionText(q),
+                                        opt.key);
                                     _submit();
                                   },
                           )),
