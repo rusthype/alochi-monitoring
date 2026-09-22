@@ -762,6 +762,16 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
             subject: subject,
           );
         } catch (e) {
+          // A 4xx business-rule rejection (e.g. "Avval math fani
+          // yakunlanishi kerak") must never fall back to a stale,
+          // never-persisted peek package — only a genuine network failure
+          // may. Same status-code classification already used by
+          // _confirmAndFinishPackage's catch block, reused here instead of
+          // reinvented.
+          final status = e is ApiException ? e.statusCode : 0;
+          final isNetworkFailure =
+              status == 0 || status >= 500 || status == 429;
+          if (!isNetworkFailure) rethrow;
           final peeked = _peekedFallbackPackages.remove(subject);
           if (peeked == null) rethrow;
           resp = peeked;
