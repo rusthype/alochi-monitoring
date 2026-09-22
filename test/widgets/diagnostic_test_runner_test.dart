@@ -1553,6 +1553,93 @@ void main() {
     });
 
     testWidgets(
+        '_startSubject does NOT fall back to a peeked package on a 400 '
+        'rejection (only on a genuine network failure)', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-400-no-fallback',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math', 'english']
+        },
+        prefetchedAllSubjects: const ['math', 'english'],
+        prefetchedSubjects: {
+          'math': _withMeta({
+            'position': 1,
+            'total_questions': 1,
+            'subject': 'math',
+            'question': _question(id: 'peeked-q', text: 'PEEKED SAVOL'),
+          }),
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          throw const ApiException(
+              400, "Avval math fani yakunlanishi kerak.");
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      // The peeked question must NEVER render — the 400 must surface as an
+      // error, not silently substitute the stale peek package.
+      expect(find.text('PEEKED SAVOL'), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'fixed-variant subject timeout calls the real finish endpoint and '
+        'advances to next_subject (not a silent local-only advance)',
+        (tester) async {
+      var finishCalled = false;
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-timeout-real-finish',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math', 'english']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          if (subject == 'math') {
+            return _withMeta({
+              'position': 1,
+              'total_questions': 1,
+              'subject': 'math',
+              'questions': [_question(id: 'm1', text: 'Math savoli')],
+            }, durationMinutes: 0, isFixedVariant: true);
+          }
+          return _withMeta({
+            'position': 1,
+            'total_questions': 1,
+            'subject': 'english',
+            'questions': [_question(id: 'e1', text: 'English savoli')],
+          }, isFixedVariant: true);
+        },
+        finishAttemptOverride: ({required attemptId, required answers}) async {
+          finishCalled = true;
+          return {'next_subject': 'english'};
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      // Let the 1-second periodic timer tick at least once past the
+      // (already-reached, durationMinutes: 0) deadline, plus the 1500ms
+      // subject-transition delay _finishCurrentSubjectAndAdvance uses.
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(finishCalled, isTrue,
+          reason: 'timeout must call the real kiosk/finish/ endpoint, not '
+              'just update local state');
+      expect(find.text('English savoli'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets(
         'a successfully background-prefetched subject transition makes no '
         'new live startAttempt call for that subject', (tester) async {
       final startCalls = <String>[];
