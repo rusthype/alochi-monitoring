@@ -472,6 +472,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     }
     final remaining = deadline.difference(DateTime.now()).inSeconds;
     if (remaining <= 0) {
+      // _submit() may still be in flight — wait rather than race it. Do
+      // NOT cancel the periodic timer in that case: the next tick (1s
+      // later) re-checks, otherwise the screen would freeze at 00:00
+      // forever with nothing left to trigger a re-check.
+      if (_submitting) return;
       timer?.cancel();
       if (mounted) setState(() => _remainingSeconds = 0);
       // Timing out mid-subject must advance to the next incomplete subject
@@ -479,7 +484,17 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // the whole attempt — see `_completeSubjectAndAdvance`. This callback
       // is sync (a `Timer.periodic` tick), so fire-and-forget it the same
       // way `_armElapsedPingTimer` does for `_pingElapsed()`.
-      unawaited(_completeSubjectAndAdvance(_currentSubject));
+      if (_isFixedVariant) {
+        // Fixed-variant: the locally-collected answer batch was never sent
+        // — finish it for real, then advance (see
+        // _finishCurrentSubjectAndAdvance).
+        unawaited(_finishCurrentSubjectAndAdvance());
+      } else {
+        // CAT: every question was already submitted in real time via
+        // _submit() — nothing to flush, just advance locally (unchanged
+        // behavior).
+        unawaited(_completeSubjectAndAdvance(_currentSubject));
+      }
       return;
     }
     if (mounted) setState(() => _remainingSeconds = remaining);
@@ -1091,9 +1106,27 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       );
       if (ok != true) return;
     }
+    await _finishCurrentSubjectAndAdvance();
+  }
+
+  /// Submits every locally-collected fixed-variant answer via `kiosk/finish/`
+  /// and advances to `next_subject` (or ends the attempt). Shared by the
+  /// manual "finish this subject" button (`_confirmAndFinishPackage`, after
+  /// its unanswered-questions confirmation) and by `_syncRemainingFromDeadline`
+  /// on subject-timer expiry (no confirmation — time is already up). Only
+  /// valid for `_isFixedVariant == true`: CAT already submits each question
+  /// in real time via `_submit()`, so there is no unsent local batch to
+  /// flush for it.
+  Future<void> _finishCurrentSubjectAndAdvance() async {
+    // _submit() may still have an answer-submission in flight (the student
+    // tapped in the final second) — defer rather than race it. The caller
+    // (the timer tick) re-checks every second until this clears; returning
+    // here must NOT be paired with cancelling the periodic timer, or the
+    // screen would freeze at 00:00 forever with no further check.
+    if (_submitting) return;
     final answers = _buildFinishAnswers(_questions);
     if (!mounted) return;
-    _retryAction = _confirmAndFinishPackage;
+    _retryAction = _finishCurrentSubjectAndAdvance;
     setState(() => _submitting = true);
     Map<String, dynamic> resp;
     try {

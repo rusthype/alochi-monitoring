@@ -1589,6 +1589,57 @@ void main() {
     });
 
     testWidgets(
+        'fixed-variant subject timeout calls the real finish endpoint and '
+        'advances to next_subject (not a silent local-only advance)',
+        (tester) async {
+      var finishCalled = false;
+      await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+        attemptId: 'att-timeout-real-finish',
+        studentName: 'Aliyev Ali',
+        grade: 3,
+        language: 'uz',
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math', 'english']
+        },
+        startAttemptOverride: ({required attemptId, required subject}) async {
+          if (subject == 'math') {
+            return _withMeta({
+              'position': 1,
+              'total_questions': 1,
+              'subject': 'math',
+              'questions': [_question(id: 'm1', text: 'Math savoli')],
+            }, durationMinutes: 0, isFixedVariant: true);
+          }
+          return _withMeta({
+            'position': 1,
+            'total_questions': 1,
+            'subject': 'english',
+            'questions': [_question(id: 'e1', text: 'English savoli')],
+          }, isFixedVariant: true);
+        },
+        finishAttemptOverride: ({required attemptId, required answers}) async {
+          finishCalled = true;
+          return {'next_subject': 'english'};
+        },
+      )));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      // Let the 1-second periodic timer tick at least once past the
+      // (already-reached, durationMinutes: 0) deadline, plus the 1500ms
+      // subject-transition delay _finishCurrentSubjectAndAdvance uses.
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(finishCalled, isTrue,
+          reason: 'timeout must call the real kiosk/finish/ endpoint, not '
+              'just update local state');
+      expect(find.text('English savoli'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets(
         'a successfully background-prefetched subject transition makes no '
         'new live startAttempt call for that subject', (tester) async {
       final startCalls = <String>[];
