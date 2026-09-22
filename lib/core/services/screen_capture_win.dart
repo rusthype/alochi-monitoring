@@ -437,6 +437,13 @@ Uint8List? _grabBgra(CaptureProfile profile) {
     // exactly this reason.
     final lines = GetDIBits(hScreen, hBmp, 0, height, buf, bi, DIB_RGB_COLORS);
     if (lines == 0) return null;
+    // GetDIBits leaves alpha=0x00 on every pixel; package:image's
+    // fromBytes() treats that as fully transparent and composites to a
+    // solid white/black frame on JPEG encode. Alpha is meaningless for a
+    // screen capture — force full opacity.
+    for (var i = 3; i < bufSize; i += 4) {
+      buf[i] = 0xFF;
+    }
     return Uint8List.fromList(buf.asTypedList(bufSize)); // copy before free
   } catch (_) {
     return null;
