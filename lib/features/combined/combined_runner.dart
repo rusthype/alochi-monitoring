@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/utils/responsive.dart';
 import '../../shared/widgets/exit_confirmation_scope.dart';
 import '../../core/engine/answer_normalization.dart';
 import '../../core/db/history_db.dart';
@@ -917,33 +918,36 @@ class _CombinedRunnerState extends State<CombinedRunner>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (reading.img.isNotEmpty)
-                  reading.img.startsWith('http')
-                      ? AppNetworkImage(
-                          url: reading.img,
-                          width: double.infinity,
-                          height: 200,
-                          fit: BoxFit.contain,
-                          borderRadius: BorderRadius.circular(10),
-                        )
-                      : ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.asset(
-                            'assets/unit1/img/${reading.img}',
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                        maxHeight:
+                            clampedMediaHeight(context, min: 90.0, max: 200.0)),
+                    child: reading.img.startsWith('http')
+                        ? AppNetworkImage(
+                            url: reading.img,
                             width: double.infinity,
-                            height: 200,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Container(
-                              height: 80,
-                              decoration: BoxDecoration(
-                                color: AppColors.err.withValues(alpha: .07),
-                                borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(10),
+                          )
+                        : ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.asset(
+                              'assets/unit1/img/${reading.img}',
+                              width: double.infinity,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => Container(
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: AppColors.err.withValues(alpha: .07),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Center(
+                                    child: Icon(Icons.broken_image_outlined,
+                                        color: AppColors.ink3)),
                               ),
-                              child: const Center(
-                                  child: Icon(Icons.broken_image_outlined,
-                                      color: AppColors.ink3)),
                             ),
                           ),
-                        ),
+                  ),
                 if (reading.img.isNotEmpty) const SizedBox(height: 12),
                 if (reading.title.isNotEmpty)
                   Text(reading.title,
@@ -1100,7 +1104,8 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
       'school_code': widget.school,
       'answers': widget.answers,
       'detail': widget.detail,
-      if (widget.durationSeconds > 0) 'duration_seconds': widget.durationSeconds,
+      if (widget.durationSeconds > 0)
+        'duration_seconds': widget.durationSeconds,
     };
   }
 
@@ -1780,31 +1785,34 @@ class _CVocabImgQuestion extends StatelessWidget {
         if (question.img != null && question.img!.isNotEmpty) ...[
           const SizedBox(height: 12),
           Center(
-            child: question.img!.startsWith('http')
-                ? AppNetworkImage(
-                    url: question.img,
-                    height: 270,
-                    fit: BoxFit.contain,
-                    borderRadius: BorderRadius.circular(10),
-                  )
-                : ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.asset(
-                      'assets/unit1/img/${question.img}',
-                      height: 270,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                  maxHeight:
+                      clampedMediaHeight(context, min: 90.0, max: 270.0)),
+              child: question.img!.startsWith('http')
+                  ? AppNetworkImage(
+                      url: question.img,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => Container(
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: AppColors.err.withValues(alpha: .07),
-                          borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(10),
+                    )
+                  : ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.asset(
+                        'assets/unit1/img/${question.img}',
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Container(
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: AppColors.err.withValues(alpha: .07),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Center(
+                              child: Icon(Icons.broken_image_outlined,
+                                  color: AppColors.ink3)),
                         ),
-                        child: const Center(
-                            child: Icon(Icons.broken_image_outlined,
-                                color: AppColors.ink3)),
                       ),
                     ),
-                  ),
+            ),
           ),
         ],
         const SizedBox(height: 10),

@@ -11,6 +11,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_network_image.dart';
 import '../../../shared/utils/svg_aspect.dart';
+import '../../../shared/utils/responsive.dart';
 
 class DiagnosticQuestionCard extends StatelessWidget {
   final int position;
@@ -106,19 +107,21 @@ class DiagnosticQuestionCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             questionText,
-            style: const TextStyle(
-              fontSize: 22,
+            style: TextStyle(
+              fontSize: isCompact(context) ? 18 : 22,
               fontWeight: FontWeight.bold,
               color: AppColors.ink1,
             ),
           ),
           if (imageUrl.isNotEmpty) ...[
             const SizedBox(height: 16),
-            AppNetworkImage(
-              url: imageUrl,
-              height: 260,
-              fit: BoxFit.contain,
-              borderRadius: BorderRadius.circular(12),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: clampedMediaHeight(context)),
+              child: AppNetworkImage(
+                url: imageUrl,
+                fit: BoxFit.contain,
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ] else if (svgVisual.isNotEmpty) ...[
             const SizedBox(height: 16),
