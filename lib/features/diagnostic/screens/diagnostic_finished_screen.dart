@@ -4,10 +4,8 @@
 // scores are shown here. Auto-returns to the kiosk root after 15s.
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
-import '../../../core/locale/locale_provider.dart';
 import '../../../core/utils/student_name_formatter.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../widgets/celebration_particles.dart';
@@ -126,8 +124,7 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final locale =
-        ProviderScope.containerOf(context, listen: false).read(localeProvider);
+    final locale = Localizations.localeOf(context);
     final entrance = Tween<double>(begin: 0.85, end: 1.0).animate(
       CurvedAnimation(
         parent: _entranceController,

@@ -14,7 +14,6 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart'
@@ -24,7 +23,6 @@ import '../../../core/db/attempt_store.dart';
 import '../../../core/db/diagnostic_answer_store.dart';
 import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/db/offline_queue.dart';
-import '../../../core/locale/locale_provider.dart';
 import '../../../core/services/heartbeat_service.dart';
 import '../../../core/services/proctor_service.dart';
 import '../../../shared/theme/app_theme.dart';
@@ -1596,8 +1594,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                       // — format it just for display here.
                       studentName: toDisplayScript(
                           formatStudentDisplayName(widget.studentName),
-                          ProviderScope.containerOf(context, listen: false)
-                              .read(localeProvider)),
+                          Localizations.localeOf(context)),
                       language: widget.language,
                       remainingSeconds: _remainingSeconds,
                       isFixedVariant: _isFixedVariantAttempt,
