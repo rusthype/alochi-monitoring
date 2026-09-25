@@ -3,11 +3,13 @@
 // Diagnostic kiosk flow — step 2: pick the class within the chosen school.
 // Same step-indicator/pill-grid pattern as diagnostic_school_select_screen.
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
+import '../providers/diagnostic_locale_provider.dart';
 import '../widgets/diagnostic_widgets.dart';
 
 /// Natural sort comparator: '1-A' < '2-A' < '9-A' < '10-A' < '11-B', not ASCII order.
@@ -32,7 +34,7 @@ int compareClassLabels(String a, String b) {
   return matchesA.length.compareTo(matchesB.length);
 }
 
-class DiagnosticClassSelectScreen extends StatefulWidget {
+class DiagnosticClassSelectScreen extends ConsumerStatefulWidget {
   final String schoolId;
   final String schoolName;
   final String schoolCode;
@@ -45,12 +47,12 @@ class DiagnosticClassSelectScreen extends StatefulWidget {
   });
 
   @override
-  State<DiagnosticClassSelectScreen> createState() =>
+  ConsumerState<DiagnosticClassSelectScreen> createState() =>
       _DiagnosticClassSelectScreenState();
 }
 
 class _DiagnosticClassSelectScreenState
-    extends State<DiagnosticClassSelectScreen> {
+    extends ConsumerState<DiagnosticClassSelectScreen> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _classes = [];
@@ -90,6 +92,8 @@ class _DiagnosticClassSelectScreenState
 
   void _selectClass(String classLabel, String language,
       {bool hasWebTest = false, String webTestKey = ''}) {
+    final langCode = language.toLowerCase().trim() == 'ru' ? 'ru' : 'uz';
+    ref.read(diagnosticLocaleProvider.notifier).setLocale(Locale(langCode));
     context.push('/diagnostic_student_select', extra: {
       'schoolId': widget.schoolId,
       'schoolName': widget.schoolName,
