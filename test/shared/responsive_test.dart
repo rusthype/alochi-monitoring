@@ -23,7 +23,7 @@ Future<T> _withHeight<T>(
 }
 
 void main() {
-  testWidgets('isCompact is true under 800 height, false above',
+  testWidgets('isCompact is true under 750 height, false above',
       (tester) async {
     expect(await _withHeight(tester, 700, isCompact), isTrue);
     expect(await _withHeight(tester, 900, isCompact), isFalse);
@@ -31,13 +31,13 @@ void main() {
 
   testWidgets('clampedMediaHeight respects min/max/mid bounds', (tester) async {
     final tiny = await _withHeight(tester, 100, clampedMediaHeight);
-    expect(tiny, greaterThanOrEqualTo(110.0));
+    expect(tiny, greaterThanOrEqualTo(90.0));
 
     final huge = await _withHeight(tester, 5000, clampedMediaHeight);
-    expect(huge, lessThanOrEqualTo(260.0));
+    expect(huge, lessThanOrEqualTo(240.0));
 
     final mid = await _withHeight(tester, 700, clampedMediaHeight);
-    expect(mid, greaterThan(110.0));
-    expect(mid, lessThan(260.0));
+    expect(mid, greaterThan(90.0));
+    expect(mid, lessThan(240.0));
   });
 }

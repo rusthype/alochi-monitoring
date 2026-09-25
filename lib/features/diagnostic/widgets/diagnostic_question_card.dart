@@ -108,7 +108,7 @@ class DiagnosticQuestionCard extends StatelessWidget {
           Text(
             questionText,
             style: TextStyle(
-              fontSize: isCompact(context) ? 18 : 22,
+              fontSize: isCompact(context) ? 17 : 21,
               fontWeight: FontWeight.bold,
               color: AppColors.ink1,
             ),
@@ -116,7 +116,8 @@ class DiagnosticQuestionCard extends StatelessWidget {
           if (imageUrl.isNotEmpty) ...[
             const SizedBox(height: 16),
             ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: clampedMediaHeight(context)),
+              constraints:
+                  BoxConstraints(maxHeight: clampedMediaHeight(context)),
               child: AppNetworkImage(
                 url: imageUrl,
                 fit: BoxFit.contain,
@@ -125,23 +126,27 @@ class DiagnosticQuestionCard extends StatelessWidget {
             ),
           ] else if (svgVisual.isNotEmpty) ...[
             const SizedBox(height: 16),
-            SvgPicture.string(
-              svgVisual,
-              height: 130,
-              width: () {
-                final ratio = svgAspectRatio(svgVisual);
-                return ratio == null ? null : 130 * ratio;
-              }(),
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 130,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.err.withValues(alpha: 0.07),
-                  borderRadius: BorderRadius.circular(12),
+            ConstrainedBox(
+              constraints:
+                  BoxConstraints(maxHeight: clampedMediaHeight(context)),
+              child: SvgPicture.string(
+                svgVisual,
+                width: () {
+                  final ratio = svgAspectRatio(svgVisual);
+                  return ratio == null
+                      ? null
+                      : clampedMediaHeight(context) * ratio;
+                }(),
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.err.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.image_not_supported_outlined,
+                      color: AppColors.ink3),
                 ),
-                child: const Icon(Icons.image_not_supported_outlined,
-                    color: AppColors.ink3),
               ),
             ),
           ],
