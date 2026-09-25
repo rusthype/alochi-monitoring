@@ -43,6 +43,7 @@ import '../../features/diagnostic/screens/diagnostic_class_select_screen.dart';
 import '../../features/diagnostic/screens/diagnostic_student_select_screen.dart';
 import '../../features/diagnostic/screens/diagnostic_test_runner_screen.dart';
 import '../../features/diagnostic/screens/diagnostic_finished_screen.dart';
+import '../../features/diagnostic/widgets/diagnostic_locale_shell.dart';
 
 /// Reads the Riverpod container from a leaf `GoRoute.builder`'s own
 /// [BuildContext] (not the outer `goRouterProvider`'s `ref`, which is only
@@ -393,64 +394,70 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               schoolCode: extra['schoolCode'] as String? ?? '',
             );
           }),
-      GoRoute(
-          path: '/diagnostic_student_select',
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {};
-            return DiagnosticStudentSelectScreen(
-              schoolId: extra['schoolId'] as String? ?? '',
-              schoolName: extra['schoolName'] as String? ?? '',
-              schoolCode: extra['schoolCode'] as String? ?? '',
-              classLabel: extra['classLabel'] as String? ?? '',
-              language: extra['language'] as String? ?? 'uz',
-              hasWebTest: extra['hasWebTest'] as bool? ?? false,
-              webTestKey: extra['webTestKey'] as String? ?? '',
-            );
-          }),
-      GoRoute(
-          path: '/diagnostic_test_runner',
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {};
-            final rawPrefetched = extra['prefetchedSubjects'];
-            final rawAllSubjects = extra['prefetchedAllSubjects'];
-            return DiagnosticTestRunnerScreen(
-              attemptId: extra['attemptId'] as String? ?? '',
-              studentName: extra['studentName'] as String? ?? '',
-              grade: extra['grade'] as int? ?? 1,
-              schoolCode: extra['schoolCode'] as String? ?? '',
-              language: extra['language'] as String? ?? 'uz',
-              schoolName: extra['schoolName'] as String? ?? '',
-              classLabel: extra['classLabel'] as String? ?? '',
-              schoolId: extra['schoolId'] as String? ?? '',
-              hasWebTest: extra['hasWebTest'] as bool? ?? false,
-              webTestKey: extra['webTestKey'] as String? ?? '',
-              prefetchedSubjects: rawPrefetched is Map
-                  ? rawPrefetched.map((k, v) => MapEntry(
-                      k.toString(), Map<String, dynamic>.from(v as Map)))
-                  : null,
-              prefetchedAllSubjects: rawAllSubjects is List
-                  ? rawAllSubjects.map((e) => e.toString()).toList()
-                  : null,
-            );
-          }),
-      GoRoute(
-          path: '/diagnostic_finished',
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {};
-            return DiagnosticFinishedScreen(
-              studentName: extra['studentName'] as String?,
-              subjectsCompleted:
-                  (extra['subjectsCompleted'] as List?)?.cast<String>() ??
-                      const [],
-              schoolId: extra['schoolId'] as String? ?? '',
-              schoolName: extra['schoolName'] as String? ?? '',
-              schoolCode: extra['schoolCode'] as String? ?? '',
-              classLabel: extra['classLabel'] as String? ?? '',
-              language: extra['language'] as String? ?? '',
-              hasWebTest: extra['hasWebTest'] as bool? ?? false,
-              webTestKey: extra['webTestKey'] as String? ?? '',
-            );
-          }),
+      ShellRoute(
+        builder: (context, state, child) =>
+            DiagnosticLocaleShell(child: child),
+        routes: [
+          GoRoute(
+              path: '/diagnostic_student_select',
+              builder: (context, state) {
+                final extra = state.extra as Map<String, dynamic>? ?? {};
+                return DiagnosticStudentSelectScreen(
+                  schoolId: extra['schoolId'] as String? ?? '',
+                  schoolName: extra['schoolName'] as String? ?? '',
+                  schoolCode: extra['schoolCode'] as String? ?? '',
+                  classLabel: extra['classLabel'] as String? ?? '',
+                  language: extra['language'] as String? ?? 'uz',
+                  hasWebTest: extra['hasWebTest'] as bool? ?? false,
+                  webTestKey: extra['webTestKey'] as String? ?? '',
+                );
+              }),
+          GoRoute(
+              path: '/diagnostic_test_runner',
+              builder: (context, state) {
+                final extra = state.extra as Map<String, dynamic>? ?? {};
+                final rawPrefetched = extra['prefetchedSubjects'];
+                final rawAllSubjects = extra['prefetchedAllSubjects'];
+                return DiagnosticTestRunnerScreen(
+                  attemptId: extra['attemptId'] as String? ?? '',
+                  studentName: extra['studentName'] as String? ?? '',
+                  grade: extra['grade'] as int? ?? 1,
+                  schoolCode: extra['schoolCode'] as String? ?? '',
+                  language: extra['language'] as String? ?? 'uz',
+                  schoolName: extra['schoolName'] as String? ?? '',
+                  classLabel: extra['classLabel'] as String? ?? '',
+                  schoolId: extra['schoolId'] as String? ?? '',
+                  hasWebTest: extra['hasWebTest'] as bool? ?? false,
+                  webTestKey: extra['webTestKey'] as String? ?? '',
+                  prefetchedSubjects: rawPrefetched is Map
+                      ? rawPrefetched.map((k, v) => MapEntry(
+                          k.toString(), Map<String, dynamic>.from(v as Map)))
+                      : null,
+                  prefetchedAllSubjects: rawAllSubjects is List
+                      ? rawAllSubjects.map((e) => e.toString()).toList()
+                      : null,
+                );
+              }),
+          GoRoute(
+              path: '/diagnostic_finished',
+              builder: (context, state) {
+                final extra = state.extra as Map<String, dynamic>? ?? {};
+                return DiagnosticFinishedScreen(
+                  studentName: extra['studentName'] as String?,
+                  subjectsCompleted:
+                      (extra['subjectsCompleted'] as List?)?.cast<String>() ??
+                          const [],
+                  schoolId: extra['schoolId'] as String? ?? '',
+                  schoolName: extra['schoolName'] as String? ?? '',
+                  schoolCode: extra['schoolCode'] as String? ?? '',
+                  classLabel: extra['classLabel'] as String? ?? '',
+                  language: extra['language'] as String? ?? '',
+                  hasWebTest: extra['hasWebTest'] as bool? ?? false,
+                  webTestKey: extra['webTestKey'] as String? ?? '',
+                );
+              }),
+        ],
+      ),
       GoRoute(
           path: '/widget_route',
           builder: (context, state) {
