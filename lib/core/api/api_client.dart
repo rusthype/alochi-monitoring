@@ -204,6 +204,7 @@ class MonitoringApi {
     String? deviceName,
     Map<String, dynamic>? answers,
     int? elapsedSeconds,
+    String? localIp,
   }) async {
     return _post('/session/ping/', {
       'session_id': sessionId,
@@ -226,6 +227,7 @@ class MonitoringApi {
         'device_name': deviceName,
       if (answers != null) 'answers': answers,
       if (elapsedSeconds != null) 'elapsed_seconds': elapsedSeconds,
+      if (localIp != null && localIp.isNotEmpty) 'local_ip': localIp,
     });
   }
 

@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../api/api_client.dart';
+import '../network/network_info.dart';
 
 class HeartbeatService with WidgetsBindingObserver {
   HeartbeatService._();
@@ -242,6 +243,7 @@ class HeartbeatService with WidgetsBindingObserver {
     final id = _activeSessionId;
     if (id == null) return null;
     await _resolveDeviceInfoOnce();
+    final localIp = await getLocalIpAddress();
     try {
       final response = await api.sessionPing(
         sessionId: id,
@@ -260,6 +262,7 @@ class HeartbeatService with WidgetsBindingObserver {
         deviceName: _cachedDeviceName,
         answers: _answers,
         elapsedSeconds: _elapsedSeconds,
+        localIp: localIp,
       );
       // `terminated` is returned on every ping for a session an admin ended
       // remotely via the panel (not just the one that caused it), so this
