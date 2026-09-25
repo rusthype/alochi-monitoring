@@ -11,12 +11,10 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
-import '../../../core/locale/locale_provider.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../data/diagnostic_prefetch_cache.dart';
@@ -483,8 +481,7 @@ class _DiagnosticStudentSelectScreenState
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final locale =
-        ProviderScope.containerOf(context, listen: false).read(localeProvider);
+    final locale = Localizations.localeOf(context);
     final filtered = _filtered;
     return CallbackShortcuts(
       bindings: {
