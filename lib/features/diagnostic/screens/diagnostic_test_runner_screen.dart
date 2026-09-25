@@ -249,6 +249,14 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// waiting for the next 1-second tick.
   DateTime? _deadline;
 
+  /// True while the admin-lock pause overlay is shown — the countdown is
+  /// frozen (see [_pauseForLock]/[_resumeFromLock]), mirroring
+  /// `TestEngine`'s pause/resume (kept as a plain bool + a frozen-remaining
+  /// duration here since this screen measures its deadline as a `DateTime`
+  /// rather than epoch-ms).
+  bool _paused = false;
+  Duration? _pausedRemaining;
+
   /// Seconds actively spent on the CURRENT subject since its countdown was
   /// last (re)seeded — a plain local counter, reset to 0 on every subject
   /// change (`_startCountdownIfNeeded`/`_restoreCountdown`). Reported to the
@@ -500,6 +508,36 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     if (mounted) setState(() => _remainingSeconds = remaining);
   }
 
+  /// Freezes the countdown and shows the full-screen pause overlay. Mirrors
+  /// `TestEngine._pauseForLock` — idempotent, so a duplicate `locked: true`
+  /// from a replayed ping/frame response is a no-op.
+  void _pauseForLock() {
+    if (_paused) return;
+    _timer?.cancel();
+    final remaining = _deadline?.difference(DateTime.now());
+    _pausedRemaining =
+        remaining != null && remaining.isNegative ? Duration.zero : remaining;
+    if (mounted) setState(() => _paused = true);
+  }
+
+  /// Resumes the countdown from wherever it was frozen — not from the stale
+  /// pre-pause deadline, which would otherwise silently swallow however
+  /// long the pause lasted.
+  void _resumeFromLock() {
+    if (!_paused) return;
+    final remaining = _pausedRemaining;
+    if (remaining != null) {
+      _deadline = DateTime.now().add(remaining);
+      unawaited(_saveProgressIfFixed());
+    }
+    _pausedRemaining = null;
+    if (mounted) setState(() => _paused = false);
+    _timer?.cancel();
+    _timer =
+        Timer.periodic(const Duration(seconds: 1), _syncRemainingFromDeadline);
+    _syncRemainingFromDeadline(_timer);
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -564,15 +602,36 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     // in flight — starting the proctor loop now would resurrect a
     // timer after teardown.
     if (!mounted) return;
-    ProctorService.instance
+    // Admin-lock/warning/extra-time callbacks live on HeartbeatService (see
+    // reconcileProctorState) — the same canonical state ProctorService's
+    // frame ingest and this screen's own 30s ping both feed, so pause/
+    // resume/extend behave identically whichever channel reports first.
+    HeartbeatService.instance
+      ..onLockChanged = (locked) {
+        if (!mounted) return;
+        if (locked) {
+          _pauseForLock();
+        } else {
+          _resumeFromLock();
+        }
+      }
+      ..onExtendSeconds = (secs) {
+        if (!mounted) return;
+        final deadline = _deadline;
+        if (deadline != null) _deadline = deadline.add(Duration(seconds: secs));
+        if (_remainingSeconds != null) {
+          setState(() => _remainingSeconds = _remainingSeconds! + secs);
+        }
+        unawaited(_saveProgressIfFixed());
+      }
       ..onWarning = (msg) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(msg), backgroundColor: Colors.amber[900]),
           );
         }
-      }
-      ..start();
+      };
+    ProctorService.instance.start();
   }
 
   @override
@@ -585,6 +644,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
     HeartbeatService.instance.onTerminated = null;
+    HeartbeatService.instance.onLockChanged = null;
+    HeartbeatService.instance.onExtendSeconds = null;
+    HeartbeatService.instance.onWarning = null;
     super.dispose();
   }
 
@@ -1421,15 +1483,48 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
-        child: transition != null
-            ? _buildTransitionView(l10n, transition)
-            : _loading
-                ? const Center(child: CircularProgressIndicator())
-                : (_error != null || _subjectsEmpty)
-                    ? _buildErrorView(l10n)
-                    : q == null
-                        ? Center(child: Text(l10n.diagnosticNoStudents))
-                        : _buildQuestionView(l10n, q),
+        child: Stack(
+          children: [
+            transition != null
+                ? _buildTransitionView(l10n, transition)
+                : _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : (_error != null || _subjectsEmpty)
+                        ? _buildErrorView(l10n)
+                        : q == null
+                            ? Center(child: Text(l10n.diagnosticNoStudents))
+                            : _buildQuestionView(l10n, q),
+            // ── Admin-lock pause overlay ─────────────────────────────────
+            if (_paused) _buildPauseOverlay(l10n),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Full-screen pause overlay — freezes the countdown underneath and (by
+  /// virtue of being on top in the Stack) blocks input too. Mirrors
+  /// `TestEngine._buildLockShield`'s look and reuses the same l10n string.
+  Widget _buildPauseOverlay(AppLocalizations l10n) {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withValues(alpha: .92),
+        child: Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.pause_circle_filled_rounded,
+                color: Colors.white, size: 56),
+            const SizedBox(height: 16),
+            Text(
+              l10n.testLockedByAdmin,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+          ]),
+        ),
       ),
     );
   }

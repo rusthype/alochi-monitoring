@@ -5,8 +5,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 
-import 'package:flutter/foundation.dart';
-
 import '../api/api_client.dart';
 import 'heartbeat_service.dart';
 import 'screen_capture_win.dart';
@@ -29,19 +27,19 @@ class ProctorService {
   int _consecutiveFailures = 0;
   bool _usingBackoff = false;
 
-  /// Called when the panel presses "Lock All" (frame response action=="lock").
-  VoidCallback? onLock;
-
-  /// Called when the panel presses "+N minutes" (frame response extra_seconds).
-  ValueChanged<int>? onExtendSeconds;
-
-  /// Called when the panel sends a proctor warning (frame response warning/message).
-  ValueChanged<String>? onWarning;
-
+  /// Admin-lock (pause)/warning/extra-time callbacks now live on
+  /// [HeartbeatService] (see `reconcileProctorState`) since the SAME
+  /// canonical state must reconcile both this frame-ingest channel AND the
+  /// 30s ping channel — this service only forwards its own response's
+  /// `locked`/`extra_time_seconds`/`commands` fields into it. The one
+  /// exception is `request_keyframe`, which only makes sense while THIS
+  /// capture loop is running, so `start`/`stop` own wiring that one
+  /// callback directly.
   void start() {
     if (!Platform.isWindows && !Platform.isMacOS) return;
     stop(); // idempotent restart
     resetCaptureStreamForNewSession();
+    HeartbeatService.instance.onRequestKeyframe = forceNextKeyframe;
     _running = true;
     _scheduleNext(_baseInterval);
   }
@@ -52,6 +50,9 @@ class ProctorService {
     _timer = null;
     _consecutiveFailures = 0;
     _usingBackoff = false;
+    if (HeartbeatService.instance.onRequestKeyframe == forceNextKeyframe) {
+      HeartbeatService.instance.onRequestKeyframe = null;
+    }
   }
 
   void _scheduleNext(Duration delay) {
@@ -97,19 +98,15 @@ class ProctorService {
         if (result.isNotEmpty) {
           _consecutiveFailures = 0;
           _usingBackoff = false;
-          if (result['action'] == 'lock') onLock?.call();
-          if (result['action'] == 'request_keyframe') forceNextKeyframe();
-          final extra = result['extra_seconds'];
-          if (extra is int) onExtendSeconds?.call(extra);
-          // The backend only ever sends a warning as {'action': 'warning',
-          // 'message': ...} (see MonitoringSessionWarningView) — no bare
-          // top-level 'warning' key exists on the wire.
-          if (result['action'] == 'warning') {
-            final warn = result['message'];
-            if (warn is String && warn.trim().isNotEmpty) {
-              onWarning?.call(warn.trim());
-            }
-          }
+          // `locked`/`extra_time_seconds`/`commands` (warning,
+          // request_keyframe — process the WHOLE list, not just one) are
+          // reconciled through the same canonical state the 30s ping
+          // channel feeds too. See HeartbeatService.reconcileProctorState.
+          HeartbeatService.instance.reconcileProctorState(
+            locked: result['locked'] as bool?,
+            extraTimeSeconds: result['extra_time_seconds'] as int?,
+            commands: result['commands'] as List<dynamic>?,
+          );
           // Backend-driven capture profile for the NEXT tick — target_width
           // 960 means spotlight (single-student close-up), anything else
           // (including missing/default) means grid.
