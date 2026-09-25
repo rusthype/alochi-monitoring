@@ -1573,7 +1573,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       children: [
         Positioned.fill(
           child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, showBottomNav ? 20 : 140),
+            padding: EdgeInsets.fromLTRB(20, 20, 20, showBottomNav ? 110 : 24),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: _kDockMaxWidth),

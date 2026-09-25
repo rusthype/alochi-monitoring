@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/utils/responsive.dart';
 import '../../core/models/models.dart';
 import 'interhouse_data.dart';
 import 'interhouse_scorer.dart';
@@ -585,22 +586,26 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    'assets/interhouse/img/${reading.img}',
-                    width: double.infinity,
-                    height: 200,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: AppColors.err.withValues(alpha: .07),
-                        borderRadius: BorderRadius.circular(10),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                      maxHeight:
+                          clampedMediaHeight(context, min: 90.0, max: 200.0)),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset(
+                      'assets/interhouse/img/${reading.img}',
+                      width: double.infinity,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: AppColors.err.withValues(alpha: .07),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Center(
+                            child: Icon(Icons.broken_image_outlined,
+                                color: AppColors.ink3)),
                       ),
-                      child: const Center(
-                          child: Icon(Icons.broken_image_outlined,
-                              color: AppColors.ink3)),
                     ),
                   ),
                 ),
@@ -841,21 +846,25 @@ class _McImgQuestion extends StatelessWidget {
         const SizedBox(height: 12),
         if (question.img != null)
           Center(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.asset(
-                'assets/interhouse/img/${question.img}',
-                height: 270,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Container(
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: AppColors.err.withValues(alpha: .07),
-                    borderRadius: BorderRadius.circular(10),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                  maxHeight:
+                      clampedMediaHeight(context, min: 90.0, max: 270.0)),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  'assets/interhouse/img/${question.img}',
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: AppColors.err.withValues(alpha: .07),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                        child: Icon(Icons.broken_image_outlined,
+                            color: AppColors.ink3)),
                   ),
-                  child: const Center(
-                      child: Icon(Icons.broken_image_outlined,
-                          color: AppColors.ink3)),
                 ),
               ),
             ),

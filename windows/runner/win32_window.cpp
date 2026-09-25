@@ -216,6 +216,16 @@ Win32Window::MessageHandler(HWND hwnd,
     case WM_DWMCOLORIZATIONCOLORCHANGED:
       UpdateTheme(hwnd);
       return 0;
+
+    case WM_GETMINMAXINFO: {
+      // Safe floor for 1280x720 monitors with the Windows taskbar taking
+      // ~48px (leaving ~672px usable height) — see
+      // alochi/docs/PROMPT_FLUTTER_ADAPTIVE_RESPONSIVE_REFLOW_AND_SAFE_MINSIZE.md.
+      auto info = reinterpret_cast<MINMAXINFO*>(lparam);
+      info->ptMinTrackSize.x = 800;
+      info->ptMinTrackSize.y = 540;
+      return 0;
+    }
   }
 
   return DefWindowProc(window_handle_, message, wparam, lparam);

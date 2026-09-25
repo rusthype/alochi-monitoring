@@ -11,6 +11,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/app_network_image.dart';
 import '../../../shared/utils/svg_aspect.dart';
+import '../../../shared/utils/responsive.dart';
 
 class DiagnosticQuestionCard extends StatelessWidget {
   final int position;
@@ -106,39 +107,46 @@ class DiagnosticQuestionCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             questionText,
-            style: const TextStyle(
-              fontSize: 22,
+            style: TextStyle(
+              fontSize: isCompact(context) ? 17 : 21,
               fontWeight: FontWeight.bold,
               color: AppColors.ink1,
             ),
           ),
           if (imageUrl.isNotEmpty) ...[
             const SizedBox(height: 16),
-            AppNetworkImage(
-              url: imageUrl,
-              height: 260,
-              fit: BoxFit.contain,
-              borderRadius: BorderRadius.circular(12),
+            ConstrainedBox(
+              constraints:
+                  BoxConstraints(maxHeight: clampedMediaHeight(context)),
+              child: AppNetworkImage(
+                url: imageUrl,
+                fit: BoxFit.contain,
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ] else if (svgVisual.isNotEmpty) ...[
             const SizedBox(height: 16),
-            SvgPicture.string(
-              svgVisual,
-              height: 130,
-              width: () {
-                final ratio = svgAspectRatio(svgVisual);
-                return ratio == null ? null : 130 * ratio;
-              }(),
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 130,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.err.withValues(alpha: 0.07),
-                  borderRadius: BorderRadius.circular(12),
+            ConstrainedBox(
+              constraints:
+                  BoxConstraints(maxHeight: clampedMediaHeight(context)),
+              child: SvgPicture.string(
+                svgVisual,
+                width: () {
+                  final ratio = svgAspectRatio(svgVisual);
+                  return ratio == null
+                      ? null
+                      : clampedMediaHeight(context) * ratio;
+                }(),
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.err.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.image_not_supported_outlined,
+                      color: AppColors.ink3),
                 ),
-                child: const Icon(Icons.image_not_supported_outlined,
-                    color: AppColors.ink3),
               ),
             ),
           ],

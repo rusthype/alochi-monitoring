@@ -604,56 +604,64 @@ class _DiagnosticStudentSelectScreenState
                                       ),
                                     )
                                   else
-                                    GridView.builder(
-                                      shrinkWrap: true,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      gridDelegate:
-                                          const SliverGridDelegateWithFixedCrossAxisCount(
-                                        crossAxisCount: 2,
-                                        mainAxisSpacing: 8,
-                                        crossAxisSpacing: 8,
-                                        childAspectRatio: 4.2,
-                                      ),
-                                      itemCount: filtered.length,
-                                      itemBuilder: (context, index) {
-                                        final student = filtered[index];
-                                        final attemptId =
-                                            (student['attempt_id'] ?? '')
-                                                .toString();
-                                        return DiagnosticStudentCard(
-                                          name: toDisplayScript(
-                                              formatStudentDisplayName(
-                                                  (student['student_name'] ??
-                                                          '')
-                                                      .toString()),
-                                              locale),
-                                          isSelected: _selected == student,
-                                          status: _studentStatus[attemptId],
-                                          hasOnlineOnlySubject:
-                                              _studentHasOnlineOnlySubject[
-                                                      attemptId] ??
-                                                  false,
-                                          onRetryTap: () {
-                                            final future =
-                                                _prefetchSubjectsForStudent(
-                                                    student);
-                                            if (attemptId.isNotEmpty) {
-                                              _prefetchInFlight[attemptId] =
-                                                  future;
-                                            }
-                                            unawaited(future);
-                                          },
-                                          onTap: () {
-                                            setState(() => _selected = student);
-                                            final future =
-                                                _prefetchSubjectsForStudent(
-                                                    student);
-                                            if (attemptId.isNotEmpty) {
-                                              _prefetchInFlight[attemptId] =
-                                                  future;
-                                            }
-                                            unawaited(future);
+                                    LayoutBuilder(
+                                      builder: (context, constraints) {
+                                        final isNarrow =
+                                            constraints.maxWidth < 560;
+                                        return GridView.builder(
+                                          shrinkWrap: true,
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          gridDelegate:
+                                              SliverGridDelegateWithFixedCrossAxisCount(
+                                            crossAxisCount: isNarrow ? 1 : 2,
+                                            mainAxisSpacing: 8,
+                                            crossAxisSpacing: 8,
+                                            childAspectRatio:
+                                                isNarrow ? 8.4 : 4.2,
+                                          ),
+                                          itemCount: filtered.length,
+                                          itemBuilder: (context, index) {
+                                            final student = filtered[index];
+                                            final attemptId =
+                                                (student['attempt_id'] ?? '')
+                                                    .toString();
+                                            return DiagnosticStudentCard(
+                                              name: toDisplayScript(
+                                                  formatStudentDisplayName(
+                                                      (student['student_name'] ??
+                                                              '')
+                                                          .toString()),
+                                                  locale),
+                                              isSelected: _selected == student,
+                                              status: _studentStatus[attemptId],
+                                              hasOnlineOnlySubject:
+                                                  _studentHasOnlineOnlySubject[
+                                                          attemptId] ??
+                                                      false,
+                                              onRetryTap: () {
+                                                final future =
+                                                    _prefetchSubjectsForStudent(
+                                                        student);
+                                                if (attemptId.isNotEmpty) {
+                                                  _prefetchInFlight[attemptId] =
+                                                      future;
+                                                }
+                                                unawaited(future);
+                                              },
+                                              onTap: () {
+                                                setState(
+                                                    () => _selected = student);
+                                                final future =
+                                                    _prefetchSubjectsForStudent(
+                                                        student);
+                                                if (attemptId.isNotEmpty) {
+                                                  _prefetchInFlight[attemptId] =
+                                                      future;
+                                                }
+                                                unawaited(future);
+                                              },
+                                            );
                                           },
                                         );
                                       },

@@ -19,6 +19,7 @@ import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:mac_menu_bar/mac_menu_bar.dart';
 import 'core/services/update_service.dart';
+import 'core/services/window_kiosk_win.dart';
 
 void main() {
   // Defense-in-depth: Flutter's default ErrorWidget.builder renders an
@@ -114,6 +115,12 @@ void main() {
         SyncService.instance.start();
         unawaited(HeartbeatService.instance.start());
         ConnectivityService.instance.start();
+
+        if (Platform.isWindows) {
+          // Kiosk exam window: no title bar, no border, covers the screen —
+          // students never see or reach the OS chrome. F11 toggle below.
+          enterKioskFullscreen();
+        }
 
         if (Platform.isMacOS) {
           try {
@@ -256,12 +263,21 @@ class AlochiMonitoringApp extends ConsumerWidget {
                 LogicalKeySet(
                         LogicalKeyboardKey.control, LogicalKeyboardKey.keyK):
                     const CommandPaletteIntent(),
+                LogicalKeySet(LogicalKeyboardKey.f11):
+                    const FullscreenToggleIntent(),
               },
               child: Actions(
                 actions: <Type, Action<Intent>>{
                   CommandPaletteIntent: CallbackAction<CommandPaletteIntent>(
                     onInvoke: (CommandPaletteIntent intent) {
                       CommandPalette.show(context);
+                      return null;
+                    },
+                  ),
+                  FullscreenToggleIntent:
+                      CallbackAction<FullscreenToggleIntent>(
+                    onInvoke: (FullscreenToggleIntent intent) {
+                      toggleFullscreen();
                       return null;
                     },
                   ),
@@ -278,4 +294,8 @@ class AlochiMonitoringApp extends ConsumerWidget {
 
 class CommandPaletteIntent extends Intent {
   const CommandPaletteIntent();
+}
+
+class FullscreenToggleIntent extends Intent {
+  const FullscreenToggleIntent();
 }
