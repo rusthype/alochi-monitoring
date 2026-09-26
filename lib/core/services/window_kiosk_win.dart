@@ -48,10 +48,40 @@ void enterKioskFullscreen() {
 /// normal chrome (titlebar, Windows Taskbar stay visible) — unlike
 /// [enterKioskFullscreen], which strips the border entirely. No-op on
 /// non-Windows/web.
+///
+/// Deliberately does NOT use `ShowWindow(hwnd, SW_MAXIMIZE)`: the native
+/// runner (windows/runner/main.cpp) calls `window.Show()` — an unconditional
+/// `SW_SHOWNORMAL` — on its own thread's message loop, and `SW_SHOWNORMAL`
+/// explicitly *restores* a maximized window to its prior normal size. That
+/// race (observed in production: the window opened as a small normal window
+/// instead of maximized) made `SW_MAXIMIZE` unreliable. `SetWindowPos` with
+/// explicit coordinates sidesteps it entirely — same technique already
+/// proven reliable by [_applyFullscreen] below, just sized to the monitor's
+/// work area (excludes the taskbar) instead of the full screen, and without
+/// touching `GWL_STYLE` so the titlebar/border stay intact.
 void enterMaximizedWindowed() {
   if (kIsWeb || !Platform.isWindows) return;
   if (!_hasWindow) return;
-  ShowWindow(_hwnd, SW_MAXIMIZE);
+  final rect = calloc<RECT>();
+  try {
+    if (SystemParametersInfo(SPI_GETWORKAREA, 0, rect, 0) == 0) {
+      rect.ref.left = 0;
+      rect.ref.top = 0;
+      rect.ref.right = GetSystemMetrics(SM_CXSCREEN);
+      rect.ref.bottom = GetSystemMetrics(SM_CYSCREEN);
+    }
+    SetWindowPos(
+      _hwnd,
+      HWND_TOP,
+      rect.ref.left,
+      rect.ref.top,
+      rect.ref.right - rect.ref.left,
+      rect.ref.bottom - rect.ref.top,
+      SWP_NOZORDER | SWP_NOOWNERZORDER,
+    );
+  } finally {
+    calloc.free(rect);
+  }
 }
 
 /// F11 handler: flips between frameless-fullscreen and the previously saved
