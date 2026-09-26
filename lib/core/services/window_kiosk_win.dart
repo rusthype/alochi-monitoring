@@ -44,6 +44,16 @@ void enterKioskFullscreen() {
   _applyFullscreen(_hwnd);
 }
 
+/// Call once, right after `runApp`, to maximize the window while keeping its
+/// normal chrome (titlebar, Windows Taskbar stay visible) — unlike
+/// [enterKioskFullscreen], which strips the border entirely. No-op on
+/// non-Windows/web.
+void enterMaximizedWindowed() {
+  if (kIsWeb || !Platform.isWindows) return;
+  if (!_hasWindow) return;
+  ShowWindow(_hwnd, SW_MAXIMIZE);
+}
+
 /// F11 handler: flips between frameless-fullscreen and the previously saved
 /// windowed style/rect. No-op on non-Windows/web.
 void toggleFullscreen() {

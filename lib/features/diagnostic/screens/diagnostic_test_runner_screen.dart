@@ -1049,18 +1049,18 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(l10n.earlyFinishConfirmTitle,
             style: const TextStyle(fontWeight: FontWeight.w800)),
         content: Text(l10n.earlyFinishConfirmBody),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: Text(l10n.cancel),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.brand,
                 minimumSize: const Size(100, 40)),
@@ -1083,7 +1083,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     if (unanswered > 0) {
       final ok = await showDialog<bool>(
         context: context,
-        builder: (_) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(l10n.finishConfirmTitle,
@@ -1091,11 +1091,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           content: Text(l10n.unansweredWarning(unanswered)),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: Text(l10n.backButton),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.brand,
                   minimumSize: const Size(100, 40)),

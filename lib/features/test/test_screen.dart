@@ -194,7 +194,7 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
       _dialogOpen = true;
       final ok = await showDialog<bool>(
         context: context,
-        builder: (_) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(AppLocalizations.of(context)!.finishConfirmTitle,
@@ -205,11 +205,11 @@ class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
             TextButton(
                 onPressed: () {
                   _startTimer();
-                  Navigator.pop(context, false);
+                  Navigator.pop(dialogContext, false);
                 },
                 child: Text(AppLocalizations.of(context)!.backButton)),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.brand,
                   minimumSize: const Size(100, 40)),
