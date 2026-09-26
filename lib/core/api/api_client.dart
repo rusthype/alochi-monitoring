@@ -205,6 +205,9 @@ class MonitoringApi {
     Map<String, dynamic>? answers,
     int? elapsedSeconds,
     String? localIp,
+    String? machineId,
+    String? macAddress,
+    List<String>? capabilities,
   }) async {
     return _post('/session/ping/', {
       'session_id': sessionId,
@@ -228,6 +231,11 @@ class MonitoringApi {
       if (answers != null) 'answers': answers,
       if (elapsedSeconds != null) 'elapsed_seconds': elapsedSeconds,
       if (localIp != null && localIp.isNotEmpty) 'local_ip': localIp,
+      if (machineId != null && machineId.isNotEmpty) 'machine_id': machineId,
+      if (macAddress != null && macAddress.isNotEmpty)
+        'mac_address': macAddress,
+      if (capabilities != null && capabilities.isNotEmpty)
+        'capabilities': capabilities,
     });
   }
 

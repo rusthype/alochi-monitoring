@@ -2323,5 +2323,5 @@ class AppLocalizationsUz extends AppLocalizations {
   }
 
   @override
-  String get testLockedByAdmin => 'Test administrator tomonidan bloklandi';
+  String get testLockedByAdmin => 'O\'qituvchi tomonidan pauza qilindi';
 }

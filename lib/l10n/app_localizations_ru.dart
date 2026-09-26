@@ -2309,5 +2309,5 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get testLockedByAdmin => 'Тест заблокирован администратором';
+  String get testLockedByAdmin => 'Приостановлено учителем';
 }

@@ -8,6 +8,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:alochi_monitoring/core/services/heartbeat_service.dart';
 import 'package:alochi_monitoring/core/services/proctor_service.dart';
 import 'package:alochi_monitoring/core/services/screen_capture_win.dart';
 
@@ -102,25 +103,25 @@ void main() {
       () async {
         // ProctorService._tick() reads HeartbeatService.instance.proctorToken
         // and .activeSessionId and bails out (reschedule-only, no capture,
-        // no callback) before touching onLock/onExtendSeconds whenever
-        // either is null. No session token is set up in this test, so this
-        // holds on every platform where start() arms the timer at all
-        // (Windows and now macOS) — verified by reading _tick()'s early
-        // return above the capture/API call.
+        // no reconcileProctorState call) whenever either is null. No session
+        // token is set up in this test, so this holds on every platform
+        // where start() arms the timer at all (Windows and now macOS) —
+        // verified by reading _tick()'s early return above the capture/API
+        // call. Admin-lock/extend/warning callbacks now live on
+        // HeartbeatService (see reconcileProctorState) — ProctorService only
+        // forwards its own frame response into it.
         var locked = false;
         var extended = false;
-        // NOT a cascade: `..onLock = () => locked = true` would parse the
-        // trailing `..onExtendSeconds`/`..start()` as chained off the arrow
-        // body's `true` (a bool), not off ProctorService.instance — plain
-        // statements avoid that ambiguity entirely.
-        final proctor = ProctorService.instance;
-        proctor.onLock = () => locked = true;
-        proctor.onExtendSeconds = (_) => extended = true;
-        proctor.start();
+        final heartbeat = HeartbeatService.instance;
+        heartbeat.onLockChanged = (_) => locked = true;
+        heartbeat.onExtendSeconds = (_) => extended = true;
+        ProctorService.instance.start();
         await Future.delayed(const Duration(milliseconds: 300));
         expect(locked, false);
         expect(extended, false);
         ProctorService.instance.stop();
+        heartbeat.onLockChanged = null;
+        heartbeat.onExtendSeconds = null;
       },
     );
 
@@ -132,16 +133,18 @@ void main() {
     test(
       'start() with no active session/token never fires onWarning',
       () async {
-        // Same early-return path as the onLock/onExtendSeconds test above:
-        // _tick() bails out before reading result['warning'] whenever
-        // proctorToken/activeSessionId is null, so onWarning must never fire.
+        // Same early-return path as the onLockChanged/onExtendSeconds test
+        // above: _tick() bails out before reconciling any response
+        // whenever proctorToken/activeSessionId is null, so onWarning must
+        // never fire.
         var warned = false;
-        final proctor = ProctorService.instance;
-        proctor.onWarning = (_) => warned = true;
-        proctor.start();
+        final heartbeat = HeartbeatService.instance;
+        heartbeat.onWarning = (_) => warned = true;
+        ProctorService.instance.start();
         await Future.delayed(const Duration(milliseconds: 300));
         expect(warned, false);
         ProctorService.instance.stop();
+        heartbeat.onWarning = null;
       },
     );
   });

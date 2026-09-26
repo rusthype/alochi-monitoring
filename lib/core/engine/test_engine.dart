@@ -95,10 +95,16 @@ class _TestEngineState extends State<TestEngine>
   /// Active proctor-notification toasts (top-right overlay).
   final List<_ToastEntry> _toasts = [];
 
-  /// True while the admin-lock shield overlay is shown, right before
-  /// [_finishNow] ends the test.
+  /// True while the admin-lock pause overlay is shown — the countdown is
+  /// frozen and input is blocked underneath it, resuming (not finishing)
+  /// once the panel unlocks the session. See [_pauseForLock]/[_resumeFromLock].
   bool _lockShieldVisible = false;
-  Timer? _lockShieldTimer;
+
+  /// Remaining countdown, in ms, frozen at the moment [_pauseForLock] ran —
+  /// [_resumeFromLock] rebuilds `_deadlineMs` from THIS plus the real clock
+  /// at resume time, not from the stale pre-pause deadline (which would
+  /// otherwise silently eat however long the pause lasted).
+  int? _pausedRemainingMs;
 
   final Stopwatch _questionStopwatch = Stopwatch()..start();
   final List<int> _questionTimes = [];
@@ -193,10 +199,18 @@ class _TestEngineState extends State<TestEngine>
 
     // Live proctoring (Windows kiosk only, no-op elsewhere) — the sole
     // chokepoint all three test-launch flows pass through. Started here,
-    // stopped in dispose().
-    ProctorService.instance
-      ..onLock = () {
-        if (mounted) _showLockShield();
+    // stopped in dispose(). Admin-lock/warning/extra-time callbacks live on
+    // HeartbeatService (see reconcileProctorState) since it's the single
+    // canonical state both the 30s ping AND ProctorService's frame ingest
+    // feed into.
+    HeartbeatService.instance
+      ..onLockChanged = (locked) {
+        if (!mounted) return;
+        if (locked) {
+          _pauseForLock();
+        } else {
+          _resumeFromLock();
+        }
       }
       ..onWarning = (msg) {
         if (mounted) {
@@ -205,9 +219,11 @@ class _TestEngineState extends State<TestEngine>
       }
       ..onExtendSeconds = (secs) {
         if (mounted) {
-          // Bump the deadline too, not just the displayed _secs — otherwise
-          // the next tick's _syncSecsFromDeadline() would immediately
-          // recompute _secs from the OLD deadline and undo this extension.
+          // `secs` is already a DELTA (HeartbeatService diffs the server's
+          // cumulative extra_time_seconds against its own baseline) — bump
+          // the deadline too, not just the displayed _secs, otherwise the
+          // next tick's _syncSecsFromDeadline() would immediately recompute
+          // _secs from the OLD deadline and undo this extension.
           if (_deadlineMs != null) _deadlineMs = _deadlineMs! + secs * 1000;
           setState(() => _secs += secs);
           unawaited(_persistNow());
@@ -219,8 +235,8 @@ class _TestEngineState extends State<TestEngine>
             const Duration(seconds: 5),
           );
         }
-      }
-      ..start();
+      };
+    ProctorService.instance.start();
 
     _restoreAttempt();
   }
@@ -262,10 +278,9 @@ class _TestEngineState extends State<TestEngine>
     final localVariant =
         int.tryParse(localAnswers?['variant']?.toString() ?? '');
     final localDeadline = localAnswers?['deadline_epoch_ms'];
-    final localCount =
-        (localVariant == widget.variant && localDeadline is num)
-            ? ((localAnswers?['answers'] as Map?)?.length ?? 0)
-            : -1; // disqualified: wrong variant or no usable deadline
+    final localCount = (localVariant == widget.variant && localDeadline is num)
+        ? ((localAnswers?['answers'] as Map?)?.length ?? 0)
+        : -1; // disqualified: wrong variant or no usable deadline
 
     // Server resume must match the variant this session was actually
     // started with (see SessionResumeView doc) — the client cannot re-pick
@@ -360,8 +375,8 @@ class _TestEngineState extends State<TestEngine>
     _scheduleSave();
     _reportProgress();
     // Fire-and-forget: must not block this callback/UI thread.
-    HeartbeatService.instance
-        .reportAnswers(Map<String, dynamic>.from(_answers), _activeStopwatch.elapsed.inSeconds);
+    HeartbeatService.instance.reportAnswers(Map<String, dynamic>.from(_answers),
+        _activeStopwatch.elapsed.inSeconds);
   }
 
   /// The AnswerSlot the student is currently on (next unanswered slot in the
@@ -467,25 +482,41 @@ class _TestEngineState extends State<TestEngine>
     setState(() => _toasts.add(entry));
   }
 
-  /// Shows the full-screen admin-lock shield, then ends the test — mirrors
-  /// the previous silent `onLock = _finishNow` wiring but gives the student
-  /// a moment to see why the test just ended.
-  void _showLockShield() {
+  /// Freezes the countdown and shows the full-screen pause overlay (which
+  /// also blocks input, being on top of everything in the Stack). Idempotent
+  /// — a duplicate `locked: true` from a replayed ping/frame is a no-op.
+  void _pauseForLock() {
+    if (_lockShieldVisible) return;
+    _timer?.cancel();
+    final deadlineMs = _deadlineMs;
+    _pausedRemainingMs =
+        deadlineMs != null ? (deadlineMs - _nowMs).clamp(0, 1 << 62) : null;
     setState(() => _lockShieldVisible = true);
-    // Tracked so dispose() can cancel it — an untracked Future.delayed here
-    // would still fire _finishNow() after the widget (and its
-    // TextEditingControllers) are disposed if the route is popped or
-    // HeartbeatService.onTerminated finishes the test first.
-    _lockShieldTimer?.cancel();
-    _lockShieldTimer = Timer(const Duration(milliseconds: 1800), _finishNow);
   }
+
+  /// Resumes the countdown from wherever it was frozen — NOT from the stale
+  /// pre-pause deadline, which would otherwise silently swallow however
+  /// long the pause lasted (see `_pausedRemainingMs` doc comment).
+  void _resumeFromLock() {
+    if (!_lockShieldVisible) return;
+    final remaining = _pausedRemainingMs;
+    if (remaining != null) {
+      _deadlineMs = _nowMs + remaining;
+      unawaited(_persistNow());
+    }
+    _pausedRemainingMs = null;
+    setState(() => _lockShieldVisible = false);
+    _syncSecsFromDeadline();
+    _startTimer();
+  }
+
+  int get _nowMs => DateTime.now().millisecondsSinceEpoch;
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _saveDebounce?.cancel();
-    _lockShieldTimer?.cancel();
     _activeStopwatch.stop();
     for (final t in _toasts) {
       t.timer?.cancel();
@@ -501,6 +532,9 @@ class _TestEngineState extends State<TestEngine>
     if (HeartbeatService.instance.onTerminated == _finishNow) {
       HeartbeatService.instance.onTerminated = null;
     }
+    HeartbeatService.instance.onLockChanged = null;
+    HeartbeatService.instance.onWarning = null;
+    HeartbeatService.instance.onExtendSeconds = null;
     if (!_finishing) {
       // Route popped/replaced without ever calling _finishNow() — the
       // student's attempt was abandoned mid-test (app closed, screen
@@ -778,7 +812,8 @@ class _TestEngineState extends State<TestEngine>
         color: AppColors.charcoal.withValues(alpha: .92),
         child: Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.lock_rounded, color: Colors.white, size: 56),
+            const Icon(Icons.pause_circle_filled_rounded,
+                color: Colors.white, size: 56),
             const SizedBox(height: 16),
             Text(
               l10n.testLockedByAdmin,

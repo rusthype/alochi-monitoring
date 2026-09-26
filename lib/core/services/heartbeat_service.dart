@@ -15,6 +15,13 @@ class HeartbeatService with WidgetsBindingObserver {
   static const Duration _interval = Duration(seconds: 30);
   static const String _prefsKey = 'monitoring_session_id';
 
+  /// Declared on every ping so the backend knows this build understands the
+  /// `locked`/`extra_time_seconds`/`commands` reply fields (see
+  /// [reconcileProctorState]) and the seat-binding `machine_id`/`mac_address`
+  /// request fields — an older kiosk build that omits this list still gets
+  /// served the legacy top-level `{"action":"lock"}` command instead.
+  static const List<String> _capabilities = ['pause_lock', 'seat_id'];
+
   Timer? _timer;
   bool _started = false;
   // Persistent, per-device id (survives across app restarts) — used for
@@ -66,6 +73,8 @@ class HeartbeatService with WidgetsBindingObserver {
   String? _cachedPlatform;
   String? _cachedAppVersion;
   String? _cachedDeviceName;
+  String? _cachedMachineId;
+  String? _cachedMacAddress;
 
   /// Set by whichever screen is currently showing an active test
   /// (`_TestEngineState.initState`), cleared on its `dispose`. Invoked when
@@ -75,6 +84,74 @@ class HeartbeatService with WidgetsBindingObserver {
   /// (see `_TestEngineState._finishNow`). Null when no test is in progress;
   /// the pre-test roster/catalog screens never set this.
   VoidCallback? onTerminated;
+
+  // ── Admin-lock (pause) + extra-time reconciliation ──────────────────────
+  // Both channels that can carry this state — this 30s ping AND
+  // ProctorService's ~2.5s frame ingest — funnel through
+  // [reconcileProctorState] so there is exactly one canonical `_locked`/
+  // `_extraTimeBaseline`, however either arrives first. Reset per test
+  // attempt (see startTest/cancelTest/finishTest) since extra_time_seconds
+  // is cumulative for the CURRENT subject/test only.
+  bool _locked = false;
+  int _extraTimeBaseline = 0;
+
+  /// Fired when the reconciled admin-lock (pause) state changes.
+  ValueChanged<bool>? onLockChanged;
+
+  /// Fired with the DELTA of seconds to add to the countdown — never the
+  /// raw server value, which is a cumulative total for the current
+  /// subject/test, not a delta. Diffing against the last-seen baseline here
+  /// means a duplicate/replayed ping or frame response (same cumulative
+  /// value) is a no-op instead of double-adding time.
+  ValueChanged<int>? onExtendSeconds;
+
+  ValueChanged<String>? onWarning;
+
+  /// Fired for a `request_keyframe` command — set by ProctorService (the
+  /// owner of the actual capture stream) while it's running, cleared when
+  /// it stops.
+  VoidCallback? onRequestKeyframe;
+
+  /// Applies the `locked`/`extra_time_seconds`/`commands` fields the
+  /// backend returns on every ping AND every proctor frame response.
+  /// Idempotent: calling it twice with the same values fires no callbacks
+  /// the second time, so a reconnect/duplicate response can't double-pause
+  /// or double-add time.
+  void reconcileProctorState({
+    bool? locked,
+    int? extraTimeSeconds,
+    List<dynamic>? commands,
+  }) {
+    if (locked != null && locked != _locked) {
+      _locked = locked;
+      onLockChanged?.call(locked);
+    }
+    if (extraTimeSeconds != null) {
+      final delta = extraTimeSeconds - _extraTimeBaseline;
+      if (delta != 0) {
+        _extraTimeBaseline = extraTimeSeconds;
+        onExtendSeconds?.call(delta);
+      }
+    }
+    if (commands == null || commands.isEmpty) return;
+    for (final cmd in commands) {
+      if (cmd is! Map) continue;
+      switch (cmd['action']) {
+        case 'warning':
+          final msg = cmd['message'];
+          if (msg is String && msg.trim().isNotEmpty) {
+            onWarning?.call(msg.trim());
+          }
+        case 'request_keyframe':
+          onRequestKeyframe?.call();
+      }
+    }
+  }
+
+  void _resetProctorState() {
+    _locked = false;
+    _extraTimeBaseline = 0;
+  }
 
   Future<void> _resolveDeviceInfoOnce() async {
     if (_cachedPlatform != null) return; // resolved once per process lifetime
@@ -106,6 +183,10 @@ class HeartbeatService with WidgetsBindingObserver {
     } catch (_) {
       _cachedDeviceName = '';
     }
+    // Seat-binding identity (Windows only; both already cache themselves
+    // per app-run in network_info.dart, so this just triggers that once).
+    _cachedMachineId = machineGuid();
+    _cachedMacAddress = await primaryMac();
   }
 
   Future<void> start() async {
@@ -145,6 +226,7 @@ class HeartbeatService with WidgetsBindingObserver {
     _testKey = testKey;
     _studentCode = studentCode;
     _tabSwitchCount = 0;
+    _resetProctorState(); // fresh pause/extra-time baseline for this attempt
     final response = await _ping('active');
     return !(response != null && response['conflict'] == true);
   }
@@ -167,6 +249,7 @@ class HeartbeatService with WidgetsBindingObserver {
     _studentCode = null;
     _tabSwitchCount = 0;
     _proctorToken = null;
+    _resetProctorState();
   }
 
   void finishTest() {
@@ -187,6 +270,7 @@ class HeartbeatService with WidgetsBindingObserver {
     _proctorToken = null;
     _answers = null;
     _elapsedSeconds = null;
+    _resetProctorState();
   }
 
   /// Login qilgan talaba identitini idle-presence heartbeat'ga (start()
@@ -263,6 +347,9 @@ class HeartbeatService with WidgetsBindingObserver {
         answers: _answers,
         elapsedSeconds: _elapsedSeconds,
         localIp: localIp,
+        machineId: _cachedMachineId,
+        macAddress: _cachedMacAddress,
+        capabilities: _capabilities,
       );
       // `terminated` is returned on every ping for a session an admin ended
       // remotely via the panel (not just the one that caused it), so this
@@ -274,6 +361,11 @@ class HeartbeatService with WidgetsBindingObserver {
       if (tok is String && tok.isNotEmpty) _proctorToken = tok;
       final iv = response['proctor_interval_ms'];
       if (iv is int && iv >= 1000 && iv <= 30000) _proctorIntervalMs = iv;
+      reconcileProctorState(
+        locked: response['locked'] as bool?,
+        extraTimeSeconds: response['extra_time_seconds'] as int?,
+        commands: response['commands'] as List<dynamic>?,
+      );
       return response;
     } catch (_) {
       return null;

@@ -4338,7 +4338,7 @@ abstract class AppLocalizations {
   /// No description provided for @testLockedByAdmin.
   ///
   /// In uz, this message translates to:
-  /// **'Test administrator tomonidan bloklandi'**
+  /// **'O\'qituvchi tomonidan pauza qilindi'**
   String get testLockedByAdmin;
 }
 
