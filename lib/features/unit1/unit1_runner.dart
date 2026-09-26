@@ -192,7 +192,7 @@ class _Unit1RunnerState extends State<Unit1Runner>
       final ok = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(l10n.finishConfirmTitle,
@@ -213,12 +213,12 @@ class _Unit1RunnerState extends State<Unit1Runner>
                     }
                   });
                 });
-                Navigator.pop(context, false);
+                Navigator.pop(dialogContext, false);
               },
               child: Text(l10n.back),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
                   backgroundColor: _kBlue,
                   foregroundColor: Colors.white,

@@ -125,7 +125,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
       _dialogOpen = true;
       final ok = await showDialog<bool>(
         context: context,
-        builder: (_) => AlertDialog(
+        builder: (dialogContext) => AlertDialog(
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(localizations.finishConfirmTitle,
@@ -146,11 +146,11 @@ class _LocalTestScreenState extends State<LocalTestScreen>
                       }
                     });
                   });
-                  Navigator.pop(context, false);
+                  Navigator.pop(dialogContext, false);
                 },
                 child: Text(localizations.backButton)),
             ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.brand,
                   minimumSize: const Size(100, 40)),

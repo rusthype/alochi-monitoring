@@ -117,9 +117,10 @@ void main() {
         ConnectivityService.instance.start();
 
         if (Platform.isWindows) {
-          // Kiosk exam window: no title bar, no border, covers the screen —
-          // students never see or reach the OS chrome. F11 toggle below.
-          enterKioskFullscreen();
+          // Startup window: Maximized with normal titlebar/taskbar visible.
+          // F11 (below) still switches to the old borderless kiosk-fullscreen
+          // mode when needed.
+          enterMaximizedWindowed();
         }
 
         if (Platform.isMacOS) {

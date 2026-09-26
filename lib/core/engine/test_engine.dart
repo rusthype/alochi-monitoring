@@ -565,7 +565,7 @@ class _TestEngineState extends State<TestEngine>
     final ok = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           l10n.finishConfirmTitle,
@@ -578,12 +578,12 @@ class _TestEngineState extends State<TestEngine>
           TextButton(
             onPressed: () {
               _startTimer();
-              Navigator.pop(context, false);
+              Navigator.pop(dialogContext, false);
             },
             child: Text(l10n.back),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.brand,
               minimumSize: const Size(100, 40),
