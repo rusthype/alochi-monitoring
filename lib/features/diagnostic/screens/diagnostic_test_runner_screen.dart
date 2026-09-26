@@ -271,6 +271,15 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// test_screen.dart's `_autoAdv`, but 500ms per this feature's spec).
   Timer? _autoAdvance;
 
+  /// Bounds [_initProctoring]'s wait for `HeartbeatService.startTest()`.
+  /// `Future.timeout()` schedules its own internal Timer that keeps running
+  /// until it fires even if this widget is disposed first — harmless in
+  /// production (the `!mounted` check below still bails out), but
+  /// flutter_test's strict `!timersPending` teardown assertion fails on
+  /// that still-pending timer. A manually-owned Timer, explicitly cancelled
+  /// in [dispose], avoids both the leak and the test failure.
+  Timer? _proctorInitTimeout;
+
   /// Whether the current attempt is the fixed-variant math bank (all
   /// questions known upfront, supports prev/next/grid/finish nav) vs the
   /// CAT engine's adaptive one-question-at-a-time flow. Set from the
@@ -580,20 +589,34 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       }
     };
     try {
-      await HeartbeatService.instance
-          .startTest(
-            schoolCode: widget.schoolCode,
-            name: widget.studentName,
-            variant: 'CAT',
-            testKey: 'diag_${widget.attemptId}',
-            // DIAG- prefix matches DIAGNOSTIC_KIOSK_STUDENT_CODE_PREFIX
-            // (backend apps/monitoring/selectors.py) so this session is
-            // scoped to the diagnostic school's own live-monitoring tab,
-            // not the global /monitoring dashboard.
-            studentCode: 'DIAG-${widget.attemptId}',
-          )
-          .timeout(const Duration(seconds: 3));
-    } catch (_) {}
+      final startTestFuture = HeartbeatService.instance.startTest(
+        schoolCode: widget.schoolCode,
+        name: widget.studentName,
+        variant: 'CAT',
+        testKey: 'diag_${widget.attemptId}',
+        // DIAG- prefix matches DIAGNOSTIC_KIOSK_STUDENT_CODE_PREFIX
+        // (backend apps/monitoring/selectors.py) so this session is
+        // scoped to the diagnostic school's own live-monitoring tab,
+        // not the global /monitoring dashboard.
+        studentCode: 'DIAG-${widget.attemptId}',
+      );
+      final completer = Completer<void>();
+      _proctorInitTimeout = Timer(const Duration(seconds: 3), () {
+        if (!completer.isCompleted) completer.complete();
+      });
+      unawaited(startTestFuture.then(
+        (_) {
+          if (!completer.isCompleted) completer.complete();
+        },
+        onError: (_) {
+          if (!completer.isCompleted) completer.complete();
+        },
+      ));
+      await completer.future;
+    } finally {
+      _proctorInitTimeout?.cancel();
+      _proctorInitTimeout = null;
+    }
 
     // The widget may have been disposed (dispose() already called
     // ProctorService.stop()) while the awaited call above was still
@@ -638,6 +661,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     _timer?.cancel();
     _pingTimer?.cancel();
     _autoAdvance?.cancel();
+    _proctorInitTimeout?.cancel();
     _bootstrapRetrySub?.cancel();
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
