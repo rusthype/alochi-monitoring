@@ -182,6 +182,25 @@ class MonitoringApi {
     }
   }
 
+  /// Fallback health probe outside the /monitoring path prefix, with its own
+  /// short timeout (ConnectivityService only calls this after its primary 2
+  /// attempts already failed, so it must fail fast, not inherit the 20s
+  /// client-wide _timeout).
+  Future<bool> pingHealth(
+      {Duration timeout = const Duration(seconds: 2)}) async {
+    try {
+      final resp =
+          await http.get(Uri.parse('$_host/api/v1/health/')).timeout(timeout);
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Exposes the configured API host (respects the API_BASE_URL dev override)
+  /// for ConnectivityService's plain-DNS fallback check.
+  static String get host => _host;
+
   /// Returns the decoded response body (contains `ok`, and optionally
   /// `conflict`/`terminated` flags — see HeartbeatService for how these are
   /// consumed). Throws [ApiException] on HTTP/network failure, same as

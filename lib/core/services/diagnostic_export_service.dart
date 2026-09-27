@@ -120,7 +120,7 @@ $_headStyle
     final mathPct = (mathScore * 100 / kDiagnosticSubjectMax).round();
     final engPct = (englishScore * 100 / kDiagnosticSubjectMax).round();
     final totalOk = mathScore + englishScore;
-    final totalMax = kDiagnosticSubjectMax * 2;
+    const totalMax = kDiagnosticSubjectMax * 2;
     final totalErr = totalMax - totalOk;
     final pct = (totalOk * 100 / totalMax).round();
 

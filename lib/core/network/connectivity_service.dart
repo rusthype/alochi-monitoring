@@ -7,6 +7,7 @@
 // connection right now" for a UI indicator — it owns its own single
 // Timer.periodic and never reacts to the other services' timers/streams.
 import 'dart:async';
+import 'dart:io';
 import '../api/api_client.dart';
 
 /// 5-value latency bucket. `none` covers both a failed request and a
@@ -92,12 +93,21 @@ class ConnectivityService {
   ConnectivityService._();
   static final ConnectivityService instance = ConnectivityService._();
 
-  static const Duration _interval = Duration(seconds: 15);
-  static const Duration _timeout = Duration(seconds: 3);
-  // Gap between the 2 attempts within one _measure() cycle. Worst case
-  // (both attempts time out): timeout + _retryDelay + timeout ≈ 6.9s,
-  // comfortably under the 15s _interval between cycles.
-  static const Duration _retryDelay = Duration(milliseconds: 900);
+  static const Duration _intervalOnline = Duration(seconds: 20);
+  static const Duration _intervalOffline = Duration(seconds: 4);
+  static const Duration _timeout = Duration(milliseconds: 5500);
+  static const Duration _retryDelay = Duration(milliseconds: 1200);
+  // Fallback-only short timeout — this probe only runs after the primary 2
+  // attempts already failed, so it shouldn't wait long.
+  static const Duration _fallbackTimeout = Duration(seconds: 2);
+
+  bool _fastMode = false;
+  // _measure() overlap guard — the 4s fast interval is now SHORTER than the
+  // worst-case single measurement (5.5+1.2+5.5=12.2s), so a Timer.periodic
+  // tick could otherwise fire while a previous _measure() is still in
+  // flight. This flag makes such an overlapping tick a silent no-op (the
+  // next tick will still fire on schedule).
+  bool _measuring = false;
 
   Timer? _timer;
   // Each in-flight retry wait registers its `cancel` callback here (added
@@ -124,7 +134,7 @@ class ConnectivityService {
   void start() {
     if (_started) return;
     _started = true;
-    _timer = Timer.periodic(_interval, (_) => _measure());
+    _timer = Timer.periodic(_intervalOnline, (_) => _measure());
     unawaited(_measure());
   }
 
@@ -133,31 +143,73 @@ class ConnectivityService {
   Future<void> _cancellableDelay(Duration d) {
     final gate = cancellableDelay(d);
     _pendingRetryCancels.add(gate.cancel);
-    return gate.future.whenComplete(() => _pendingRetryCancels.remove(gate.cancel));
+    return gate.future
+        .whenComplete(() => _pendingRetryCancels.remove(gate.cancel));
   }
 
   Future<void> _measure() async {
-    final result = await pingWithRetry(
-      () => api.ping(),
-      timeout: _timeout,
-      retryDelay: _retryDelay,
-      delay: _cancellableDelay,
+    if (_measuring) return;
+    _measuring = true;
+    try {
+      final result = await pingWithRetry(
+        () => api.ping(),
+        timeout: _timeout,
+        retryDelay: _retryDelay,
+        delay: _cancellableDelay,
+      );
+
+      SignalReading reading;
+      if (result.ok) {
+        reading = SignalReading(
+          tier: _tierForLatency(result.elapsedMs),
+          latencyMs: result.elapsedMs,
+          measuredAt: DateTime.now(),
+        );
+      } else {
+        // Primary probe (2 attempts) failed — last resort: a fallback health
+        // endpoint, then a plain DNS check. Both are diagnostic-only (helps
+        // distinguish "no internet at all" from "our API specifically is
+        // down" if this is ever logged) — neither flips the tier away from
+        // `none`, because the app fundamentally needs api.alochi.org
+        // reachable, not just generic internet.
+        final healthOk = await api
+            .pingHealth(timeout: _fallbackTimeout)
+            .catchError((_) => false);
+        if (!healthOk) await _dnsReachable();
+        reading = SignalReading(
+          tier: SignalTier.none,
+          latencyMs: null,
+          measuredAt: DateTime.now(),
+        );
+      }
+
+      _last = reading;
+      if (!_controller.isClosed) _controller.add(reading);
+      _adjustInterval(reading.tier == SignalTier.none);
+    } finally {
+      _measuring = false;
+    }
+  }
+
+  Future<bool> _dnsReachable() async {
+    try {
+      final result =
+          await InternetAddress.lookup(Uri.parse(MonitoringApi.host).host)
+              .timeout(_fallbackTimeout);
+      return result.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _adjustInterval(bool offline) {
+    if (offline == _fastMode) return;
+    _fastMode = offline;
+    _timer?.cancel();
+    _timer = Timer.periodic(
+      offline ? _intervalOffline : _intervalOnline,
+      (_) => _measure(),
     );
-
-    final reading = result.ok
-        ? SignalReading(
-            tier: _tierForLatency(result.elapsedMs),
-            latencyMs: result.elapsedMs,
-            measuredAt: DateTime.now(),
-          )
-        : SignalReading(
-            tier: SignalTier.none,
-            latencyMs: null,
-            measuredAt: DateTime.now(),
-          );
-
-    _last = reading;
-    if (!_controller.isClosed) _controller.add(reading);
   }
 
   SignalTier _tierForLatency(int ms) {

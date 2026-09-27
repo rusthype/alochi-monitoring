@@ -189,9 +189,10 @@ class OfflineQueue {
           await d
               .delete('local_queue', where: 'id = ?', whereArgs: [row['id']]);
           if (ok) synced++;
-          if (permanent)
+          if (permanent) {
             debugPrint(
                 'OfflineQueue.flushLocal: id=${row['id']} permanent error, dropping');
+          }
         } else {
           await d.update(
               'local_queue', {'attempts': (row['attempts'] as int) + 1},
@@ -261,9 +262,10 @@ class OfflineQueue {
     // legacy tg_queue: attempts ustuni yo'q — faqat yosh bo'yicha
     removed +=
         await d.delete('tg_queue', where: 'created < ?', whereArgs: [cutoff]);
-    if (removed > 0)
+    if (removed > 0) {
       debugPrint(
           'OfflineQueue.purgeStale: $removed eski/o\'lik qator o\'chirildi');
+    }
     return removed;
   }
 }
