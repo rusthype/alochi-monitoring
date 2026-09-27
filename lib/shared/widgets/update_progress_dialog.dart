@@ -69,11 +69,11 @@ class _UpdateProgressDialogState extends State<_UpdateProgressDialog> {
     return PopScope(
       canPop: _stage != _UpdateDialogStage.downloading,
       child: AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: AppRadii.roundedXl),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadii.roundedXl),
         title: Text(
           '${l10n.newVersionAvailable} v${widget.info.latestVersion}',
-          style: AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w800),
+          style:
+              AppTextStyles.titleMedium.copyWith(fontWeight: FontWeight.w800),
         ),
         content: SizedBox(
           width: 340,
@@ -89,8 +89,7 @@ class _UpdateProgressDialogState extends State<_UpdateProgressDialog> {
                       value: _progress > 0 ? _progress : null,
                       minHeight: 6,
                       backgroundColor: AppColors.brand.withValues(alpha: .1),
-                      valueColor:
-                          const AlwaysStoppedAnimation(AppColors.brand),
+                      valueColor: const AlwaysStoppedAnimation(AppColors.brand),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -99,7 +98,7 @@ class _UpdateProgressDialogState extends State<_UpdateProgressDialog> {
               ),
             _UpdateDialogStage.error => Text(
                 _error ?? l10n.updateDownloadFailedMsg,
-                style: TextStyle(color: AppColors.err),
+                style: const TextStyle(color: AppColors.err),
               ),
           },
         ),
