@@ -679,7 +679,34 @@ class _DiagnosticStudentSelectScreenState
                   child: Center(
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 600),
-                      child: DiagnosticTopBar(title: widget.classLabel),
+                      child: DiagnosticTopBar(
+                        title: widget.classLabel,
+                        // Default DiagnosticTopBar fallback is
+                        // `canPop() ? pop() : go('/')` — but this screen is
+                        // reached via diagnostic_finished_screen.dart's
+                        // `context.go('/diagnostic_student_select', ...)`
+                        // after every student finishes (a deliberate go_router
+                        // stack RESET so the operator lands straight back on
+                        // the roster instead of re-navigating school-select ->
+                        // session-setup -> class-select). That reset also
+                        // wipes canPop() to false, so the default fallback
+                        // sent the operator all the way to the kiosk
+                        // login/home screen when they pressed "Ortga" to
+                        // switch classes, forcing a pincode re-entry (reported
+                        // 2026-09-28). Same canPop()-first logic, just with a
+                        // same-school-context fallback instead of home.
+                        onBack: () {
+                          if (context.canPop()) {
+                            context.pop();
+                          } else {
+                            context.push('/diagnostic_class_select', extra: {
+                              'schoolId': widget.schoolId,
+                              'schoolName': widget.schoolName,
+                              'schoolCode': widget.schoolCode,
+                            });
+                          }
+                        },
+                      ),
                     ),
                   ),
                 ),
