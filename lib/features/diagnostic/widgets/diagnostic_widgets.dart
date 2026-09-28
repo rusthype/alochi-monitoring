@@ -222,6 +222,19 @@ class DiagnosticStudentCard extends StatelessWidget {
   final StudentPrefetchStatus? status;
   final bool hasOnlineOnlySubject;
   final VoidCallback? onRetryTap;
+
+  /// Diagnostic-attempt completion status — one of
+  /// 'not_started'/'in_progress'/'partial'/'completed' from
+  /// `KioskStudentListView` (see `diagnostic_student_select_screen.dart`).
+  /// Distinct from [status] above, which is purely the offline-download-
+  /// readiness indicator; both may render at once. Never carries a score —
+  /// that stays admin-panel-only by explicit product decision.
+  final String? attemptStatus;
+
+  /// Localized subject label to show when [attemptStatus] == 'partial'
+  /// (e.g. "Ingliz tili"), resolved by the caller from `next_subject`.
+  final String? nextSubjectLabel;
+
   const DiagnosticStudentCard({
     super.key,
     required this.name,
@@ -230,6 +243,8 @@ class DiagnosticStudentCard extends StatelessWidget {
     this.status,
     this.hasOnlineOnlySubject = false,
     this.onRetryTap,
+    this.attemptStatus,
+    this.nextSubjectLabel,
   });
 
   @override
@@ -279,15 +294,26 @@ class DiagnosticStudentCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  name,
-                  style: TextStyle(
-                    color: isSelected ? AppColors.brand : AppColors.ink1,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      name,
+                      style: TextStyle(
+                        color: isSelected ? AppColors.brand : AppColors.ink1,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (attemptStatus != null)
+                      _AttemptStatusBadge(
+                        attemptStatus: attemptStatus!,
+                        nextSubjectLabel: nextSubjectLabel,
+                      ),
+                  ],
                 ),
               ),
               if (hasOnlineOnlySubject) ...[
@@ -351,6 +377,47 @@ class _StudentStatusBadge extends StatelessWidget {
               size: 16, color: AppColors.error),
         );
     }
+  }
+}
+
+/// Diagnostic-attempt completion badge — separate from [_StudentStatusBadge]
+/// (offline-download readiness) and NEVER shows a score/percentage, by
+/// explicit product decision (scores stay admin-panel-only).
+class _AttemptStatusBadge extends StatelessWidget {
+  final String attemptStatus;
+  final String? nextSubjectLabel;
+  const _AttemptStatusBadge(
+      {required this.attemptStatus, this.nextSubjectLabel});
+
+  @override
+  Widget build(BuildContext context) {
+    final String label;
+    final Color color;
+    switch (attemptStatus) {
+      case 'completed':
+        label = '✅ Topshirildi';
+        color = Colors.green;
+        break;
+      case 'in_progress':
+        label = '🟡 Jarayonda';
+        color = Colors.amber[800]!;
+        break;
+      case 'partial':
+        final next = nextSubjectLabel?.trim();
+        label = (next == null || next.isEmpty)
+            ? '🟡 Davom etmoqda'
+            : '🟡 $next qoldi';
+        color = Colors.amber[800]!;
+        break;
+      default:
+        return const SizedBox.shrink();
+    }
+    return Text(
+      label,
+      style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
   }
 }
 

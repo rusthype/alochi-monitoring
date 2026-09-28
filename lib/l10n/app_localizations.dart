@@ -1077,6 +1077,12 @@ abstract class AppLocalizations {
   /// **'{unanswered} ta savol javobsiz qoldi. Shunga qaramay tugatmoqchimisiz?'**
   String unansweredWarning(int unanswered);
 
+  /// No description provided for @flaggedQuestionsReminder.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sizda {count} ta qayta ko\'rish uchun belgilangan savol bor. Baribir yakunlaysizmi?'**
+  String flaggedQuestionsReminder(int count);
+
   /// No description provided for @mathSectionLabel.
   ///
   /// In uz, this message translates to:

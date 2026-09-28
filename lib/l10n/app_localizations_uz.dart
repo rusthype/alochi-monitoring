@@ -555,6 +555,11 @@ class AppLocalizationsUz extends AppLocalizations {
   }
 
   @override
+  String flaggedQuestionsReminder(int count) {
+    return 'Sizda $count ta qayta ko\'rish uchun belgilangan savol bor. Baribir yakunlaysizmi?';
+  }
+
+  @override
   String get mathSectionLabel => 'Matematika bo\'limi';
 
   @override

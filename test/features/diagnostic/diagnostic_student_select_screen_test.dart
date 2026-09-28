@@ -531,4 +531,84 @@ void main() {
     expect(lastRunnerExtra!['hasWebTest'], false);
     expect(lastRunnerExtra!['webTestKey'], 'wt-9');
   });
+
+  group('roster attempt-status badge', () {
+    Future<void> pumpWithStatus(
+        WidgetTester tester, Map<String, dynamic> student) async {
+      await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+        schoolId: 's1',
+        schoolName: 'Maktab 1',
+        classLabel: '4-A',
+        language: 'uz',
+        listStudentsOverride: (schoolId, classLabel) async =>
+            ([student], false),
+        availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+          'subjects': ['math']
+        },
+        peekSubjectOverride: ({required attemptId, required subject}) async =>
+            {'fixed_variant': true, 'questions': []},
+      )));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('completed shows the completed badge, never a score',
+        (tester) async {
+      await pumpWithStatus(tester, {
+        'attempt_id': 'att-1',
+        'student_name': 'Aliyev Ali',
+        'session_grade': 4,
+        'status': 'completed',
+      });
+      expect(find.textContaining('Topshirildi'), findsOneWidget);
+      expect(find.textContaining('%'), findsNothing);
+    });
+
+    testWidgets('in_progress shows the in-progress badge', (tester) async {
+      await pumpWithStatus(tester, {
+        'attempt_id': 'att-1',
+        'student_name': 'Aliyev Ali',
+        'session_grade': 4,
+        'status': 'in_progress',
+      });
+      expect(find.textContaining('Jarayonda'), findsOneWidget);
+    });
+
+    testWidgets(
+        'partial shows the next-subject badge using next_subject',
+        (tester) async {
+      await pumpWithStatus(tester, {
+        'attempt_id': 'att-1',
+        'student_name': 'Aliyev Ali',
+        'session_grade': 4,
+        'status': 'partial',
+        'next_subject': 'english',
+      });
+      expect(find.textContaining('Ingliz tili qoldi'), findsOneWidget);
+    });
+
+    testWidgets('partial with no next_subject falls back to a generic label',
+        (tester) async {
+      await pumpWithStatus(tester, {
+        'attempt_id': 'att-1',
+        'student_name': 'Aliyev Ali',
+        'session_grade': 4,
+        'status': 'partial',
+      });
+      expect(find.textContaining('Davom etmoqda'), findsOneWidget);
+    });
+
+    testWidgets('not_started renders no attempt-status badge at all',
+        (tester) async {
+      await pumpWithStatus(tester, {
+        'attempt_id': 'att-1',
+        'student_name': 'Aliyev Ali',
+        'session_grade': 4,
+        'status': 'not_started',
+      });
+      expect(find.textContaining('Topshirildi'), findsNothing);
+      expect(find.textContaining('Jarayonda'), findsNothing);
+      expect(find.textContaining('qoldi'), findsNothing);
+      expect(find.textContaining('Davom etmoqda'), findsNothing);
+    });
+  });
 }

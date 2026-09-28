@@ -307,10 +307,12 @@ class DiagnosticKioskApi {
   Future<Map<String, dynamic>> finishAttempt({
     required String attemptId,
     required List<Map<String, dynamic>> answers,
+    List<String>? flaggedQuestionIds,
   }) {
     return _post('/kiosk/finish/', {
       'attempt_id': attemptId,
       'answers': answers,
+      'flagged_question_ids': flaggedQuestionIds ?? const <String>[],
     });
   }
 

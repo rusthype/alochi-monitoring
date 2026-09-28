@@ -12,6 +12,7 @@ class DiagnosticQuestionDots extends StatefulWidget {
   final int total;
   final int currentIndex; // 0-based
   final Set<int> answeredIndexes; // 0-based
+  final Set<int> flaggedIndexes; // 0-based — "Belgilash" (bookmark) markers
   final ValueChanged<int> onSelectIndex;
 
   const DiagnosticQuestionDots({
@@ -19,6 +20,7 @@ class DiagnosticQuestionDots extends StatefulWidget {
     required this.total,
     required this.currentIndex,
     required this.answeredIndexes,
+    this.flaggedIndexes = const <int>{},
     required this.onSelectIndex,
   });
 
@@ -80,6 +82,7 @@ class _DiagnosticQuestionDotsState extends State<DiagnosticQuestionDots> {
         itemBuilder: (context, index) {
           final isCurrent = index == widget.currentIndex;
           final isAnswered = widget.answeredIndexes.contains(index);
+          final isFlagged = widget.flaggedIndexes.contains(index);
           final Color bg;
           final Color fg;
           if (isCurrent) {
@@ -95,31 +98,44 @@ class _DiagnosticQuestionDotsState extends State<DiagnosticQuestionDots> {
           return InkWell(
             borderRadius: BorderRadius.circular(20),
             onTap: () => widget.onSelectIndex(index),
-            child: Container(
-              width: _itemWidth,
-              height: _itemWidth,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: bg,
-                shape: BoxShape.circle,
-                border: isCurrent || isAnswered
-                    ? null
-                    : Border.all(color: AppColors.border),
-                boxShadow: isCurrent
-                    ? [
-                        BoxShadow(
-                          color: AppColors.brand.withValues(alpha: 0.35),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Text(
-                '${index + 1}'.padLeft(2, '0'),
-                style: TextStyle(
-                    color: fg, fontWeight: FontWeight.w700, fontSize: 13),
-              ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: _itemWidth,
+                  height: _itemWidth,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: bg,
+                    shape: BoxShape.circle,
+                    border: isFlagged
+                        ? Border.all(color: Colors.amber, width: 2)
+                        : (isCurrent || isAnswered
+                            ? null
+                            : Border.all(color: AppColors.border)),
+                    boxShadow: isCurrent
+                        ? [
+                            BoxShadow(
+                              color: AppColors.brand.withValues(alpha: 0.35),
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Text(
+                    '${index + 1}'.padLeft(2, '0'),
+                    style: TextStyle(
+                        color: fg, fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                ),
+                if (isFlagged)
+                  const Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Icon(Icons.flag, size: 12, color: Colors.amber),
+                  ),
+              ],
             ),
           );
         },

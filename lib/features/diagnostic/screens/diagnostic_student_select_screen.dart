@@ -45,6 +45,22 @@ const _peekRetryDelays = [
   Duration(milliseconds: 1500),
 ];
 
+/// Localized full subject label for the roster's "partial" attempt-status
+/// badge (`next_subject` from `KioskStudentListView`). Deliberately NOT
+/// imported from diagnostic_test_runner_screen.dart's own `_subjectLabel` —
+/// this kiosk flow's own convention (see this file's header comment) is to
+/// copy small per-screen helpers rather than share them.
+String _subjectLabel(AppLocalizations l10n, String subject) {
+  switch (subject) {
+    case 'math':
+      return l10n.mathSubjectFull;
+    case 'english':
+      return l10n.englishSubjectFull;
+    default:
+      return subject;
+  }
+}
+
 class DiagnosticStudentSelectScreen extends StatefulWidget {
   final String schoolId;
   final String schoolName;
@@ -626,6 +642,9 @@ class _DiagnosticStudentSelectScreenState
                                             final attemptId =
                                                 (student['attempt_id'] ?? '')
                                                     .toString();
+                                            final nextSubject =
+                                                (student['next_subject'] ?? '')
+                                                    .toString();
                                             return DiagnosticStudentCard(
                                               name: toDisplayScript(
                                                   formatStudentDisplayName(
@@ -639,6 +658,13 @@ class _DiagnosticStudentSelectScreenState
                                                   _studentHasOnlineOnlySubject[
                                                           attemptId] ??
                                                       false,
+                                              attemptStatus:
+                                                  student['status'] as String?,
+                                              nextSubjectLabel:
+                                                  nextSubject.isEmpty
+                                                      ? null
+                                                      : _subjectLabel(
+                                                          l10n, nextSubject),
                                               onRetryTap: () {
                                                 final future =
                                                     _prefetchSubjectsForStudent(
