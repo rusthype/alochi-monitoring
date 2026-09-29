@@ -168,6 +168,12 @@ class AppLocalizationsUz extends AppLocalizations {
       'Ushbu sinf uchun hozircha diagnostika savollari shakllantirilmagan yoki sessiya faol emas.';
 
   @override
+  String get diagnosticZoomIn => 'Shriftni kattalashtirish';
+
+  @override
+  String get diagnosticZoomOut => 'Shriftni kichiklashtirish';
+
+  @override
   String get diagnosticGoBack => 'Orqaga qaytish';
 
   @override

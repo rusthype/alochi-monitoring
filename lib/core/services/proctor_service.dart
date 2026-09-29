@@ -3,6 +3,7 @@
 // Every failure path here just counts and reschedules — this must never
 // throw out of _tick or interrupt the exam.
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import '../api/api_client.dart';
@@ -27,6 +28,13 @@ class ProctorService {
   int _consecutiveFailures = 0;
   bool _usingBackoff = false;
 
+  /// Backend-driven monitor selection for multi-monitor kiosks: the panel
+  /// can ask (via the proctor/frame response's `requested_monitor_index`) to
+  /// switch which physical monitor gets captured. 0 = primary (unchanged,
+  /// single-monitor behavior). Applied on the NEXT tick, not this one —
+  /// there is no way to retroactively swap the frame already captured/sent.
+  int _requestedMonitorIndex = 0;
+
   /// Admin-lock (pause)/warning/extra-time callbacks now live on
   /// [HeartbeatService] (see `reconcileProctorState`) since the SAME
   /// canonical state must reconcile both this frame-ingest channel AND the
@@ -50,6 +58,7 @@ class ProctorService {
     _timer = null;
     _consecutiveFailures = 0;
     _usingBackoff = false;
+    _requestedMonitorIndex = 0;
     if (HeartbeatService.instance.onRequestKeyframe == forceNextKeyframe) {
       HeartbeatService.instance.onRequestKeyframe = null;
     }
@@ -73,14 +82,19 @@ class ProctorService {
     }
     _inFlight = true;
     try {
-      final capture = await captureScreenJpeg();
+      final capture =
+          await captureScreenJpeg(monitorIndex: _requestedMonitorIndex);
       if (capture != null) {
+        final monitorsJson =
+            jsonEncode(enumerateMonitors().map((m) => m.toJson()).toList());
         final result = await api.proctorFrame(
           sessionId: sessionId,
           token: token,
           jpeg: capture.jpeg,
           focus: isForegroundOurs(),
           monitorCount: monitorCount(),
+          monitorsJson: monitorsJson,
+          monitorIndex: _requestedMonitorIndex,
           questionIndex: HeartbeatService.instance.currentQuestionIndex,
           totalQuestions: HeartbeatService.instance.totalQuestions,
           questionText: HeartbeatService.instance.currentQuestionText,
@@ -107,6 +121,14 @@ class ProctorService {
             extraTimeSeconds: result['extra_time_seconds'] as int?,
             commands: result['commands'] as List<dynamic>?,
           );
+          // Multi-monitor switch request from the panel — applied starting
+          // the NEXT tick (see _requestedMonitorIndex's doc comment). Absent
+          // key (backend not deployed yet) or null both mean "no change".
+          final requestedMonitor =
+              (result['requested_monitor_index'] as num?)?.toInt();
+          if (requestedMonitor != null) {
+            _requestedMonitorIndex = requestedMonitor;
+          }
           // Backend-driven capture profile for the NEXT tick — target_width
           // 960 means spotlight (single-student close-up), anything else
           // (including missing/default) means grid.

@@ -164,6 +164,12 @@ class AppLocalizationsRu extends AppLocalizations {
       'Для этого класса пока не сформированы вопросы диагностики, либо сессия неактивна.';
 
   @override
+  String get diagnosticZoomIn => 'Увеличить шрифт';
+
+  @override
+  String get diagnosticZoomOut => 'Уменьшить шрифт';
+
+  @override
   String get diagnosticGoBack => 'Назад';
 
   @override

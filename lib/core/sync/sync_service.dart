@@ -25,16 +25,45 @@ class SyncService {
   final ValueNotifier<bool> flushing = ValueNotifier<bool>(false);
   bool _started = false;
   int _consecutiveFailures = 0;
-  static const Duration _interval = Duration(seconds: 60);
+  // Exponential backoff (self-rescheduling Timer, not Timer.periodic): 10s
+  // base, doubling per consecutive failure, capped at 320s (5 min). Resets
+  // to _baseInterval as soon as a flush succeeds (_consecutiveFailures back
+  // to 0) — see _currentInterval.
+  static const Duration _baseInterval = Duration(seconds: 10);
+  static const Duration _maxInterval = Duration(seconds: 320);
 
   void start() {
     if (_started) return;
     _started = true;
     _connSub = Connectivity().onConnectivityChanged.listen((results) {
-      if (_hasNetwork(results)) _flushAll();
+      if (_hasNetwork(results)) {
+        // Cancel whatever backoff tick is pending so connectivity coming
+        // back doesn't fire an overlapping second flush once that old timer
+        // elapses too — _flushAll's own `flushing` guard would no-op it
+        // anyway, but this avoids the redundant attempt entirely.
+        _timer?.cancel();
+        _flushAll().then((_) => _scheduleNext());
+      }
     });
-    _timer = Timer.periodic(_interval, (_) => _flushAll());
-    _flushAll();
+    _flushAll().then((_) => _scheduleNext());
+  }
+
+  void _scheduleNext() {
+    if (!_started) return;
+    _timer?.cancel();
+    _timer = Timer(_currentInterval(), () {
+      _flushAll().then((_) => _scheduleNext());
+    });
+  }
+
+  Duration _currentInterval() {
+    if (_consecutiveFailures <= 0) return _baseInterval;
+    final shift = _consecutiveFailures.clamp(0, 5);
+    final ms = _baseInterval.inMilliseconds * (1 << shift);
+    return Duration(
+        milliseconds: ms > _maxInterval.inMilliseconds
+            ? _maxInterval.inMilliseconds
+            : ms);
   }
 
   bool _hasNetwork(List<ConnectivityResult> results) {
@@ -86,7 +115,7 @@ class SyncService {
   /// best-effort sinxronlash — o'z xatolarini yutadi, shunda bitta yomon
   /// attempt hech qachon shu flush tsiklining qolgan qismini yoki undan
   /// yuqoridagi OfflineQueue flush'ini bloklamaydi; sinxronlanmagan qator
-  /// shunchaki keyingi 60s tick'da qayta urinadi.
+  /// shunchaki keyingi tick'da qayta urinadi.
   Future<void> _flushDiagnosticAnswers(String attemptId) async {
     final rows = await DiagnosticAnswerStore.pendingForAttempt(attemptId);
     if (rows.isEmpty) return;

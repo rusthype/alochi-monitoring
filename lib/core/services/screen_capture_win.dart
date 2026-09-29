@@ -9,7 +9,7 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:image/image.dart' as img;
 import 'package:win32/win32.dart';
 
@@ -56,6 +56,38 @@ class CaptureResult {
     this.cursorY,
     this.cursorVisible = false,
   });
+}
+
+/// One physical monitor's geometry in virtual-desktop coordinates (can be
+/// negative for a monitor positioned left-of/above the primary). `toJson()`
+/// is the wire shape sent to the backend by proctor_service.dart — deliberately
+/// omits left/top since the server only needs to know which index was
+/// captured, not its placement.
+class MonitorInfo {
+  final int index;
+  final String name;
+  final int left;
+  final int top;
+  final int width;
+  final int height;
+  final bool isPrimary;
+  const MonitorInfo({
+    required this.index,
+    required this.name,
+    required this.left,
+    required this.top,
+    required this.width,
+    required this.height,
+    required this.isPrimary,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'index': index,
+        'name': name,
+        'is_primary': isPrimary,
+        'width': width,
+        'height': height,
+      };
 }
 
 // ponytail: stream_epoch only needs to be stable for the life of this
@@ -244,15 +276,32 @@ _DirtyResult _decideDirty(CaptureProfile profile, Uint8List bgra) {
   }
 }
 
-/// Captures the primary display, downscaled to [currentCaptureProfile]'s
-/// width/height, as a [CaptureResult] (JPEG bytes + dirty-rect/cursor
-/// metadata). Returns null on any GDI failure or off-Windows/macOS.
-/// Encoding runs in [Isolate.run] so the exam UI never drops a frame.
-Future<CaptureResult?> captureScreenJpeg() async {
+/// Captures the primary display (or, when [monitorIndex] is given and > 0,
+/// that specific monitor from [enumerateMonitors]), downscaled to
+/// [currentCaptureProfile]'s width/height, as a [CaptureResult] (JPEG bytes +
+/// dirty-rect/cursor metadata). Returns null on any GDI failure or
+/// off-Windows/macOS. Encoding runs in [Isolate.run] so the exam UI never
+/// drops a frame.
+Future<CaptureResult?> captureScreenJpeg({int? monitorIndex}) async {
   final profile = currentCaptureProfile; // snapshot before isolate/CLI hop
   if (Platform.isMacOS) return _captureMacOsJpeg(profile);
   if (!Platform.isWindows) return null;
-  final bgra = _grabBgra(profile);
+  MonitorInfo? target;
+  if (monitorIndex != null && monitorIndex > 0) {
+    for (final m in enumerateMonitors()) {
+      if (m.index == monitorIndex) {
+        target = m;
+        break;
+      }
+    }
+  }
+  final bgra = target != null
+      ? _grabBgra(profile,
+          srcX: target.left,
+          srcY: target.top,
+          srcW: target.width,
+          srcH: target.height)
+      : _grabBgra(profile);
   if (bgra == null) return null;
   final width = profile.width;
   final height = profile.height;
@@ -397,7 +446,8 @@ CaptureResult _mockMacOsFrame(CaptureProfile profile) {
 /// on the UI isolate (touches GDI handles). Every handle is freed in a
 /// finally block — a leak here compounds at ~24 calls/minute and eventually
 /// exhausts the process's GDI handle quota.
-Uint8List? _grabBgra(CaptureProfile profile) {
+Uint8List? _grabBgra(CaptureProfile profile,
+    {int? srcX, int? srcY, int? srcW, int? srcH}) {
   final width = profile.width;
   final height = profile.height;
   final hScreen = GetDC(NULL);
@@ -413,8 +463,18 @@ Uint8List? _grabBgra(CaptureProfile profile) {
     SelectObject(hdcMem, hBmp);
     SetStretchBltMode(hdcMem, HALFTONE);
     final (screenW, screenH) = _getScreenSize();
+    // GetDC(NULL) already spans the ENTIRE virtual desktop (every monitor),
+    // so capturing a specific monitor needs no new device context — just a
+    // different source origin/size. Defaults to the primary monitor's full
+    // extent (0,0,screenW,screenH) when no override is given, i.e. identical
+    // to the pre-multi-monitor behavior. left/top can be negative for a
+    // monitor positioned left-of/above the primary — StretchBlt accepts that.
+    final sx = srcX ?? 0;
+    final sy = srcY ?? 0;
+    final sw = srcW ?? screenW;
+    final sh = srcH ?? screenH;
     final ok = StretchBlt(
-        hdcMem, 0, 0, width, height, hScreen, 0, 0, screenW, screenH, SRCCOPY);
+        hdcMem, 0, 0, width, height, hScreen, sx, sy, sw, sh, SRCCOPY);
     if (ok == 0) return null;
 
     bi = calloc<BITMAPINFO>();
@@ -481,4 +541,72 @@ int monitorCount() {
   if (!Platform.isWindows) return 1;
   final n = GetSystemMetrics(SM_CMONITORS);
   return n > 0 ? n : 1;
+}
+
+// ponytail: EnumDisplayMonitors' callback (Pointer.fromFunction) must be a
+// static/top-level function with no captured state, so a per-call result
+// list has nowhere to live except a module-level buffer. enumerateMonitors()
+// clears it before every call; this app has exactly one UI isolate and never
+// enumerates monitors concurrently, so a plain mutable list is the
+// lazy-correct choice here — same posture as _lastFrameBgra etc. above.
+final List<MonitorInfo> _monitorEnumBuffer = [];
+
+int _monitorEnumProc(
+    int hMonitor, int hdcMonitor, Pointer<NativeType> lprcMonitor, int dwData) {
+  final info = calloc<MONITORINFO>();
+  try {
+    info.ref.cbSize = sizeOf<MONITORINFO>();
+    if (GetMonitorInfo(hMonitor, info) != 0) {
+      final rect = info.ref.rcMonitor;
+      final isPrimary = (info.ref.dwFlags & MONITORINFOF_PRIMARY) != 0;
+      final idx = _monitorEnumBuffer.length;
+      _monitorEnumBuffer.add(MonitorInfo(
+        index: idx,
+        name: isPrimary ? 'Monitor ${idx + 1} (Asosiy)' : 'Monitor ${idx + 1}',
+        left: rect.left,
+        top: rect.top,
+        width: rect.right - rect.left,
+        height: rect.bottom - rect.top,
+        isPrimary: isPrimary,
+      ));
+    }
+  } finally {
+    calloc.free(info);
+  }
+  return 1; // TRUE — keep enumerating
+}
+
+/// Enumerates every physical monitor in virtual-desktop coordinates (the
+/// same coordinate space [_grabBgra]'s source rect expects). Falls back to a
+/// single synthetic primary-monitor entry derived from [_getScreenSize] on
+/// any failure or off-Windows, so a caller never sees an empty list on a
+/// working machine.
+List<MonitorInfo> enumerateMonitors() {
+  if (kIsWeb || !Platform.isWindows) return [];
+  _monitorEnumBuffer.clear();
+  try {
+    EnumDisplayMonitors(
+      NULL,
+      nullptr,
+      Pointer.fromFunction<MONITORENUMPROC>(_monitorEnumProc, 0),
+      0,
+    );
+  } catch (_) {
+    // fall through to the synthetic fallback below
+  }
+  if (_monitorEnumBuffer.isNotEmpty) {
+    return List<MonitorInfo>.from(_monitorEnumBuffer);
+  }
+  final (w, h) = _getScreenSize();
+  return [
+    MonitorInfo(
+      index: 0,
+      name: 'Monitor 1 (Asosiy)',
+      left: 0,
+      top: 0,
+      width: w,
+      height: h,
+      isPrimary: true,
+    ),
+  ];
 }

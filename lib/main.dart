@@ -20,6 +20,7 @@ import 'dart:io';
 import 'package:mac_menu_bar/mac_menu_bar.dart';
 import 'core/services/update_service.dart';
 import 'core/services/window_kiosk_win.dart';
+import 'core/services/crash_reporter_service.dart';
 
 void main() {
   // Defense-in-depth: Flutter's default ErrorWidget.builder renders an
@@ -79,6 +80,11 @@ void main() {
     FlutterError.onError = (details) {
       debugPrint('Flutter error: ${details.exceptionAsString()}');
       FlutterError.presentError(details);
+      // Framework build/layout/paint errors go through FlutterError.onError,
+      // not runZonedGuarded's error callback below — both hooks are needed
+      // for full crash coverage.
+      unawaited(CrashReporterService.captureCrash(
+          details.exception, details.stack ?? StackTrace.current));
     };
 
     SharedPreferences? prefs;
@@ -115,6 +121,7 @@ void main() {
         SyncService.instance.start();
         unawaited(HeartbeatService.instance.start());
         ConnectivityService.instance.start();
+        unawaited(CrashReporterService.uploadPending());
 
         if (Platform.isWindows) {
           // Startup window: Maximized with normal titlebar/taskbar visible.
@@ -210,7 +217,17 @@ void main() {
   }, (error, stackTrace) {
     debugPrint('Uncaught app error: $error');
     debugPrint('$stackTrace');
-  });
+    unawaited(CrashReporterService.captureCrash(error, stackTrace));
+  }, zoneSpecification: ZoneSpecification(
+    // Feeds CrashReporterService's ring buffer from EVERY existing
+    // print/debugPrint call app-wide, without touching any of those call
+    // sites individually — this is the only place that needs to know about
+    // the ring buffer's existence.
+    print: (self, parent, zone, line) {
+      CrashReporterService.logLine(line);
+      parent.print(zone, line);
+    },
+  ));
 }
 
 class AlochiMonitoringApp extends ConsumerWidget {

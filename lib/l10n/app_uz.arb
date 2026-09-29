@@ -71,6 +71,8 @@
   "diagnosticNoStudents": "O'quvchilar topilmadi",
   "diagnosticSubjectsEmptyTitle": "Diagnostika savollari topilmadi",
   "diagnosticSubjectsEmptySubtitle": "Ushbu sinf uchun hozircha diagnostika savollari shakllantirilmagan yoki sessiya faol emas.",
+  "diagnosticZoomIn": "Shriftni kattalashtirish",
+  "diagnosticZoomOut": "Shriftni kichiklashtirish",
   "diagnosticGoBack": "Orqaga qaytish",
   "diagnosticTitle": "DIAGNOSTIKA / QABUL TESTI",
   "diagnosticHeaderTag": "DIAGNOSTIKA",

@@ -386,6 +386,18 @@ abstract class AppLocalizations {
   /// **'Ushbu sinf uchun hozircha diagnostika savollari shakllantirilmagan yoki sessiya faol emas.'**
   String get diagnosticSubjectsEmptySubtitle;
 
+  /// No description provided for @diagnosticZoomIn.
+  ///
+  /// In uz, this message translates to:
+  /// **'Shriftni kattalashtirish'**
+  String get diagnosticZoomIn;
+
+  /// No description provided for @diagnosticZoomOut.
+  ///
+  /// In uz, this message translates to:
+  /// **'Shriftni kichiklashtirish'**
+  String get diagnosticZoomOut;
+
   /// No description provided for @diagnosticGoBack.
   ///
   /// In uz, this message translates to:

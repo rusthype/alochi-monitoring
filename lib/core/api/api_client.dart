@@ -201,6 +201,24 @@ class MonitoringApi {
   /// for ConnectivityService's plain-DNS fallback check.
   static String get host => _host;
 
+  /// Uploads one locally-queued crash report (see CrashReporterService).
+  /// Best-effort, same posture as [proctorFrame]: any failure just means the
+  /// file stays on disk for the next attempt — this must never throw.
+  Future<bool> uploadCrashReport(String jsonBody) async {
+    try {
+      final resp = await http
+          .post(
+            Uri.parse('$_host/api/v1/internal/crash-report/'),
+            headers: _headers,
+            body: jsonBody,
+          )
+          .timeout(const Duration(seconds: 10));
+      return resp.statusCode >= 200 && resp.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Returns the decoded response body (contains `ok`, and optionally
   /// `conflict`/`terminated` flags — see HeartbeatService for how these are
   /// consumed). Throws [ApiException] on HTTP/network failure, same as
@@ -295,6 +313,8 @@ class MonitoringApi {
     int? cursorX,
     int? cursorY,
     bool? cursorVisible,
+    String? monitorsJson,
+    int? monitorIndex,
   }) async {
     try {
       final req =
@@ -303,6 +323,10 @@ class MonitoringApi {
             ..fields['token'] = token
             ..fields['focus'] = focus.toString()
             ..fields['monitor_count'] = monitorCount.toString();
+      if (monitorsJson != null) req.fields['monitors'] = monitorsJson;
+      if (monitorIndex != null) {
+        req.fields['monitor_index'] = monitorIndex.toString();
+      }
       if (questionIndex != null) {
         req.fields['q_idx'] = questionIndex.toString();
       }

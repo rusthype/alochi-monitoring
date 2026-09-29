@@ -14,6 +14,7 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart'
@@ -225,6 +226,26 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// Local UI-only bookmark state, keyed by question_id (YAGNI — no backend
   /// field/API call, see DiagnosticQuestionCard's doc comment).
   final Set<String> _flaggedQuestionIds = <String>{};
+
+  /// Screen-local font zoom (0/1/2 -> 1.0x/1.25x/1.5x), applied only to
+  /// DiagnosticOptionsGrid's option text via Ctrl+=/Ctrl+- hotkeys or the
+  /// A-/A+ buttons. Deliberately separate from fontScaleProvider (the
+  /// global "Katta shrift" app setting) — this is a per-screen convenience,
+  /// resets to 0 on every new question view build (no persistence).
+  int _zoomLevel = 0;
+
+  static const int _maxZoomLevel = 2;
+  double get _zoomScale => 1.0 + _zoomLevel * 0.25;
+
+  void _zoomIn() {
+    if (_zoomLevel >= _maxZoomLevel) return;
+    setState(() => _zoomLevel++);
+  }
+
+  void _zoomOut() {
+    if (_zoomLevel <= 0) return;
+    setState(() => _zoomLevel--);
+  }
 
   /// Countdown seconds remaining, or null when the current attempt carries
   /// no known duration. Populated from `duration_minutes` on the
@@ -1082,6 +1103,85 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     });
   }
 
+  /// Fixed-variant answer pick — shared by [DiagnosticOptionsGrid]'s tap
+  /// handler and the digit/letter keyboard shortcuts in [build], so both
+  /// paths' side effects (autosave, heartbeat report, auto-advance) live in
+  /// exactly one place.
+  void _selectOption(String key, Map<String, dynamic> q) {
+    final questionId = _questionId(q);
+    setState(() {
+      _selectedOption = key;
+      _answers[_position] = key;
+    });
+    unawaited(_saveProgressIfFixed());
+    // Instant crash-recovery write — SQLite, not the AttemptStore blob (see
+    // DiagnosticAnswerStore's header comment for why these two stores
+    // split). A local SQLite failure (e.g. a locked disk on some real
+    // device) must never crash/interrupt the exam flow — same best-effort
+    // tolerance as AttemptStore.save's own try/catch.
+    unawaited(DiagnosticAnswerStore.saveAnswer(
+      attemptId: widget.attemptId,
+      subject: _currentSubject,
+      questionIndex: _position,
+      questionId: questionId,
+      selectedOption: key,
+    ).catchError((e) {
+      debugPrint('DiagnosticAnswerStore.saveAnswer error: $e');
+    }));
+    HeartbeatService.instance
+        .updateProgress(_position, _total, [], _questionText(q), key);
+    // Live telemetry: reuses the existing proctor heartbeat channel +
+    // HeartbeatService's existing reportAnswers() (already used by
+    // TestEngine).
+    HeartbeatService.instance.reportAnswers(
+      _answers.map((k, v) => MapEntry(k.toString(), v)),
+      _elapsedOnSubject,
+    );
+    _autoAdvance?.cancel();
+    if (!((_position - 1) >= (_total - 1))) {
+      _autoAdvance = Timer(const Duration(milliseconds: 500), () {
+        if (mounted) _jumpTo(_position);
+      });
+    }
+  }
+
+  /// Guarded entry point for the digit/letter answer-select hotkeys (see
+  /// build's CallbackShortcuts) — only acts during a fixed-variant question
+  /// view with that option actually present, mirroring what
+  /// DiagnosticOptionsGrid's own tap handling already assumes.
+  void _selectOptionByKeyboard(String key) {
+    final q = _question;
+    if (q == null || !_isFixedVariantAttempt || _submitting) return;
+    if (!extractDiagnosticOptions(q).any((o) => o.key == key)) return;
+    _selectOption(key, q);
+  }
+
+  void _toggleFlag(String questionId) => setState(() {
+        if (!_flaggedQuestionIds.remove(questionId)) {
+          _flaggedQuestionIds.add(questionId);
+        }
+      });
+
+  void _toggleFlagByKeyboard() {
+    final q = _question;
+    if (q == null) return;
+    _toggleFlag(_questionId(q));
+  }
+
+  /// Backspace/←: same guard as DiagnosticBottomNav's onPrevious, which is
+  /// null (disabled) at _position <= 1 — never calls _jumpTo with an
+  /// out-of-range index.
+  void _goToPreviousByKeyboard() {
+    if (!_isFixedVariantAttempt || _submitting) return;
+    if (_position <= 1) return;
+    _jumpTo(_position - 2);
+  }
+
+  void _goToNextByKeyboard() {
+    if (!_isFixedVariantAttempt || _submitting) return;
+    _jumpTo(_position);
+  }
+
   /// Maps [_answers] (position -> selected letter) onto [questions] by
   /// position, in the `kiosk/finish/` payload shape. Extracted so the
   /// self-heal retry in `_confirmAndFinishPackage` can rebuild the payload
@@ -1504,21 +1604,69 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     final transition = _transition;
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            transition != null
-                ? _buildTransitionView(l10n, transition)
-                : _loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : (_error != null || _subjectsEmpty)
-                        ? _buildErrorView(l10n)
-                        : q == null
-                            ? Center(child: Text(l10n.diagnosticNoStudents))
-                            : _buildQuestionView(l10n, q),
-            // ── Admin-lock pause overlay ─────────────────────────────────
-            if (_paused) _buildPauseOverlay(l10n),
-          ],
+      // Digit/letter answer-select, Enter/Space next, Backspace/← previous,
+      // F/B flag, Ctrl+=/Ctrl+- zoom — see the guarded *ByKeyboard methods
+      // above for the exact fixed-variant/submitting guards each one
+      // reuses. CallbackShortcuts must be an ANCESTOR of the focused node
+      // for key events to bubble up into it (Flutter's Shortcuts contract),
+      // so Focus goes INSIDE it — same nesting test_screen.dart's own
+      // CallbackShortcuts+Focus pair already uses.
+      body: CallbackShortcuts(
+        bindings: <ShortcutActivator, VoidCallback>{
+          const SingleActivator(LogicalKeyboardKey.digit1): () =>
+              _selectOptionByKeyboard('A'),
+          const SingleActivator(LogicalKeyboardKey.keyA): () =>
+              _selectOptionByKeyboard('A'),
+          const SingleActivator(LogicalKeyboardKey.digit2): () =>
+              _selectOptionByKeyboard('B'),
+          const SingleActivator(LogicalKeyboardKey.digit3): () =>
+              _selectOptionByKeyboard('C'),
+          const SingleActivator(LogicalKeyboardKey.keyC): () =>
+              _selectOptionByKeyboard('C'),
+          const SingleActivator(LogicalKeyboardKey.digit4): () =>
+              _selectOptionByKeyboard('D'),
+          const SingleActivator(LogicalKeyboardKey.keyD): () =>
+              _selectOptionByKeyboard('D'),
+          const SingleActivator(LogicalKeyboardKey.enter): _goToNextByKeyboard,
+          const SingleActivator(LogicalKeyboardKey.space): _goToNextByKeyboard,
+          const SingleActivator(LogicalKeyboardKey.backspace):
+              _goToPreviousByKeyboard,
+          const SingleActivator(LogicalKeyboardKey.arrowLeft):
+              _goToPreviousByKeyboard,
+          // Collision resolution: option B is only reachable via digit '2'
+          // here — the letter key B is reserved exclusively for flag/
+          // bookmark (spec: "F yoki B tugmasi" = F or B toggles the flag),
+          // so plain keyB never appears in the option-select bindings above.
+          const SingleActivator(LogicalKeyboardKey.keyF): _toggleFlagByKeyboard,
+          const SingleActivator(LogicalKeyboardKey.keyB): _toggleFlagByKeyboard,
+          const SingleActivator(LogicalKeyboardKey.equal, control: true):
+              _zoomIn,
+          const SingleActivator(LogicalKeyboardKey.numpadAdd, control: true):
+              _zoomIn,
+          const SingleActivator(LogicalKeyboardKey.minus, control: true):
+              _zoomOut,
+          const SingleActivator(LogicalKeyboardKey.numpadSubtract,
+              control: true): _zoomOut,
+        },
+        child: Focus(
+          autofocus: true,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                transition != null
+                    ? _buildTransitionView(l10n, transition)
+                    : _loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : (_error != null || _subjectsEmpty)
+                            ? _buildErrorView(l10n)
+                            : q == null
+                                ? Center(child: Text(l10n.diagnosticNoStudents))
+                                : _buildQuestionView(l10n, q),
+                // ── Admin-lock pause overlay ─────────────────────────────
+                if (_paused) _buildPauseOverlay(l10n),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -1737,11 +1885,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                       imageUrl: imageUrl,
                       svgVisual: svgVisual,
                       flagged: _flaggedQuestionIds.contains(questionId),
-                      onToggleFlag: () => setState(() {
-                        if (!_flaggedQuestionIds.remove(questionId)) {
-                          _flaggedQuestionIds.add(questionId);
-                        }
-                      }),
+                      onToggleFlag: () => _toggleFlag(questionId),
                       // Scratchpad is a fixed-variant-only affordance (math
                       // bank) — null on CAT hides the trigger entirely, see
                       // DiagnosticQuestionCard's doc comment.
@@ -1751,52 +1895,20 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                     ),
                     const SizedBox(height: 20),
                     if (_isFixedVariantAttempt)
-                      DiagnosticOptionsGrid(
-                        options: options,
-                        selectedOption: _selectedOption,
-                        interactive: !_submitting,
-                        onSelect: (key) {
-                          setState(() {
-                            _selectedOption = key;
-                            _answers[_position] = key;
-                          });
-                          unawaited(_saveProgressIfFixed());
-                          // Instant crash-recovery write — SQLite, not the
-                          // AttemptStore blob (see DiagnosticAnswerStore's
-                          // header comment for why these two stores split).
-                          // A local SQLite failure (e.g. a locked disk on
-                          // some real device) must never crash/interrupt the
-                          // exam flow — same best-effort tolerance as
-                          // AttemptStore.save's own try/catch.
-                          unawaited(DiagnosticAnswerStore.saveAnswer(
-                            attemptId: widget.attemptId,
-                            subject: _currentSubject,
-                            questionIndex: _position,
-                            questionId: questionId,
-                            selectedOption: key,
-                          ).catchError((e) {
-                            debugPrint(
-                                'DiagnosticAnswerStore.saveAnswer error: $e');
-                          }));
-                          HeartbeatService.instance.updateProgress(
-                              _position, _total, [], _questionText(q), key);
-                          // Live telemetry: reuses the existing proctor
-                          // heartbeat channel (already-merged origin/main
-                          // fix) + HeartbeatService's existing
-                          // reportAnswers() (already used by TestEngine, not
-                          // previously called from here).
-                          HeartbeatService.instance.reportAnswers(
-                            _answers.map((k, v) => MapEntry(k.toString(), v)),
-                            _elapsedOnSubject,
-                          );
-                          _autoAdvance?.cancel();
-                          if (!((_position - 1) >= (_total - 1))) {
-                            _autoAdvance =
-                                Timer(const Duration(milliseconds: 500), () {
-                              if (mounted) _jumpTo(_position);
-                            });
-                          }
-                        },
+                      MediaQuery(
+                        // Screen-local zoom only (see _zoomLevel's doc
+                        // comment) — DiagnosticOptionsGrid reads its text
+                        // scale from MediaQuery.textScalerOf(context)
+                        // internally, so this override is the smallest way
+                        // to apply it without a new constructor param.
+                        data: MediaQuery.of(context).copyWith(
+                            textScaler: TextScaler.linear(_zoomScale)),
+                        child: DiagnosticOptionsGrid(
+                          options: options,
+                          selectedOption: _selectedOption,
+                          interactive: !_submitting,
+                          onSelect: (key) => _selectOption(key, q),
+                        ),
                       )
                     else
                       ...options.map((opt) => DiagnosticOptionCard(
@@ -1830,6 +1942,26 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           ),
         ),
         const Positioned(top: 12, right: 12, child: SyncStatusBadge()),
+        Positioned(
+          top: 12,
+          left: 12,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ZoomButton(
+                icon: Icons.text_decrease_rounded,
+                tooltip: l10n.diagnosticZoomOut,
+                onTap: _zoomLevel > 0 ? _zoomOut : null,
+              ),
+              const SizedBox(width: 6),
+              _ZoomButton(
+                icon: Icons.text_increase_rounded,
+                tooltip: l10n.diagnosticZoomIn,
+                onTap: _zoomLevel < _maxZoomLevel ? _zoomIn : null,
+              ),
+            ],
+          ),
+        ),
         if (_scratchpadOpen)
           Positioned.fill(
             child: DiagnosticScratchpad(
@@ -1877,6 +2009,33 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Small circular icon button for the screen-local font-zoom controls (see
+/// _zoomLevel) — `onTap: null` renders visibly disabled at 0/max, same
+/// affordance IconButton itself already gives for free.
+class _ZoomButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
+
+  const _ZoomButton({required this.icon, required this.tooltip, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        icon: Icon(icon, size: 20),
+        onPressed: onTap,
+        color: AppColors.ink2,
+        style: IconButton.styleFrom(
+          backgroundColor: AppColors.surface,
+          shape: const CircleBorder(),
+        ),
+      ),
     );
   }
 }

@@ -71,6 +71,8 @@
   "diagnosticNoStudents": "Учащиеся не найдены",
   "diagnosticSubjectsEmptyTitle": "Вопросы диагностики не найдены",
   "diagnosticSubjectsEmptySubtitle": "Для этого класса пока не сформированы вопросы диагностики, либо сессия неактивна.",
+  "diagnosticZoomIn": "Увеличить шрифт",
+  "diagnosticZoomOut": "Уменьшить шрифт",
   "diagnosticGoBack": "Назад",
   "diagnosticTitle": "ДИАГНОСТИКА / ПРИЁМНЫЙ ТЕСТ",
   "diagnosticHeaderTag": "ДИАГНОСТИКА",
