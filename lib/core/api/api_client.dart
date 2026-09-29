@@ -208,7 +208,7 @@ class MonitoringApi {
     try {
       final resp = await http
           .post(
-            Uri.parse('$_host/api/v1/internal/crash-report/'),
+            Uri.parse('$_host/api/v1/monitoring/crash-report/'),
             headers: _headers,
             body: jsonBody,
           )
