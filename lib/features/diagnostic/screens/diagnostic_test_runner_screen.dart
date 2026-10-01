@@ -2112,13 +2112,26 @@ class _ZoomButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: IconButton(
-        icon: Icon(icon, size: 20),
-        onPressed: onTap,
-        color: AppColors.ink2,
-        style: IconButton.styleFrom(
-          backgroundColor: AppColors.surface,
-          shape: const CircleBorder(),
+      child: DecoratedBox(
+        // AppColors.surface (white) on AppColors.pageBg (near-white) is
+        // visually indistinguishable at rest, so without this border the
+        // button is invisible until something paints on top of it — e.g.
+        // Material's default keyboard-focus state-layer circle, which then
+        // reads as an unexplained round blob appearing out of nowhere on
+        // Tab-focus. The border keeps the button legible at all times.
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.border),
+        ),
+        child: IconButton(
+          icon: Icon(icon, size: 20),
+          onPressed: onTap,
+          color: AppColors.ink2,
+          disabledColor: AppColors.ink3,
+          style: IconButton.styleFrom(
+            backgroundColor: AppColors.surface,
+            shape: const CircleBorder(),
+          ),
         ),
       ),
     );
