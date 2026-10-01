@@ -30,7 +30,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   if (!window.Create(L"alochi_monitoring", origin, size)) {
     return EXIT_FAILURE;
   }
-  window.Show();
+  // Deliberately NOT calling window.Show() here: CreateWindow() (in
+  // win32_window.cpp) creates the window without WS_VISIBLE, and
+  // FlutterWindow::OnCreate() (flutter_window.cpp) already registers
+  // engine()->SetNextFrameCallback() to call Show() itself once Flutter
+  // renders its first real frame. Showing eagerly here used to reveal the
+  // window's blank/white surface before that first frame existed — the
+  // startup white-flash. Letting the callback own Show() means the window
+  // only ever appears with content already drawn.
   window.SetQuitOnClose(true);
 
   ::MSG msg;

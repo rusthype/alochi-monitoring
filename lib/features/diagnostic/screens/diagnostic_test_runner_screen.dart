@@ -26,6 +26,7 @@ import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/db/offline_queue.dart';
 import '../../../core/services/heartbeat_service.dart';
 import '../../../core/services/proctor_service.dart';
+import '../../../core/services/window_kiosk_win.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../data/diagnostic_option_item.dart';
@@ -598,6 +599,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     }
     _bootstrap();
     _initProctoring();
+    enableWakeLock();
   }
 
   Future<void> _initProctoring() async {
@@ -690,6 +692,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     HeartbeatService.instance.onLockChanged = null;
     HeartbeatService.instance.onExtendSeconds = null;
     HeartbeatService.instance.onWarning = null;
+    disableWakeLock();
     super.dispose();
   }
 
@@ -717,6 +720,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// `finished: true` with no next subject, and when the countdown timer
   /// hits zero.
   void _finishTest() {
+    disableWakeLock();
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
     unawaited(AttemptStore.clear(_diagKey));

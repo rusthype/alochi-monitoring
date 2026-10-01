@@ -130,6 +130,42 @@ void _applyFullscreen(int hwnd) {
   _isFullscreen = true;
 }
 
+/// Called from the single-instance guard's second-launch callback (see
+/// main.dart) to bring the already-running kiosk window back to the
+/// foreground instead of letting a second `alochi_monitoring.exe` process
+/// start — a relaunch off the desktop/taskbar otherwise looks like nothing
+/// happened, since the first instance's window stays wherever it was
+/// (possibly minimized or behind another window). No-op on non-Windows/web
+/// or if no window handle has been resolved yet.
+void focusExistingWindow() {
+  if (kIsWeb || !Platform.isWindows) return;
+  if (!_hasWindow) return;
+  ShowWindow(_hwnd, SW_RESTORE);
+  SetForegroundWindow(_hwnd);
+}
+
+/// Prevents Windows from turning off the display or sleeping while a timed
+/// diagnostic test is running (see diagnostic_test_runner_screen.dart) — a
+/// student mid-test should never lose their screen to idle power-saving.
+/// `ES_CONTINUOUS` keeps the flags in effect until explicitly reset (rather
+/// than just for this one call), `ES_SYSTEM_REQUIRED`/`ES_DISPLAY_REQUIRED`
+/// block system sleep and display-off respectively. No-op on non-Windows/web.
+void enableWakeLock() {
+  if (kIsWeb || !Platform.isWindows) return;
+  SetThreadExecutionState(
+      ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
+}
+
+/// Resets the power-management state set by [enableWakeLock] back to normal
+/// (Windows' own idle/sleep timers apply again). Per the Win32 docs for
+/// `SetThreadExecutionState`, passing `ES_CONTINUOUS` alone clears any
+/// previously requested flags — no prior-state tracking/restoring needed.
+/// No-op on non-Windows/web.
+void disableWakeLock() {
+  if (kIsWeb || !Platform.isWindows) return;
+  SetThreadExecutionState(ES_CONTINUOUS);
+}
+
 void _restoreWindowed(int hwnd) {
   final savedStyle = _savedStyle;
   if (savedStyle != null) {

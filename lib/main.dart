@@ -18,11 +18,12 @@ import 'core/widgets/command_palette.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:mac_menu_bar/mac_menu_bar.dart';
+import 'package:windows_single_instance/windows_single_instance.dart';
 import 'core/services/update_service.dart';
 import 'core/services/window_kiosk_win.dart';
 import 'core/services/crash_reporter_service.dart';
 
-void main() {
+void main(List<String> args) {
   // Defense-in-depth: Flutter's default ErrorWidget.builder renders an
   // essentially blank, textless box in release builds (the message is
   // stripped via `assert()`), which — with no Directionality/Theme/MediaQuery
@@ -55,6 +56,28 @@ void main() {
 
   runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Kiosk PCs relaunch the app off a desktop/taskbar shortcut without
+    // first closing the already-running instance (observed on real school
+    // hardware) — without this guard that spawns a second process fighting
+    // the first one for the same maximized window, camera, and heartbeat
+    // session. `ensureSingleInstance` exits this process immediately (via
+    // `exit(0)` internally) when another instance already holds the named
+    // pipe, so nothing below this block runs for that second launch.
+    // `bringWindowToFront` is left off in favor of our own
+    // `focusExistingWindow()`, which reuses this app's already-resolved
+    // `_hwnd` (window_kiosk_win.dart) instead of the package resolving the
+    // window a second, different way.
+    if (!kIsWeb && Platform.isWindows) {
+      await WindowsSingleInstance.ensureSingleInstance(
+        args,
+        'alochi_monitoring_app_single_instance_key',
+        onSecondWindow: (arguments) {
+          focusExistingWindow();
+        },
+        bringWindowToFront: false,
+      );
+    }
 
     // Dart/BoringSSL ships its own static root CA bundle (frozen at the SDK
     // version this build was compiled with) instead of reading the OS trust

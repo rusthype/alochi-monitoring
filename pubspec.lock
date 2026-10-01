@@ -1098,6 +1098,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.15.0"
+  windows_single_instance:
+    dependency: "direct main"
+    description:
+      name: windows_single_instance
+      sha256: "4e979b3bb87a948139ba5cbeb15ae1a7ca1d18fc1f4e3c04968bc14fba5af0d4"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.7"
   xdg_directories:
     dependency: transitive
     description:
