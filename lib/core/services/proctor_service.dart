@@ -126,8 +126,15 @@ class ProctorService {
           // key (backend not deployed yet) or null both mean "no change".
           final requestedMonitor =
               (result['requested_monitor_index'] as num?)?.toInt();
-          if (requestedMonitor != null) {
+          if (requestedMonitor != null &&
+              requestedMonitor != _requestedMonitorIndex) {
             _requestedMonitorIndex = requestedMonitor;
+            // Without this, _decideDirty() diffs the new monitor's pixels
+            // against _lastFrameBgra (still the OLD monitor's last frame)
+            // and emits a tiny unrelated patch instead of a full keyframe --
+            // the panel then paints that patch over the stale image, so the
+            // new monitor never actually appears.
+            forceNextKeyframe();
           }
           // Backend-driven capture profile for the NEXT tick — target_width
           // 960 means spotlight (single-student close-up), anything else
