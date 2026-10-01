@@ -294,25 +294,29 @@ class DiagnosticStudentCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      name,
-                      style: TextStyle(
-                        color: isSelected ? AppColors.brand : AppColors.ink1,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                    Flexible(
+                      child: Text(
+                        name,
+                        style: TextStyle(
+                          color:
+                              isSelected ? AppColors.brand : AppColors.ink1,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (attemptStatus != null)
+                    if (attemptStatus != null) ...[
+                      const SizedBox(width: 6),
                       _AttemptStatusBadge(
                         attemptStatus: attemptStatus!,
                         nextSubjectLabel: nextSubjectLabel,
                       ),
+                    ],
                   ],
                 ),
               ),
@@ -382,7 +386,10 @@ class _StudentStatusBadge extends StatelessWidget {
 
 /// Diagnostic-attempt completion badge — separate from [_StudentStatusBadge]
 /// (offline-download readiness) and NEVER shows a score/percentage, by
-/// explicit product decision (scores stay admin-panel-only).
+/// explicit product decision (scores stay admin-panel-only). Round
+/// icon-only status badge next to the student's name (no text in the card
+/// itself — the full label still reaches the operator via [Tooltip], e.g.
+/// on long-press on the kiosk's touch screen).
 class _AttemptStatusBadge extends StatelessWidget {
   final String attemptStatus;
   final String? nextSubjectLabel;
@@ -391,32 +398,50 @@ class _AttemptStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String label;
+    final IconData icon;
     final Color color;
+    final String tooltip;
     switch (attemptStatus) {
       case 'completed':
-        label = '✅ Topshirildi';
+        icon = Icons.check_rounded;
         color = Colors.green;
+        tooltip = 'Topshirildi';
         break;
       case 'in_progress':
-        label = '🟡 Jarayonda';
+        icon = Icons.sync_rounded;
         color = Colors.amber[800]!;
+        tooltip = 'Jarayonda';
         break;
       case 'partial':
-        final next = nextSubjectLabel?.trim();
-        label = (next == null || next.isEmpty)
-            ? '🟡 Davom etmoqda'
-            : '🟡 $next qoldi';
+        icon = Icons.arrow_forward_rounded;
         color = Colors.amber[800]!;
+        final next = nextSubjectLabel?.trim();
+        tooltip =
+            (next == null || next.isEmpty) ? 'Davom etmoqda' : '$next qoldi';
         break;
       default:
         return const SizedBox.shrink();
     }
-    return Text(
-      label,
-      style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        width: 19,
+        height: 19,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.35),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon, size: 12, color: Colors.white),
+      ),
     );
   }
 }
