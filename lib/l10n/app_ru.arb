@@ -287,6 +287,7 @@
   "earlyFinishConfirmButton": "Да, завершить",
   "testAutoSubmittedNotice": "Время теста истекло, ваши сохранённые ответы были отправлены автоматически.",
   "unansweredWarning": "Без ответа: {unanswered}. Все равно завершить?",
+  "flaggedQuestionsReminder": "У вас есть {count} отмеченных для повторного просмотра вопросов. Всё равно завершить?",
   "mathSectionLabel": "Раздел: Математика",
   "engSectionLabel": "Раздел: Английский",
   "keyboardButtons": "клавиши",

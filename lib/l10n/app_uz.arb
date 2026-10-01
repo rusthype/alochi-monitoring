@@ -294,6 +294,14 @@
       }
     }
   },
+  "flaggedQuestionsReminder": "Sizda {count} ta qayta ko'rish uchun belgilangan savol bor. Baribir yakunlaysizmi?",
+  "@flaggedQuestionsReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "mathSectionLabel": "Matematika bo'limi",
   "engSectionLabel": "Ingliz tili bo'limi",
   "keyboardButtons": "tugmalar",

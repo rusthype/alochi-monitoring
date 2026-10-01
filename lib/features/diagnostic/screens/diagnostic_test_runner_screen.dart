@@ -47,6 +47,15 @@ export '../data/diagnostic_option_item.dart';
 /// bottom-nav panel both clamp to this) for the fixed-variant redesign.
 const double _kDockMaxWidth = 760;
 
+/// Pure subtraction — never touches the wall clock. Used by the countdown
+/// (see `_syncRemainingFromStopwatch`) so the subject timer is measured
+/// against a monotonic `Stopwatch` instead of `DateTime.now()` diffing,
+/// which a wrong/rewound kiosk system clock could otherwise exploit for
+/// unlimited time or an instant timeout. A negative result means the
+/// subject has timed out — the caller treats it the same as zero.
+int diagnosticRemainingSeconds(int totalDurationSeconds, Duration elapsed) =>
+    totalDurationSeconds - elapsed.inSeconds;
+
 /// Pending "subject A finished, subject B starting" state — shown as a brief
 /// full-screen message instead of jumping straight to the next question.
 class _SubjectTransition {
@@ -71,6 +80,7 @@ typedef DiagnosticSubmitAnswerFn = Future<Map<String, dynamic>> Function({
 typedef DiagnosticFinishAttemptFn = Future<Map<String, dynamic>> Function({
   required String attemptId,
   required List<Map<String, dynamic>> answers,
+  List<String>? flaggedQuestionIds,
 });
 typedef DiagnosticPingElapsedFn = Future<Map<String, dynamic>> Function({
   required String attemptId,
@@ -224,8 +234,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// `_armBootstrapAutoRetry`.
   StreamSubscription<List<ConnectivityResult>>? _bootstrapRetrySub;
 
-  /// Local UI-only bookmark state, keyed by question_id (YAGNI — no backend
-  /// field/API call, see DiagnosticQuestionCard's doc comment).
+  /// "Belgilash" (bookmark) state, keyed by question_id. Stays local for its
+  /// UI purpose — highlighting the question dot and driving the confirm-
+  /// finish reminder dialog — but the full set is sent once to
+  /// `kiosk/finish/` (see `_finishCurrentSubjectAndAdvance`) and surfaced as
+  /// a simple count in the admin panel only: never live, never per-question
+  /// there.
   final Set<String> _flaggedQuestionIds = <String>{};
 
   /// Screen-local font zoom (0/1/2 -> 1.0x/1.25x/1.5x), applied only to
@@ -255,27 +269,33 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   int? _remainingSeconds;
   Timer? _timer;
 
-  /// Wall-clock deadline the countdown is measured against — set once in
-  /// `_startCountdownIfNeeded`. Ticking recomputes `_remainingSeconds` from
-  /// `_deadline!.difference(DateTime.now())` instead of decrementing by one
-  /// per fired callback: on Windows, a long-unfocused/idle/sleeping app can
-  /// have its `Timer.periodic` callbacks paused for minutes or hours by the
-  /// OS (a naive `remaining - 1` would then simply freeze while the student
-  /// works elsewhere, effectively handing them unlimited extra real time —
-  /// see the diagnostic-timer-freezes-when-unfocused investigation). Measuring
-  /// against a fixed deadline makes the displayed value self-correct the
-  /// moment a tick DOES fire, and `didChangeAppLifecycleState` below forces
-  /// an immediate correction the moment the window regains focus, instead of
-  /// waiting for the next 1-second tick.
-  DateTime? _deadline;
+  /// Monotonic elapsed-time source the countdown is measured against — set
+  /// once (reset + started) in `_startCountdownIfNeeded`/`_restoreCountdown`.
+  /// Ticking recomputes `_remainingSeconds` from
+  /// `diagnosticRemainingSeconds(_totalDurationSeconds!, _stopwatch.elapsed)`
+  /// instead of diffing `DateTime.now()` against a wall-clock deadline: a
+  /// `Stopwatch` is immune to the kiosk PC's system clock being wrong or
+  /// deliberately rewound mid-test (previously a cheater could stall the
+  /// clock for unlimited time, or a clock jump could end the test instantly).
+  /// It's also immune to the same OS-timer-pausing issue a plain tick-count
+  /// would have (see the diagnostic-timer-freezes-when-unfocused
+  /// investigation) since `.elapsed` is read fresh on every tick, and
+  /// `didChangeAppLifecycleState` below still forces an immediate correction
+  /// the moment the window regains focus rather than waiting for the next
+  /// 1-second tick.
+  final Stopwatch _stopwatch = Stopwatch();
+
+  /// Total duration (seconds) the current subject's countdown started from —
+  /// paired with [_stopwatch] to compute remaining time (see
+  /// `diagnosticRemainingSeconds`). Also bumped by `onExtendSeconds`.
+  int? _totalDurationSeconds;
 
   /// True while the admin-lock pause overlay is shown — the countdown is
-  /// frozen (see [_pauseForLock]/[_resumeFromLock]), mirroring
-  /// `TestEngine`'s pause/resume (kept as a plain bool + a frozen-remaining
-  /// duration here since this screen measures its deadline as a `DateTime`
-  /// rather than epoch-ms).
+  /// frozen by simply stopping [_stopwatch] (see [_pauseForLock]/
+  /// [_resumeFromLock]); a `Stopwatch` accumulates total elapsed time across
+  /// stop/start cycles on its own, so no manual remaining-duration
+  /// bookkeeping is needed here (unlike the old `DateTime`-deadline scheme).
   bool _paused = false;
-  Duration? _pausedRemaining;
 
   /// Seconds actively spent on the CURRENT subject since its countdown was
   /// last (re)seeded — a plain local counter, reset to 0 on every subject
@@ -348,7 +368,19 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // here would just be redundant, staler data.
       'position': _position,
       'total': _total,
-      'deadline_epoch_ms': _deadline?.millisecondsSinceEpoch,
+      // The persisted key/shape stays 'deadline_epoch_ms' exactly as before
+      // the Stopwatch migration — existing tests and _tryRestore's read
+      // still expect a wall-clock epoch-ms value, which a Stopwatch cannot
+      // itself survive the app process being killed and relaunched.
+      // Reconstruct the equivalent deadline from the Stopwatch's elapsed
+      // time so far.
+      'deadline_epoch_ms': _totalDurationSeconds == null
+          ? null
+          : DateTime.now()
+              .add(Duration(
+                  seconds:
+                      _totalDurationSeconds! - _stopwatch.elapsed.inSeconds))
+              .millisecondsSinceEpoch,
     });
   }
 
@@ -374,12 +406,20 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     final currentSubject = (saved['current_subject'] ?? '').toString();
     if (allSubjects.isEmpty || currentSubject.isEmpty) return false;
     final deadlineMs = (saved['deadline_epoch_ms'] as num?)?.toInt();
-    DateTime? deadline;
+    // A Stopwatch cannot survive the app process being killed, so this is
+    // the ONLY place in this file's timer logic that still reads
+    // `DateTime.now()` — one comparison against the persisted epoch-ms
+    // deadline to derive a plain remaining-seconds count, which then seeds
+    // a brand-new Stopwatch in `_restoreCountdown` exactly like a fresh
+    // start does.
+    int? remainingSeconds;
     if (deadlineMs != null) {
-      deadline = DateTime.fromMillisecondsSinceEpoch(deadlineMs);
+      final deadline = DateTime.fromMillisecondsSinceEpoch(deadlineMs);
+      final remaining = deadline.difference(DateTime.now()).inSeconds;
       // Expired while the app was closed — a fresh live bootstrap is
       // correct here (the server itself decides what happens next).
-      if (!deadline.isAfter(DateTime.now())) return false;
+      if (remaining <= 0) return false;
+      remainingSeconds = remaining;
     }
     // Answers now come from DiagnosticAnswerStore (SQLite), not the blob's
     // own 'answers' field (see _saveProgressIfFixed) — it's written on every
@@ -424,22 +464,27 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       _selectedOption = _answers[_position];
       _loading = false;
     });
-    if (deadline != null) _restoreCountdown(deadline);
+    if (remainingSeconds != null) _restoreCountdown(remainingSeconds);
     _prefetchImages(_questions);
     return true;
   }
 
-  /// Resumes the countdown against a previously-saved (not extended)
-  /// [deadline] instead of computing a fresh one from `duration_minutes` —
-  /// see `_startCountdownIfNeeded`'s doc comment for why ticking is measured
-  /// against a fixed wall-clock deadline rather than decremented per tick.
-  void _restoreCountdown(DateTime deadline) {
+  /// Resumes the countdown from a previously-saved (not extended)
+  /// [remainingSeconds] instead of computing a fresh one from
+  /// `duration_minutes` — seeds a brand-new [_stopwatch], mirroring what
+  /// `_startCountdownIfNeeded` does for a fresh start. See [_stopwatch]'s
+  /// doc comment for why ticking is measured against it rather than
+  /// decremented per tick.
+  void _restoreCountdown(int remainingSeconds) {
     _timer?.cancel();
-    _deadline = deadline;
-    final remaining = deadline.difference(DateTime.now()).inSeconds;
-    setState(() => _remainingSeconds = remaining > 0 ? remaining : 0);
-    _timer =
-        Timer.periodic(const Duration(seconds: 1), _syncRemainingFromDeadline);
+    _stopwatch
+      ..reset()
+      ..start();
+    _totalDurationSeconds = remainingSeconds;
+    setState(() =>
+        _remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0);
+    _timer = Timer.periodic(
+        const Duration(seconds: 1), _syncRemainingFromStopwatch);
     _armElapsedPingTimer();
   }
 
@@ -457,14 +502,17 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     final seconds =
         remainingFromServer ?? (minutes != null ? minutes * 60 : null);
     if (seconds == null) {
-      _deadline = null;
+      _totalDurationSeconds = null;
       setState(() => _remainingSeconds = null);
       return;
     }
-    _deadline = DateTime.now().add(Duration(seconds: seconds));
+    _stopwatch
+      ..reset()
+      ..start();
+    _totalDurationSeconds = seconds;
     setState(() => _remainingSeconds = seconds);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _syncRemainingFromDeadline(timer);
+      _syncRemainingFromStopwatch(timer);
     });
     _armElapsedPingTimer();
   }
@@ -498,16 +546,16 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     }
   }
 
-  /// Recomputes `_remainingSeconds` from `_deadline` vs the real clock (see
-  /// `_deadline`'s doc comment) instead of trusting the tick count — called
-  /// on every periodic tick AND once immediately on app resume.
-  void _syncRemainingFromDeadline(Timer? timer) {
-    final deadline = _deadline;
-    if (deadline == null) {
+  /// Recomputes `_remainingSeconds` from [_stopwatch]'s elapsed time (see
+  /// its doc comment) instead of trusting the tick count or the wall clock —
+  /// called on every periodic tick AND once immediately on app resume.
+  void _syncRemainingFromStopwatch(Timer? timer) {
+    final total = _totalDurationSeconds;
+    if (total == null) {
       timer?.cancel();
       return;
     }
-    final remaining = deadline.difference(DateTime.now()).inSeconds;
+    final remaining = diagnosticRemainingSeconds(total, _stopwatch.elapsed);
     if (remaining <= 0) {
       // _submit() may still be in flight — wait rather than race it. Do
       // NOT cancel the periodic timer in that case: the next tick (1s
@@ -539,32 +587,26 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
 
   /// Freezes the countdown and shows the full-screen pause overlay. Mirrors
   /// `TestEngine._pauseForLock` — idempotent, so a duplicate `locked: true`
-  /// from a replayed ping/frame response is a no-op.
+  /// from a replayed ping/frame response is a no-op. Stopping the Stopwatch
+  /// is enough — it accumulates total elapsed time across stop/start cycles
+  /// on its own, no manual remaining-duration bookkeeping needed.
   void _pauseForLock() {
     if (_paused) return;
     _timer?.cancel();
-    final remaining = _deadline?.difference(DateTime.now());
-    _pausedRemaining =
-        remaining != null && remaining.isNegative ? Duration.zero : remaining;
+    _stopwatch.stop();
     if (mounted) setState(() => _paused = true);
   }
 
-  /// Resumes the countdown from wherever it was frozen — not from the stale
-  /// pre-pause deadline, which would otherwise silently swallow however
-  /// long the pause lasted.
+  /// Resumes the countdown from wherever it was frozen.
   void _resumeFromLock() {
     if (!_paused) return;
-    final remaining = _pausedRemaining;
-    if (remaining != null) {
-      _deadline = DateTime.now().add(remaining);
-      unawaited(_saveProgressIfFixed());
-    }
-    _pausedRemaining = null;
+    _stopwatch.start();
+    unawaited(_saveProgressIfFixed());
     if (mounted) setState(() => _paused = false);
     _timer?.cancel();
-    _timer =
-        Timer.periodic(const Duration(seconds: 1), _syncRemainingFromDeadline);
-    _syncRemainingFromDeadline(_timer);
+    _timer = Timer.periodic(
+        const Duration(seconds: 1), _syncRemainingFromStopwatch);
+    _syncRemainingFromStopwatch(_timer);
   }
 
   @override
@@ -574,7 +616,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // stretch, during which the OS can pause this process's Timer
       // callbacks entirely — correct the displayed countdown immediately
       // instead of waiting for the next 1-second tick to catch up.
-      _syncRemainingFromDeadline(_timer);
+      _syncRemainingFromStopwatch(_timer);
     }
   }
 
@@ -661,8 +703,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       }
       ..onExtendSeconds = (secs) {
         if (!mounted) return;
-        final deadline = _deadline;
-        if (deadline != null) _deadline = deadline.add(Duration(seconds: secs));
+        if (_totalDurationSeconds != null) {
+          _totalDurationSeconds = _totalDurationSeconds! + secs;
+        }
         if (_remainingSeconds != null) {
           setState(() => _remainingSeconds = _remainingSeconds! + secs);
         }
@@ -1294,13 +1337,41 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       );
       if (ok != true) return;
     }
+    if (!mounted) return;
+    if (_flaggedQuestionIds.isNotEmpty) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(l10n.finishConfirmTitle,
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+          content: Text(
+              l10n.flaggedQuestionsReminder(_flaggedQuestionIds.length)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(l10n.backButton),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  minimumSize: const Size(100, 40)),
+              child: Text(l10n.finishTest),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
     await _finishCurrentSubjectAndAdvance();
   }
 
   /// Submits every locally-collected fixed-variant answer via `kiosk/finish/`
   /// and advances to `next_subject` (or ends the attempt). Shared by the
   /// manual "finish this subject" button (`_confirmAndFinishPackage`, after
-  /// its unanswered-questions confirmation) and by `_syncRemainingFromDeadline`
+  /// its unanswered-questions confirmation) and by `_syncRemainingFromStopwatch`
   /// on subject-timer expiry (no confirmation — time is already up). Only
   /// valid for `_isFixedVariant == true`: CAT already submits each question
   /// in real time via `_submit()`, so there is no unsent local batch to
@@ -1319,7 +1390,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     Map<String, dynamic> resp;
     try {
       resp = await _finishAttemptCall(
-          attemptId: widget.attemptId, answers: answers);
+          attemptId: widget.attemptId,
+          answers: answers,
+          flaggedQuestionIds: _flaggedQuestionIds.toList());
     } catch (e) {
       // Network failure (not a definitive rejection the server sent back) —
       // queue the finish payload for later sync via the same generic
@@ -1351,6 +1424,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           '_offlineKind': 'diagnostic_finish',
           'attempt_id': widget.attemptId,
           'answers': answers,
+          'flagged_question_ids': _flaggedQuestionIds.toList(),
           '_offline_answer_key':
               _buildOfflineAnswerKey(_currentSubject, _questions),
         }, newIdempotencyToken());
@@ -1434,6 +1508,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         resp = await _finishAttemptCall(
           attemptId: widget.attemptId,
           answers: _buildFinishAnswers(freshQuestions),
+          flaggedQuestionIds: _flaggedQuestionIds.toList(),
         );
       } catch (_) {
         if (!mounted) return;
@@ -1879,6 +1954,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                             .clamp(0, _total == 0 ? 0 : _total - 1),
                         answeredIndexes:
                             _answers.keys.map((p) => p - 1).toSet(),
+                        flaggedIndexes: {
+                          for (var i = 0; i < _questions.length; i++)
+                            if (_flaggedQuestionIds
+                                .contains(_questionId(_questions[i])))
+                              i
+                        },
                         onSelectIndex: _jumpTo,
                       ),
                     ],

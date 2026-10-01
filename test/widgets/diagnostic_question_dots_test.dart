@@ -76,6 +76,38 @@ void main() {
       expect(decoration.border, isNotNull);
     });
 
+    testWidgets('flagged dot shows an amber border and a flag icon',
+        (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticQuestionDots(
+        total: 3,
+        currentIndex: 0,
+        answeredIndexes: const {},
+        flaggedIndexes: const {1},
+        onSelectIndex: (_) {},
+      )));
+
+      final container = tester.widget<Container>(find
+          .ancestor(
+            of: find.text('02'),
+            matching: find.byType(Container),
+          )
+          .first);
+      final decoration = container.decoration as BoxDecoration;
+      expect(decoration.border?.top.color, Colors.amber);
+      expect(find.byIcon(Icons.flag), findsOneWidget);
+    });
+
+    testWidgets('non-flagged dot shows no flag icon', (tester) async {
+      await tester.pumpWidget(_wrap(DiagnosticQuestionDots(
+        total: 3,
+        currentIndex: 0,
+        answeredIndexes: const {},
+        onSelectIndex: (_) {},
+      )));
+
+      expect(find.byIcon(Icons.flag), findsNothing);
+    });
+
     testWidgets('tapping a dot calls onSelectIndex with its 0-based index',
         (tester) async {
       int? tapped;

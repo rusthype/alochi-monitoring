@@ -20,8 +20,13 @@ class DiagnosticQuestionCard extends StatelessWidget {
   final String svgVisual;
   final bool flagged;
 
-  /// Local UI-only bookmark toggle — no backend field/API call (YAGNI, per
-  /// plan): purely lets a student mark a question to revisit visually.
+  /// Toggles this question's "Belgilash" (bookmark) marker. The flag itself
+  /// stays local UI state for its immediate purpose — highlighting the dot
+  /// in `DiagnosticQuestionDots` and driving the finish-dialog reminder —
+  /// but the full flagged set for the attempt IS now sent once to
+  /// `kiosk/finish/` (see `DiagnosticTestRunnerScreen._flaggedQuestionIds`)
+  /// and shown as a simple count in the admin panel: never live, never
+  /// per-question there.
   final VoidCallback onToggleFlag;
 
   /// Optional scratchpad entry point (fixed-variant only) — null on the

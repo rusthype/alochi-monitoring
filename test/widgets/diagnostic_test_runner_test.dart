@@ -108,6 +108,26 @@ void main() {
     _prefs = await SharedPreferences.getInstance();
   });
 
+  group('diagnosticRemainingSeconds', () {
+    test('is a simple subtraction', () {
+      expect(diagnosticRemainingSeconds(2700, const Duration(seconds: 100)),
+          2600);
+    });
+
+    test('goes negative once elapsed exceeds total (caller treats as timeout)',
+        () {
+      expect(diagnosticRemainingSeconds(60, const Duration(seconds: 90)),
+          -30);
+    });
+
+    test('is deterministic — same inputs, same output, called twice', () {
+      const total = 1800;
+      const elapsed = Duration(seconds: 42);
+      expect(diagnosticRemainingSeconds(total, elapsed),
+          diagnosticRemainingSeconds(total, elapsed));
+    });
+  });
+
   group('extractDiagnosticOptions', () {
     test('reads option_a..option_d into A..D items', () {
       final items = extractDiagnosticOptions(_question());
@@ -810,7 +830,7 @@ void main() {
             'questions': fullPackageQuestions(2),
           }, isFixedVariant: true);
         },
-        finishAttemptOverride: ({required attemptId, required answers}) async {
+        finishAttemptOverride: ({required attemptId, required answers, List<String>? flaggedQuestionIds}) async {
           finishCalls++;
           capturedAnswers = answers;
           return {'finished': true};
@@ -867,7 +887,7 @@ void main() {
             'questions': fullPackageQuestions(1),
           }, isFixedVariant: true);
         },
-        finishAttemptOverride: ({required attemptId, required answers}) async {
+        finishAttemptOverride: ({required attemptId, required answers, List<String>? flaggedQuestionIds}) async {
           finishCalls++;
           return {'finished': true};
         },
@@ -919,7 +939,7 @@ void main() {
             }, isFixedVariant: true);
           },
           finishAttemptOverride: (
-              {required attemptId, required answers}) async {
+              {required attemptId, required answers, List<String>? flaggedQuestionIds}) async {
             return {'finished': true};
           },
         ),
@@ -1013,7 +1033,7 @@ void main() {
             'questions': fullPackageQuestions(2),
           }, isFixedVariant: true);
         },
-        finishAttemptOverride: ({required attemptId, required answers}) async {
+        finishAttemptOverride: ({required attemptId, required answers, List<String>? flaggedQuestionIds}) async {
           finishCalls++;
           return {'finished': true};
         },
@@ -1087,7 +1107,7 @@ void main() {
             }, isFixedVariant: true);
           },
           finishAttemptOverride: (
-              {required attemptId, required answers}) async {
+              {required attemptId, required answers, List<String>? flaggedQuestionIds}) async {
             return {'finished': true, 'next_subject': 'english'};
           },
         ),
@@ -1140,7 +1160,7 @@ void main() {
             }, isFixedVariant: true);
           },
           finishAttemptOverride: (
-              {required attemptId, required answers}) async {
+              {required attemptId, required answers, List<String>? flaggedQuestionIds}) async {
             // Transient failure (timeout/dropped connection), not a
             // definitive server rejection.
             throw const ApiException(0, 'timeout');
@@ -1223,7 +1243,7 @@ void main() {
             }, isFixedVariant: true);
           },
           finishAttemptOverride: (
-              {required attemptId, required answers}) async {
+              {required attemptId, required answers, List<String>? flaggedQuestionIds}) async {
             // math's finish call fails offline — the exact scenario this
             // whole offline-queue feature exists for.
             throw const ApiException(0, 'no internet');
@@ -1276,7 +1296,7 @@ void main() {
             }, isFixedVariant: true);
           },
           finishAttemptOverride: (
-              {required attemptId, required answers}) async {
+              {required attemptId, required answers, List<String>? flaggedQuestionIds}) async {
             throw const ApiException(0, 'timeout');
           },
           enqueueLocalOverride: (payload, token) async {},
@@ -1617,7 +1637,7 @@ void main() {
             'questions': [_question(id: 'e1', text: 'English savoli')],
           }, isFixedVariant: true);
         },
-        finishAttemptOverride: ({required attemptId, required answers}) async {
+        finishAttemptOverride: ({required attemptId, required answers, List<String>? flaggedQuestionIds}) async {
           finishCalled = true;
           return {'next_subject': 'english'};
         },
@@ -2175,7 +2195,7 @@ void main() {
             }, isFixedVariant: true);
           },
           finishAttemptOverride: (
-              {required attemptId, required answers}) async {
+              {required attemptId, required answers, List<String>? flaggedQuestionIds}) async {
             // The diagnostic_guest throttle scope is shared by every kiosk
             // endpoint — a busy QA session can plausibly exhaust it right on
             // a legitimate finish call.

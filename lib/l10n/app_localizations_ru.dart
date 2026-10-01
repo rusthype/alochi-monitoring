@@ -556,6 +556,11 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String flaggedQuestionsReminder(int count) {
+    return 'У вас есть $count отмеченных для повторного просмотра вопросов. Всё равно завершить?';
+  }
+
+  @override
   String get mathSectionLabel => 'Раздел: Математика';
 
   @override
