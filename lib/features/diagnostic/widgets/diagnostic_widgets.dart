@@ -386,10 +386,10 @@ class _StudentStatusBadge extends StatelessWidget {
 
 /// Diagnostic-attempt completion badge — separate from [_StudentStatusBadge]
 /// (offline-download readiness) and NEVER shows a score/percentage, by
-/// explicit product decision (scores stay admin-panel-only).
-/// Round icon-only status badge next to the student's name (no text in the
-/// card itself — the full label still reaches the operator via [Tooltip],
-/// e.g. on long-press on the kiosk's touch screen).
+/// explicit product decision (scores stay admin-panel-only). Round
+/// icon-only status badge next to the student's name (no text in the card
+/// itself — the full label still reaches the operator via [Tooltip], e.g.
+/// on long-press on the kiosk's touch screen).
 class _AttemptStatusBadge extends StatelessWidget {
   final String attemptStatus;
   final String? nextSubjectLabel;
@@ -408,7 +408,7 @@ class _AttemptStatusBadge extends StatelessWidget {
         tooltip = 'Topshirildi';
         break;
       case 'in_progress':
-        icon = Icons.more_horiz_rounded;
+        icon = Icons.sync_rounded;
         color = Colors.amber[800]!;
         tooltip = 'Jarayonda';
         break;
@@ -425,11 +425,22 @@ class _AttemptStatusBadge extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Container(
-        width: 16,
-        height: 16,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        width: 19,
+        height: 19,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.35),
+              blurRadius: 3,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
         alignment: Alignment.center,
-        child: Icon(icon, size: 11, color: Colors.white),
+        child: Icon(icon, size: 12, color: Colors.white),
       ),
     );
   }
