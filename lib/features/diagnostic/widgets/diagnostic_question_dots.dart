@@ -97,6 +97,13 @@ class _DiagnosticQuestionDotsState extends State<DiagnosticQuestionDots> {
           }
           return InkWell(
             borderRadius: BorderRadius.circular(20),
+            // Mouse/touch-only shortcut — keyboard nav already has its own
+            // shortcuts (digit/Enter/Backspace/F in the parent screen).
+            // Keeping it out of Tab order also avoids a visual bug: Tab-ing
+            // to a dot scrolled out of view (e.g. "01" while showing
+            // "15"-"30") painted a stray gray focus-highlight blob to the
+            // left of the row instead of landing on the question itself.
+            canRequestFocus: false,
             onTap: () => widget.onSelectIndex(index),
             child: Stack(
               clipBehavior: Clip.none,
