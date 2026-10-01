@@ -61,7 +61,7 @@ class DiagnosticQuestionCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '$position-savol',
+                l10n.questionIndex(position),
                 style: const TextStyle(
                   color: AppColors.ink3,
                   fontWeight: FontWeight.w700,
