@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:alochi_monitoring/core/locale/locale_provider.dart';
 import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_prefetch_cache.dart';
+import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_class_select_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_student_select_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_widgets.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
@@ -165,6 +166,71 @@ void main() {
       classSelectExtra,
       {'schoolId': 's1', 'schoolName': 'Maktab 1', 'schoolCode': 'M001'},
     );
+  });
+
+  testWidgets(
+      'the real DiagnosticClassSelectScreen, reached via that same '
+      'nothing-to-pop fallback, sends its OWN Ortga to school-select -- not '
+      'back into this roster (regression: 2026-10-01 ping-pong loop, where '
+      'class-select\'s generic canPop()-pop landed back on student-select '
+      'because the fallback above used to push() class-select on top of '
+      'this still-live screen instead of go()\'ing to it)', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/select',
+      routes: [
+        GoRoute(
+          path: '/select',
+          builder: (_, __) => DiagnosticStudentSelectScreen(
+            schoolId: 's1',
+            schoolName: 'Maktab 1',
+            schoolCode: 'M001',
+            classLabel: '4-A',
+            language: 'uz',
+            listStudentsOverride: (schoolId, classLabel) async =>
+                (_students, false),
+          ),
+        ),
+        GoRoute(
+          path: '/diagnostic_class_select',
+          builder: (_, state) {
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            return DiagnosticClassSelectScreen(
+              schoolId: extra['schoolId'] as String? ?? '',
+              schoolName: extra['schoolName'] as String? ?? '',
+              schoolCode: extra['schoolCode'] as String? ?? '',
+            );
+          },
+        ),
+        GoRoute(
+          path: '/diagnostic_school_select',
+          builder: (_, __) => const Scaffold(body: Text('SCHOOL_SELECT')),
+        ),
+      ],
+    );
+    await tester.pumpWidget(ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(_prefs)],
+      child: MaterialApp.router(
+        routerConfig: router,
+        locale: const Locale('uz'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Step 1: student-select's own Ortga fallback (nothing to pop) lands on
+    // the real class-select screen via go() -- a fresh single-entry stack.
+    await tester.tap(find.text('Ortga'));
+    await tester.pumpAndSettle();
+    // DiagnosticTopBar renders its title via title.toUpperCase().
+    expect(find.text('MAKTAB 1'), findsOneWidget); // class-select's title
+
+    // Step 2: class-select's OWN Ortga, with nothing to pop either, must
+    // reach school-select -- not bounce back to the student roster.
+    await tester.tap(find.text('Ortga'));
+    await tester.pumpAndSettle();
+    expect(find.text('SCHOOL_SELECT'), findsOneWidget);
+    expect(find.text('MAKTAB 1'), findsNothing);
   });
 
   testWidgets(

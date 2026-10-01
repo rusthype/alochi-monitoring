@@ -725,7 +725,19 @@ class _DiagnosticStudentSelectScreenState
                           if (context.canPop()) {
                             context.pop();
                           } else {
-                            context.push('/diagnostic_class_select', extra: {
+                            // go(), not push(): this screen was reached via
+                            // a stack-resetting go() (see comment above), so
+                            // canPop() is false. Using push() here used to
+                            // leave THIS screen underneath the new
+                            // class_select entry, which made class_select's
+                            // own canPop()-based back button pop straight
+                            // back to this same roster instead of reaching
+                            // school_select -- a two-screen ping-pong loop
+                            // (reported 2026-10-01). go() resets the stack
+                            // again so class_select's canPop() is false too,
+                            // continuing the same single-step-at-a-time
+                            // fallback chain class_select now has.
+                            context.go('/diagnostic_class_select', extra: {
                               'schoolId': widget.schoolId,
                               'schoolName': widget.schoolName,
                               'schoolCode': widget.schoolCode,

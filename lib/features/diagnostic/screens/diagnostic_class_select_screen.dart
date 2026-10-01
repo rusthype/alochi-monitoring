@@ -237,7 +237,27 @@ class _DiagnosticClassSelectScreenState
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 600),
-                  child: DiagnosticTopBar(title: widget.schoolName),
+                  child: DiagnosticTopBar(
+                    title: widget.schoolName,
+                    // Default DiagnosticTopBar fallback is
+                    // `canPop() ? pop() : go('/')`. Normally this screen is
+                    // reached via a push from session_setup, so canPop() is
+                    // true and the default just pops back to the PIN screen
+                    // -- fine, untouched below. But diagnostic_student_select
+                    //_screen.dart's own Ortga fallback (post-finish, when the
+                    // operator lands here via go_router's stack-resetting
+                    // `go()`) now reaches this screen the same way, so
+                    // canPop() is false here too. In that case fall through
+                    // to school_select instead of the generic '/' home --
+                    // same pattern as student_select's own fallback.
+                    onBack: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/diagnostic_school_select');
+                      }
+                    },
+                  ),
                 ),
               ),
             ),
