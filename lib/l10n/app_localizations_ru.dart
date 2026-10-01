@@ -136,6 +136,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticFinishedSubmittedPill => 'Отправлено';
 
   @override
+  String get rosterStatusCompletedTooltip => 'Сдано';
+
+  @override
+  String get rosterStatusInProgressTooltip => 'В процессе';
+
+  @override
+  String get rosterStatusPartialTooltip => 'Продолжается';
+
+  @override
+  String rosterStatusPartialNextTooltip(String subject) {
+    return 'Осталось: $subject';
+  }
+
+  @override
   String get diagnosticFinishedSecurePill => 'Надёжно сохранено';
 
   @override

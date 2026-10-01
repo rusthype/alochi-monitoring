@@ -398,6 +398,7 @@ class _AttemptStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final IconData icon;
     final Color color;
     final String tooltip;
@@ -405,19 +406,20 @@ class _AttemptStatusBadge extends StatelessWidget {
       case 'completed':
         icon = Icons.check_rounded;
         color = Colors.green;
-        tooltip = 'Topshirildi';
+        tooltip = l10n.rosterStatusCompletedTooltip;
         break;
       case 'in_progress':
         icon = Icons.sync_rounded;
         color = Colors.amber[800]!;
-        tooltip = 'Jarayonda';
+        tooltip = l10n.rosterStatusInProgressTooltip;
         break;
       case 'partial':
         icon = Icons.arrow_forward_rounded;
         color = Colors.amber[800]!;
         final next = nextSubjectLabel?.trim();
-        tooltip =
-            (next == null || next.isEmpty) ? 'Davom etmoqda' : '$next qoldi';
+        tooltip = (next == null || next.isEmpty)
+            ? l10n.rosterStatusPartialTooltip
+            : l10n.rosterStatusPartialNextTooltip(next);
         break;
       default:
         return const SizedBox.shrink();

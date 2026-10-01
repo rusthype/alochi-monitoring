@@ -139,6 +139,20 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticFinishedSubmittedPill => 'Yuborildi';
 
   @override
+  String get rosterStatusCompletedTooltip => 'Topshirildi';
+
+  @override
+  String get rosterStatusInProgressTooltip => 'Jarayonda';
+
+  @override
+  String get rosterStatusPartialTooltip => 'Davom etmoqda';
+
+  @override
+  String rosterStatusPartialNextTooltip(String subject) {
+    return '$subject qoldi';
+  }
+
+  @override
   String get diagnosticFinishedSecurePill => 'Xavfsiz saqlandi';
 
   @override

@@ -332,6 +332,30 @@ abstract class AppLocalizations {
   /// **'Yuborildi'**
   String get diagnosticFinishedSubmittedPill;
 
+  /// No description provided for @rosterStatusCompletedTooltip.
+  ///
+  /// In uz, this message translates to:
+  /// **'Topshirildi'**
+  String get rosterStatusCompletedTooltip;
+
+  /// No description provided for @rosterStatusInProgressTooltip.
+  ///
+  /// In uz, this message translates to:
+  /// **'Jarayonda'**
+  String get rosterStatusInProgressTooltip;
+
+  /// No description provided for @rosterStatusPartialTooltip.
+  ///
+  /// In uz, this message translates to:
+  /// **'Davom etmoqda'**
+  String get rosterStatusPartialTooltip;
+
+  /// No description provided for @rosterStatusPartialNextTooltip.
+  ///
+  /// In uz, this message translates to:
+  /// **'{subject} qoldi'**
+  String rosterStatusPartialNextTooltip(String subject);
+
   /// No description provided for @diagnosticFinishedSecurePill.
   ///
   /// In uz, this message translates to:
