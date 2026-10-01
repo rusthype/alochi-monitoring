@@ -685,7 +685,10 @@ void main() {
         'session_grade': 4,
         'status': 'completed',
       });
-      expect(find.textContaining('Topshirildi'), findsOneWidget);
+      // The badge is icon-only in the card itself (no visible Text) --
+      // the label still reaches the operator via Tooltip, found here by
+      // its message rather than find.text/.textContaining.
+      expect(find.byTooltip('Topshirildi'), findsOneWidget);
       expect(find.textContaining('%'), findsNothing);
     });
 
@@ -696,7 +699,7 @@ void main() {
         'session_grade': 4,
         'status': 'in_progress',
       });
-      expect(find.textContaining('Jarayonda'), findsOneWidget);
+      expect(find.byTooltip('Jarayonda'), findsOneWidget);
     });
 
     testWidgets(
@@ -709,7 +712,7 @@ void main() {
         'status': 'partial',
         'next_subject': 'english',
       });
-      expect(find.textContaining('Ingliz tili qoldi'), findsOneWidget);
+      expect(find.byTooltip('Ingliz tili qoldi'), findsOneWidget);
     });
 
     testWidgets('partial with no next_subject falls back to a generic label',
@@ -720,7 +723,7 @@ void main() {
         'session_grade': 4,
         'status': 'partial',
       });
-      expect(find.textContaining('Davom etmoqda'), findsOneWidget);
+      expect(find.byTooltip('Davom etmoqda'), findsOneWidget);
     });
 
     testWidgets('not_started renders no attempt-status badge at all',
@@ -731,10 +734,9 @@ void main() {
         'session_grade': 4,
         'status': 'not_started',
       });
-      expect(find.textContaining('Topshirildi'), findsNothing);
-      expect(find.textContaining('Jarayonda'), findsNothing);
-      expect(find.textContaining('qoldi'), findsNothing);
-      expect(find.textContaining('Davom etmoqda'), findsNothing);
+      expect(find.byTooltip('Topshirildi'), findsNothing);
+      expect(find.byTooltip('Jarayonda'), findsNothing);
+      expect(find.byTooltip('Davom etmoqda'), findsNothing);
     });
   });
 }
