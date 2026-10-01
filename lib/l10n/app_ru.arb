@@ -62,6 +62,13 @@
     "placeholders": { "count": { "type": "int" } }
   },
   "diagnosticFinishedSubmittedPill": "Отправлено",
+  "rosterStatusCompletedTooltip": "Сдано",
+  "rosterStatusInProgressTooltip": "В процессе",
+  "rosterStatusPartialTooltip": "Продолжается",
+  "rosterStatusPartialNextTooltip": "Осталось: {subject}",
+  "@rosterStatusPartialNextTooltip": {
+    "placeholders": { "subject": { "type": "String" } }
+  },
   "diagnosticFinishedSecurePill": "Надёжно сохранено",
   "diagnosticFinishedPauseBtn": "Остановить",
   "diagnosticFinishedResumeBtn": "Продолжить",

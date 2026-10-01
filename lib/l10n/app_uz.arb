@@ -62,6 +62,13 @@
     "placeholders": { "count": { "type": "int" } }
   },
   "diagnosticFinishedSubmittedPill": "Yuborildi",
+  "rosterStatusCompletedTooltip": "Topshirildi",
+  "rosterStatusInProgressTooltip": "Jarayonda",
+  "rosterStatusPartialTooltip": "Davom etmoqda",
+  "rosterStatusPartialNextTooltip": "{subject} qoldi",
+  "@rosterStatusPartialNextTooltip": {
+    "placeholders": { "subject": { "type": "String" } }
+  },
   "diagnosticFinishedSecurePill": "Xavfsiz saqlandi",
   "diagnosticFinishedPauseBtn": "To'xtatish",
   "diagnosticFinishedResumeBtn": "Davom ettirish",
