@@ -1684,7 +1684,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     return Scaffold(
       backgroundColor: AppColors.bg,
       // Digit/letter answer-select, Enter/Space next, Backspace/← previous,
-      // F/B flag, Ctrl+=/Ctrl+- zoom — see the guarded *ByKeyboard methods
+      // F flag, Ctrl+=/Ctrl+- zoom — see the guarded *ByKeyboard methods
       // above for the exact fixed-variant/submitting guards each one
       // reuses. CallbackShortcuts must be an ANCESTOR of the focused node
       // for key events to bubble up into it (Flutter's Shortcuts contract),
@@ -1697,6 +1697,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           const SingleActivator(LogicalKeyboardKey.keyA): () =>
               _selectOptionByKeyboard('A'),
           const SingleActivator(LogicalKeyboardKey.digit2): () =>
+              _selectOptionByKeyboard('B'),
+          const SingleActivator(LogicalKeyboardKey.keyB): () =>
               _selectOptionByKeyboard('B'),
           const SingleActivator(LogicalKeyboardKey.digit3): () =>
               _selectOptionByKeyboard('C'),
@@ -1712,12 +1714,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
               _goToPreviousByKeyboard,
           const SingleActivator(LogicalKeyboardKey.arrowLeft):
               _goToPreviousByKeyboard,
-          // Collision resolution: option B is only reachable via digit '2'
-          // here — the letter key B is reserved exclusively for flag/
-          // bookmark (spec: "F yoki B tugmasi" = F or B toggles the flag),
-          // so plain keyB never appears in the option-select bindings above.
+          // keyB now selects option B (A/C/D already work via letter keys,
+          // so B must too) — flag/bookmark is reachable via F only.
           const SingleActivator(LogicalKeyboardKey.keyF): _toggleFlagByKeyboard,
-          const SingleActivator(LogicalKeyboardKey.keyB): _toggleFlagByKeyboard,
           const SingleActivator(LogicalKeyboardKey.equal, control: true):
               _zoomIn,
           const SingleActivator(LogicalKeyboardKey.numpadAdd, control: true):
