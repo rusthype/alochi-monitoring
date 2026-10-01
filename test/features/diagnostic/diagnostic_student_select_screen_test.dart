@@ -108,6 +108,66 @@ void main() {
   });
 
   testWidgets(
+      'Ortga (back) goes to class-select with the same school context when '
+      'there is nothing to pop — not the kiosk home/login screen '
+      '(regression: diagnostic_finished_screen.dart\'s context.go() reset '
+      'used to strand the operator on home, forcing a pincode re-entry)',
+      (tester) async {
+    Map<String, dynamic>? classSelectExtra;
+    final router = GoRouter(
+      // Single-entry stack — mirrors what diagnostic_finished_screen.dart's
+      // context.go('/diagnostic_student_select', ...) leaves behind: no
+      // school-select/class-select underneath to pop back into.
+      initialLocation: '/select',
+      routes: [
+        GoRoute(
+          path: '/select',
+          builder: (_, __) => DiagnosticStudentSelectScreen(
+            schoolId: 's1',
+            schoolName: 'Maktab 1',
+            schoolCode: 'M001',
+            classLabel: '4-A',
+            language: 'uz',
+            listStudentsOverride: (schoolId, classLabel) async =>
+                (_students, false),
+          ),
+        ),
+        GoRoute(
+          path: '/diagnostic_class_select',
+          builder: (_, state) {
+            classSelectExtra = state.extra as Map<String, dynamic>?;
+            return const Scaffold(body: Text('CLASS_SELECT'));
+          },
+        ),
+        GoRoute(path: '/', builder: (_, __) => const Scaffold(body: Text('HOME'))),
+      ],
+    );
+    lastRunnerExtra = null;
+    await tester.pumpWidget(ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(_prefs)],
+      child: MaterialApp.router(
+        routerConfig: router,
+        locale: const Locale('uz'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(router.routerDelegate.currentConfiguration.matches.length, 1);
+
+    await tester.tap(find.text('Ortga'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('CLASS_SELECT'), findsOneWidget);
+    expect(find.text('HOME'), findsNothing);
+    expect(
+      classSelectExtra,
+      {'schoolId': 's1', 'schoolName': 'Maktab 1', 'schoolCode': 'M001'},
+    );
+  });
+
+  testWidgets(
       'pressing Enter with a student selected navigates the same as tapping '
       'the start CTA', (tester) async {
     await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
