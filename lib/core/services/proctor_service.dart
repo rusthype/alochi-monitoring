@@ -6,6 +6,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../api/api_client.dart';
 import 'heartbeat_service.dart';
 import 'screen_capture_win.dart';
@@ -15,7 +17,17 @@ class ProctorService {
   static final ProctorService instance = ProctorService._();
 
   static const Duration _baseInterval = Duration(milliseconds: 2500);
-  static const Duration _backoffInterval = Duration(milliseconds: 15000);
+
+  /// Failure-driven backoff tiers: 1+ failures -> 5s, 3+ -> 10s, 5+ -> 15s.
+  /// Below that, the heartbeat-provided interval (null -> base) applies.
+  /// Recovers automatically: a success zeroes the failure counter.
+  @visibleForTesting
+  static Duration intervalForFailures(int failures, int heartbeatMs) {
+    if (failures >= 5) return const Duration(seconds: 15);
+    if (failures >= 3) return const Duration(seconds: 10);
+    if (failures >= 1) return const Duration(seconds: 5);
+    return Duration(milliseconds: heartbeatMs);
+  }
 
   Timer? _timer;
   // Guards against a stopped service re-arming itself: stop() can race a
@@ -26,7 +38,6 @@ class ProctorService {
   bool _running = false;
   bool _inFlight = false;
   int _consecutiveFailures = 0;
-  bool _usingBackoff = false;
 
   /// Backend-driven monitor selection for multi-monitor kiosks: the panel
   /// can ask (via the proctor/frame response's `requested_monitor_index`) to
@@ -57,7 +68,6 @@ class ProctorService {
     _timer?.cancel();
     _timer = null;
     _consecutiveFailures = 0;
-    _usingBackoff = false;
     _requestedMonitorIndex = 0;
     if (HeartbeatService.instance.onRequestKeyframe == forceNextKeyframe) {
       HeartbeatService.instance.onRequestKeyframe = null;
@@ -111,7 +121,6 @@ class ProctorService {
         );
         if (result.isNotEmpty) {
           _consecutiveFailures = 0;
-          _usingBackoff = false;
           // `locked`/`extra_time_seconds`/`commands` (warning,
           // request_keyframe — process the WHOLE list, not just one) are
           // reconciled through the same canonical state the 30s ping
@@ -155,13 +164,11 @@ class ProctorService {
     } finally {
       _inFlight = false;
     }
-    if (_consecutiveFailures >= 5) _usingBackoff = true;
     _scheduleNext(_currentInterval());
   }
 
   Duration _currentInterval() {
-    if (_usingBackoff) return _backoffInterval;
-    final ms = HeartbeatService.instance.proctorIntervalMs;
-    return Duration(milliseconds: ms);
+    return intervalForFailures(
+        _consecutiveFailures, HeartbeatService.instance.proctorIntervalMs);
   }
 }

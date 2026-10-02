@@ -23,6 +23,7 @@
 // removes the attempt from future flush cycles — one bad attempt's rows
 // never affect another attempt's.
 import 'package:alochi_monitoring/core/db/diagnostic_answer_store.dart';
+import 'package:alochi_monitoring/core/network/connectivity_service.dart';
 import 'package:alochi_monitoring/core/sync/sync_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -105,9 +106,42 @@ void main() {
     // att-good's success must be unaffected.
     await DiagnosticAnswerStore.markSynced('att-good', ['q1']);
 
-    expect(await DiagnosticAnswerStore.pendingForAttempt('att-bad'),
-        hasLength(1));
+    expect(
+        await DiagnosticAnswerStore.pendingForAttempt('att-bad'), hasLength(1));
     expect(await DiagnosticAnswerStore.pendingForAttempt('att-good'), isEmpty);
     expect(await DiagnosticAnswerStore.attemptsWithPending(), ['att-bad']);
+  });
+
+  group('probe offline -> online flush', () {
+    SignalReading r(SignalTier t, {bool checking = false}) => SignalReading(
+        tier: t,
+        latencyMs: null,
+        measuredAt: DateTime.now(),
+        checking: checking);
+
+    test('flushes once (debounced) on offline->online edge only', () async {
+      var flushes = 0;
+      final svc = SyncService.instance
+        ..probeDebounce = const Duration(milliseconds: 30)
+        ..probeFlushOverride = () async => flushes++;
+      addTearDown(() => svc.probeFlushOverride = null);
+
+      svc.handleProbeReading(r(SignalTier.none, checking: true)); // ignored
+      svc.handleProbeReading(r(SignalTier.good)); // first reading: no edge
+      svc.handleProbeReading(r(SignalTier.good));
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(flushes, 0);
+
+      svc.handleProbeReading(r(SignalTier.none));
+      svc.handleProbeReading(r(SignalTier.good)); // edge
+      svc.handleProbeReading(r(SignalTier.none)); // flap
+      svc.handleProbeReading(r(SignalTier.good)); // edge again, debounced
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(flushes, 1);
+
+      svc.handleProbeReading(r(SignalTier.good)); // still online: no flush
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(flushes, 1);
+    });
   });
 }

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../api/api_client.dart';
 import '../db/offline_queue.dart';
 import '../db/diagnostic_answer_store.dart';
+import '../network/connectivity_service.dart';
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart';
 
 /// Outcome of a single flush attempt — lets a manual "Yuborish" button (e.g.
@@ -18,6 +19,18 @@ class SyncService {
   static final SyncService instance = SyncService._();
 
   StreamSubscription<List<ConnectivityResult>>? _connSub;
+  StreamSubscription<SignalReading>? _probeSub;
+  Timer? _probeDebounce;
+  bool? _probeOnline;
+
+  /// Debounce for the probe-driven flush (a flapping link must not cause a
+  /// flush storm; `flushing` additionally rejects overlapping flushes).
+  @visibleForTesting
+  Duration probeDebounce = const Duration(seconds: 2);
+
+  /// Test seam: replaces the real flush on a probe-driven online edge.
+  @visibleForTesting
+  Future<void> Function()? probeFlushOverride;
   Timer? _timer;
 
   /// Exposed so UI (e.g. [SyncStatusBadge]) can show a live "syncing" state.
@@ -45,7 +58,27 @@ class SyncService {
         _flushAll().then((_) => _scheduleNext());
       }
     });
+    // The latency probe knows about REAL internet (the interface-level stream
+    // above does not): flush immediately on its offline -> online edge.
+    _probeSub =
+        ConnectivityService.instance.readings.listen(handleProbeReading);
     _flushAll().then((_) => _scheduleNext());
+  }
+
+  /// Offline -> online edge detector for [ConnectivityService] readings.
+  /// The first reading and `checking` placeholders never trigger a flush.
+  @visibleForTesting
+  void handleProbeReading(SignalReading r) {
+    if (r.checking) return;
+    final online = r.tier != SignalTier.none;
+    final wasOffline = _probeOnline == false;
+    _probeOnline = online;
+    if (!online || !wasOffline) return;
+    _probeDebounce?.cancel();
+    _probeDebounce = Timer(probeDebounce, () {
+      _timer?.cancel();
+      (probeFlushOverride ?? _flushAll)().then((_) => _scheduleNext());
+    });
   }
 
   void _scheduleNext() {
@@ -143,6 +176,11 @@ class SyncService {
   void dispose() {
     _connSub?.cancel();
     _connSub = null;
+    _probeSub?.cancel();
+    _probeSub = null;
+    _probeDebounce?.cancel();
+    _probeDebounce = null;
+    _probeOnline = null;
     _timer?.cancel();
     _timer = null;
     _started = false;
