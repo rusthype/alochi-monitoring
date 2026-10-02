@@ -148,4 +148,26 @@ void main() {
       },
     );
   });
+
+  group('ProctorService.intervalForFailures backoff tiers', () {
+    Duration f(int n, [int hb = 2500]) =>
+        ProctorService.intervalForFailures(n, hb);
+
+    test('no failures uses heartbeat-provided interval', () {
+      expect(f(0), const Duration(milliseconds: 2500));
+      expect(f(0, 4000), const Duration(milliseconds: 4000));
+    });
+    test('1-2 failures -> 5s, 3-4 -> 10s, 5+ -> 15s', () {
+      expect(f(1), const Duration(seconds: 5));
+      expect(f(2), const Duration(seconds: 5));
+      expect(f(3), const Duration(seconds: 10));
+      expect(f(4), const Duration(seconds: 10));
+      expect(f(5), const Duration(seconds: 15));
+      expect(f(50), const Duration(seconds: 15));
+    });
+    test('recovery: back to 0 failures restores the base interval', () {
+      expect(f(6), const Duration(seconds: 15));
+      expect(f(0), const Duration(milliseconds: 2500));
+    });
+  });
 }

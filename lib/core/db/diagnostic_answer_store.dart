@@ -162,4 +162,12 @@ class DiagnosticAnswerStore {
     await d.delete('local_diagnostic_answers',
         where: 'attempt_id = ?', whereArgs: [attemptId]);
   }
+
+  /// Deletes ONLY already-synced rows (all attempts) — safe session-handoff
+  /// cleanup. Unsynced answers are never touched: they are the only copy
+  /// until SyncService uploads them.
+  static Future<void> clearSynced() async {
+    final d = await db;
+    await d.delete('local_diagnostic_answers', where: 'synced = 1');
+  }
 }

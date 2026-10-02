@@ -36,6 +36,16 @@ class DiagnosticPrefetchCache {
   /// the root instead of just tolerating them.
   final Map<String, Map<String, dynamic>> subjectsByGradeLanguage = {};
 
+  /// Drops one student's (attempt's) prefetched packages — used at session
+  /// handoff. Other students' entries and the shared grade|language cache
+  /// stay, so the rest of the class keeps working offline.
+  void clearAttempt(String attemptId) {
+    peekCache.remove(attemptId);
+    allSubjectsCache.remove(attemptId);
+    studentStatus.remove(attemptId);
+    studentHasOnlineOnlySubject.remove(attemptId);
+  }
+
   /// Test-only — clears all cached state so widget tests don't leak data
   /// between test cases (this is a real global singleton, shared across
   /// the whole test process unlike a fresh State object per test).

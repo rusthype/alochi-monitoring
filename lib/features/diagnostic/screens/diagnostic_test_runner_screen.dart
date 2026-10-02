@@ -24,6 +24,7 @@ import '../../../core/db/attempt_store.dart';
 import '../../../core/db/diagnostic_answer_store.dart';
 import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/db/offline_queue.dart';
+import '../../../core/session/session_handoff.dart';
 import '../../../core/services/heartbeat_service.dart';
 import '../../../core/services/proctor_service.dart';
 import '../../../core/services/window_kiosk_win.dart';
@@ -55,6 +56,30 @@ const double _kDockMaxWidth = 760;
 /// subject has timed out — the caller treats it the same as zero.
 int diagnosticRemainingSeconds(int totalDurationSeconds, Duration elapsed) =>
     totalDurationSeconds - elapsed.inSeconds;
+
+/// Remaining seconds for a persisted fixed-variant attempt blob, or null
+/// when it carries no timer at all. Elapsed-based: `total_seconds -
+/// max(local persisted elapsed, [serverElapsedSeconds])`, so an app/network
+/// outage never eats the student's time. Records saved before this change
+/// have no `elapsed_seconds`; those fall back to the legacy wall-clock
+/// `deadline_epoch_ms`. A result <= 0 means expired.
+int? diagnosticRestoredRemainingSeconds(
+  Map<String, dynamic> saved, {
+  int? serverElapsedSeconds,
+  DateTime? now,
+}) {
+  final total = (saved['total_seconds'] as num?)?.toInt();
+  final localElapsed = (saved['elapsed_seconds'] as num?)?.toInt();
+  if (total != null && localElapsed != null) {
+    final server = serverElapsedSeconds ?? 0;
+    return total - (localElapsed > server ? localElapsed : server);
+  }
+  final deadlineMs = (saved['deadline_epoch_ms'] as num?)?.toInt();
+  if (deadlineMs == null) return null;
+  return DateTime.fromMillisecondsSinceEpoch(deadlineMs)
+      .difference(now ?? DateTime.now())
+      .inSeconds;
+}
 
 /// Pending "subject A finished, subject B starting" state — shown as a brief
 /// full-screen message instead of jumping straight to the next question.
@@ -374,6 +399,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // itself survive the app process being killed and relaunched.
       // Reconstruct the equivalent deadline from the Stopwatch's elapsed
       // time so far.
+      // Elapsed-based restore fields (see diagnosticRestoredRemainingSeconds):
+      // remaining = total - elapsed, so time the app was closed / the
+      // network was out never counts against the student. Stopwatch is
+      // stopped while admin-locked, so paused time is not counted either.
+      'total_seconds': _totalDurationSeconds,
+      'elapsed_seconds': _stopwatch.elapsed.inSeconds,
       'deadline_epoch_ms': _totalDurationSeconds == null
           ? null
           : DateTime.now()
@@ -405,22 +436,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         [];
     final currentSubject = (saved['current_subject'] ?? '').toString();
     if (allSubjects.isEmpty || currentSubject.isEmpty) return false;
-    final deadlineMs = (saved['deadline_epoch_ms'] as num?)?.toInt();
-    // A Stopwatch cannot survive the app process being killed, so this is
-    // the ONLY place in this file's timer logic that still reads
-    // `DateTime.now()` — one comparison against the persisted epoch-ms
-    // deadline to derive a plain remaining-seconds count, which then seeds
-    // a brand-new Stopwatch in `_restoreCountdown` exactly like a fresh
-    // start does.
-    int? remainingSeconds;
-    if (deadlineMs != null) {
-      final deadline = DateTime.fromMillisecondsSinceEpoch(deadlineMs);
-      final remaining = deadline.difference(DateTime.now()).inSeconds;
-      // Expired while the app was closed — a fresh live bootstrap is
-      // correct here (the server itself decides what happens next).
-      if (remaining <= 0) return false;
-      remainingSeconds = remaining;
-    }
+    // Elapsed-based (outage-proof) remaining time; legacy records without
+    // elapsed fields fall back to the old wall-clock deadline.
+    final remainingSeconds = diagnosticRestoredRemainingSeconds(saved);
+    // Expired while the app was closed — a fresh live bootstrap is correct
+    // here (the server itself decides what happens next).
+    if (remainingSeconds != null && remainingSeconds <= 0) return false;
     // Answers now come from DiagnosticAnswerStore (SQLite), not the blob's
     // own 'answers' field (see _saveProgressIfFixed) — it's written on every
     // single tap, so it survives a crash even when this debounced blob save
@@ -481,10 +502,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       ..reset()
       ..start();
     _totalDurationSeconds = remainingSeconds;
-    setState(() =>
-        _remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0);
-    _timer = Timer.periodic(
-        const Duration(seconds: 1), _syncRemainingFromStopwatch);
+    setState(
+        () => _remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0);
+    _timer =
+        Timer.periodic(const Duration(seconds: 1), _syncRemainingFromStopwatch);
     _armElapsedPingTimer();
   }
 
@@ -528,6 +549,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       _elapsedOnSubject++;
       if (_elapsedOnSubject % 30 == 0) {
         unawaited(_pingElapsed());
+        unawaited(_saveProgressIfFixed());
       }
     });
   }
@@ -604,8 +626,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     unawaited(_saveProgressIfFixed());
     if (mounted) setState(() => _paused = false);
     _timer?.cancel();
-    _timer = Timer.periodic(
-        const Duration(seconds: 1), _syncRemainingFromStopwatch);
+    _timer =
+        Timer.periodic(const Duration(seconds: 1), _syncRemainingFromStopwatch);
     _syncRemainingFromStopwatch(_timer);
   }
 
@@ -710,6 +732,14 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           setState(() => _remainingSeconds = _remainingSeconds! + secs);
         }
         unawaited(_saveProgressIfFixed());
+        var minutes = (secs / 60).round();
+        if (minutes < 1) minutes = 1;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.timeAdded(minutes)),
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
       ..onWarning = (msg) {
         if (mounted) {
@@ -766,13 +796,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     disableWakeLock();
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
-    unawaited(AttemptStore.clear(_diagKey));
-    // Best-effort cleanup — a failure here must never block navigating to
-    // the finished screen (see the matching saveAnswer catchError above).
+    // Best-effort — a failure here must never block navigating to the
+    // finished screen. Unsynced answers are preserved for SyncService.
     unawaited(
-        DiagnosticAnswerStore.clearAttempt(widget.attemptId).catchError((e) {
-      debugPrint('DiagnosticAnswerStore.clearAttempt error: $e');
-    }));
+        cleanSessionHandoff(attemptKey: _diagKey, attemptId: widget.attemptId));
     if (!mounted) return;
     context.pushReplacement('/diagnostic_finished', extra: _finishedExtra());
   }
@@ -1346,8 +1373,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(l10n.finishConfirmTitle,
               style: const TextStyle(fontWeight: FontWeight.w800)),
-          content: Text(
-              l10n.flaggedQuestionsReminder(_flaggedQuestionIds.length)),
+          content:
+              Text(l10n.flaggedQuestionsReminder(_flaggedQuestionIds.length)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
