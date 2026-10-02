@@ -7,6 +7,7 @@
 // itself gets a thick bottom edge that reads as a pressable 3D key, and dips
 // 2px on tap for tactile feedback.
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/fraction_text.dart';
 import '../../../shared/theme/app_theme.dart';
 
 class DiagnosticTactileOptionCard extends StatefulWidget {
@@ -155,7 +156,7 @@ class _DiagnosticTactileOptionCardState
                   ),
                   const SizedBox(width: DiagnosticTactileOptionCard._badgeGap),
                   Expanded(
-                    child: Text(
+                    child: FractionText(
                       widget.text,
                       style:
                           DiagnosticTactileOptionCard.optionTextStyle.copyWith(

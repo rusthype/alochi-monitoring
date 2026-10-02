@@ -6,6 +6,7 @@
 // (lib/core/engine/question_widgets.dart), which interhouse_runner.dart and
 // others still use as-is.
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/fraction_text.dart';
 import '../../../shared/theme/app_theme.dart';
 
 class DiagnosticOptionCard extends StatelessWidget {
@@ -68,7 +69,7 @@ class DiagnosticOptionCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
+                  child: FractionText(
                     text,
                     style: TextStyle(
                       color: selected ? AppColors.brand : AppColors.ink1,
