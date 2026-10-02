@@ -6,6 +6,7 @@
 // the SVG render now has an errorBuilder (malformed svg_visual previously
 // rendered as a blank/black box with no fallback).
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/fraction_text.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
@@ -110,7 +111,7 @@ class DiagnosticQuestionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
+          FractionText(
             questionText,
             style: TextStyle(
               fontSize: isCompact(context) ? 17 : 21,
