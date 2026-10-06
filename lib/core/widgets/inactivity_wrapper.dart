@@ -7,9 +7,15 @@ class InactivityWrapper extends StatefulWidget {
   final Widget child;
   final Duration timeout;
 
+  /// Explicit router: this widget is mounted ABOVE `MaterialApp.router`, so
+  /// `GoRouter.of(context)` can never find one from here (prod crash
+  /// "No GoRouter found in context" on 9 kiosks).
+  final GoRouter router;
+
   const InactivityWrapper({
     super.key,
     required this.child,
+    required this.router,
     this.timeout = const Duration(minutes: 30),
   });
 
@@ -39,7 +45,7 @@ class _InactivityWrapperState extends State<InactivityWrapper> {
       await CredentialCache.clear();
       if (!mounted) return;
       // Force pop to root route
-      GoRouter.of(context).go('/');
+      widget.router.go('/');
     }
   }
 

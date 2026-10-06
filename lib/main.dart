@@ -259,6 +259,7 @@ class AlochiMonitoringApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final fontScale = ref.watch(fontScaleProvider);
     return InactivityWrapper(
+      router: router,
       child: MaterialApp.router(
         // ROOT CAUSE of the v1.0.58/v1.0.59 "solid gray screen on launch"
         // bug: `title` is evaluated in AlochiMonitoringApp.build() — i.e.
