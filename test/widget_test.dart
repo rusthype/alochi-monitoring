@@ -1,23 +1,24 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alochi_monitoring/main.dart';
-import 'package:alochi_monitoring/core/locale/locale_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'helpers/app_harness.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          sharedPreferencesProvider.overrideWithValue(prefs),
-        ],
+        overrides: await appTestOverrides(),
         child: const AlochiMonitoringApp(),
       ),
     );
     await tester.pump();
     expect(find.byType(AlochiMonitoringApp), findsOneWidget);
+    expect(find.byType(MaterialApp), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // Unmount so screen timers are cancelled before the invariant check.
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 }

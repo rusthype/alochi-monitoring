@@ -16,6 +16,15 @@ class CommandPalette extends StatefulWidget {
     );
   }
 
+  /// For callers mounted ABOVE the Navigator (e.g. `MaterialApp.router`'s
+  /// `builder`): their own context has no Navigator ancestor, so
+  /// `showDialog` would throw. Use the router's root navigator context.
+  static Future<void>? showFromRouter(GoRouter router) {
+    final navContext = router.routerDelegate.navigatorKey.currentContext;
+    if (navContext == null || !navContext.mounted) return null;
+    return show(navContext);
+  }
+
   @override
   State<CommandPalette> createState() => _CommandPaletteState();
 }
