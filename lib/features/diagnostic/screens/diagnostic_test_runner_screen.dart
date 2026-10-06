@@ -25,6 +25,7 @@ import '../../../core/db/diagnostic_answer_store.dart';
 import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/db/offline_queue.dart';
 import '../../../core/session/session_handoff.dart';
+import '../../../core/sync/sync_service.dart';
 import '../../../core/services/heartbeat_service.dart';
 import '../../../core/services/proctor_service.dart';
 import '../../../core/services/window_kiosk_win.dart';
@@ -177,6 +178,12 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic> payload, String token)?
       enqueueLocalOverride;
 
+  /// Test-only override for [_flushPendingFinish] — the real one drives
+  /// [SyncService] + [OfflineQueue] (platform sqflite, hangs under plain
+  /// `flutter test`, same reason as [enqueueLocalOverride]). Must return
+  /// `true` iff no `diagnostic_finish` for [attemptId] is left in the queue.
+  final Future<bool> Function()? flushPendingFinishOverride;
+
   /// Test-only override for the connectivity stream `_bootstrap()` listens
   /// on to auto-retry after the very first (no-cache-yet) subject fetch
   /// fails offline. Defaults to `Connectivity().onConnectivityChanged`.
@@ -202,6 +209,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
     this.finishAttemptOverride,
     this.pingElapsedOverride,
     this.enqueueLocalOverride,
+    this.flushPendingFinishOverride,
     this.connectivityStreamOverride,
   });
 
@@ -244,6 +252,13 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// `no_variant_number` history in `_startSubject`).
   final Map<String, Map<String, dynamic>> _peekedFallbackPackages = {};
   _SubjectTransition? _transition;
+
+  /// True once this screen has queued a `diagnostic_finish` (kiosk/finish/
+  /// failed transiently) that may not have reached the server yet. The
+  /// backend's subject-ordering guard 400s `kiosk/start/` for subject N+1
+  /// until subject N's finish has actually landed, so `_startSubject` flushes
+  /// the queue first while this is set (see `_flushPendingFinish`).
+  bool _finishQueued = false;
 
   /// Whatever network operation last failed and produced [_error] — set
   /// synchronously right before each call that can land on the error view,
@@ -951,10 +966,20 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         resp = _peekedFallbackPackages.remove(subject)!;
       } else {
         try {
-          resp = await _startAttemptCall(
-            attemptId: widget.attemptId,
-            subject: subject,
-          );
+          // 2026-10: a transiently-failed kiosk/finish/ is only QUEUED — the
+          // server still has the previous subject incomplete and would 400
+          // this start with `earlier_subject_incomplete`. Land the queued
+          // finish first; if it can't land (still offline) throw a status-0
+          // error so the catch below falls back to the peeked package or the
+          // retry UI (whose retry action re-runs this flush-then-start).
+          if (_finishQueued) {
+            if (!await _flushPendingFinish()) {
+              throw const ApiException(
+                  0, 'Oldingi fan natijasi hali yuborilmadi.');
+            }
+            _finishQueued = false;
+          }
+          resp = await _startAttemptFlushingOnce(subject);
         } catch (e) {
           // A 4xx business-rule rejection (e.g. "Avval math fani
           // yakunlanishi kerak") must never fall back to a stale,
@@ -1058,9 +1083,59 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // o'rniga.
       final status = e is ApiException ? e.statusCode : 0;
       final isNetworkFailure = status == 0 || status >= 500 || status == 429;
-      if (isNetworkFailure) {
+      // earlier_subject_incomplete that survived the flush-and-retry-once in
+      // `_startAttemptFlushingOnce` means the queued finish still hasn't
+      // landed (network) — auto-retry on reconnect like any network failure.
+      if (isNetworkFailure || _isEarlierSubjectIncomplete(e)) {
         _armBootstrapAutoRetry();
       }
+    }
+  }
+
+  /// Backend 400 "Avval math fani yakunlanishi kerak." (CATStartView,
+  /// `reason=earlier_subject_incomplete`).
+  bool _isEarlierSubjectIncomplete(Object e) =>
+      e is ApiException &&
+      e.statusCode == 400 &&
+      e.message.contains('yakunlanishi kerak');
+
+  /// `kiosk/start/`, but on `earlier_subject_incomplete` flushes the queued
+  /// `diagnostic_finish` and retries the start exactly ONCE (bounded — a
+  /// second failure propagates to `_startSubject`'s catch, never loops).
+  Future<Map<String, dynamic>> _startAttemptFlushingOnce(String subject) async {
+    try {
+      return await _startAttemptCall(
+          attemptId: widget.attemptId, subject: subject);
+    } catch (e) {
+      if (!_isEarlierSubjectIncomplete(e)) rethrow;
+      if (!await _flushPendingFinish()) rethrow;
+      _finishQueued = false;
+      return _startAttemptCall(attemptId: widget.attemptId, subject: subject);
+    }
+  }
+
+  /// Flushes the offline queue and reports whether this attempt's queued
+  /// `diagnostic_finish` is gone (sent, or dropped as already-finished).
+  /// Reuses [SyncService.flushNowWithResult] (same path as the probe-driven
+  /// and manual "Yuborish" flushes) — no second queue. `busy` means a
+  /// background flush is mid-flight, so wait for it and flush again.
+  /// Never throws: any failure counts as "not landed".
+  Future<bool> _flushPendingFinish() async {
+    final override = widget.flushPendingFinishOverride;
+    if (override != null) return override();
+    try {
+      for (var i = 0; i < 3; i++) {
+        final outcome = await SyncService.instance.flushNowWithResult();
+        if (outcome != SyncFlushOutcome.busy) break;
+        await Future<void>.delayed(const Duration(seconds: 2));
+      }
+      final queued = await OfflineQueue.peekLocalQueue();
+      return !queued.any((p) =>
+          p['_offlineKind'] == 'diagnostic_finish' &&
+          p['attempt_id']?.toString() == widget.attemptId);
+    } catch (e) {
+      debugPrint('Diagnostic flush-pending-finish error: $e');
+      return false;
     }
   }
 
@@ -1455,6 +1530,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           '_offline_answer_key':
               _buildOfflineAnswerKey(_currentSubject, _questions),
         }, newIdempotencyToken());
+        _finishQueued = true;
         unawaited(_upsertHistoryRow(status: 'pending'));
         if (!mounted) return;
         _timer?.cancel();

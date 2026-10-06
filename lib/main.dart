@@ -4,11 +4,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'core/sync/sync_service.dart';
 import 'core/services/heartbeat_service.dart';
 import 'core/network/connectivity_service.dart';
 import 'core/locale/locale_provider.dart';
+import 'core/storage/prefs_loader.dart';
 import 'core/theme/app_prefs_provider.dart';
 import 'l10n/app_localizations.dart';
 import 'shared/theme/app_theme.dart';
@@ -110,17 +110,13 @@ void main(List<String> args) {
           details.exception, details.stack ?? StackTrace.current));
     };
 
-    SharedPreferences? prefs;
-    try {
-      prefs = await SharedPreferences.getInstance();
-    } catch (error, stackTrace) {
-      // Non-essential for reaching a visible UI: locale/prefs-backed
-      // providers fall back to their defaults below rather than blocking
-      // runApp() entirely. Previously, a throw here meant runApp() was
-      // NEVER called — not even a gray box, a genuinely blank native window.
-      debugPrint('SharedPreferences init failed: $error');
-      debugPrint('$stackTrace');
-    }
+    // Never null: on a broken prefs file this retries, then falls back to an
+    // in-memory store — sharedPreferencesProvider MUST always be overridden
+    // (un-overridden it throws UnimplementedError on the first frame).
+    final prefs = await loadPrefsWithFallback(
+      onFailure: (error, stack) =>
+          unawaited(CrashReporterService.captureCrash(error, stack)),
+    );
 
     try {
       // Explicit ProviderContainer (instead of a bare ProviderScope) so that
@@ -131,7 +127,7 @@ void main(List<String> args) {
       // like ProviderScope would.
       final container = ProviderContainer(
         overrides: [
-          if (prefs != null) sharedPreferencesProvider.overrideWithValue(prefs),
+          sharedPreferencesProvider.overrideWithValue(prefs),
         ],
       );
       runApp(
