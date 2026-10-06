@@ -94,8 +94,9 @@ void main() {
         ];
 
     testWidgets(
-        'restores the saved package/answers/position with NO network call '
-        'when a matching attempt is saved', (tester) async {
+        'restores the saved package/answers/position without re-bootstrapping '
+        'when a matching attempt is saved (the background generation check '
+        'failing offline leaves the restored state intact)', (tester) async {
       mockAppSupportDirectoryFor(tester);
       var availableSubjectsCalls = 0;
       var startAttemptCalls = 0;
@@ -130,17 +131,108 @@ void main() {
           },
           startAttemptOverride: ({required attemptId, required subject}) async {
             startAttemptCalls++;
-            throw StateError('must not hit the network on a valid resume');
+            throw StateError('offline: generation check must be best-effort');
           },
         )));
         await tester.pumpAndSettle();
       });
 
       expect(availableSubjectsCalls, 0);
-      expect(startAttemptCalls, 0);
+      // Only the best-effort generation check (kiosk/start/ resume) — no
+      // re-bootstrap, and its failure does not disturb the restored state.
+      expect(startAttemptCalls, 1);
       expect(find.text('2-savol'), findsOneWidget);
       expect(find.textContaining('04:5'), findsOneWidget);
       await unmount(tester);
+    });
+
+    Future<Map<String, dynamic>?> runGenerationCheck(
+      WidgetTester tester, {
+      required int? localGeneration,
+      required int serverGeneration,
+      required void Function() onAvailableSubjects,
+    }) async {
+      mockAppSupportDirectoryFor(tester);
+      Map<String, dynamic>? blob;
+      await tester.runAsync(() async {
+        await AttemptStore.save('diag_att-gen', {
+          'all_subjects': ['math'],
+          'subjects_completed': <String>[],
+          'current_subject': 'math',
+          'is_fixed_variant': true,
+          if (localGeneration != null) 'attempts_used': localGeneration,
+          'questions': pkg(3),
+          'position': 2,
+          'total': 3,
+          'deadline_epoch_ms': DateTime.now()
+              .add(const Duration(minutes: 5))
+              .millisecondsSinceEpoch,
+        });
+        await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+          attemptId: 'att-gen',
+          studentName: 'Aliyev Ali',
+          grade: 3,
+          language: 'uz',
+          availableSubjectsOverride: (grade, {String language = 'uz'}) async {
+            onAvailableSubjects();
+            return {
+              'subjects': ['math']
+            };
+          },
+          startAttemptOverride: ({required attemptId, required subject}) async {
+            return _withMeta({
+              'position': 1,
+              'total_questions': 3,
+              'subject': subject,
+              'attempts_used': serverGeneration,
+              'questions': [
+                for (var i = 1; i <= 3; i++)
+                  _question(id: 'n$i', text: 'Yangi $i')
+              ],
+            }, isFixedVariant: true);
+          },
+        )));
+        await tester.pumpAndSettle();
+        blob = await AttemptStore.load('diag_att-gen');
+      });
+      await unmount(tester);
+      return blob;
+    }
+
+    testWidgets(
+        'generation mismatch (admin reset) discards the restored state and '
+        'bootstraps fresh from the server', (tester) async {
+      var availableSubjectsCalls = 0;
+      final blob = await runGenerationCheck(tester,
+          localGeneration: 1,
+          serverGeneration: 2,
+          onAvailableSubjects: () => availableSubjectsCalls++);
+      expect(availableSubjectsCalls, 1);
+      // Fresh package persisted with the NEW generation, stale one gone.
+      expect(blob!['attempts_used'], 2);
+      expect((blob['questions'] as List).first['question_id'], 'n1');
+    });
+
+    testWidgets(
+        'matching generation keeps the restored state (no re-bootstrap)',
+        (tester) async {
+      var availableSubjectsCalls = 0;
+      final blob = await runGenerationCheck(tester,
+          localGeneration: 2,
+          serverGeneration: 2,
+          onAvailableSubjects: () => availableSubjectsCalls++);
+      expect(availableSubjectsCalls, 0);
+      expect((blob!['questions'] as List).first['question_id'], 'q1');
+    });
+
+    testWidgets('legacy blob without a generation adopts the server value',
+        (tester) async {
+      var availableSubjectsCalls = 0;
+      await runGenerationCheck(tester,
+          localGeneration: null,
+          serverGeneration: 3,
+          onAvailableSubjects: () => availableSubjectsCalls++);
+      expect(availableSubjectsCalls, 0);
     });
 
     testWidgets(

@@ -55,7 +55,14 @@ Map<String, dynamic> classifyFinishOfflineResponse(
   String detail = '';
   try {
     final decoded = jsonDecode(body);
-    if (decoded is Map) detail = (decoded['detail'] ?? '').toString();
+    if (decoded is Map) {
+      detail = (decoded['detail'] ?? '').toString();
+      // Admin reset/retake invalidated this queued finish — it can never
+      // succeed, so drop it (permanent) instead of retrying 10 times.
+      if (statusCode == 409 && decoded['code'] == 'stale_generation') {
+        return {'synced': false, 'permanent': true};
+      }
+    }
   } catch (_) {
     // Non-JSON body — fall through with detail='', treated as retryable below.
   }
@@ -144,7 +151,7 @@ class DiagnosticKioskApi {
       final msg = raw.toString().isNotEmpty
           ? raw.toString()
           : _statusMessage(resp.statusCode);
-      throw ApiException(resp.statusCode, msg);
+      throw ApiException(resp.statusCode, msg, code: data['code']?.toString());
     }
     return data;
   }
@@ -267,10 +274,12 @@ class DiagnosticKioskApi {
   Future<Map<String, dynamic>> syncAnswers({
     required String attemptId,
     required List<Map<String, dynamic>> answers,
+    int? generation,
   }) {
     return _post('/kiosk/sync/', {
       'attempt_id': attemptId,
       'answers': answers,
+      if (generation != null) 'generation': generation,
     });
   }
 
@@ -308,11 +317,13 @@ class DiagnosticKioskApi {
     required String attemptId,
     required List<Map<String, dynamic>> answers,
     List<String>? flaggedQuestionIds,
+    int? generation,
   }) {
     return _post('/kiosk/finish/', {
       'attempt_id': attemptId,
       'answers': answers,
       'flagged_question_ids': flaggedQuestionIds ?? const <String>[],
+      if (generation != null) 'generation': generation,
     });
   }
 

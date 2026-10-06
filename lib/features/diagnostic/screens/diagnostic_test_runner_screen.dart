@@ -375,6 +375,13 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   List<Map<String, dynamic>> _questions = [];
   final Map<int, String> _answers = {};
 
+  /// Server-side reset generation (`attempts_used`, from the kiosk start/resume
+  /// response) this screen's local state belongs to. Persisted in the
+  /// AttemptStore blob and on every DiagnosticAnswerStore row; a mismatch with
+  /// the server's value means an admin reset/retake made the local state stale.
+  /// Null = old backend (no generation sent/compared).
+  int? _generation;
+
   /// Fixed-variant-only scratchpad overlay toggle (see
   /// DiagnosticScratchpad) — never set for CAT (no trigger button rendered
   /// there, see DiagnosticQuestionCard's `onOpenScratchpad`).
@@ -400,6 +407,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       'subjects_completed': _subjectsCompleted,
       'current_subject': _currentSubject,
       'is_fixed_variant': true,
+      'attempts_used': _generation,
       'questions': _questions,
       // 'answers' intentionally dropped — DiagnosticAnswerStore (SQLite,
       // written per-tap in onSelect) is now the source of truth for
@@ -489,6 +497,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
             (saved['subjects_completed'] as List?)?.map((e) => e.toString()) ??
                 const <String>[]);
       _currentSubject = currentSubject;
+      _generation = (saved['attempts_used'] as num?)?.toInt();
       _isFixedVariant = true;
       _questions = questions;
       _answers
@@ -503,6 +512,94 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     if (remainingSeconds != null) _restoreCountdown(remainingSeconds);
     _prefetchImages(_questions);
     return true;
+  }
+
+  /// Seeds DiagnosticAnswerStore from the start/resume response's
+  /// `saved_answers` (`{question_id: selected_option}`) — local rows win —
+  /// and returns the resulting position->option map for [subject]. No-op
+  /// (empty map, store untouched) when the response carries none.
+  Future<Map<int, String>> _seedSavedAnswers(Map<String, dynamic> resp,
+      String subject, List<Map<String, dynamic>> questions) async {
+    final raw = resp['saved_answers'];
+    final result = <int, String>{};
+    if (raw is! Map || raw.isEmpty) return result;
+    try {
+      await DiagnosticAnswerStore.seedSynced(
+        attemptId: widget.attemptId,
+        subject: subject,
+        saved: raw.map((k, v) => MapEntry(k.toString(), v.toString())),
+        orderedQuestionIds: questions.map(_questionId).toList(),
+        generation: _generation,
+      );
+      for (final row in await DiagnosticAnswerStore.loadAll(widget.attemptId,
+          subject: subject)) {
+        final pos = (row['question_index'] as num?)?.toInt();
+        final selected = row['selected_option'] as String?;
+        if (pos != null && selected != null) result[pos] = selected;
+      }
+    } catch (e) {
+      debugPrint('Diagnostic seed saved_answers error: $e');
+    }
+    return result;
+  }
+
+  /// Drops every piece of local state tied to this attempt (blob + answer
+  /// rows) and the in-memory copy — used when the server's generation no
+  /// longer matches ours.
+  Future<void> _discardStaleLocalState() async {
+    _timer?.cancel();
+    _pingTimer?.cancel();
+    _autoAdvance?.cancel();
+    try {
+      await AttemptStore.clear(_diagKey);
+      await DiagnosticAnswerStore.clearAttempt(widget.attemptId);
+    } catch (e) {
+      debugPrint('Diagnostic discard stale state error: $e');
+    }
+    if (!mounted) return;
+    setState(() {
+      _generation = null;
+      _questions = [];
+      _question = null;
+      _answers.clear();
+      _selectedOption = null;
+    });
+  }
+
+  /// After an (offline-capable) local restore, asks the server for the
+  /// attempt's current generation. Mismatch (admin reset/retake) => discard
+  /// the stale local state and bootstrap fresh; match => adopt it and merge
+  /// the server's `saved_answers` for answers we don't have locally.
+  /// Any failure (offline etc.) keeps the restored state untouched.
+  Future<void> _verifyRestoredGeneration() async {
+    final subject = _currentSubject;
+    Map<String, dynamic> resp;
+    try {
+      resp = await _startAttemptCall(
+          attemptId: widget.attemptId, subject: subject);
+    } catch (e) {
+      debugPrint('Diagnostic generation check skipped: $e');
+      return;
+    }
+    if (!mounted) return;
+    final server = (resp['attempts_used'] as num?)?.toInt();
+    if (server == null) return; // old backend: nothing to compare
+    final local = _generation;
+    if (local != null && local != server) {
+      await _discardStaleLocalState();
+      if (mounted) await _bootstrap();
+      return;
+    }
+    _generation = server;
+    final merged = await _seedSavedAnswers(resp, subject, _questions);
+    if (!mounted || merged.isEmpty) return;
+    setState(() {
+      for (final e in merged.entries) {
+        _answers.putIfAbsent(e.key, () => e.value);
+      }
+      _selectedOption = _answers[_position];
+    });
+    unawaited(_saveProgressIfFixed());
   }
 
   /// Resumes the countdown from a previously-saved (not extended)
@@ -663,8 +760,28 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       widget.startAttemptOverride ?? diagnosticKioskApi.startAttempt;
   DiagnosticSubmitAnswerFn get _submitAnswerCall =>
       widget.submitAnswerOverride ?? diagnosticKioskApi.submitAnswer;
-  DiagnosticFinishAttemptFn get _finishAttemptCall =>
-      widget.finishAttemptOverride ?? diagnosticKioskApi.finishAttempt;
+
+  /// Real calls carry [_generation] (stale-generation guard); test overrides
+  /// keep their existing generation-less signature.
+  Future<Map<String, dynamic>> _finishAttemptCall({
+    required String attemptId,
+    required List<Map<String, dynamic>> answers,
+    List<String>? flaggedQuestionIds,
+  }) {
+    final override = widget.finishAttemptOverride;
+    if (override != null) {
+      return override(
+          attemptId: attemptId,
+          answers: answers,
+          flaggedQuestionIds: flaggedQuestionIds);
+    }
+    return diagnosticKioskApi.finishAttempt(
+        attemptId: attemptId,
+        answers: answers,
+        flaggedQuestionIds: flaggedQuestionIds,
+        generation: _generation);
+  }
+
   DiagnosticPingElapsedFn get _pingElapsedCall =>
       widget.pingElapsedOverride ?? diagnosticKioskApi.pingElapsed;
 
@@ -870,7 +987,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       _error = null;
       _subjectsEmpty = false;
     });
-    if (await _tryRestore()) return;
+    if (await _tryRestore()) {
+      // Offline restore stays as-is; online, compare generations in the
+      // background (see _verifyRestoredGeneration).
+      unawaited(_verifyRestoredGeneration());
+      return;
+    }
     try {
       final subjectsResp =
           await _availableSubjects(widget.grade, language: widget.language);
@@ -1029,11 +1151,19 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // near-instant when the package was already background-prefetched.
       await _awaitFirstImage(question);
       if (!mounted) return;
+      _generation = (resp['attempts_used'] as num?)?.toInt() ?? _generation;
+      final restoredAnswers = isFixedVariant
+          ? await _seedSavedAnswers(resp, subject, questions)
+          : const <int, String>{};
+      if (!mounted) return;
       setState(() {
         _position = position;
         _total = (resp['total_questions'] as num?)?.toInt() ?? 0;
         _isFixedVariant = isFixedVariant;
-        _answers.clear();
+        _answers
+          ..clear()
+          ..addAll(restoredAnswers);
+        if (isFixedVariant) _selectedOption = _answers[position];
         _questions = questions;
         _question = question;
         _loading = false;
@@ -1274,6 +1404,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       questionIndex: _position,
       questionId: questionId,
       selectedOption: key,
+      generation: _generation,
     ).catchError((e) {
       debugPrint('DiagnosticAnswerStore.saveAnswer error: $e');
     }));
@@ -1527,6 +1658,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           'attempt_id': widget.attemptId,
           'answers': answers,
           'flagged_question_ids': _flaggedQuestionIds.toList(),
+          if (_generation != null) 'generation': _generation,
           '_offline_answer_key':
               _buildOfflineAnswerKey(_currentSubject, _questions),
         }, newIdempotencyToken());
@@ -1540,6 +1672,19 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         // falls through to its normal live-call path (and surfaces its
         // existing error/retry UI if that also fails, e.g. genuine offline).
         await _completeSubjectAndAdvance(_currentSubject);
+        return;
+      }
+      // Admin reset/retake happened while this tablet held an old attempt:
+      // the local answers belong to a previous generation and must NOT be
+      // re-sent (the self-heal below would remap them onto the fresh
+      // package). Drop local state and start over from the server's truth.
+      if (e is ApiException &&
+          e.statusCode == 409 &&
+          e.code == 'stale_generation') {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        await _discardStaleLocalState();
+        await _bootstrap();
         return;
       }
       // An earlier finish-call already succeeded server-side, but its
