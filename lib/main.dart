@@ -308,7 +308,7 @@ class AlochiMonitoringApp extends ConsumerWidget {
                 actions: <Type, Action<Intent>>{
                   CommandPaletteIntent: CallbackAction<CommandPaletteIntent>(
                     onInvoke: (CommandPaletteIntent intent) {
-                      CommandPalette.show(context);
+                      CommandPalette.showFromRouter(router);
                       return null;
                     },
                   ),
