@@ -192,11 +192,19 @@ class HeartbeatService with WidgetsBindingObserver {
   Future<void> start() async {
     if (_started) return;
     _started = true;
-    final prefs = await SharedPreferences.getInstance();
-    var id = prefs.getString(_prefsKey);
-    if (id == null || id.isEmpty) {
-      id = const Uuid().v4();
-      await prefs.setString(_prefsKey, id);
+    // Broken prefs storage must not kill the heartbeat: fall back to a
+    // per-run id (the seat binding still works, just not stable across runs).
+    String? id;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      id = prefs.getString(_prefsKey);
+      if (id == null || id.isEmpty) {
+        id = const Uuid().v4();
+        await prefs.setString(_prefsKey, id);
+      }
+    } catch (e) {
+      debugPrint('HeartbeatService prefs error: $e');
+      id ??= const Uuid().v4();
     }
     _deviceSessionId = id;
     WidgetsBinding.instance.addObserver(this);

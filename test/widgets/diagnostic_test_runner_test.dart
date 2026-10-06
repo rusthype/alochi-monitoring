@@ -1166,6 +1166,7 @@ void main() {
             throw const ApiException(0, 'timeout');
           },
           enqueueLocalOverride: (payload, token) async {},
+          flushPendingFinishOverride: () async => true,
         ),
         onFinished: (extra) => capturedExtra = extra,
       ));
@@ -1249,6 +1250,7 @@ void main() {
             throw const ApiException(0, 'no internet');
           },
           enqueueLocalOverride: (payload, token) async {},
+          flushPendingFinishOverride: () async => true,
         ),
         onFinished: (extra) {},
       ));
@@ -1270,6 +1272,183 @@ void main() {
       expect(englishStartCalls, 1);
       expect(find.text('Live ingliz savoli'), findsOneWidget);
       expect(find.text('Peeked ingliz savoli'), findsNothing);
+      await unmount(tester);
+    });
+
+    /// Builds a math->english attempt whose math `kiosk/finish/` fails
+    /// transiently (queued, see `_finishQueued`) — shared by the
+    /// flush-before-start regression tests below. [onStartEnglish] decides
+    /// each english `kiosk/start/` response (may throw).
+    Future<void> pumpQueuedFinishThenEnglish(
+      WidgetTester tester, {
+      required Future<bool> Function() flush,
+      required Future<Map<String, dynamic>> Function(int call) onStartEnglish,
+      List<String>? events,
+    }) async {
+      var englishCalls = 0;
+      await tester.pumpWidget(_wrapWithRouter(
+        DiagnosticTestRunnerScreen(
+          attemptId: 'att-1',
+          studentName: 'Aliyev Ali',
+          grade: 3,
+          language: 'uz',
+          availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+              {
+            'subjects': ['math', 'english']
+          },
+          startAttemptOverride: ({required attemptId, required subject}) async {
+            events?.add('start:$subject');
+            if (subject == 'english') return onStartEnglish(++englishCalls);
+            return _withMeta({
+              'position': 1,
+              'total_questions': 1,
+              'subject': 'math',
+              'questions': fullPackageQuestions(1),
+            }, isFixedVariant: true);
+          },
+          finishAttemptOverride: (
+              {required attemptId,
+              required answers,
+              List<String>? flaggedQuestionIds}) async {
+            events?.add('finish');
+            throw const ApiException(0, 'timeout');
+          },
+          enqueueLocalOverride: (payload, token) async {},
+          flushPendingFinishOverride: () {
+            events?.add('flush');
+            return flush();
+          },
+          connectivityStreamOverride: const Stream.empty(),
+        ),
+        onFinished: (extra) {},
+      ));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+      await tester.tap(find.text(l10n.nextSubjectButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+    }
+
+    Map<String, dynamic> englishPackage() => _withMeta({
+          'position': 1,
+          'total_questions': 1,
+          'subject': 'english',
+          'questions': [_question(id: 'e1', text: 'Live ingliz savoli')],
+        }, isFixedVariant: true);
+
+    testWidgets(
+        'transient math finish is flushed BEFORE the english kiosk/start/ '
+        '(no earlier_subject_incomplete 400, no error banner)', (tester) async {
+      final events = <String>[];
+      await pumpQueuedFinishThenEnglish(
+        tester,
+        events: events,
+        flush: () async => true,
+        onStartEnglish: (_) async => englishPackage(),
+      );
+
+      expect(events, ['start:math', 'finish', 'flush', 'start:english']);
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      expect(find.text(l10n.serverErrorRetry), findsNothing);
+      expect(find.text('Live ingliz savoli'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'start 400 earlier_subject_incomplete once -> flush + ONE retry '
+        'succeeds, no error banner', (tester) async {
+      var flushCalls = 0;
+      var englishCalls = 0;
+      await pumpQueuedFinishThenEnglish(
+        tester,
+        flush: () async {
+          flushCalls++;
+          return true;
+        },
+        onStartEnglish: (call) async {
+          englishCalls = call;
+          if (call == 1) {
+            throw const ApiException(
+                400, 'Avval math fani yakunlanishi kerak.');
+          }
+          return englishPackage();
+        },
+      );
+
+      // pre-start flush + the flush triggered by the 400.
+      expect(flushCalls, 2);
+      expect(englishCalls, 2);
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      expect(find.text(l10n.serverErrorRetry), findsNothing);
+      expect(find.text('Live ingliz savoli'), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'finish keeps failing to flush -> live english start is skipped, '
+        'retry UI shown, and Retry re-flushes (flush-then-start, no loop)',
+        (tester) async {
+      var flushCalls = 0;
+      var englishCalls = 0;
+      await pumpQueuedFinishThenEnglish(
+        tester,
+        flush: () async {
+          flushCalls++;
+          return false;
+        },
+        onStartEnglish: (call) async {
+          englishCalls = call;
+          return englishPackage();
+        },
+      );
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      expect(find.text(l10n.serverErrorRetry), findsOneWidget);
+      expect(flushCalls, 1);
+      expect(englishCalls, 0);
+
+      await tester.tap(find.text(l10n.retry));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(seconds: 4));
+
+      // Exactly one more flush per Retry tap; still never a doomed start.
+      expect(flushCalls, 2);
+      expect(englishCalls, 0);
+      expect(find.text(l10n.serverErrorRetry), findsOneWidget);
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'earlier_subject_incomplete that persists after the flush is retried '
+        'only once, then the retry UI is shown (bounded, no infinite loop)',
+        (tester) async {
+      var englishCalls = 0;
+      await pumpQueuedFinishThenEnglish(
+        tester,
+        flush: () async => true,
+        onStartEnglish: (call) async {
+          englishCalls = call;
+          throw const ApiException(400, 'Avval math fani yakunlanishi kerak.');
+        },
+      );
+
+      final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)))!;
+      expect(englishCalls, 2);
+      expect(find.text(l10n.serverErrorRetry), findsOneWidget);
       await unmount(tester);
     });
 

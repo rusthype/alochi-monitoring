@@ -168,6 +168,20 @@ class SyncService {
         attemptId,
         rows.map((r) => r['question_id'] as String).toList(),
       );
+    } on ApiException catch (e) {
+      // 409 "Attempt allaqachon yakunlangan": attempt allaqachon
+      // kiosk/finish/ bilan yopilgan — javoblar finish payload orqali
+      // yetib borgan, qayta yuborish hech qachon o'tmaydi (prod: bitta
+      // attempt ~52 marta 409 bilan urildi). Aniq rad etish — qatorlarni
+      // sinxronlangan deb belgilab, abadiy qayta urinishni to'xtatamiz.
+      if (e.statusCode == 409) {
+        await DiagnosticAnswerStore.markSynced(
+          attemptId,
+          rows.map((r) => r['question_id'] as String).toList(),
+        );
+        return;
+      }
+      debugPrint('SyncService._flushDiagnosticAnswers($attemptId) error: $e');
     } catch (e) {
       debugPrint('SyncService._flushDiagnosticAnswers($attemptId) error: $e');
     }
