@@ -127,7 +127,7 @@ class SyncService {
       if (!await api.ping()) return SyncFlushOutcome.noNetwork;
       if (pending > 0) await api.flushOfflineQueue();
       for (final attemptId in pendingDiagAttempts) {
-        await _flushDiagnosticAnswers(attemptId);
+        await flushDiagnosticAnswers(attemptId);
       }
       _consecutiveFailures = 0;
       return SyncFlushOutcome.success;
@@ -149,41 +149,56 @@ class SyncService {
   /// attempt hech qachon shu flush tsiklining qolgan qismini yoki undan
   /// yuqoridagi OfflineQueue flush'ini bloklamaydi; sinxronlanmagan qator
   /// shunchaki keyingi tick'da qayta urinadi.
-  Future<void> _flushDiagnosticAnswers(String attemptId) async {
+  @visibleForTesting
+  Future<void> flushDiagnosticAnswers(String attemptId) async {
     final rows = await DiagnosticAnswerStore.pendingForAttempt(attemptId);
     if (rows.isEmpty) return;
-    try {
-      await diagnosticKioskApi.syncAnswers(
-        attemptId: attemptId,
-        answers: rows
-            .map((r) => {
-                  'question_index': r['question_index'],
-                  'question_id': r['question_id'],
-                  'selected_option': r['selected_option'],
-                  'answered_at': r['answered_at'],
-                })
-            .toList(),
-      );
-      await DiagnosticAnswerStore.markSynced(
-        attemptId,
-        rows.map((r) => r['question_id'] as String).toList(),
-      );
-    } on ApiException catch (e) {
-      // 409 "Attempt allaqachon yakunlangan": attempt allaqachon
-      // kiosk/finish/ bilan yopilgan — javoblar finish payload orqali
-      // yetib borgan, qayta yuborish hech qachon o'tmaydi (prod: bitta
-      // attempt ~52 marta 409 bilan urildi). Aniq rad etish — qatorlarni
-      // sinxronlangan deb belgilab, abadiy qayta urinishni to'xtatamiz.
-      if (e.statusCode == 409) {
-        await DiagnosticAnswerStore.markSynced(
-          attemptId,
-          rows.map((r) => r['question_id'] as String).toList(),
+    // Group by generation (attempts_used at write time): each group is sent
+    // with its own `generation` so a stale group is rejected on its own and
+    // never blocks rows written after a reset. NULL = legacy row, sent as-is.
+    final groups = <int?, List<Map<String, dynamic>>>{};
+    for (final r in rows) {
+      groups.putIfAbsent((r['generation'] as num?)?.toInt(), () => []).add(r);
+    }
+    for (final entry in groups.entries) {
+      final generation = entry.key;
+      final group = entry.value;
+      final ids = group.map((r) => r['question_id'] as String).toList();
+      try {
+        await diagnosticKioskApi.syncAnswers(
+          attemptId: attemptId,
+          generation: generation,
+          answers: group
+              .map((r) => {
+                    'question_index': r['question_index'],
+                    'question_id': r['question_id'],
+                    'selected_option': r['selected_option'],
+                    'answered_at': r['answered_at'],
+                  })
+              .toList(),
         );
-        return;
+        await DiagnosticAnswerStore.markSynced(attemptId, ids);
+      } on ApiException catch (e) {
+        if (e.statusCode == 409 && e.code == 'stale_generation') {
+          // Admin reset/retake: these rows belong to a previous generation.
+          // Uploading them would pollute the reset attempt — drop them and
+          // stop retrying (the runner re-bootstraps on its own next open).
+          await DiagnosticAnswerStore.clearGeneration(attemptId, generation);
+          continue;
+        }
+        // Plain 409 "Attempt allaqachon yakunlangan": attempt allaqachon
+        // kiosk/finish/ bilan yopilgan — javoblar finish payload orqali
+        // yetib borgan, qayta yuborish hech qachon o'tmaydi (prod: bitta
+        // attempt ~52 marta 409 bilan urildi). Aniq rad etish — qatorlarni
+        // sinxronlangan deb belgilab, abadiy qayta urinishni to'xtatamiz.
+        if (e.statusCode == 409) {
+          await DiagnosticAnswerStore.markSynced(attemptId, ids);
+          continue;
+        }
+        debugPrint('SyncService._flushDiagnosticAnswers($attemptId) error: $e');
+      } catch (e) {
+        debugPrint('SyncService._flushDiagnosticAnswers($attemptId) error: $e');
       }
-      debugPrint('SyncService._flushDiagnosticAnswers($attemptId) error: $e');
-    } catch (e) {
-      debugPrint('SyncService._flushDiagnosticAnswers($attemptId) error: $e');
     }
   }
 

@@ -30,7 +30,8 @@ class DiagnosticAnswerStore {
     }
     final dir = await getApplicationSupportDirectory();
     final path = join(dir.path, 'diagnostic_answer_progress.db');
-    _db = await openDatabase(path, version: 1, onCreate: _create);
+    _db = await openDatabase(path,
+        version: 2, onCreate: _create, onUpgrade: upgrade);
     return _db!;
   }
 
@@ -44,13 +45,26 @@ class DiagnosticAnswerStore {
         question_id TEXT NOT NULL,
         selected_option TEXT NOT NULL,
         answered_at INTEGER NOT NULL,
-        synced INTEGER NOT NULL DEFAULT 0
+        synced INTEGER NOT NULL DEFAULT 0,
+        generation INTEGER
       )
     ''');
     await db.execute(
       'CREATE UNIQUE INDEX idx_local_diag_answers_attempt_question '
       'ON local_diagnostic_answers(attempt_id, question_id)',
     );
+  }
+
+  /// v2: `generation` — the attempt's `attempts_used` at the time the row was
+  /// written, so a flush can tell the server which reset-generation the row
+  /// belongs to (NULL = legacy row / old backend, sent without a generation).
+  @visibleForTesting
+  static Future<void> upgrade(
+      Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+          'ALTER TABLE local_diagnostic_answers ADD COLUMN generation INTEGER');
+    }
   }
 
   @visibleForTesting
@@ -61,7 +75,10 @@ class DiagnosticAnswerStore {
     // qarang: aks holda sqflite har doim BIRINCHI test'ning hali ochiq,
     // hali to'ldirilgan xotiradagi bazasini keyingi testlarga qaytaradi.
     _db = await openDatabase(inMemoryDatabasePath,
-        version: 1, onCreate: _create, singleInstance: false);
+        version: 2,
+        onCreate: _create,
+        onUpgrade: upgrade,
+        singleInstance: false);
   }
 
   @visibleForTesting
@@ -81,6 +98,7 @@ class DiagnosticAnswerStore {
     required int questionIndex,
     required String questionId,
     required String selectedOption,
+    int? generation,
   }) async {
     final d = await db;
     await d.insert(
@@ -93,9 +111,47 @@ class DiagnosticAnswerStore {
         'selected_option': selectedOption,
         'answered_at': DateTime.now().millisecondsSinceEpoch,
         'synced': 0,
+        'generation': generation,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  /// Server `saved_answers` (`{question_id: selected_option}`) dan lokal
+  /// qatorlarni to'ldiradi — allaqachon lokal qator bor savolga TEGMAYDI
+  /// (lokal yutadi, unique index + `ignore`). Qatorlar `synced = 1` bilan
+  /// yoziladi: server allaqachon biladi, qayta yuklanmaydi.
+  /// `question_index` [orderedQuestionIds] tartibidan (1-based) tiklanadi;
+  /// ro'yxatda yo'q question_id o'tkazib yuboriladi.
+  static Future<void> seedSynced({
+    required String attemptId,
+    required String subject,
+    required Map<String, String> saved,
+    required List<String> orderedQuestionIds,
+    int? generation,
+  }) async {
+    if (saved.isEmpty) return;
+    final d = await db;
+    final batch = d.batch();
+    for (final e in saved.entries) {
+      final i = orderedQuestionIds.indexOf(e.key);
+      if (i < 0) continue;
+      batch.insert(
+        'local_diagnostic_answers',
+        {
+          'attempt_id': attemptId,
+          'subject': subject,
+          'question_index': i + 1,
+          'question_id': e.key,
+          'selected_option': e.value,
+          'answered_at': DateTime.now().millisecondsSinceEpoch,
+          'synced': 1,
+          'generation': generation,
+        },
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    }
+    await batch.commit(noResult: true);
   }
 
   /// [attemptId] uchun [subject]ga cheklangan barcha qatorlar, savol
@@ -151,6 +207,18 @@ class DiagnosticAnswerStore {
       'WHERE attempt_id = ? AND question_id IN ($placeholders)',
       [attemptId, ...questionIds],
     );
+  }
+
+  /// Server `stale_generation` (409) dedi: shu [generation]dagi qatorlar
+  /// reset qilingan attempt'ga tegishli — o'chiriladi (yangi generation
+  /// qatorlari saqlanadi).
+  static Future<void> clearGeneration(String attemptId, int? generation) async {
+    final d = await db;
+    await d.delete('local_diagnostic_answers',
+        where: generation == null
+            ? 'attempt_id = ? AND generation IS NULL'
+            : 'attempt_id = ? AND generation = ?',
+        whereArgs: generation == null ? [attemptId] : [attemptId, generation]);
   }
 
   /// [attemptId] uchun (ikkala subject) barcha qatorlarni tozalaydi —

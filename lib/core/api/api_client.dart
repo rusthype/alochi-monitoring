@@ -15,7 +15,11 @@ import '../../features/diagnostic/data/diagnostic_kiosk_api.dart'
 class ApiException implements Exception {
   final int statusCode;
   final String message;
-  const ApiException(this.statusCode, this.message);
+
+  /// Machine-readable `code` from the error body (e.g. `stale_generation`),
+  /// when the backend sends one — null otherwise.
+  final String? code;
+  const ApiException(this.statusCode, this.message, {this.code});
   // UI da to'g'ridan-to'g'ri ko'rsatish uchun toString faqat tushunarli matnni qaytaradi.
   @override
   String toString() => message;
