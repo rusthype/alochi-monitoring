@@ -46,6 +46,12 @@ import '../../shared/theme/app_theme.dart';
 // EngineHostScreen
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Stable per-attempt idempotency token (see _handleComplete doc comment).
+/// Plain concatenation is enough — collision resistance doesn't matter, the
+/// server matches by exact string equality.
+String buildResultToken(String testKey, String studentId, num startedAt) =>
+    'mw-$testKey-$studentId-${startedAt.toInt()}';
+
 class EngineHostScreen extends StatefulWidget {
   /// Raw test data blob from TestCache.get() or a bare test_data object.
   ///
@@ -239,7 +245,24 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
 
   Future<void> _handleComplete(ScoredResult result, int? elapsedSeconds) async {
     final payload = _buildPayload(result, elapsedSeconds);
-    final token = newIdempotencyToken();
+
+    // Token must be DETERMINISTIC, not random: if the app crashes between
+    // OfflineQueue.enqueueLocal succeeding and AttemptStore.clear below, the
+    // saved attempt survives and a relaunch's auto-finish (TestEngine's
+    // deadline check, in a fresh instance where _finishing is false again)
+    // re-runs this method. A random token would enqueue a SECOND
+    // local_queue row for the same result and risk a false 409
+    // max_attempts_exceeded. Deriving the token from the attempt's
+    // started_at (stable across that crash+relaunch, different for any
+    // genuinely new attempt) makes the replay produce the SAME token, which
+    // local_queue's UNIQUE(token) index and the server's client_token match
+    // both dedupe for free.
+    final attempt =
+        await AttemptStore.loadForStudent(result.testKey, widget.studentId);
+    final startedAt = attempt?['started_at'];
+    final token = startedAt is num
+        ? buildResultToken(result.testKey, widget.studentId, startedAt)
+        : newIdempotencyToken(); // no reliable attempt record -> old behavior
 
     // 1. Save to local history DB.
     try {
@@ -1564,13 +1587,10 @@ class _TzAnalysis extends StatelessWidget {
                         height: 1.5)),
                 if (r.question.svg != null && r.question.svg!.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  SvgPicture.string(r.question.svg!,
-                      height: 80,
-                      width: () {
-                        final ratio = svgAspectRatio(r.question.svg!);
-                        return ratio == null ? null : 80 * ratio;
-                      }(),
-                      fit: BoxFit.contain),
+                  SvgPicture.string(r.question.svg!, height: 80, width: () {
+                    final ratio = svgAspectRatio(r.question.svg!);
+                    return ratio == null ? null : 80 * ratio;
+                  }(), fit: BoxFit.contain),
                 ],
                 if (opts.isNotEmpty) ...[
                   const SizedBox(height: 8),
