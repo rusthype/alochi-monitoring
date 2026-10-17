@@ -344,7 +344,9 @@ class HubState extends ChangeNotifier {
   final TicksFn _ticks;
   final Random _rng;
 
-  /// Every `tests[].key` of the pack — the only keys a result may carry.
+  /// Every `tests[].key` of the pack, plus the closed list of built-in runner
+  /// keys the hub's owner adds (`kAssetTestKeys`, asset_test_keys.dart) -- the
+  /// only keys a result may carry.
   final Set<String> allowedTestKeys;
 
   /// `test key -> duration in minutes`, for the "time left" column.
@@ -894,7 +896,7 @@ class HubState extends ChangeNotifier {
   /// `student_invalid` / `test_not_in_pack` checks but is STRICTER on keys:
   /// the hub has no database, so "a key the server has never heard of" cannot
   /// be told apart from a forged one — every non-blank key must be a key of
-  /// this pack.
+  /// this pack or one of the closed `asset:` keys (see [allowedTestKeys]).
   String? checkResult(Map<String, dynamic> payload) {
     final sid = payload['student_id'];
     if (sid is! String || !_studentsById.containsKey(sid)) {

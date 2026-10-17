@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import '../../core/offline/offline_asset_results.dart';
 import '../../core/sync/test_catalog_service.dart';
 
 // ── Models ────────────────────────────────────────────────────────────────────
@@ -255,7 +256,12 @@ class Unit1Loader {
   }
 
   /// Server-first loader: online sync → disk cache → bundled asset fallback.
-  static Future<Unit1TestData> loadResolved({String testKey = 'unit1_eng'}) async {
+  static Future<Unit1TestData> loadResolved(
+      {String testKey = 'unit1_eng'}) async {
+    // Offline USB / LAN: the pack's copy of a published test has no answer key
+    // and `ensureDownloaded` would write it into the persistent test cache,
+    // breaking this runner online later. Use the bundled asset only.
+    if (isOfflineContentMode) return load();
     final svc = TestCatalogService.instance;
     // 1. Online: download if newer, otherwise return cached version
     final downloaded = await svc.ensureDownloaded(testKey);

@@ -148,8 +148,8 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
   `HttpServer` darajasida cheklab bo'lmaydi (`idleTimeout` 15 s). Firewall / tarmoq darajasida cheklang.
 - UDP e'lon `255.255.255.255` va har interfeysning `/24` broadcast manziliga yuboriladi (dart:io netmask
   bermaydi); boshqa niqobli tarmoqda `255.255.255.255` yoki qo'lda `IP:port` ishlatiladi.
-- Assets testlar (unit1, combined, interhouse ...) USB rejimidagi kabi hub'dan o'tmaydi (o'z runner'lari
-  onlayn navbatga yozadi) — bu Faza 1 dan meros.
+- Ilovaga qotirilgan ("assets") testlar — Unit 1, Combined, Interhouse, Bob 1-4 — uchun pastdagi
+  "Assets testlar oflayn rejimda" bo'limiga qarang (ular endi onlayn navbatga EMAS, zanjirga yoziladi).
 
 ## O'qituvchi uchun tartib (kod chiqib ketsa)
 
@@ -170,3 +170,37 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
   id'lari `/groups` da ochiq, shuning uchun hujumchi uchun foydasi yo'q, halol oqim esa buzilishi mumkin.
 - **S-015** — NAT ortidagi bir manzildan ko'p PC ulansa, manzil bo'yicha kvota/parallellik/8-klient chegarasi
   ularni birga cheklaydi. Sinf tarmog'ida NAT bo'lmasligi kerak.
+
+## Assets testlar oflayn rejimda (USB paket va LAN)
+
+Ilovaga qotirilgan testlar (Unit 1, Combined, Interhouse, Bob 1-4) paketdagi test emas: javob kaliti
+ilovaning o'zida. Oflayn rejimda (paket ochiq yoki hub'ga ulangan) ularning natijasi onlayn `local_queue`ga
+**yozilmaydi** — internetsiz sinfda u hech qachon eksportga tushmasdi. O'rniga:
+
+- **O'quvchi nomidan.** Kirish ekranlarida (Lokal baholash / Combined / Unit 1 / Bob 1-4) ism maydonlari o'rniga
+  ro'yxatdan **guruh -> o'quvchi** tanlanadi; tanlanmasa test boshlanmaydi. Natija `student_id` + `group_id` bilan
+  yoziladi; o'quvchisiz natija yozilmaydi (xato holati + "Qayta urinish", jim yo'qolmaydi).
+- **USB:** natija paket zanjiriga (`PackResultsDb.append`, `OfflinePackSession.recordResult`). **LAN klient:**
+  shifrlangan `lan_outbox` -> hub `/result` (ack gacha qayta uriniladi). Idempotency kaliti va payload bir marta
+  quriladi, qayta urinish aynan shuni yuboradi.
+- **Ball ko'rsatilmaydi.** Runner'ning o'z ekrani o'rniga "Javoblaringiz saqlandi" (ballsiz, qaror 2); lokal tarix
+  (`HistoryDb`) ham yozilmaydi (ball shu kompyuterda qolmasin). Runner'ning ichki hisobi mashq uchun oldingidek.
+- **Kalitlar** (`lib/core/offline/asset_test_keys.dart`, yagona manba): `asset:unit1_eng`, `asset:monitoring_unit1`,
+  `asset:interhouse_g2`, `asset:bob1_4`. Natijada `test_key` ham, `detail.test_key` ham shu.
+  **Nega runner'ning o'z kalitlari emas:** `unit1_eng`, `interhouse_g2`, `bob1_4` serverda `MonitoringTest` sifatida
+  ham chop etiladi (runner'lar ularni onlayn yuklab oladi). Server paketda bo'lmagan, lekin o'zi biladigan kalitli
+  yozuvni `test_not_in_pack` bilan **rad etadi** (`offline_pack.py::_test_key_problems`) — natija import paytida
+  yo'qolardi. `asset:` prefiksi server uchun noma'lum (va `diag:/package:/pack:` emas), shuning uchun yozuv qabul
+  qilinadi va `verified=False` bilan saqlanadi. Qiymatlarni o'zgartirish kerak bo'lsa — faqat shu fayl.
+- **Hub allowlist'i.** Hub endi paketning o'z kalitlariga qo'shimcha **faqat shu 4 ta** `asset:` kalitni qabul qiladi
+  (`ShelfHub` ularni `allowedTestKeys`ga qo'shadi). Ro'yxatdan tashqari paketda yo'q kalit (shu jumladan runner'larning
+  o'z `unit1_eng` kabi kalitlari) hamon `422 test_not_in_pack`. `student_id`/`(student, group)` tekshiruvi o'zgarmagan.
+- **Server ball hisoblamaydi** (kalitni bilmaydi): bu yozuvlar `unverified`. Payload — runner'ning onlayn `/result/`
+  tanasi (`pct`, `english`/`math` sonlari, `answers`, `detail`) + `student_id`, `group_id`, `group_name`, `school_code`
+  (paketdan), `test_key`. Ya'ni runner'ning **o'z hisoblagan balli eksport faylida bor** (ekranda ko'rsatilmaydi).
+- **Mashq ma'lumoti.** Oflayn rejimda Unit 1 / Bob 1-4 / math yuklagichlari faqat ilovadagi (assets) nusxani o'qiydi:
+  paketdagi (javob kalitisiz) nusxa doimiy test keshiga tushib, keyin onlayn rejimni buzmasligi uchun.
+
+Qoldiq xavf: assets natijalari hub'da ham, serverda ham tekshirib bo'lmaydi (kalit ilovada, `pct` mijozniki) —
+"kodni bilgan istalgan PC istalgan o'quvchi nomidan yubora oladi" cheklovi (yuqorida) bu yerda ham amal qiladi,
+faqat natija `unverified` deb belgilanadi.

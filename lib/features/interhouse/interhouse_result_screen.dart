@@ -15,6 +15,9 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'interhouse_data.dart';
 import 'interhouse_scorer.dart';
 import '../../core/utils/topic_format.dart';
+import '../../core/offline/asset_test_keys.dart';
+import '../../core/offline/offline_asset_results.dart';
+import '../offline/offline_asset_ui.dart';
 
 class InterhouseResultScreen extends StatefulWidget {
   final IhResult result;
@@ -27,6 +30,7 @@ class InterhouseResultScreen extends StatefulWidget {
   final String? lastName;
   final String? school;
   final DateTime? testStartedAt;
+  final OfflineAssetStudent? offlineStudent;
 
   const InterhouseResultScreen({
     super.key,
@@ -40,6 +44,7 @@ class InterhouseResultScreen extends StatefulWidget {
     this.lastName,
     this.school,
     this.testStartedAt,
+    this.offlineStudent,
   });
 
   @override
@@ -47,7 +52,7 @@ class InterhouseResultScreen extends StatefulWidget {
 }
 
 class _InterhouseResultScreenState extends State<InterhouseResultScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, OfflineAssetSaveState {
   late final AnimationController _scoreAnim;
   late final Animation<double> _scoreVal;
   String _sendStatus = 'Yuborilmoqda...';
@@ -67,7 +72,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
 
   @override
   void dispose() {
-    SyncService.instance.flushNow();
+    if (!isOfflineContentMode) SyncService.instance.flushNow();
     _scoreAnim.dispose();
     super.dispose();
   }
@@ -120,6 +125,14 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
   }
 
   Future<void> _submit() async {
+    if (isOfflineContentMode) {
+      // Offline USB / LAN: into the pack chain / hub in the student's name,
+      // never into the online queue or the local history; no score is shown.
+      return saveOfflineAsset(
+          testKey: kAssetKeyInterhouse,
+          student: widget.offlineStudent,
+          buildPayload: _buildOfflinePayload);
+    }
     try {
       // Save to local history
       await HistoryDb.insertResult(
@@ -214,6 +227,8 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
 
   @override
   Widget build(BuildContext context) {
+    final gate = offlineGate(widget.firstName ?? '', widget.lastName ?? '');
+    if (gate != null) return gate;
     final l10n = AppLocalizations.of(context)!;
     final result = widget.result;
     final level = result.level;

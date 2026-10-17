@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 import '../../shared/theme/app_theme.dart';
+import '../../core/offline/offline_asset_results.dart';
+import '../offline/offline_asset_ui.dart';
 import '../local_test/local_test_screen.dart';
 import 'bob14_data.dart';
 
@@ -16,6 +18,7 @@ class Bob14Screen extends StatefulWidget {
 class _Bob14ScreenState extends State<Bob14Screen>
     with SingleTickerProviderStateMixin {
   int? _variant;
+  OfflineAssetStudent? _offlineStudent; // offline USB / LAN mode only
   int _step = 0; // 0=variant, 1=student info
 
   final _firstCtrl = TextEditingController();
@@ -58,11 +61,16 @@ class _Bob14ScreenState extends State<Bob14Screen>
   }
 
   Future<void> _startTest() async {
-    final first = _firstCtrl.text.trim();
-    final last = _lastCtrl.text.trim();
-    if (first.isEmpty || last.isEmpty) {
-      setState(
-          () => _err = AppLocalizations.of(context)!.enterFirstAndLastName);
+    // Offline USB / LAN: the roster student (a result needs a `student_id`);
+    // otherwise the typed name.
+    final offline = isOfflineContentMode;
+    final picked = _offlineStudent;
+    final first = offline ? (picked?.firstName ?? '') : _firstCtrl.text.trim();
+    final last = offline ? (picked?.lastName ?? '') : _lastCtrl.text.trim();
+    if (offline ? picked == null : (first.isEmpty || last.isEmpty)) {
+      setState(() => _err = offline
+          ? AppLocalizations.of(context)!.selectStudent
+          : AppLocalizations.of(context)!.enterFirstAndLastName);
       return;
     }
     if (_passCtrl.text.trim() != '1234') {
@@ -87,6 +95,7 @@ class _Bob14ScreenState extends State<Bob14Screen>
               grade: 2,
               variant: _variant!,
               questions: qs,
+              offlineStudent: offline ? picked : null,
             ),
           ));
     } catch (e) {
@@ -272,19 +281,22 @@ class _Bob14ScreenState extends State<Bob14Screen>
                       fontWeight: FontWeight.w800,
                       color: AppColors.ink1)),
               const SizedBox(height: 20),
-              Row(children: [
-                Expanded(
-                    child: _Field(
-                        label: AppLocalizations.of(context)!.firstNameLabel,
-                        ctrl: _firstCtrl,
-                        hint: AppLocalizations.of(context)!.alisherHint)),
-                const SizedBox(width: 12),
-                Expanded(
-                    child: _Field(
-                        label: AppLocalizations.of(context)!.lastNameLabel,
-                        ctrl: _lastCtrl,
-                        hint: 'Karimov')),
-              ]),
+              if (isOfflineContentMode)
+                OfflineStudentPicker(onChanged: (st) => _offlineStudent = st)
+              else
+                Row(children: [
+                  Expanded(
+                      child: _Field(
+                          label: AppLocalizations.of(context)!.firstNameLabel,
+                          ctrl: _firstCtrl,
+                          hint: AppLocalizations.of(context)!.alisherHint)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: _Field(
+                          label: AppLocalizations.of(context)!.lastNameLabel,
+                          ctrl: _lastCtrl,
+                          hint: 'Karimov')),
+                ]),
               const SizedBox(height: 14),
               Row(children: [
                 Expanded(

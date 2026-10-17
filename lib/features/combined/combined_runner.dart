@@ -18,6 +18,9 @@ import '../../features/unit1/unit1_data.dart';
 import '../../shared/widgets/app_network_image.dart';
 import 'package:printing/printing.dart';
 import '../../core/utils/topic_format.dart';
+import '../../core/offline/asset_test_keys.dart';
+import '../../core/offline/offline_asset_results.dart';
+import '../offline/offline_asset_ui.dart';
 
 // ── Color accents ──────────────────────────────────────────────────────────────
 const Color _kPurple = AppColors.violet;
@@ -73,6 +76,10 @@ class CombinedRunner extends StatefulWidget {
   final List<LocalQuestion> mathQuestions; // 30 math MCQ
   final Unit1TestData testData;
 
+  /// Roster student (offline USB / LAN mode only); the result is written in
+  /// this student's name.
+  final OfflineAssetStudent? offlineStudent;
+
   const CombinedRunner({
     super.key,
     required this.firstName,
@@ -81,6 +88,7 @@ class CombinedRunner extends StatefulWidget {
     required this.variant,
     required this.mathQuestions,
     required this.testData,
+    this.offlineStudent,
   });
 
   @override
@@ -441,17 +449,19 @@ class _CombinedRunnerState extends State<CombinedRunner>
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     final durationSeconds = now.difference(_testStartedAt).inSeconds;
 
-    // Save to history
+    // Save to history (never offline: it would keep a score on this PC)
     try {
-      await HistoryDb.insertResult(
-        firstName: widget.firstName,
-        lastName: widget.lastName,
-        school: widget.school.isEmpty ? '—' : widget.school,
-        gradeGroup: 'Monitoring Test Unit 1',
-        mathScore: mathOk,
-        engScore: engOk,
-        totalPct: pct.toDouble(),
-      );
+      if (!isOfflineContentMode) {
+        await HistoryDb.insertResult(
+          firstName: widget.firstName,
+          lastName: widget.lastName,
+          school: widget.school.isEmpty ? '—' : widget.school,
+          gradeGroup: 'Monitoring Test Unit 1',
+          mathScore: mathOk,
+          engScore: engOk,
+          totalPct: pct.toDouble(),
+        );
+      }
     } catch (e) {
       debugPrint('HistoryDb error: $e');
     }
@@ -479,6 +489,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
           durationSeconds: durationSeconds,
           answers: answers,
           detail: detail,
+          offlineStudent: widget.offlineStudent,
         ),
       ),
     );
@@ -1029,6 +1040,7 @@ class CombinedResultScreen extends StatefulWidget {
   final int durationSeconds;
   final List<Map<String, dynamic>> answers;
   final Map<String, dynamic> detail;
+  final OfflineAssetStudent? offlineStudent;
 
   const CombinedResultScreen({
     super.key,
@@ -1050,13 +1062,15 @@ class CombinedResultScreen extends StatefulWidget {
     required this.durationSeconds,
     required this.answers,
     required this.detail,
+    this.offlineStudent,
   });
 
   @override
   State<CombinedResultScreen> createState() => _CombinedResultScreenState();
 }
 
-class _CombinedResultScreenState extends State<CombinedResultScreen> {
+class _CombinedResultScreenState extends State<CombinedResultScreen>
+    with OfflineAssetSaveState {
   // null = still on the initial "sending" state; localized lazily since
   // AppLocalizations isn't available yet at field-initializer time.
   String? _sendStatus;
@@ -1070,6 +1084,14 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
   }
 
   Future<void> _submitLocal() async {
+    if (isOfflineContentMode) {
+      // Offline USB / LAN: into the pack chain / hub in the student's name,
+      // never into the online queue; no score is shown.
+      return saveOfflineAsset(
+          testKey: kAssetKeyCombined,
+          student: widget.offlineStudent,
+          buildPayload: _buildPayload);
+    }
     final payload = _buildPayload();
     final token = newIdempotencyToken();
     try {
@@ -1123,6 +1145,8 @@ class _CombinedResultScreenState extends State<CombinedResultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final gate = offlineGate(widget.firstName, widget.lastName);
+    if (gate != null) return gate;
     final l10n = AppLocalizations.of(context)!;
     final scoreColor = _scoreColor(widget.pct.toDouble());
     final isPass = widget.pct >= 60;

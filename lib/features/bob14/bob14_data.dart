@@ -4,26 +4,29 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/services.dart';
 import '../local_test/local_data.dart';
+import '../../core/offline/offline_asset_results.dart';
 import '../../core/sync/test_catalog_service.dart';
 
 class Bob14Loader {
   static Map<String, dynamic>? _cache;
 
   static Future<Map<String, dynamic>> _load() async {
-    _cache ??=
-        jsonDecode(await rootBundle.loadString('assets/bob1_4.json'))
-            as Map<String, dynamic>;
+    _cache ??= jsonDecode(await rootBundle.loadString('assets/bob1_4.json'))
+        as Map<String, dynamic>;
     return _cache!;
   }
 
   static Future<List<LocalQuestion>> get(int variant) async {
     final data = await _load();
-    final raw =
-        (data['$variant'] as List).cast<Map<String, dynamic>>();
+    final raw = (data['$variant'] as List).cast<Map<String, dynamic>>();
     return raw.map(_parse).toList();
   }
 
   static Future<List<LocalQuestion>> getResolved(int variant) async {
+    // Offline USB / LAN: the pack's copy of a published test has no answer key
+    // and `ensureDownloaded` would write it into the persistent test cache,
+    // breaking this runner online later. Use the bundled asset only.
+    if (isOfflineContentMode) return get(variant);
     final svc = TestCatalogService.instance;
     final cached = await svc.cached('bob1_4');
     unawaited(svc.ensureDownloaded('bob1_4'));

@@ -7,6 +7,7 @@ import '../../shared/theme/app_theme.dart';
 import 'local_data.dart';
 import '../../shared/widgets/app_network_image.dart';
 import 'local_result_screen.dart';
+import '../../core/offline/offline_asset_results.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/widgets/exit_confirmation_scope.dart';
 
@@ -14,6 +15,10 @@ class LocalTestScreen extends StatefulWidget {
   final String firstName, lastName, group, school;
   final int grade, variant;
   final List<LocalQuestion> questions;
+
+  /// Roster student (offline USB / LAN mode only); the result is written in
+  /// this student's name.
+  final OfflineAssetStudent? offlineStudent;
   const LocalTestScreen(
       {super.key,
       required this.firstName,
@@ -22,7 +27,8 @@ class LocalTestScreen extends StatefulWidget {
       required this.school,
       required this.grade,
       required this.variant,
-      required this.questions});
+      required this.questions,
+      this.offlineStudent});
   @override
   State<LocalTestScreen> createState() => _LocalTestScreenState();
 }
@@ -210,6 +216,7 @@ class _LocalTestScreenState extends State<LocalTestScreen>
             pct: pct,
             topicScores: topicScores,
             testStartedAt: _testStartedAt,
+            offlineStudent: widget.offlineStudent,
           ),
         ));
   }

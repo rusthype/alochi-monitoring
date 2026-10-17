@@ -35,6 +35,7 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
 
 import '../db/pack_results_db.dart';
+import '../offline/asset_test_keys.dart';
 import '../offline/export_format.dart';
 import '../offline/offline_package_api.dart';
 import '../offline/offline_session.dart';
@@ -177,9 +178,12 @@ class ShelfHub extends ChangeNotifier {
       hubName: hubName,
       groups: pack.groups,
       students: pack.students,
+      // The pack's own keys, plus the closed list of built-in runner keys
+      // (asset_test_keys.dart). Anything else stays refused.
       allowedTestKeys: [
         for (final t in pack.tests)
-          if ((t['key']?.toString() ?? '').isNotEmpty) t['key'].toString()
+          if ((t['key']?.toString() ?? '').isNotEmpty) t['key'].toString(),
+        ...kAssetTestKeys,
       ],
       testDurationsMinutes: durations,
       ticks: _now,

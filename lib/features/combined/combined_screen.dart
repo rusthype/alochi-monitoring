@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../core/offline/offline_asset_results.dart';
+import '../offline/offline_asset_ui.dart';
 import '../bob14/bob14_data.dart';
 import '../unit1/unit1_data.dart';
 import 'combined_runner.dart';
@@ -23,6 +25,7 @@ class CombinedScreen extends StatefulWidget {
 class _CombinedScreenState extends State<CombinedScreen>
     with SingleTickerProviderStateMixin {
   int? _variant;
+  OfflineAssetStudent? _offlineStudent; // offline USB / LAN mode only
   int _step = 0; // 0=variant grid, 1=student info
 
   final _firstCtrl = TextEditingController();
@@ -64,10 +67,15 @@ class _CombinedScreenState extends State<CombinedScreen>
 
   Future<void> _startTest() async {
     final l10n = AppLocalizations.of(context)!;
-    final first = _firstCtrl.text.trim();
-    final last = _lastCtrl.text.trim();
-    if (first.isEmpty || last.isEmpty) {
-      setState(() => _err = l10n.enterFirstAndLastName);
+    // Offline USB / LAN: the roster student (a result needs a `student_id`);
+    // otherwise the typed name.
+    final offline = isOfflineContentMode;
+    final picked = _offlineStudent;
+    final first = offline ? (picked?.firstName ?? '') : _firstCtrl.text.trim();
+    final last = offline ? (picked?.lastName ?? '') : _lastCtrl.text.trim();
+    if (offline ? picked == null : (first.isEmpty || last.isEmpty)) {
+      setState(() =>
+          _err = offline ? l10n.selectStudent : l10n.enterFirstAndLastName);
       return;
     }
     if (_passCtrl.text.trim() != '1234') {
@@ -97,6 +105,7 @@ class _CombinedScreenState extends State<CombinedScreen>
               variant: _variant!,
               mathQuestions: mathQuestions.cast(),
               testData: testData,
+              offlineStudent: offline ? picked : null,
             ),
           ));
     } catch (e) {
@@ -288,19 +297,23 @@ class _CombinedScreenState extends State<CombinedScreen>
                             fontWeight: FontWeight.w800,
                             color: AppColors.ink1)),
                     const SizedBox(height: 20),
-                    Row(children: [
-                      Expanded(
-                          child: _CField(
-                              label: l10n.firstNameLabel,
-                              ctrl: _firstCtrl,
-                              hint: l10n.firstNameHint)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                          child: _CField(
-                              label: l10n.lastNameLabel,
-                              ctrl: _lastCtrl,
-                              hint: l10n.lastNameHint)),
-                    ]),
+                    if (isOfflineContentMode)
+                      OfflineStudentPicker(
+                          onChanged: (st) => _offlineStudent = st)
+                    else
+                      Row(children: [
+                        Expanded(
+                            child: _CField(
+                                label: l10n.firstNameLabel,
+                                ctrl: _firstCtrl,
+                                hint: l10n.firstNameHint)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: _CField(
+                                label: l10n.lastNameLabel,
+                                ctrl: _lastCtrl,
+                                hint: l10n.lastNameHint)),
+                      ]),
                     const SizedBox(height: 14),
                     _CField(
                         label: l10n.schoolNameLabel,

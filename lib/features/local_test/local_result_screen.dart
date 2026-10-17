@@ -12,6 +12,9 @@ import '../../core/services/pdf_service.dart';
 import '../../core/services/html_service.dart';
 import 'package:printing/printing.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import '../../core/offline/asset_test_keys.dart';
+import '../../core/offline/offline_asset_results.dart';
+import '../offline/offline_asset_ui.dart';
 
 class LocalResultScreen extends StatefulWidget {
   final String firstName, lastName, group, school;
@@ -21,6 +24,7 @@ class LocalResultScreen extends StatefulWidget {
   final int mathOk, engOk, pct;
   final Map<String, ({int ok, int tot})> topicScores;
   final DateTime? testStartedAt;
+  final OfflineAssetStudent? offlineStudent;
 
   const LocalResultScreen(
       {super.key,
@@ -36,14 +40,15 @@ class LocalResultScreen extends StatefulWidget {
       required this.engOk,
       required this.pct,
       required this.topicScores,
-      this.testStartedAt});
+      this.testStartedAt,
+      this.offlineStudent});
 
   @override
   State<LocalResultScreen> createState() => _LocalResultScreenState();
 }
 
 class _LocalResultScreenState extends State<LocalResultScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, OfflineAssetSaveState {
   late final AnimationController _scoreAnim;
   late final Animation<double> _scoreVal;
   String _sendStatus = '';
@@ -58,13 +63,21 @@ class _LocalResultScreenState extends State<LocalResultScreen>
         .animate(CurvedAnimation(parent: _scoreAnim, curve: Curves.easeOut));
     _scoreAnim.forward();
 
-    _sendStatus = AppLocalizations.of(context)!.localResSending;
     _submitLocal();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Not in initState: reading AppLocalizations there asserts in debug builds.
+    if (_sendStatus.isEmpty) {
+      _sendStatus = AppLocalizations.of(context)!.localResSending;
+    }
+  }
+
+  @override
   void dispose() {
-    SyncService.instance.flushNow();
+    if (!isOfflineContentMode) SyncService.instance.flushNow();
     _scoreAnim.dispose();
     super.dispose();
   }
@@ -85,6 +98,14 @@ class _LocalResultScreenState extends State<LocalResultScreen>
       .toList();
 
   Future<void> _submitLocal() async {
+    if (isOfflineContentMode) {
+      // Offline USB / LAN: into the pack chain / hub in the student's name,
+      // never into the online queue or the local history; no score is shown.
+      return saveOfflineAsset(
+          testKey: kAssetKeyBob14,
+          student: widget.offlineStudent,
+          buildPayload: _buildPayload);
+    }
     try {
       await HistoryDb.insertResult(
         firstName: widget.firstName,
@@ -197,6 +218,8 @@ class _LocalResultScreenState extends State<LocalResultScreen>
 
   @override
   Widget build(BuildContext context) {
+    final gate = offlineGate(widget.firstName, widget.lastName);
+    if (gate != null) return gate;
     final passed = widget.pct >= 60;
     final mainClr = passed ? AppColors.ok : AppColors.err;
 

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/services.dart';
+import '../../core/offline/offline_asset_results.dart';
 import '../../core/sync/test_catalog_service.dart';
 
 class LocalQuestion {
@@ -41,6 +42,10 @@ class LocalQuestionsLoader {
   }
 
   static Future<List<LocalQuestion>> getResolved(int grade, int variant) async {
+    // Offline USB / LAN: the pack's copy of a published test has no answer key
+    // and `ensureDownloaded` would write it into the persistent test cache,
+    // breaking this runner online later. Use the bundled asset only.
+    if (isOfflineContentMode) return get(grade, variant);
     final svc = TestCatalogService.instance;
     final cached = await svc.cached('math_g$grade');
     unawaited(svc.ensureDownloaded('math_g$grade'));
@@ -97,7 +102,11 @@ class LocalQuestionsLoader {
       topic: q['t'] as String? ?? '',
       image: q['i'] as String?,
       optionImages: q['oi'] != null
-          ? idx.map((i) => i < (q['oi'] as List).length ? (q['oi'] as List)[i] as String : '').toList()
+          ? idx
+              .map((i) => i < (q['oi'] as List).length
+                  ? (q['oi'] as List)[i] as String
+                  : '')
+              .toList()
           : [],
     );
   }

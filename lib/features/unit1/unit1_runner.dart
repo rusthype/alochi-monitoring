@@ -16,6 +16,9 @@ import 'package:printing/printing.dart';
 import 'unit1_data.dart';
 import '../../shared/widgets/app_network_image.dart';
 import '../../core/utils/topic_format.dart';
+import '../../core/offline/asset_test_keys.dart';
+import '../../core/offline/offline_asset_results.dart';
+import '../offline/offline_asset_ui.dart';
 
 // ── Unit1 blue accent (distinct from brand orange) ────────────────────────────
 const Color _kBlue = AppColors.blue;
@@ -41,6 +44,10 @@ class Unit1Runner extends StatefulWidget {
   final int variant; // 1–15
   final Unit1TestData testData;
 
+  /// Roster student (offline USB / LAN mode only); the result is written in
+  /// this student's name.
+  final OfflineAssetStudent? offlineStudent;
+
   const Unit1Runner({
     super.key,
     required this.firstName,
@@ -48,6 +55,7 @@ class Unit1Runner extends StatefulWidget {
     required this.school,
     required this.variant,
     required this.testData,
+    this.offlineStudent,
   });
 
   @override
@@ -382,17 +390,19 @@ class _Unit1RunnerState extends State<Unit1Runner>
       ]),
     };
 
-    // Save to history
+    // Save to history (never offline: it would keep a score on this PC)
     try {
-      await HistoryDb.insertResult(
-        firstName: widget.firstName,
-        lastName: widget.lastName,
-        school: widget.school.isEmpty ? '—' : widget.school,
-        gradeGroup: '1-sinf Unit 1',
-        mathScore: 0,
-        engScore: correct,
-        totalPct: pct.toDouble(),
-      );
+      if (!isOfflineContentMode) {
+        await HistoryDb.insertResult(
+          firstName: widget.firstName,
+          lastName: widget.lastName,
+          school: widget.school.isEmpty ? '—' : widget.school,
+          gradeGroup: '1-sinf Unit 1',
+          mathScore: 0,
+          engScore: correct,
+          totalPct: pct.toDouble(),
+        );
+      }
     } catch (e) {
       debugPrint('HistoryDb error: $e');
     }
@@ -418,6 +428,7 @@ class _Unit1RunnerState extends State<Unit1Runner>
           answers: answers,
           detail: detail,
           testStartedAt: _testStartedAt,
+          offlineStudent: widget.offlineStudent,
         ),
       ),
     );
@@ -937,6 +948,7 @@ class Unit1ResultScreen extends StatefulWidget {
   final List<Map<String, dynamic>> answers;
   final Map<String, dynamic> detail;
   final DateTime? testStartedAt;
+  final OfflineAssetStudent? offlineStudent;
 
   const Unit1ResultScreen({
     super.key,
@@ -956,13 +968,15 @@ class Unit1ResultScreen extends StatefulWidget {
     required this.answers,
     required this.detail,
     this.testStartedAt,
+    this.offlineStudent,
   });
 
   @override
   State<Unit1ResultScreen> createState() => _Unit1ResultScreenState();
 }
 
-class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
+class _Unit1ResultScreenState extends State<Unit1ResultScreen>
+    with OfflineAssetSaveState {
   // null = still on the initial "sending" state; localized lazily in build()
   // since AppLocalizations isn't available yet at field-initializer time.
   String? _sendStatus;
@@ -976,6 +990,14 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
   }
 
   Future<void> _submitLocal() async {
+    if (isOfflineContentMode) {
+      // Offline USB / LAN: into the pack chain / hub in the student's name,
+      // never into the online queue; no score is shown.
+      return saveOfflineAsset(
+          testKey: kAssetKeyUnit1,
+          student: widget.offlineStudent,
+          buildPayload: _buildPayload);
+    }
     final payload = _buildPayload();
     final token = newIdempotencyToken();
     try {
@@ -1030,6 +1052,8 @@ class _Unit1ResultScreenState extends State<Unit1ResultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final gate = offlineGate(widget.firstName, widget.lastName);
+    if (gate != null) return gate;
     final l10n = AppLocalizations.of(context)!;
     final pct = widget.pct;
     final correct = widget.correct;

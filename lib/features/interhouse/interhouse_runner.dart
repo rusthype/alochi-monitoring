@@ -9,6 +9,7 @@ import '../../core/models/models.dart';
 import 'interhouse_data.dart';
 import 'interhouse_scorer.dart';
 import 'interhouse_result_screen.dart';
+import '../../core/offline/offline_asset_results.dart';
 
 class InterhouseRunner extends StatefulWidget {
   final bool isOnline;
@@ -20,6 +21,10 @@ class InterhouseRunner extends StatefulWidget {
   final int variant;
   final IhTestData testData;
 
+  /// Roster student (offline USB / LAN mode only); the result is written in
+  /// this student's name.
+  final OfflineAssetStudent? offlineStudent;
+
   const InterhouseRunner({
     super.key,
     required this.isOnline,
@@ -30,6 +35,7 @@ class InterhouseRunner extends StatefulWidget {
     this.school,
     required this.variant,
     required this.testData,
+    this.offlineStudent,
   });
 
   @override
@@ -235,6 +241,7 @@ class _InterhouseRunnerState extends State<InterhouseRunner>
           lastName: widget.lastName,
           school: widget.school,
           testStartedAt: _testStartedAt,
+          offlineStudent: widget.offlineStudent,
         ),
       ),
     );

@@ -2,6 +2,8 @@
 // Interhouse Grade 2 → Variant → Student Info → Test
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../core/offline/offline_asset_results.dart';
+import '../offline/offline_asset_ui.dart';
 import '../interhouse/interhouse_data.dart';
 import '../interhouse/interhouse_runner.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
@@ -16,6 +18,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
     with SingleTickerProviderStateMixin {
   // Interhouse Grade 2 — grade fixed at 2
   int? _variant;
+  OfflineAssetStudent? _offlineStudent; // offline USB / LAN mode only
   int _step = 0; // 0=variant, 1=student info
   // Legacy: kept so LocalQuestionsLoader path compiles
   // ignore: prefer_final_fields
@@ -61,11 +64,16 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
   }
 
   Future<void> _startTest() async {
-    final first = _firstCtrl.text.trim();
-    final last = _lastCtrl.text.trim();
-    if (first.isEmpty || last.isEmpty) {
-      setState(
-          () => _err = AppLocalizations.of(context)!.enterFirstAndLastName);
+    // Offline USB / LAN: the roster student (a result needs a `student_id`);
+    // otherwise the typed name.
+    final offline = isOfflineContentMode;
+    final picked = _offlineStudent;
+    final first = offline ? (picked?.firstName ?? '') : _firstCtrl.text.trim();
+    final last = offline ? (picked?.lastName ?? '') : _lastCtrl.text.trim();
+    if (offline ? picked == null : (first.isEmpty || last.isEmpty)) {
+      setState(() => _err = offline
+          ? AppLocalizations.of(context)!.selectStudent
+          : AppLocalizations.of(context)!.enterFirstAndLastName);
       return;
     }
     if (_passCtrl.text.trim() != '1234') {
@@ -91,6 +99,7 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
               school: _schoolCtrl.text.trim(),
               variant: _variant!,
               testData: testData,
+              offlineStudent: offline ? picked : null,
             ),
           ));
     } catch (e) {
@@ -276,19 +285,22 @@ class _LocalGradeScreenState extends State<LocalGradeScreen>
                       fontWeight: FontWeight.w800,
                       color: AppColors.ink1)),
               const SizedBox(height: 20),
-              Row(children: [
-                Expanded(
-                    child: _Field(
-                        label: AppLocalizations.of(context)!.firstNameLabel,
-                        ctrl: _firstCtrl,
-                        hint: AppLocalizations.of(context)!.firstNameHint)),
-                const SizedBox(width: 12),
-                Expanded(
-                    child: _Field(
-                        label: AppLocalizations.of(context)!.lastNameLabel,
-                        ctrl: _lastCtrl,
-                        hint: AppLocalizations.of(context)!.lastNameHint)),
-              ]),
+              if (isOfflineContentMode)
+                OfflineStudentPicker(onChanged: (st) => _offlineStudent = st)
+              else
+                Row(children: [
+                  Expanded(
+                      child: _Field(
+                          label: AppLocalizations.of(context)!.firstNameLabel,
+                          ctrl: _firstCtrl,
+                          hint: AppLocalizations.of(context)!.firstNameHint)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: _Field(
+                          label: AppLocalizations.of(context)!.lastNameLabel,
+                          ctrl: _lastCtrl,
+                          hint: AppLocalizations.of(context)!.lastNameHint)),
+                ]),
               Row(children: [
                 Expanded(
                     child: _Field(
