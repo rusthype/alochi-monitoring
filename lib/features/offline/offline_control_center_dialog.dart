@@ -1,10 +1,12 @@
 // lib/features/offline/offline_control_center_dialog.dart
 //
 // "Oflayn rejim" control center, opened from the login screen's permanent
-// offline button. Three jobs:
+// offline button. Jobs:
 //   1. Load a `.alochipack` (file picker -> PIN -> roster picker).
 //   2. Export stored results as `.alochires` (choose a folder, e.g. the USB).
 //   3. Show what is stored / not yet exported, and leave offline mode.
+//   4. LAN (phase 3): on the teacher PC start the hub for the open pack and
+//      open the class monitor; on a student PC join a teacher's hub.
 //
 // When the public keys are not compiled in (OfflineKeys.isConfigured == false)
 // everything is disabled behind a "not configured" notice — release builds
@@ -21,11 +23,14 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/db/pack_results_db.dart';
+import '../../core/local_server/shelf_hub.dart';
+import '../../core/offline/lan_client_session.dart';
 import '../../core/offline/offline_keys.dart';
 import '../../core/offline/offline_session.dart';
 import '../../core/offline/pack_loader.dart';
 import '../../core/offline/results_exporter.dart';
 import '../../shared/theme/app_theme.dart';
+import 'lan_connect_dialog.dart';
 
 Future<void> showOfflineControlCenter(BuildContext context) {
   return showDialog<void>(
@@ -57,7 +62,7 @@ class _OfflineControlCenterDialogState
   void initState() {
     super.initState();
     // No pack open -> no decrypted images should be lying around.
-    if (!OfflinePackSession.isActive) {
+    if (!OfflinePackSession.isActive && !LanClientSession.isActive) {
       unawaited(OfflinePackSession.cleanupMedia());
     }
     _refresh();
@@ -103,7 +108,7 @@ class _OfflineControlCenterDialogState
 
   // ── load a pack ────────────────────────────────────────────────────────────
 
-  Future<void> _loadPack() async {
+  Future<void> _loadPack({bool thenOpenHub = false}) async {
     final l10n = AppLocalizations.of(context)!;
     final picked = await FilePicker.platform.pickFiles(
       dialogTitle: l10n.usbPickPackTitle,
@@ -145,7 +150,11 @@ class _OfflineControlCenterDialogState
       await _refresh();
       if (!mounted) return;
       setState(() => _busy = false);
-      _startTests(session);
+      if (thenOpenHub) {
+        _openMonitor();
+      } else {
+        _startTests(session);
+      }
     } on PackException catch (e) {
       debugPrint('OfflineControlCenter: pack rejected: ${e.code.name}');
       _say(_packError(l10n, e), error: true);
@@ -158,18 +167,49 @@ class _OfflineControlCenterDialogState
     }
   }
 
-  void _startTests(OfflinePackSession session) {
+  void _startTests(OfflinePackSession session) =>
+      _goToGroups(session.pack.schoolCode, session.pack.schoolId);
+
+  /// Roster picker for the open pack (USB) or the joined hub (LAN).
+  void _goToGroups(String schoolCode, String schoolId) {
     final router = GoRouter.of(context);
-    final code =
-        session.pack.schoolCode.isEmpty ? '0' : session.pack.schoolCode;
-    final label = session.pack.schoolCode.isEmpty
+    final code = schoolCode.isEmpty ? '0' : schoolCode;
+    final label = schoolCode.isEmpty
         ? ''
-        : AppLocalizations.of(context)!.usbSchoolLabel(session.pack.schoolCode);
+        : AppLocalizations.of(context)!.usbSchoolLabel(schoolCode);
     Navigator.of(context).pop();
     router.push('/group_select/$code', extra: {
       'schoolLabel': label,
-      'schoolId': session.pack.schoolId,
+      'schoolId': schoolId,
     });
+  }
+
+  // ── LAN (phase 3) ──────────────────────────────────────────────────────────
+
+  /// Teacher PC: needs the unlocked pack (PIN) first, then the class monitor.
+  Future<void> _startHub() async {
+    if (OfflinePackSession.current == null) {
+      await _loadPack(thenOpenHub: true);
+    } else {
+      _openMonitor();
+    }
+  }
+
+  void _openMonitor() {
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    router.push('/lan_hub');
+  }
+
+  /// Student PC: find the teacher's hub, enter the class code, then pick the
+  /// student exactly as in USB mode.
+  Future<void> _connectToHub() async {
+    final session = await showLanConnectDialog(context);
+    if (session == null || !mounted) {
+      if (mounted) setState(() {});
+      return;
+    }
+    _goToGroups(session.schoolCode, session.schoolId);
   }
 
   void _exitMode() {
@@ -286,7 +326,10 @@ class _OfflineControlCenterDialogState
                       style: const TextStyle(color: AppColors.ink3)),
                 const SizedBox(height: 16),
                 FilledButton.icon(
-                  onPressed: (_busy || !_configured) ? null : _loadPack,
+                  onPressed:
+                      (_busy || !_configured || LanClientSession.isActive)
+                          ? null
+                          : _loadPack,
                   icon: const Icon(Icons.folder_open_rounded),
                   label: Text(l10n.usbLoadPack),
                 ),
@@ -296,6 +339,8 @@ class _OfflineControlCenterDialogState
                   icon: const Icon(Icons.upload_file_rounded),
                   label: Text(l10n.usbExportResults),
                 ),
+                const SizedBox(height: 16),
+                ..._lanSection(l10n),
                 if (_busy) ...[
                   const SizedBox(height: 14),
                   Row(children: [
@@ -335,6 +380,55 @@ class _OfflineControlCenterDialogState
         ),
       ),
     );
+  }
+
+  List<Widget> _lanSection(AppLocalizations l10n) {
+    final lan = LanClientSession.current;
+    final packOpen = OfflinePackSession.isActive;
+    final hub = ShelfHub.current;
+    final hubRunning = hub != null && hub.running && packOpen;
+    return [
+      const Divider(height: 1, color: AppColors.border),
+      const SizedBox(height: 16),
+      // Teacher PC: the hub.
+      if (hubRunning && hub.port != null) ...[
+        _notice(l10n.lanHubStatusRunning(hub.port!)),
+        const SizedBox(height: 8),
+      ],
+      FilledButton.tonalIcon(
+        onPressed: (_busy || !_configured || lan != null) ? null : _startHub,
+        icon: const Icon(Icons.dns_rounded),
+        label: Text(hubRunning ? l10n.lanHubOpenMonitor : l10n.lanHubButton),
+      ),
+      if (lan != null) ...[
+        const SizedBox(height: 4),
+        Text(l10n.lanDisconnectFirst,
+            style: const TextStyle(color: AppColors.ink3, fontSize: 12)),
+      ],
+      const SizedBox(height: 8),
+      // Student PC: join a teacher's hub.
+      if (lan != null) ...[
+        _notice(l10n.lanActiveHub(lan.hubName)),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          onPressed:
+              _busy ? null : () => _goToGroups(lan.schoolCode, lan.schoolId),
+          icon: const Icon(Icons.play_arrow_rounded),
+          label: Text(l10n.usbStartTests),
+        ),
+        const SizedBox(height: 8),
+      ],
+      OutlinedButton.icon(
+        onPressed: (_busy || packOpen) ? null : _connectToHub,
+        icon: const Icon(Icons.lan_rounded),
+        label: Text(l10n.lanConnectButton),
+      ),
+      if (packOpen) ...[
+        const SizedBox(height: 4),
+        Text(l10n.lanClosePackFirst,
+            style: const TextStyle(color: AppColors.ink3, fontSize: 12)),
+      ],
+    ];
   }
 
   Widget _packRow(AppLocalizations l10n, PackSummary s) {

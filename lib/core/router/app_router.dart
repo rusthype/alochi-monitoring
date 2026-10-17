@@ -23,6 +23,7 @@ import '../models/models.dart';
 // Test screens
 import '../../features/test/package_screen.dart';
 import '../../features/offline/offline_history_hub_screen.dart';
+import '../../features/offline/teacher_lan_monitoring_screen.dart';
 import '../../features/local_test/local_grade_screen.dart';
 import '../../features/combined/combined_screen.dart';
 import '../../features/test/engine_host_screen.dart';
@@ -206,6 +207,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             // button anywhere (locked navigation decision).
             return const OfflineHistoryHubScreen();
           }),
+      GoRoute(
+          path: '/lan_hub',
+          builder: (context, state) => const TeacherLanMonitoringScreen()),
       GoRoute(
           path: '/local_grade',
           builder: (context, state) {
@@ -395,8 +399,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             );
           }),
       ShellRoute(
-        builder: (context, state, child) =>
-            DiagnosticLocaleShell(child: child),
+        builder: (context, state, child) => DiagnosticLocaleShell(child: child),
         routes: [
           GoRoute(
               path: '/diagnostic_student_select',

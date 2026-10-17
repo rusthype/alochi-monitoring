@@ -40,6 +40,7 @@ import '../../core/services/heartbeat_service.dart';
 import '../../core/services/html_service.dart';
 import '../../core/services/pdf_service.dart';
 import '../../core/sync/sync_service.dart';
+import '../../core/offline/lan_client_session.dart';
 import '../../core/offline/offline_session.dart';
 import '../offline/offline_saved_screen.dart';
 import '../../shared/theme/app_theme.dart';
@@ -255,10 +256,17 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
     // Offline USB pack mode: the pack has no answer key, so the locally
     // computed score is meaningless and is never stored or shown. The answers
     // go into the pack's HMAC chain; the server scores them on import.
+    // LAN client mode (phase 3) is the same story: the hub has no key either,
+    // and the answers wait in the encrypted outbox until the hub acks them.
     final pack = OfflinePackSession.current;
-    if (pack != null) {
+    final lan = LanClientSession.current;
+    if (pack != null || lan != null) {
       try {
-        await pack.recordResult(payload, token: token);
+        if (pack != null) {
+          await pack.recordResult(payload, token: token);
+        } else {
+          await lan!.recordResult(payload, token: token);
+        }
         await AttemptStore.clear(result.testKey);
       } catch (e) {
         debugPrint('EngineHostScreen: offline recordResult error: $e');
@@ -1612,13 +1620,10 @@ class _TzAnalysis extends StatelessWidget {
                         height: 1.5)),
                 if (r.question.svg != null && r.question.svg!.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  SvgPicture.string(r.question.svg!,
-                      height: 80,
-                      width: () {
-                        final ratio = svgAspectRatio(r.question.svg!);
-                        return ratio == null ? null : 80 * ratio;
-                      }(),
-                      fit: BoxFit.contain),
+                  SvgPicture.string(r.question.svg!, height: 80, width: () {
+                    final ratio = svgAspectRatio(r.question.svg!);
+                    return ratio == null ? null : 80 * ratio;
+                  }(), fit: BoxFit.contain),
                 ],
                 if (opts.isNotEmpty) ...[
                   const SizedBox(height: 8),
