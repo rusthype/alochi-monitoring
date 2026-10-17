@@ -54,6 +54,17 @@ class OfflineAssetStudent {
   }
 }
 
+/// Longest free-text answer an assets runner accepts (input formatters) and the
+/// longest `answers[].chosen` an offline result may carry. The longest expected
+/// answer in the bundled data is 40 characters (Interhouse), so this only ever
+/// bites on junk -- which would otherwise make the hub refuse (413) or bloat the
+/// pack past what the server imports.
+const int kMaxAnswerChars = 200;
+
+String _clip(String s) => s.runes.length <= kMaxAnswerChars
+    ? s
+    : String.fromCharCodes(s.runes.take(kMaxAnswerChars));
+
 /// Stable code of a refused offline assets result (internal, log-only).
 const String kOfflineStudentRequired = 'offline_student_required';
 const String kOfflineUnknownAssetKey = 'offline_unknown_asset_key';
@@ -90,6 +101,22 @@ Map<String, dynamic> offlineAssetBody({
     ..['school_code'] = schoolCode
     ..['test_key'] = testKey;
   if (student.groupId.isNotEmpty) body['group_id'] = student.groupId;
+  // Defence line behind the input limits: typed answers are clipped here, on
+  // the offline path only (a student-typed 70 000 characters would make the hub
+  // refuse the result, or inflate the pack chain past the server's import size).
+  final answers = body['answers'];
+  if (answers is List) {
+    body['answers'] = [
+      for (final a in answers)
+        if (a is Map && a['chosen'] is String)
+          {
+            ...Map<String, dynamic>.from(a),
+            'chosen': _clip(a['chosen'] as String)
+          }
+        else
+          a
+    ];
+  }
   final detail = body['detail'];
   body['detail'] = <String, dynamic>{
     if (detail is Map) ...Map<String, dynamic>.from(detail),

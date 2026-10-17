@@ -10,6 +10,7 @@ import 'package:alochi_monitoring/core/db/pack_results_db.dart';
 import 'package:alochi_monitoring/core/local_server/hub_guard.dart';
 import 'package:alochi_monitoring/core/local_server/shelf_hub.dart';
 import 'package:alochi_monitoring/core/offline/asset_test_keys.dart';
+import 'package:alochi_monitoring/core/offline/export_format.dart';
 import 'package:alochi_monitoring/core/offline/lan_client_session.dart';
 import 'package:alochi_monitoring/core/offline/offline_asset_results.dart';
 import 'package:alochi_monitoring/core/offline/offline_session.dart';
@@ -149,6 +150,102 @@ void main() {
               schoolCode: '999'),
           throwsA(isA<OfflineAssetException>()
               .having((e) => e.code, 'code', kOfflineUnknownAssetKey)));
+    });
+  });
+
+  // ── S-N1: a student-typed answer must not be able to break the result ──────
+  group('oversized typed answers (S-N1)', () {
+    Map<String, dynamic> hugePayload() => {
+          ..._runnerPayload(),
+          'answers': [
+            {
+              'section': 'Spelling',
+              'q': 'q0',
+              'chosen': 'x' * 60000,
+              'ok': false
+            },
+            {
+              'section': 'Vocabulary',
+              'q': 'q1',
+              'chosen': 'a train',
+              'ok': true
+            },
+            {'section': 'Reading', 'q': 'q2', 'chosen': 7},
+          ],
+        };
+
+    test('offlineAssetBody clips chosen to $kMaxAnswerChars, nothing else', () {
+      final src = hugePayload();
+      final body = offlineAssetBody(
+          payload: src,
+          testKey: kAssetKeyUnit1,
+          student: _student,
+          schoolCode: '999');
+      final a = (body['answers'] as List).cast<Map>();
+      expect((a[0]['chosen'] as String).length, kMaxAnswerChars);
+      expect(a[0]['section'], 'Spelling');
+      expect(a[1]['chosen'], 'a train');
+      expect(a[2]['chosen'], 7);
+      // The runner's own map (the online queue's input) is untouched.
+      expect(
+          ((src['answers'] as List).first as Map)['chosen'], hasLength(60000));
+      expect(utf8.encode(jsonEncode(body)).length, lessThan(2000));
+    });
+
+    test('clipping never splits a character', () {
+      final body = offlineAssetBody(payload: {
+        'answers': [
+          {'chosen': '\u{1F600}' * 500}
+        ]
+      }, testKey: kAssetKeyUnit1, student: _student, schoolCode: '999');
+      final c = ((body['answers'] as List).first as Map)['chosen'] as String;
+      expect(c.runes.length, kMaxAnswerChars);
+      expect(c.runes.every((r) => r == 0x1F600), isTrue);
+    });
+
+    test('the real longest expected answer (40 chars) is far below the limit',
+        () {
+      expect(kMaxAnswerChars, greaterThanOrEqualTo(5 * 40));
+    });
+
+    test('every free-text field of the three runners carries the limit', () {
+      for (final f in [
+        'lib/features/unit1/unit1_runner.dart',
+        'lib/features/combined/combined_runner.dart',
+        'lib/features/interhouse/interhouse_runner.dart',
+      ]) {
+        final src = File(f).readAsStringSync();
+        final fields = RegExp(r'TextField\(').allMatches(src).length;
+        final limited = RegExp(
+                r'TextField\(\n\s+controller: [_a-z.]+,\n\s+inputFormatters: \[LengthLimitingTextInputFormatter\(kMaxAnswerChars\)\]')
+            .allMatches(src)
+            .length;
+        expect(fields, 3, reason: f);
+        expect(limited, fields, reason: f);
+      }
+    });
+
+    test('USB: a 60 000-character answer is stored clipped; export entry small',
+        () async {
+      final tmp = Directory.systemTemp.createTempSync('asset_huge_');
+      await OfflineQueue.openAtPath(p.join(tmp.path, 'q.db'));
+      await OfflinePackSession.open(
+          lanTestPack(), Directory(p.join(tmp.path, 'media')));
+      try {
+        await recordOfflineAssetResult(
+            payload: hugePayload(),
+            token: 'huge',
+            testKey: kAssetKeyUnit1,
+            student: _student);
+        final row = (await PackResultsDb.rowsForPack(lanPackUuid)).single;
+        expect(row.payloadJson.length, lessThan(2000));
+        expect(exportEntryBytes(row.payloadJson, row.metaJson),
+            lessThan(HubLimits.resultBody));
+      } finally {
+        OfflinePackSession.close();
+        await OfflineQueue.resetForTest();
+        tmp.deleteSync(recursive: true);
+      }
     });
   });
 
@@ -361,6 +458,37 @@ void main() {
       expect(size, lessThan(HubLimits.resultBody ~/ 2),
           reason: 'must keep >= 50% headroom, was $size');
       final r = await send(await join(), 'big', big);
+      expect(r.statusCode, 200, reason: r.body);
+    });
+
+    test('a 60 000-char answer: unclipped would be 413, clipped is accepted',
+        () async {
+      final raw = {
+        ..._runnerPayload(),
+        'answers': [
+          {'section': 'Spelling', 'q': 'q', 'chosen': 'x' * 60000, 'ok': false},
+        ],
+      };
+      final t = await join();
+      // Without the clip the hub refuses it (the student would see "saved").
+      final unclipped = await send(
+          t,
+          'raw',
+          {
+            ...raw,
+            'student_id': lanS1,
+            'group_id': lanG1,
+            'test_key': kAssetKeyUnit1,
+          }..['answers'] = [
+              {'chosen': 'x' * 70000}
+            ]);
+      expect(unclipped.statusCode, 413);
+      final clipped = offlineAssetBody(
+          payload: raw,
+          testKey: kAssetKeyUnit1,
+          student: _student,
+          schoolCode: '999');
+      final r = await send(t, 'clipped', clipped);
       expect(r.statusCode, 200, reason: r.body);
     });
 

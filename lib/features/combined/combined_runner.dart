@@ -2,6 +2,7 @@
 // Combined Monitoring Test runner: Math (30 MCQ) + English Unit 1 (49 Qs) = 79 total
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
@@ -1961,6 +1962,7 @@ class _CSpellingQuestion extends StatelessWidget {
         const SizedBox(height: 10),
         TextField(
           controller: controller,
+          inputFormatters: [LengthLimitingTextInputFormatter(kMaxAnswerChars)],
           onChanged: onChanged,
           decoration: InputDecoration(
             hintText: AppLocalizations.of(context)!.answerHintText,
@@ -2035,6 +2037,7 @@ class _CSentenceQuestion extends StatelessWidget {
         const SizedBox(height: 10),
         TextField(
           controller: controller,
+          inputFormatters: [LengthLimitingTextInputFormatter(kMaxAnswerChars)],
           onChanged: onChanged,
           decoration: InputDecoration(
             hintText: AppLocalizations.of(context)!.fullSentenceHintText,
@@ -2205,6 +2208,7 @@ class _CFillQuestionState extends State<_CFillQuestion> {
         const SizedBox(height: 10),
         TextField(
           controller: _ctrl,
+          inputFormatters: [LengthLimitingTextInputFormatter(kMaxAnswerChars)],
           onChanged: widget.onChanged,
           decoration: InputDecoration(
             hintText: AppLocalizations.of(context)!.answerHintText,

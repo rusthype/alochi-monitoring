@@ -2,6 +2,7 @@
 // Offline English test runner — Grade 1, Unit 1 (49 questions, 49 minutes)
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
@@ -1729,6 +1730,7 @@ class _SpellingQuestion extends StatelessWidget {
         const SizedBox(height: 10),
         TextField(
           controller: controller,
+          inputFormatters: [LengthLimitingTextInputFormatter(kMaxAnswerChars)],
           onChanged: onChanged,
           decoration: InputDecoration(
             hintText: AppLocalizations.of(context)!.answerHintText,
@@ -1805,6 +1807,7 @@ class _SentenceQuestion extends StatelessWidget {
         const SizedBox(height: 10),
         TextField(
           controller: controller,
+          inputFormatters: [LengthLimitingTextInputFormatter(kMaxAnswerChars)],
           onChanged: onChanged,
           decoration: InputDecoration(
             hintText: AppLocalizations.of(context)!.fullSentenceHintText,
@@ -1979,6 +1982,7 @@ class _FillQuestionState extends State<_FillQuestion> {
         const SizedBox(height: 10),
         TextField(
           controller: _ctrl,
+          inputFormatters: [LengthLimitingTextInputFormatter(kMaxAnswerChars)],
           onChanged: widget.onChanged,
           decoration: InputDecoration(
             hintText: AppLocalizations.of(context)!.answerHintText,

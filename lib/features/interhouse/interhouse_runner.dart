@@ -2,6 +2,7 @@
 // Section-based test runner for Interhouse Grade 2
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/utils/responsive.dart';
@@ -994,6 +995,7 @@ class _WordQuestion extends StatelessWidget {
         const SizedBox(height: 10),
         TextField(
           controller: controller,
+          inputFormatters: [LengthLimitingTextInputFormatter(kMaxAnswerChars)],
           onChanged: (v) => onChanged(v.toLowerCase()),
           decoration: InputDecoration(
             hintText: AppLocalizations.of(context)!.answerHintText,
@@ -1168,6 +1170,7 @@ class _FillQuestionState extends State<_FillQuestion> {
         const SizedBox(height: 10),
         TextField(
           controller: _ctrl,
+          inputFormatters: [LengthLimitingTextInputFormatter(kMaxAnswerChars)],
           onChanged: widget.onChanged,
           decoration: InputDecoration(
             hintText: AppLocalizations.of(context)!.answerHintText,
@@ -1246,6 +1249,7 @@ class _SentenceQuestion extends StatelessWidget {
         const SizedBox(height: 10),
         TextField(
           controller: controller,
+          inputFormatters: [LengthLimitingTextInputFormatter(kMaxAnswerChars)],
           onChanged: onChanged,
           decoration: InputDecoration(
             hintText: AppLocalizations.of(context)!.fullSentenceHintText,
