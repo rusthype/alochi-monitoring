@@ -1,0 +1,181 @@
+name: Offline Windows verify (branch only, NOT a release)
+
+# Branch-only check of the offline USB/LAN pack work on a real Windows runner.
+# It NEVER signs, tags, creates a release or touches the `latest` channel that
+# production auto-update reads. The build artifact is TEST-ONLY (see below).
+
+on:
+  push:
+    branches: ['feat/offline-usb-pack']
+  workflow_dispatch:
+
+concurrency:
+  group: offline-windows-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Analyze + offline tests (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Generate l10n (drift check)
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          flutter gen-l10n
+          git status --short lib/l10n
+          # Informational: CRLF checkout differences are expected, not fatal.
+          exit 0
+
+      - name: Flutter analyze
+        timeout-minutes: 10
+        run: flutter analyze --no-pub
+
+      - name: Tests - LAN hub / client / discovery
+        if: ${{ !cancelled() }}
+        timeout-minutes: 25
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $files = Get-ChildItem test -File | Where-Object { $_.Name -match '^lan_.*\.dart$' } | Sort-Object Name | ForEach-Object { "test/$($_.Name)" }
+          Write-Host "Files: $($files -join ', ')"
+          flutter test -j 1 --reporter expanded @files 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\t_lan.log"
+          exit $LASTEXITCODE
+
+      - name: Tests - offline pack / results / clock
+        if: ${{ !cancelled() }}
+        timeout-minutes: 20
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $files = @(Get-ChildItem test -File | Where-Object { $_.Name -match '^(offline|pack)_.*\.dart$' } | Sort-Object Name | ForEach-Object { "test/$($_.Name)" })
+          $files += 'test/results_exporter_test.dart', 'test/monitored_clock_test.dart'
+          Write-Host "Files: $($files -join ', ')"
+          flutter test -j 1 --reporter expanded @files 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\t_offline.log"
+          exit $LASTEXITCODE
+
+      - name: Tests - Windows-only (GetTickCount64, UDP)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          flutter test -j 1 --reporter expanded test/windows_clock_ffi_test.dart 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP\t_windows.log"
+          exit $LASTEXITCODE
+
+      - name: Job summary
+        if: ${{ always() }}
+        shell: pwsh
+        run: |
+          $md = @('## Offline Windows verify', '',
+                  'Runs on a hosted `windows-latest` runner. This does NOT prove Windows GUI behaviour, a two-PC LAN, Windows Firewall prompts or sleep/hibernation - see `docs/offline_windows_e2e_runbook.md`.', '')
+          foreach ($n in 'lan', 'offline', 'windows') {
+            $f = Join-Path $env:RUNNER_TEMP "t_$n.log"
+            $md += "### Tests: $n"
+            if (-not (Test-Path $f)) { $md += '_step did not run_'; $md += ''; continue }
+            $last = Select-String -Path $f -Pattern '^\d\d:\d\d \+\d+' | Select-Object -Last 1
+            $md += '```'
+            $md += $(if ($last) { $last.Line } else { 'no test progress line (compile/load error?)' })
+            $md += '```'
+            $bad = Select-String -Path $f -Pattern '\[E\]\s*$' | ForEach-Object { $_.Line.Trim() } | Select-Object -Unique
+            if ($bad) { $md += '**Failed:**'; $bad | ForEach-Object { $md += "- ``$_``" } }
+            $info = Select-String -Path $f -Pattern 'INFO-WINDOWS:' | ForEach-Object { $_.Line.Trim() } | Select-Object -Unique
+            if ($info) { $md += '**Windows observations (informational):**'; $info | ForEach-Object { $md += "- $_" } }
+            $md += ''
+          }
+          $md -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+
+  build-test-artifact:
+    name: TEST-ONLY Windows build (test keys, unsigned)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build Windows (Release, TEST public keys baked in)
+        timeout-minutes: 30
+        shell: pwsh
+        run: |
+          $sig = [Convert]::ToBase64String([IO.File]::ReadAllBytes("test/fixtures/offline/test_signing_public.pem"))
+          $res = [Convert]::ToBase64String([IO.File]::ReadAllBytes("test/fixtures/offline/test_results_public.pem"))
+          flutter build windows --release "--dart-define=OFFLINE_SIGNING_PUBKEY_B64=$sig" "--dart-define=OFFLINE_RESULTS_PUBKEY_B64=$res"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Package TEST-ONLY zip
+        id: pkg
+        shell: pwsh
+        run: |
+          $short = $env:GITHUB_SHA.Substring(0, 7)
+          $rel = "build\windows\x64\runner\Release"
+          if (-not (Test-Path "$rel\alochi_monitoring.exe")) { Write-Host "::error::alochi_monitoring.exe missing"; exit 1 }
+          @"
+          FAQAT SINOV - TEST-ONLY BUILD
+          =============================
+          Bu build test kalitlari bilan yig'ilgan, IMZOSIZ, tarqatilmaydi.
+          Test kalitlarining private qismi ommaviy repoda (apps/monitoring/tests/fixtures/offline).
+          Faqat feat/offline-usb-pack tekshiruvi uchun. Maktab kompyuterlariga O'RNATMANG.
+
+          Commit : $env:GITHUB_SHA
+          Branch : $env:GITHUB_REF_NAME
+          Run    : $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID
+          Paket  : test/fixtures/offline/golden.alochipack (PIN 12345678)
+          Runbook: docs/offline_windows_e2e_runbook.md
+          "@ | Set-Content -Path "$rel\README_TEST_ONLY.txt" -Encoding utf8
+          $zip = "alochi-monitoring-offline-TEST-ONLY-$short.zip"
+          Compress-Archive -Path "$rel\*" -DestinationPath $zip
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash
+          $mb = '{0:N1}' -f ((Get-Item $zip).Length / 1MB)
+          "zip=$zip" >> $env:GITHUB_OUTPUT
+          "name=alochi-monitoring-offline-TEST-ONLY-$short" >> $env:GITHUB_OUTPUT
+          @(
+            '## TEST-ONLY Windows build',
+            '',
+            '> **FAQAT SINOV** - test kalitlari bilan yig''ilgan, imzosiz, tarqatilmaydi, test kalitlarining private qismi ommaviy repoda.',
+            '',
+            "- Artifact: ``alochi-monitoring-offline-TEST-ONLY-$short`` (retention 3 kun)",
+            "- Zip: ``$zip`` ($mb MB)",
+            "- SHA256: ``$hash``",
+            "- Download: ``gh run download $env:GITHUB_RUN_ID --repo $env:GITHUB_REPOSITORY -n alochi-monitoring-offline-TEST-ONLY-$short``"
+          ) -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+
+      - name: Upload TEST-ONLY artifact
+        # Actions artifact storage quota has been full before: never fail the run for it.
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.pkg.outputs.name }}
+          path: ${{ steps.pkg.outputs.zip }}
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error
