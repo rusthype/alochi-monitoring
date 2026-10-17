@@ -214,7 +214,9 @@ void main() {
         'lib/features/combined/combined_runner.dart',
         'lib/features/interhouse/interhouse_runner.dart',
       ]) {
-        final src = File(f).readAsStringSync();
+        // Windows checkouts convert LF -> CRLF (git autocrlf); the regex below
+        // is written against LF.
+        final src = File(f).readAsStringSync().replaceAll('\r\n', '\n');
         final fields = RegExp(r'TextField\(').allMatches(src).length;
         final limited = RegExp(
                 r'TextField\(\n\s+controller: [_a-z.]+,\n\s+inputFormatters: \[LengthLimitingTextInputFormatter\(kMaxAnswerChars\)\]')

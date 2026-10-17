@@ -673,8 +673,16 @@ void main() {
           [...big.sublist(0, 2), ...fakeSof(640, 360), ...big.sublist(2)]);
       final r = await client.post(u('/frame', {'session_id': 'fs'}),
           headers: {'authorization': 'Bearer $t'}, body: bomb);
-      expect(r.statusCode, 422);
-      expect(jsonDecode(r.body), {'error': 'frame_too_large'});
+      // The codec has the last word, and codecs differ: macOS reads the real
+      // (second) SOF -> 422 frame_too_large; Windows' libjpeg rejects the
+      // two-SOF stream outright ("two SOF markers") -> 400 bad_frame, which
+      // docs/offline_lan_hub.md documents. Either way the bomb is refused.
+      expect(r.statusCode, anyOf(422, 400));
+      expect(
+          jsonDecode(r.body),
+          r.statusCode == 422
+              ? {'error': 'frame_too_large'}
+              : {'error': 'bad_frame'});
       expect(hub.state!.frameOf(hub.state!.views().single.id), isNull);
       // the same declared size without the trick is refused too
       ticks += 4000;
