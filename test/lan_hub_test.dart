@@ -654,7 +654,10 @@ void main() {
       expect(refused, 403);
       // A repeat of an ALREADY stored key is still acknowledged.
       expect((await sendResult(t, 'q0', lanResultPayload())).statusCode, 200);
-    });
+      // 151 sequential, individually fsync'd chain writes: seconds on a Mac,
+      // but a slow Windows CI disk exceeded the default 30 s once (the hub
+      // answered every request; only the clock ran out).
+    }, timeout: const Timeout(Duration(minutes: 3)));
 
     test('a finished result ends the PC\'s test attempt and drops its frame',
         () async {

@@ -4,6 +4,10 @@ CI (`offline-windows-verify.yml`) Windows'da kod va testlarni tekshiradi, lekin 
 Windows Firewall so'rovini, uyqu/hibernatsiyani isbotlamaydi**. Shu hujjat o'sha bo'shliqni yopadi.
 Har qadamda natijani katakka yozing: `[ ]` -> `[x] o'tdi` yoki `[!] yiqildi` + izoh.
 
+CI'da backend bilan round-trip testlar (Flutter eksporti -> `verify_alochires.py`; ~7 ta) **SKIP** bo'ladi
+(hosted runner'da backend checkout va python `cryptography` yo'q). Shuning uchun eksport formatining backend
+o'qigichi bilan mosligini faqat shu runbookdagi Mac tekshiruvi (0-bo'lim, 4-qadam) isbotlaydi.
+
 > **Build FAQAT SINOV:** test kalitlari bilan yig'ilgan, imzosiz; test kalitlarining private qismi ommaviy
 > repoda. Maktab kompyuterlariga o'rnatmang, sinovdan keyin o'chiring.
 
