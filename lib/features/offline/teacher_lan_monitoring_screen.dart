@@ -51,6 +51,7 @@ class _TeacherLanMonitoringScreenState
   bool _exporting = false;
   String? _exportMessage;
   bool _exportIsError = false;
+  bool _conflictsExpanded = false;
   List<String> _addresses = const [];
 
   @override
@@ -201,12 +202,17 @@ class _TeacherLanMonitoringScreenState
                     children: [
                       Expanded(
                         flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _conflictBanner(l10n, state),
-                            Expanded(child: _clientList(l10n, views)),
-                          ],
+                        child: LayoutBuilder(
+                          builder: (context, box) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // The banner is capped by the room there is (and
+                              // scrolls inside it): it can never squeeze the
+                              // class list out.
+                              _conflictBanner(l10n, state, box.maxHeight),
+                              Expanded(child: _clientList(l10n, views)),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -354,14 +360,18 @@ class _TeacherLanMonitoringScreenState
   /// Bounded in height and count so a flood of them can never push the client
   /// list off screen (N-3); the safe answer ("reject the new one") is the
   /// prominent button, freeing the old seat is the quiet one.
-  Widget _conflictBanner(AppLocalizations l10n, HubState? state) {
+  Widget _conflictBanner(AppLocalizations l10n, HubState? state, double room) {
     final list = state?.conflicts() ?? const <SeatConflict>[];
     if (state == null || list.isEmpty) return const SizedBox.shrink();
-    final shown = list.take(_maxBanners).toList();
+    final shown = (_conflictsExpanded ? list : list.take(_maxBanners)).toList();
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
-      constraints: const BoxConstraints(maxHeight: 240),
+      constraints: BoxConstraints(
+        maxHeight: _conflictsExpanded
+            ? (room * 0.6).clamp(120.0, 380.0)
+            : (room * 0.45).clamp(120.0, 240.0),
+      ),
       decoration: BoxDecoration(
         color: AppColors.warnMuted,
         borderRadius: BorderRadius.circular(12),
@@ -371,9 +381,23 @@ class _TeacherLanMonitoringScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l10n.lanSeatConflictTitle,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w800, color: AppColors.ink1)),
+            Row(children: [
+              Expanded(
+                child: Text(l10n.lanSeatConflictTitle,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, color: AppColors.ink1)),
+              ),
+              // In the header, not under the list: it must stay reachable
+              // however long the (scrolling) list gets.
+              if (list.length > _maxBanners)
+                TextButton(
+                  onPressed: () =>
+                      setState(() => _conflictsExpanded = !_conflictsExpanded),
+                  child: Text(_conflictsExpanded
+                      ? l10n.lanSeatCollapse
+                      : l10n.lanSeatMore(list.length - shown.length)),
+                ),
+            ]),
             for (final c in shown) ...[
               const SizedBox(height: 8),
               Text(l10n.lanSeatConflictBody(c.studentName),
@@ -394,6 +418,16 @@ class _TeacherLanMonitoringScreenState
                   },
                   child: Text(l10n.lanSeatReject),
                 ),
+                // Many PCs after one seat: turn them all down in one click.
+                if (list.where((o) => o.studentId == c.studentId).length > 1)
+                  OutlinedButton(
+                    onPressed: () {
+                      state.rejectAllClaims(c.studentId);
+                      setState(() {});
+                    },
+                    child: Text(l10n.lanSeatRejectAll(
+                        list.where((o) => o.studentId == c.studentId).length)),
+                  ),
                 TextButton(
                   onPressed: () {
                     state.resolveConflict(c.id, releaseHolder: true);
@@ -402,12 +436,6 @@ class _TeacherLanMonitoringScreenState
                   child: Text(l10n.lanSeatRelease),
                 ),
               ]),
-            ],
-            if (list.length > shown.length) ...[
-              const SizedBox(height: 8),
-              Text(l10n.lanSeatMore(list.length - shown.length),
-                  style: const TextStyle(
-                      color: AppColors.ink2, fontWeight: FontWeight.w700)),
             ],
           ],
         ),
@@ -451,6 +479,12 @@ class _TeacherLanMonitoringScreenState
             style: const TextStyle(color: AppColors.ink1)),
         Text(l10n.lanResultsReceived(state.resultsAccepted),
             style: const TextStyle(color: AppColors.ink1)),
+        // Results the hub turns away stay on the students' PCs; the teacher
+        // must see that this is happening (F-2).
+        if (state.refusedResults > 0)
+          Text(l10n.lanResultsRefused(state.refusedResults),
+              style: const TextStyle(
+                  color: AppColors.err, fontWeight: FontWeight.w700)),
       ],
     );
   }

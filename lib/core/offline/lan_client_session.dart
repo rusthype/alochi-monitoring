@@ -156,7 +156,8 @@ class LanClientSession implements OfflineContentSource {
   /// The hub rejected our token (restart / kicked): join again with the code.
   final ValueNotifier<bool> needsRejoin = ValueNotifier<bool>(false);
 
-  /// Why the hub is not taking results right now (`pack_full` / `client_quota`),
+  /// Why the hub is not taking results right now (`pack_full` / `client_quota` /
+  /// `student_quota`),
   /// or null. The results stay queued and are retried slowly; the operator is
   /// told to ask the teacher (S-001).
   final ValueNotifier<String?> hold = ValueNotifier<String?>(null);
@@ -547,10 +548,14 @@ class LanClientSession implements OfflineContentSource {
           acked++;
           hold.value = null;
         } else if (s == 507 ||
-            (s == 403 && _reasonOf(resp) == 'client_quota')) {
+            (s == 403 &&
+                (_reasonOf(resp) == 'client_quota' ||
+                    _reasonOf(resp) == 'student_quota'))) {
           // Not this result's fault and not permanent: the teacher can make
           // room (export + new pack run) or raise nothing -- either way the
-          // result must survive. Keep it queued, retry slowly, show why.
+          // result must survive. Keep it queued, retry slowly, show why. (A
+          // student over the hub's per-student cap is the same: the student's
+          // answers must never be dropped silently, F-2.)
           await LanOutboxDb.markAttempt(row.id);
           hold.value = _reasonOf(resp);
           _holdUntilTicks = MonitoredClock.instance.ticksMs + _holdRetryMs;

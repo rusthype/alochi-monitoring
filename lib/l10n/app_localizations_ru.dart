@@ -2778,4 +2778,21 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get lanHoldClientQuota =>
       'Достигнут предел результатов, которые может отправить этот компьютер. Результаты сохраняются; обратитесь к учителю.';
+
+  @override
+  String get lanHoldStudentQuota =>
+      'Достигнут предел результатов, которые компьютер учителя принимает для этого ученика. Результаты сохраняются; обратитесь к учителю.';
+
+  @override
+  String lanResultsRefused(int count) {
+    return 'Отклонённые результаты: $count (сохранены на компьютерах учеников)';
+  }
+
+  @override
+  String lanSeatRejectAll(int count) {
+    return 'Отклонить все ($count)';
+  }
+
+  @override
+  String get lanSeatCollapse => 'Свернуть';
 }

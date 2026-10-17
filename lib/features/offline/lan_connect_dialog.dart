@@ -359,9 +359,11 @@ class _LanConnectDialogState extends State<LanConnectDialog> {
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
-                      s.hold.value == 'client_quota'
-                          ? l10n.lanHoldClientQuota
-                          : l10n.lanHoldPackFull,
+                      switch (s.hold.value) {
+                        'client_quota' => l10n.lanHoldClientQuota,
+                        'student_quota' => l10n.lanHoldStudentQuota,
+                        _ => l10n.lanHoldPackFull,
+                      },
                       style:
                           const TextStyle(color: AppColors.err, height: 1.35)),
                 ),

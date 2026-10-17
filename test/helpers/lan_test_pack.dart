@@ -57,7 +57,9 @@ Map<String, dynamic> lanTest(String key,
 String lanExtraStudent(int i) =>
     '00000000-0000-4000-8000-${(0x1000 + i).toRadixString(16).padLeft(12, '0')}';
 
-LoadedPack lanTestPack({String? mediaRef, int extraStudents = 0}) => LoadedPack(
+LoadedPack lanTestPack(
+        {String? mediaRef, int extraStudents = 0, int extraTests = 0}) =>
+    LoadedPack(
       manifest: PackManifest(
         formatVersion: 1,
         packUuid: lanPackUuid,
@@ -71,6 +73,7 @@ LoadedPack lanTestPack({String? mediaRef, int extraStudents = 0}) => LoadedPack(
       ),
       tests: [
         lanTest('t_all', mediaRef: mediaRef),
+        for (var i = 0; i < extraTests; i++) lanTest('t_extra_$i'),
         lanTest('t_g1_only', groupIds: [lanG1]),
         {
           'type': 'package',

@@ -61,12 +61,21 @@ class HubLimits {
   /// a further result is accepted only while `used + reserve + entry` fits.
   /// The reserve never exceeds half the budget (a huge roster must not make
   /// the hub refuse everything).
-  static const int reservePerStudent = 24 * 1024;
+  ///
+  /// 48 KB, not less: the worst measured honest result (300-question engine
+  /// test) is ~43 KB of request body, ~57 KB of export. At most [maxClients]
+  /// students can be waiting at once, so the reserve is at most 60 x 48 KB =
+  /// 2.9 MB of the 9 MiB budget (F-1).
+  static const int reservePerStudent = 48 * 1024;
 
   /// Per STUDENT (not per PC or address: a hostile PC can send as any
-  /// roster student, from any number of addresses).
-  static const int maxResultsPerStudent = 3;
-  static const int maxResultBytesPerStudent = 192 * 1024; // export bytes
+  /// roster student, from any number of addresses). An honest student must
+  /// never reach this: every diagnostic subject is its own result, plus
+  /// retakes. The count is a FLOOR -- the hub uses
+  /// `max(maxResultsPerStudent, 2 x tests in the pack)` -- and the pack-wide
+  /// budget and reserve are what really bound a flood (F-2).
+  static const int maxResultsPerStudent = 8;
+  static const int maxResultBytesPerStudent = 512 * 1024; // export bytes
 
   /// Server keeps <=201 incidents / <=101 clock flags per entry, <=1 KiB per
   /// item, <=48 KiB per list. The hub adds up to two items of its own.
@@ -112,13 +121,28 @@ class HubLimits {
 
   /// After the teacher frees a seat for a claimant, only THAT claimant may take
   /// it for this long (N-3: another PC must not win the race).
-  static const int seatReserveMs = 60 * 1000;
+  /// It is kept at least [seatReserveMs], and beyond that for as long as the
+  /// claimant is alive, but never past [seatReserveMaxMs] (F-4).
+  static const int seatReserveMs = 3 * 60 * 1000;
+  static const int seatReserveMaxMs = 5 * 60 * 1000;
 
   /// Frame limits against decompression bombs (S-006): a screen capture is
   /// 640x360 or 960x540.
   static const int maxFrameSide = 4096;
   static const int maxFramePixels = 8 * 1000 * 1000;
 }
+
+/// Text meant for a teacher's eyes (device name, student name): control
+/// characters, DEL and bidi controls (U+200E/F, U+202A-E, U+2066-9) removed, so
+/// a hostile PC cannot reorder or hide what the banner says.
+String cleanDisplayText(String s) =>
+    String.fromCharCodes(s.codeUnits.where((c) =>
+        c >= 0x20 &&
+        c != 0x7f &&
+        c != 0x200e &&
+        c != 0x200f &&
+        !(c >= 0x202a && c <= 0x202e) &&
+        !(c >= 0x2066 && c <= 0x2069)));
 
 /// A refusal that maps to an HTTP status and a stable machine code. Carries no
 /// internals by construction.

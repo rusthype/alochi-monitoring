@@ -66,14 +66,21 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
     mutex ostida (parallel so'rovlar chegaradan oshira olmaydi).
   - **Natija kvotasi manba manzil (IP) bo'yicha** (hub ishlash davomida): 150 natija va 2.5 MiB eksport-bayt;
     token yoki `machine_id` bo'yicha EMAS — ikkalasini qayta join qilib yangilash mumkin. Oshsa `403 client_quota`.
-  - **O'quvchi bo'yicha kvota va rezerv (N-2).** IP kvotasi yetarli emas (4 manzil/IP-alias pack'ni to'ldira oladi),
-    shuning uchun: har roster o'quvchisiga ko'pi bilan **3 natija va 192 KB** eksport-bayt (`403 student_quota`;
-    sana zanjirdan o'qiladi, hub qayta ishga tushsa ham saqlanadi) va natijasi hali yo'q har o'quvchi uchun
-    **24 KB rezerv**: qo'shimcha natija faqat `ishlatilgan + rezerv + yozuv <= 9 MiB` bo'lsa qabul (`507 pack_full`).
-    Rezerv byudjetning yarmidan oshmaydi (katta roster hubni butunlay to'sib qo'ymasin). Mijoz `student_quota`ni
-    "rad etilgan" deb saqlaydi (yo'qolmaydi); `pack_full` esa navbatda qoladi. Qoldiq xavf: kodni bilgan PC o'quvchi
-    NOMIDAN 3 ta keraksiz natija yuborib, o'sha o'quvchining haqiqiy natijasini to'sishi mumkin — bu "kodni
-    bilgan istalgan PC istalgan o'quvchi nomidan yubora oladi" cheklovining davomi (pastga qarang).
+  - **O'quvchi bo'yicha kvota va rezerv (N-2, F-1, F-2).** IP kvotasi yetarli emas (4 manzil/IP-alias pack'ni to'ldira
+    oladi), shuning uchun: har roster o'quvchisiga ko'pi bilan **`max(8, 2 x paketdagi testlar soni)` natija va
+    512 KB** eksport-bayt (`403 student_quota`; sana zanjirdan o'qiladi, hub qayta ishga tushsa ham saqlanadi).
+    Halol o'quvchi bunga urilmasligi kerak (har diagnostika fani alohida natija + qayta topshirish); hujumchini
+    asosan pack-miqyosidagi byudjet va rezerv to'xtatadi. Natijasi hali yo'q o'quvchilar uchun **48 KB rezerv**
+    (eng yomon real natija ~43 KB): qo'shimcha natija faqat `ishlatilgan + rezerv + yozuv <= 9 MiB` bo'lsa qabul
+    (`507 pack_full`). **Rezerv formulasi:** `min(roster, 60) - natijasi_borlar - (shu o'quvchi hali natijasiz ? 1 : 0)`
+    ta o'quvchi x 48 KB, byudjetning yarmidan oshmaydi. Ya'ni rezerv faqat hali topshirmaganlar uchun va bir
+    sinfdan (60) ko'p emas, sinf topshirgan sari kamayadi (roster 250 bo'lsa ham; ko'pi bilan ~2.9 MB). Mijoz
+    `student_quota`/`client_quota`/`pack_full` ni yo'qotmaydi: natija navbatda qoladi, sekin (5 daqiqa) qayta uriniladi
+    va o'quvchi ekrani "o'qituvchiga murojaat qiling" ko'rsatadi. **O'qituvchi ekrani** hub rad etgan natijalar sonini
+    ("Rad etilgan natijalar: N") ko'rsatadi — kvota, `pack_full`, kalit to'qnashuvi, noto'g'ri token; bir natija
+    (idempotency kaliti) bir marta sanaladi va saqlangach sanoqdan chiqadi. Qoldiq xavf: kodni bilgan PC o'quvchi
+    NOMIDAN keraksiz natijalar yuborib o'sha o'quvchining haqiqiy natijasini to'sishi mumkin — bu "kodni bilgan
+    istalgan PC istalgan o'quvchi nomidan yubora oladi" cheklovining davomi (pastga qarang).
   - O'qituvchining o'z natijasi (`OfflinePackSession.recordResult`) hub bilan **bitta mutex** (`chainLock`) ostida
     yoziladi va bir xil hisoblagichga (`ChainUsage`) qo'shiladi.
   - Tezlik/parallellik: token bucket (120, 40/s); **kadr 10 token turadi va yuborilgan intervalning yarmidan tez
@@ -100,10 +107,13 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
   "oldindan band qilib", qurbon aloqasi uzilganda o'rinni olib, uning testini majburan yakunlatardi). O'qituvchi
   ekranida to'qnashuv banneri chiqadi (o'quvchi, ikkala PC nomi/IP): **"Yangisini rad et"** (asosiy tugma; 5 daqiqa
   rad etiladi, banner qayta chiqmaydi) yoki **"Eskisini bo'shat"** (kamroq ta'kidlangan: eskisiga `terminated`
-  boradi). Bo'shatilgach o'rin **60 soniya faqat o'qituvchi ko'rgan da'vogar uchun saqlanadi** (boshqa token/PC
-  birinchi bo'lib ping qilsa ham olmaydi); muddat tugasa bo'shaydi. Banner o'quvchi ismi va ikkala tomonning
+  boradi). Bo'shatilgach o'rin **kamida 3 daqiqa, da'vogar aloqada bo'lsa ko'pi bilan 5 daqiqagacha faqat o'qituvchi ko'rgan
+  da'vogar uchun saqlanadi** (boshqa token/PC birinchi bo'lib ping qilsa ham olmaydi); muddat tugasa bo'shaydi. Banner o'quvchi ismi va ikkala tomonning
   qurilma nomi, IP, qancha vaqt oldin ulangani va holatini ko'rsatadi; ko'pi bilan 3 ta banner + "+N" hisoblagich,
-  balandligi cheklangan va aylanadi. Bitta IP'dan ochiq to'qnashuvlar 4 tadan oshmaydi.
+  balandligi cheklangan va aylanadi; sarlavhadagi "+N" tugmasi hammasini ochadi, "Hammasini rad et (N)" bitta o'rin
+  uchun barcha da'vogarlarni birdaniga rad etadi. Tartib: avval ochiq da'vosi kam manzildan kelganlar (halol PC),
+  keyin yangilari; bitta IP'dan flood oxirida. Bitta IP'dan ochiq to'qnashuvlar 4 tadan oshmaydi. Qurilma/o'quvchi
+  nomlaridan boshqaruv, DEL va bidi belgilari (U+200E/F, U+202A-E, U+2066-9) olib tashlanadi.
 - **`machine_id`:** o'rnatishga tasodifiy UUID (birinchi ishga tushishda yaratilib `shared_preferences`da
   saqlanadi; Windows `MachineGuid` ishlatilmaydi — klonlangan lab image'larida bir xil). Hub eski klientni
   almashtirish uchun `machine_id` **va** IP ikkalasi mos kelishini talab qiladi; almashtirishda terminated/ended

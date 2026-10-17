@@ -2792,4 +2792,21 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get lanHoldClientQuota =>
       'Bu kompyuter yubora oladigan natijalar chegarasiga yetdi. Natijalar saqlanmoqda; o\'qituvchiga murojaat qiling.';
+
+  @override
+  String get lanHoldStudentQuota =>
+      'Bu o\'quvchi uchun o\'qituvchi kompyuteri qabul qiladigan natijalar chegarasiga yetildi. Natijalar saqlanmoqda; o\'qituvchiga murojaat qiling.';
+
+  @override
+  String lanResultsRefused(int count) {
+    return 'Rad etilgan natijalar: $count (o\'quvchi kompyuterlarida saqlanmoqda)';
+  }
+
+  @override
+  String lanSeatRejectAll(int count) {
+    return 'Hammasini rad et ($count)';
+  }
+
+  @override
+  String get lanSeatCollapse => 'Yig\'ish';
 }

@@ -72,7 +72,7 @@ class ShelfHub extends ChangeNotifier {
   final int maxPackPlainBytes;
   final int maxResultsPerIp;
   final int maxResultBytesPerIp;
-  final int maxResultsPerStudent;
+  final int? _maxResultsPerStudent;
   final int maxResultBytesPerStudent;
   final int reservePerStudent;
 
@@ -92,10 +92,11 @@ class ShelfHub extends ChangeNotifier {
     this.maxPackPlainBytes = HubLimits.maxPackPlainBytes,
     this.maxResultsPerIp = HubLimits.maxResultsPerIp,
     this.maxResultBytesPerIp = HubLimits.maxResultBytesPerIp,
-    this.maxResultsPerStudent = HubLimits.maxResultsPerStudent,
+    int? maxResultsPerStudent,
     this.maxResultBytesPerStudent = HubLimits.maxResultBytesPerStudent,
     this.reservePerStudent = HubLimits.reservePerStudent,
-  })  : bindAddress = bindAddress ?? InternetAddress.anyIPv4,
+  })  : _maxResultsPerStudent = maxResultsPerStudent,
+        bindAddress = bindAddress ?? InternetAddress.anyIPv4,
         hubName = hubName ?? _hostName(),
         clock = clock ?? MonitoredClock.instance;
 
@@ -117,6 +118,16 @@ class ShelfHub extends ChangeNotifier {
   final Map<String, TokenBucket> _ipBuckets = {};
   int _inFlight = 0;
   final Map<String, int> _joinInFlight = {};
+
+  /// Results one roster student may have in the pack: at least
+  /// [HubLimits.maxResultsPerStudent], and twice the number of tests the pack
+  /// carries (every diagnostic subject is a result of its own, plus retakes), so
+  /// an honest student never meets it (F-2).
+  int get resultsPerStudentCap =>
+      _maxResultsPerStudent ??
+      (2 * session.pack.tests.length > HubLimits.maxResultsPerStudent
+          ? 2 * session.pack.tests.length
+          : HubLimits.maxResultsPerStudent);
 
   bool get running => _server != null;
   HubState? get state => _state;
@@ -393,6 +404,28 @@ class ShelfHub extends ChangeNotifier {
     };
   }
 
+  /// Counts the results this hub turns away (any refusal of a /result that
+  /// carries a valid idempotency key, whatever the reason) for the teacher's
+  /// screen; a key leaves the count once it is stored.
+  Handler _countRefusals(Handler inner) => (Request req) async {
+        final key = req.headers['idempotency-key'] ?? '';
+        try {
+          final resp = await inner(req);
+          if (resp.statusCode == 200) _state?.noteResultStored(key);
+          return resp;
+        } on HubHttpError catch (e) {
+          if (_idemRe.hasMatch(key) &&
+              (e.status == 401 ||
+                  e.status == 403 ||
+                  e.status == 409 ||
+                  e.status == 422 ||
+                  e.status == 507)) {
+            _state?.noteResultRefused(key);
+          }
+          rethrow;
+        }
+      };
+
   Router _router() {
     return Router()
       ..get('/health', (Request _) => _json(200, {'ok': true}))
@@ -401,7 +434,7 @@ class ShelfHub extends ChangeNotifier {
       ..post('/leave', _auth(_leave, reserved: true))
       ..post('/ping', _auth(_ping, reserved: true))
       ..post('/frame', _auth(_frame))
-      ..post('/result', _auth(_result))
+      ..post('/result', _countRefusals(_auth(_result)))
       ..get('/groups', _auth(_groups))
       ..get('/students', _auth(_students))
       ..get('/catalog', _auth(_catalog))
@@ -458,9 +491,7 @@ class ShelfHub extends ChangeNotifier {
       throw const HubHttpError(400, 'bad_request');
     }
     final dn = body['device_name'];
-    final deviceName = dn is String
-        ? String.fromCharCodes(dn.codeUnits.where((c) => c >= 0x20))
-        : '';
+    final deviceName = dn is String ? cleanDisplayText(dn) : '';
 
     // A PC that still holds a live token of this very machine is refreshing.
     final header = req.headers['authorization'];
@@ -670,7 +701,7 @@ class ShelfHub extends ChangeNotifier {
         final quota = st.quotaProblem(ip, entryBytes);
         if (quota != null) throw HubHttpError(403, quota);
         final mine = usage.perStudent[studentId];
-        if ((mine?.count ?? 0) >= maxResultsPerStudent ||
+        if ((mine?.count ?? 0) >= resultsPerStudentCap ||
             (mine?.bytes ?? 0) + entryBytes > maxResultBytesPerStudent) {
           throw const HubHttpError(403, 'student_quota');
         }
@@ -710,7 +741,13 @@ class ShelfHub extends ChangeNotifier {
   /// hub refuse everything).
   int _reserveFor(ChainUsage usage, HubState st, String studentId) {
     final own = usage.perStudent.containsKey(studentId) ? 0 : 1;
-    final waiting = st.rosterSize - usage.studentsWithResults - own;
+    // Only students who have NOT delivered yet are waited for, and never more
+    // than can be in the room at once: on a 250-student roster the reserve
+    // must shrink as the class hands in, not stay pinned at its cap (F-1).
+    final expected = st.rosterSize < HubLimits.maxClients
+        ? st.rosterSize
+        : HubLimits.maxClients;
+    final waiting = expected - usage.studentsWithResults - own;
     if (waiting <= 0) return 0;
     final reserve = waiting * reservePerStudent;
     final cap = maxPackPlainBytes ~/ 2;

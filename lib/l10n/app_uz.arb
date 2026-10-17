@@ -1490,5 +1490,23 @@
   "lanConfirmYes": "Ha, davom etish",
   "lanConfirmNo": "Yo'q, uzish",
   "lanHoldPackFull": "O'qituvchi kompyuterida natijalar uchun joy tugagan. Natijalar saqlanmoqda; o'qituvchiga murojaat qiling.",
-  "lanHoldClientQuota": "Bu kompyuter yubora oladigan natijalar chegarasiga yetdi. Natijalar saqlanmoqda; o'qituvchiga murojaat qiling."
+  "lanHoldClientQuota": "Bu kompyuter yubora oladigan natijalar chegarasiga yetdi. Natijalar saqlanmoqda; o'qituvchiga murojaat qiling.",
+  "lanHoldStudentQuota": "Bu o'quvchi uchun o'qituvchi kompyuteri qabul qiladigan natijalar chegarasiga yetildi. Natijalar saqlanmoqda; o'qituvchiga murojaat qiling.",
+  "lanResultsRefused": "Rad etilgan natijalar: {count} (o'quvchi kompyuterlarida saqlanmoqda)",
+  "@lanResultsRefused": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lanSeatRejectAll": "Hammasini rad et ({count})",
+  "@lanSeatRejectAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lanSeatCollapse": "Yig'ish"
 }

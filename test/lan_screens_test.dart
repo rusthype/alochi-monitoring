@@ -282,6 +282,48 @@ void main() {
         expect(find.widgetWithText(TextButton, l10n.lanSeatRelease),
             findsNWidgets(3));
 
+        // F-3: "+9" opens the rest (scrolling inside the banner), and a flood
+        // for one seat can be turned down in one click.
+        expect(find.text(l10n.lanSeatRejectAll(12)), findsNWidgets(3));
+        await tester.tap(find.text(l10n.lanSeatMore(9)));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(tester.takeException(), isNull);
+        expect(find.text(l10n.lanSeatReject), findsNWidgets(12));
+        expect(find.text(l10n.lanSeatCollapse), findsOneWidget);
+        await tester.ensureVisible(find.text(l10n.lanSeatRejectAll(12)).first);
+        await tester.tap(find.text(l10n.lanSeatRejectAll(12)).first);
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(st.conflicts(), isEmpty);
+        expect(find.text(l10n.lanSeatConflictTitle), findsNothing);
+
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump(const Duration(seconds: 1));
+      });
+
+      testWidgets(
+          'F-2: the teacher sees how many results the hub is turning away',
+          (tester) async {
+        final st = hub.state!;
+        await tester.binding.setSurfaceSize(const Size(1400, 900));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester
+            .pumpWidget(_wrap(const TeacherLanMonitoringScreen(), locale));
+        await tester.pump(const Duration(milliseconds: 600));
+        final l10n =
+            AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+        expect(find.text(l10n.lanResultsRefused(1)), findsNothing);
+
+        st.noteResultRefused('k1');
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text(l10n.lanResultsRefused(1)), findsOneWidget);
+        st.noteResultRefused('k2');
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text(l10n.lanResultsRefused(2)), findsOneWidget);
+        st.noteResultStored('k1');
+        st.noteResultStored('k2');
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.textContaining(l10n.lanResultsRefused(0)), findsNothing);
+
         await tester.pumpWidget(const SizedBox());
         await tester.pump(const Duration(seconds: 1));
       });

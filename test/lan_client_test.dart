@@ -209,6 +209,32 @@ void main() {
     });
   });
 
+  group('F-2 a student over the hub\'s cap is never dropped', () {
+    test(
+        'student_quota keeps the row queued (not "rejected"), shows the hold '
+        'and the hub counts the refusal for the teacher', () async {
+      final s = await connect();
+      final cap = hub.resultsPerStudentCap;
+      for (var i = 0; i <= cap; i++) {
+        await s.recordResult(lanResultPayload(), token: 'honest-$i');
+      }
+      // (recordResult already flushes in the background: wait for the hold)
+      await eventually(() async {
+        await s.flushOutbox();
+        return s.hold.value != null;
+      });
+      final counts = await LanOutboxDb.counts();
+      expect(counts.rejected, 0, reason: 'must not be marked rejected');
+      expect(counts.pending, 1);
+      expect(s.hold.value, 'student_quota');
+      expect(hub.state!.resultsAccepted, cap);
+      expect(hub.state!.refusedResults, 1);
+      // slow retry: an immediate flush does not hammer the hub
+      expect(await s.flushOutbox(), 0);
+      expect((await LanOutboxDb.counts()).pending, 1);
+    });
+  });
+
   group('content', () {
     test('LanClientApi serves exactly what OfflinePackageApi would', () async {
       final s = await connect();

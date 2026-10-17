@@ -5122,6 +5122,30 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Bu kompyuter yubora oladigan natijalar chegarasiga yetdi. Natijalar saqlanmoqda; o\'qituvchiga murojaat qiling.'**
   String get lanHoldClientQuota;
+
+  /// No description provided for @lanHoldStudentQuota.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu o\'quvchi uchun o\'qituvchi kompyuteri qabul qiladigan natijalar chegarasiga yetildi. Natijalar saqlanmoqda; o\'qituvchiga murojaat qiling.'**
+  String get lanHoldStudentQuota;
+
+  /// No description provided for @lanResultsRefused.
+  ///
+  /// In uz, this message translates to:
+  /// **'Rad etilgan natijalar: {count} (o\'quvchi kompyuterlarida saqlanmoqda)'**
+  String lanResultsRefused(int count);
+
+  /// No description provided for @lanSeatRejectAll.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hammasini rad et ({count})'**
+  String lanSeatRejectAll(int count);
+
+  /// No description provided for @lanSeatCollapse.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yig\'ish'**
+  String get lanSeatCollapse;
 }
 
 class _AppLocalizationsDelegate

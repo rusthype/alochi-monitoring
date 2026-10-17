@@ -79,7 +79,7 @@ class PingInput {
 
   static String _text(Object? v, int max) {
     if (v is! String) return '';
-    final cleaned = String.fromCharCodes(v.codeUnits.where((c) => c >= 0x20));
+    final cleaned = cleanDisplayText(v);
     return cleaned.length > max ? cleaned.substring(0, max) : cleaned;
   }
 
@@ -293,6 +293,7 @@ class SeatParty {
 /// teacher decides; the hub never ends anybody's attempt on its own (S-003).
 class SeatConflict {
   final int id;
+  final String studentId;
   final String studentName;
   final String className;
   final int holderId;
@@ -301,6 +302,7 @@ class SeatConflict {
   final SeatParty claimant;
   const SeatConflict({
     required this.id,
+    required this.studentId,
     required this.studentName,
     required this.className,
     required this.holderId,
@@ -327,8 +329,8 @@ class _Quota {
 /// [until] (N-3).
 class _SeatReserve {
   int claimantId;
-  final int until;
-  _SeatReserve(this.claimantId, this.until);
+  final int since;
+  _SeatReserve(this.claimantId, this.since);
 }
 
 class HubState extends ChangeNotifier {
@@ -360,6 +362,22 @@ class HubState extends ChangeNotifier {
   int? _watchedId;
 
   int resultsAccepted = 0;
+
+  /// Idempotency keys of results the hub refused and that are not stored yet
+  /// (quota, pack full, key conflict, bad token...): what the teacher sees as
+  /// "results are being refused". A key leaves the set when it is stored. Keys,
+  /// not requests, so a PC's slow retries of one result count once (F-2).
+  final Set<String> _refusedKeys = {};
+  int get refusedResults => _refusedKeys.length;
+
+  void noteResultRefused(String key) {
+    if (_refusedKeys.length >= 1000 && !_refusedKeys.contains(key)) return;
+    if (_refusedKeys.add(key)) _changed();
+  }
+
+  void noteResultStored(String key) {
+    if (_refusedKeys.remove(key)) _changed();
+  }
 
   final Map<String, _Quota> _quota = {};
   final Map<String, int> _ipInFlight = {};
@@ -691,7 +709,7 @@ class HubState extends ChangeNotifier {
       // A seat the teacher freed belongs to the claimant they chose.
       final reserved = _seatReserved[sid];
       if (reserved != null) {
-        if (now >= reserved.until) {
+        if (!_reserveActive(reserved, now)) {
           _seatReserved.remove(sid);
         } else if (reserved.claimantId != c.id) {
           return false;
@@ -723,6 +741,17 @@ class HubState extends ChangeNotifier {
     c.frame = null;
     c.frameVersion++;
     return true;
+  }
+
+  /// A freed seat stays reserved for its claimant for at least
+  /// [HubLimits.seatReserveMs]; after that only while the claimant is still in
+  /// touch, and never past [HubLimits.seatReserveMaxMs] (F-4).
+  bool _reserveActive(_SeatReserve r, int now) {
+    final age = now - r.since;
+    if (age >= HubLimits.seatReserveMaxMs) return false;
+    if (age < HubLimits.seatReserveMs) return true;
+    final c = _byId(r.claimantId);
+    return c != null && now - c.lastSeen <= HubLimits.noContactMs;
   }
 
   void _noteConflict(
@@ -762,10 +791,24 @@ class HubState extends ChangeNotifier {
           connectedAgoMs: now - c.connectedAt < 0 ? 0 : now - c.connectedAt,
           status: _viewOf(c, now).status,
         );
+    // Most trustworthy first: claimants from an address with few open claims
+    // (an honest PC) before a flood from one address; newest first among equals
+    // (F-3). The screen shows the first few and lets the teacher open the rest.
+    final perIp = <String, int>{};
+    for (final r in _conflicts) {
+      final ip = _byId(r.claimantId)!.ip;
+      perIp[ip] = (perIp[ip] ?? 0) + 1;
+    }
+    final ordered = [..._conflicts]..sort((a, b) {
+        final byIp = perIp[_byId(a.claimantId)!.ip]!
+            .compareTo(perIp[_byId(b.claimantId)!.ip]!);
+        return byIp != 0 ? byIp : b.id.compareTo(a.id);
+      });
     return [
-      for (final r in _conflicts)
+      for (final r in ordered)
         SeatConflict(
           id: r.id,
+          studentId: r.studentId,
           studentName: (_studentsById[r.studentId]?['name'] ?? '').toString(),
           className: _classNameOf(r.studentId),
           holderId: r.holderId,
@@ -774,6 +817,15 @@ class HubState extends ChangeNotifier {
           claimant: party(_byId(r.claimantId)!),
         )
     ];
+  }
+
+  /// Turns down every open claim on [studentId]'s seat at once (a flood of
+  /// claimants for one seat, F-3).
+  void rejectAllClaims(String studentId) {
+    for (final r
+        in _conflicts.where((r) => r.studentId == studentId).toList()) {
+      resolveConflict(r.id, releaseHolder: false);
+    }
   }
 
   /// The teacher's decision. [releaseHolder]: end the holder's attempt (it is
@@ -792,8 +844,7 @@ class HubState extends ChangeNotifier {
       // Only the claimant the teacher saw may take the freed seat, for a while:
       // otherwise a second token of the squatter wins the race (N-3).
       if (_seatReserved.length > 256) _seatReserved.clear();
-      _seatReserved[r.studentId] =
-          _SeatReserve(r.claimantId, _now() + HubLimits.seatReserveMs);
+      _seatReserved[r.studentId] = _SeatReserve(r.claimantId, _now());
     } else {
       if (_rejectedClaims.length > 256) _rejectedClaims.clear();
       _rejectedClaims['${r.claimantId}|${r.studentId}'] =
