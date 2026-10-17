@@ -53,8 +53,9 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
   har qanday bo'sh bo'lmagan kalit rad etiladi), keyin mavjud `PackResultsDb.append` orqali zanjirga qo'shadi.
   Idempotent: bir xil kalit — ack, ikkinchi qator yo'q. Hub **hech narsani ballamaydi**.
 - **Chegaralar:**
-  - Tana: `join` 1 KB / `ping` 64 KB / `frame` 512 KB / **`result` 128 KB** (eng yomon real natija — 300 savollik
-    test, 100 ta uzun matnli javob: ~43 KB; diagnostika ~16 KB; `test/lan_hub_review_test.dart` o'lchaydi). `Content-Length`
+  - Tana: `join` 1 KB / `ping` 64 KB / `frame` 512 KB / **`result` 64 KB** (eng yomon real natija — 300 savollik
+    test, 100 ta uzun matnli javob: ~43 KB; diagnostika ~16 KB; `test/lan_hub_review_test.dart` o'lchaydi va
+    shu shakllarni HTTP orqali qabul qilishni isbotlaydi; zaxira >= 40%). Bitta so'rov eksportga eng ko'pi ~130 KB qo'sha oladi. `Content-Length`
     majburiy (411), katta bo'lsa 413; JSON chuqurligi 24 / 200k tugun, `Infinity`/`NaN` 400; tana o'qish muddati
     kichik endpointlarda 3 s, natijada 6 s, kadrda 8 s.
   - **Zanjir hajmi eksport birligida o'lchanadi.** JSON `\` va `"` ni ikki marta ekranlaydi (bir marta
@@ -65,6 +66,16 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
     mutex ostida (parallel so'rovlar chegaradan oshira olmaydi).
   - **Natija kvotasi manba manzil (IP) bo'yicha** (hub ishlash davomida): 150 natija va 2.5 MiB eksport-bayt;
     token yoki `machine_id` bo'yicha EMAS — ikkalasini qayta join qilib yangilash mumkin. Oshsa `403 client_quota`.
+  - **O'quvchi bo'yicha kvota va rezerv (N-2).** IP kvotasi yetarli emas (4 manzil/IP-alias pack'ni to'ldira oladi),
+    shuning uchun: har roster o'quvchisiga ko'pi bilan **3 natija va 192 KB** eksport-bayt (`403 student_quota`;
+    sana zanjirdan o'qiladi, hub qayta ishga tushsa ham saqlanadi) va natijasi hali yo'q har o'quvchi uchun
+    **24 KB rezerv**: qo'shimcha natija faqat `ishlatilgan + rezerv + yozuv <= 9 MiB` bo'lsa qabul (`507 pack_full`).
+    Rezerv byudjetning yarmidan oshmaydi (katta roster hubni butunlay to'sib qo'ymasin). Mijoz `student_quota`ni
+    "rad etilgan" deb saqlaydi (yo'qolmaydi); `pack_full` esa navbatda qoladi. Qoldiq xavf: kodni bilgan PC o'quvchi
+    NOMIDAN 3 ta keraksiz natija yuborib, o'sha o'quvchining haqiqiy natijasini to'sishi mumkin — bu "kodni
+    bilgan istalgan PC istalgan o'quvchi nomidan yubora oladi" cheklovining davomi (pastga qarang).
+  - O'qituvchining o'z natijasi (`OfflinePackSession.recordResult`) hub bilan **bitta mutex** (`chainLock`) ostida
+    yoziladi va bir xil hisoblagichga (`ChainUsage`) qo'shiladi.
   - Tezlik/parallellik: token bucket (120, 40/s); **kadr 10 token turadi va yuborilgan intervalning yarmidan tez
     kelmaydi** (`429 too_fast`); bitta token bir vaqtda 4 so'rov, bitta IP 16 so'rov (`429 too_many_requests`);
     global 128 so'rov — lekin autentifikatsiyalangan `/keepalive`, `/ping`, `/leave` va `/health` bu limitdan
@@ -72,8 +83,11 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
     "aloqa yo'q" qila olmaydi). `/join`: IP bo'yicha bir vaqtda 4 ta.
   - 60 klient, bitta IP'dan 8 tagacha. Incident/clock flag ro'yxatlari serverning 201/101, 1 KiB, 48 KiB
     chegarasiga qisqartiriladi (ortig'i `*_overflow` hisoblagichiga).
-  - Kadr: faqat JPEG; SOFn sarlavhasi **dekodsiz** o'qiladi — tomoni > 4096 yoki > 8 MP bo'lsa `422
-    frame_too_large`, sarlavhasi yo'q/buzuq bo'lsa `400 bad_frame`; o'qituvchi ekrani `Image.memory(cacheWidth: 960)`.
+  - Kadr: faqat JPEG. O'lcham **dekodsiz** olinadi va **kodekning o'zidan** (`ui.ImageDescriptor.encoded` — faqat
+    sarlavha, real 10000x10000 ~1 MB RSS) — qo'lda yozilgan sarlavha o'qigichni ikkinchi (soxta) SOF aldashi mumkin
+    edi (N-1). Tomoni > 4096 yoki > 8 MP bo'lsa `422 frame_too_large`; kodek tushunmasa/sarlavha buzuq/ikkita SOF
+    bo'lsa `400 bad_frame`. `jpegSize` ikkinchi chiziq (arzon, hech qachon xato tashlamaydi: fill-byte, qisqa fayl).
+    O'qituvchi ekrani `Image.memory(cacheWidth: 960)` bilan chizadi.
 - **Idempotentlik:** kalit payload'ga bog'langan: bir xil kalit + bir xil tana → ack; bir xil kalit + boshqa tana →
   `409 idempotency_conflict` (klientda "rad etilgan" deb saqlanadi, yo'qolmaydi).
 - **Xato javoblari** faqat barqaror kod (`{"error": "..."}`); stack, yo'l, PIN, kalit, kod, token yo'q.
@@ -84,13 +98,17 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
 - **Bir o'quvchi — ikki PC (o'rin to'qnashuvi):** ikkinchi PC `conflict: true` oladi (mavjud "boshqa qurilmada"
   xabari). Birinchi PC **hech qachon o'z-o'zidan to'xtatilmaydi** — qancha jim bo'lmasin (aks holda hujumchi o'rinni
   "oldindan band qilib", qurbon aloqasi uzilganda o'rinni olib, uning testini majburan yakunlatardi). O'qituvchi
-  ekranida to'qnashuv banneri chiqadi (o'quvchi, ikkala PC nomi/IP): **"Eskisini bo'shat"** (eskisiga `terminated`
-  boradi, yangisi keyingi ping'da o'rinni oladi) yoki **"Yangisini rad et"** (5 daqiqa rad etiladi; banner qayta
-  chiqmaydi).
+  ekranida to'qnashuv banneri chiqadi (o'quvchi, ikkala PC nomi/IP): **"Yangisini rad et"** (asosiy tugma; 5 daqiqa
+  rad etiladi, banner qayta chiqmaydi) yoki **"Eskisini bo'shat"** (kamroq ta'kidlangan: eskisiga `terminated`
+  boradi). Bo'shatilgach o'rin **60 soniya faqat o'qituvchi ko'rgan da'vogar uchun saqlanadi** (boshqa token/PC
+  birinchi bo'lib ping qilsa ham olmaydi); muddat tugasa bo'shaydi. Banner o'quvchi ismi va ikkala tomonning
+  qurilma nomi, IP, qancha vaqt oldin ulangani va holatini ko'rsatadi; ko'pi bilan 3 ta banner + "+N" hisoblagich,
+  balandligi cheklangan va aylanadi. Bitta IP'dan ochiq to'qnashuvlar 4 tadan oshmaydi.
 - **`machine_id`:** o'rnatishga tasodifiy UUID (birinchi ishga tushishda yaratilib `shared_preferences`da
   saqlanadi; Windows `MachineGuid` ishlatilmaydi — klonlangan lab image'larida bir xil). Hub eski klientni
   almashtirish uchun `machine_id` **va** IP ikkalasi mos kelishini talab qiladi; almashtirishda terminated/ended
-  attempt'lar, o'rin va hisoblagichlar yangi klientga ko'chadi.
+  attempt'lar, o'rin, hisoblagichlar **va to'xtatish (pauza) hamda berilgan qo'shimcha vaqt** yangi klientga ko'chadi
+  (qayta join o'quvchining pauzasini yechmaydi, berilgan vaqtni qaytarib olmaydi).
 - **Qo'shilishni yopish:** o'qituvchi hamma ulangach tugmani bosadi → `/join` `403 joins_locked` (kod tekshirilmaydi,
   xato hisoblagichlariga tegilmaydi). Noto'g'ri kodlar oqimi (har IP'dan 5 xato / global 60 xato) yangi
   ulanishlarni 1 daqiqaga bloklashi mumkin; yopilgan hubda bu ahamiyatsiz. Yaroqli tokenli PC o'sha mashinaning
@@ -99,6 +117,11 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
   olingan 6 belgi) va hub nomini ko'radi; o'qituvchi ekranida ham shu iz turadi. UDP e'londa `pack_uuid` yo'q
   (shu qaror saqlanadi) — iz faqat tasdiqlangan `join` javobidan olinadi. Discovery ro'yxatida bitta manba IP'ga
   4 tadan ko'p yozuv qo'shilmaydi.
+- **Ulanishni tasdiqlash tugamasa:** dialog "Ha"/"Yo'q"siz yopilsa (Esc, oyna almashishi) tasdiqlanmagan sessiya
+  `/leave` yuboradi — hub'da "arvoh" klient qolmaydi.
+- **Eski hub tokeni:** qayta ulanishda `Authorization: Bearer` (global blok/qulfdan o'tish uchun) faqat eski hub'ning
+  AYNAN o'sha host va portiga yuboriladi; tanlangan/qo'lda kiritilgan boshqa manzilga (rogue hub) hech qachon, va
+  javobdagi redirect orqali ham emas.
 - **Klient javoblari:** `pack_uuid` qat'iy UUID; `join` javobi <= 64 KB, JSON <= 4 MB (test/diagnostika/paket
   savollari <= 32 MB), rasm <= 16 MB; oshsa uziladi. Hub to'lgan (`pack_full`/`client_quota`) bo'lsa natija
   o'chmaydi va "rad etilgan" ham bo'lmaydi: navbatda qoladi, sekin (5 daqiqa) qayta uriniladi, operatorga
@@ -126,6 +149,10 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
    (yopiq hubda hech kim, kodni bilsa ham, qayta join qila olmaydi).
 
 ## Hujjatlangan, qilinmagan (T2 review INFO)
+
+- **N-7** — paket izi (fingerprint) 24 bit (`sha256` ning 6 hex belgisi). Bu "noto'g'ri xona" tekshiruvi (o'quvchi
+  boshqa o'qituvchi hub'iga ulanib qolmasligi uchun), **autentifikatsiya EMAS**: sinf kodi iz tasdiqlanishidan OLDIN
+  yuboriladi, ya'ni rogue hub kodni ko'radi. Iz hujumchini to'xtatmaydi, faqat halol xatoni ushlaydi.
 
 - **S-012** — klient yuborgan incident'lar hub tomonidan tekshirib bo'lmaydi (faqat shakl/hajm); ular metadata,
   ball emas.

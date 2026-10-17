@@ -207,9 +207,11 @@ void main() {
 
         expect(find.text(l10n.lanSeatConflictTitle), findsOneWidget);
         expect(
-            find.text(l10n.lanSeatConflictBody(
-                'Valiyev Ali', 'pc-a (10.0.0.1)', 'pc-b (10.0.0.2)')),
-            findsOneWidget);
+            find.text(l10n.lanSeatConflictBody('Valiyev Ali')), findsOneWidget);
+        // who, where, since when, in what state (N-3c)
+        expect(find.textContaining('pc-a (10.0.0.1)'), findsOneWidget);
+        expect(find.textContaining('pc-b (10.0.0.2)'), findsOneWidget);
+        expect(find.textContaining(l10n.lanStatusTesting), findsWidgets);
         // the fingerprint students compare with
         expect(find.text(l10n.lanPackFingerprint(packFingerprint(lanPackUuid))),
             findsOneWidget);
@@ -229,6 +231,56 @@ void main() {
         expect(a.client!.terminatedSessions, contains('A1'));
         expect(find.text(l10n.lanSeatConflictTitle), findsNothing);
         expect(st.ping(b.client!, ping('B2', 'pc-b'))['conflict'], false);
+
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump(const Duration(seconds: 1));
+      });
+
+      testWidgets(
+          'N-3: a flood of seat conflicts neither overflows the screen nor '
+          'hides the class list; at most 3 banners, the rest is a count',
+          (tester) async {
+        final st = hub.state!;
+        PingInput ping(String sid, String name) => PingInput.fromJson({
+              'session_id': sid,
+              'name': name,
+              'test_key': 't_all',
+              'status': 'active',
+              'student_code': lanS1,
+            });
+        final holder = st.join(
+            ip: '10.0.0.1', code: st.code, machineId: 'h', deviceName: 'pc-h');
+        st.ping(holder.client!, ping('H1', 'Valiyev Ali'));
+        // 3 hostile addresses x 8 tokens, every token claims the same seat
+        for (final ip in ['10.9.9.1', '10.9.9.2', '10.9.9.3']) {
+          for (var k = 0; k < 8; k++) {
+            final c = st.join(
+                ip: ip, code: st.code, machineId: '$ip-$k', deviceName: 'atk');
+            st.ping(c.client!, ping('S-$ip-$k', 'zz'));
+          }
+        }
+        // 4 per address at most -> 12 open conflicts
+        expect(st.conflicts(), hasLength(12));
+
+        await tester.binding.setSurfaceSize(const Size(1280, 720));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester
+            .pumpWidget(_wrap(const TeacherLanMonitoringScreen(), locale));
+        await tester.pump(const Duration(milliseconds: 600));
+        final l10n =
+            AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+
+        expect(tester.takeException(), isNull,
+            reason: 'no RenderFlex overflow');
+        expect(find.text(l10n.lanSeatReject), findsNWidgets(3));
+        expect(find.text(l10n.lanSeatMore(9)), findsOneWidget);
+        // the honest holder's row is still on screen
+        expect(find.text('Valiyev Ali'), findsOneWidget);
+        // the safe answer is the prominent one
+        expect(find.widgetWithText(FilledButton, l10n.lanSeatReject),
+            findsNWidgets(3));
+        expect(find.widgetWithText(TextButton, l10n.lanSeatRelease),
+            findsNWidgets(3));
 
         await tester.pumpWidget(const SizedBox());
         await tester.pump(const Duration(seconds: 1));
@@ -394,6 +446,69 @@ void main() {
         expect(hub.state!.clientCount, 0); // told the hub it is leaving
         expect(find.text(l10n.lanConfirmTitle), findsNothing);
         await tester.pumpWidget(const SizedBox());
+      });
+
+      testWidgets(
+          'N-5: closing the dialog at the confirm step also leaves the hub',
+          (tester) async {
+        late Directory tmp;
+        late ShelfHub hub;
+        await tester.runAsync(() async {
+          tmp = Directory.systemTemp.createTempSync('lan_dialog3_');
+          await OfflineQueue.openAtPath(p.join(tmp.path, 'q.db'));
+          final session = await OfflinePackSession.open(
+              lanTestPack(), Directory(p.join(tmp.path, 'media')));
+          hub = ShelfHub(session,
+              bindAddress: InternetAddress.loopbackIPv4,
+              firstPort: 0,
+              lastPort: 0,
+              hubName: 'teacher-pc');
+          await hub.start(announce: false);
+        });
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+                const MethodChannel('plugins.flutter.io/path_provider'),
+                (call) async => tmp.path);
+        addTearDown(() async {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                  const MethodChannel('plugins.flutter.io/path_provider'),
+                  null);
+          await tester.runAsync(() async {
+            await hub.stop();
+            hub.dispose();
+            OfflinePackSession.close();
+            await OfflineQueue.resetForTest();
+            tmp.deleteSync(recursive: true);
+          });
+        });
+        await tester.binding.setSurfaceSize(const Size(900, 900));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(_wrap(const LanConnectDialog(), locale));
+        await tester.pump();
+        final l10n = AppLocalizations.of(tester.element(find.byType(Dialog)))!;
+
+        await tester.enterText(
+            find.byType(TextField).first, '127.0.0.1:${hub.port}');
+        await tester.enterText(find.byType(TextField).last, hub.state!.code);
+        await tester.tap(find.text(l10n.lanConnect));
+        for (var i = 0; i < 20; i++) {
+          await tester.runAsync(
+              () => Future<void>.delayed(const Duration(milliseconds: 50)));
+          await tester.pump();
+        }
+        expect(find.text(l10n.lanConfirmTitle), findsOneWidget);
+        expect(hub.state!.clientCount, 1);
+
+        // the dialog goes away without Yes or No (Esc, window change, ...)
+        await tester.pumpWidget(const SizedBox());
+        for (var i = 0; i < 10; i++) {
+          await tester.runAsync(
+              () => Future<void>.delayed(const Duration(milliseconds: 50)));
+          await tester.pump();
+        }
+        expect(hub.state!.clientCount, 0, reason: 'no ghost client at the hub');
+        expect(LanClientSession.isActive, isFalse);
       });
     });
   }

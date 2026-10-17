@@ -238,19 +238,38 @@ class PackResultsDb {
   }
 
   /// Size in bytes of the DECRYPTED JSON an export of [packUuid] would carry
-  /// today (see export_format.dart). Decrypts every row, so callers cache it.
-  static Future<int> exportPlainBytes(String packUuid) async {
+  /// today (see export_format.dart).
+  static Future<int> exportPlainBytes(String packUuid) async =>
+      (await chainUsage(packUuid)).bytes;
+
+  /// [exportPlainBytes] plus the row count and the per-student tally, in one
+  /// pass. Decrypts every row, so callers cache it (ChainUsage).
+  static Future<ChainUsage> chainUsage(String packUuid) async {
     final d = await _db;
     final rows = await d.query('pack_results',
         columns: ['payload', 'meta_json'],
         where: 'pack_uuid = ?',
         whereArgs: [packUuid]);
-    var total = exportEnvelopeBytes;
+    final usage = ChainUsage.empty();
     for (final r in rows) {
       final payload = await QueueCrypto.decryptPayload(r['payload'] as String);
-      total += exportEntryBytes(payload, r['meta_json'] as String);
+      usage.add(_studentIdOf(payload),
+          exportEntryBytes(payload, r['meta_json'] as String));
     }
-    return total;
+    return usage;
+  }
+
+  /// `student_id` of a stored payload, or null when it has none.
+  static String? studentIdOf(String payloadJson) => _studentIdOf(payloadJson);
+
+  static String? _studentIdOf(String payloadJson) {
+    try {
+      final d = jsonDecode(payloadJson);
+      final id = d is Map ? d['student_id'] : null;
+      return id is String ? id : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Rows and stored (encrypted + base64) bytes of one pack's chain. The LAN

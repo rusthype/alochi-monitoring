@@ -131,6 +131,10 @@ class HubClient {
 
   int lastSeen;
 
+  /// When this PC joined (kept across its own re-joins), for the teacher's
+  /// seat-conflict banner.
+  int connectedAt = 0;
+
   // Identity as announced by the client's pings.
   String name = '';
   String studentId = ''; // roster UUID when the ping's student_code is one
@@ -200,6 +204,13 @@ class HubClient {
     sessionStartedAt = old.sessionStartedAt;
     resultsAccepted = old.resultsAccepted;
     lastConflictAt = old.lastConflictAt;
+    connectedAt = old.connectedAt;
+    // Pause and extra time belong to the attempt (same sessionId, copied
+    // above): a re-join must neither lift the teacher's pause nor take back the
+    // time already granted (N-6). A different attempt id resets both in
+    // _claimSession as usual.
+    locked = old.locked;
+    extraTimeSeconds = old.extraTimeSeconds;
   }
 
   /// The test attempt is over (result submitted, idle ping, or taken over):
@@ -264,6 +275,20 @@ class ClientView {
   });
 }
 
+/// One side of a seat conflict, as the teacher needs to judge it.
+class SeatParty {
+  final String deviceName;
+  final String ip;
+  final int connectedAgoMs;
+  final ClientStatus status;
+  const SeatParty({
+    required this.deviceName,
+    required this.ip,
+    required this.connectedAgoMs,
+    required this.status,
+  });
+}
+
 /// Two PCs want the same student's seat. The first one keeps it until the
 /// teacher decides; the hub never ends anybody's attempt on its own (S-003).
 class SeatConflict {
@@ -271,17 +296,17 @@ class SeatConflict {
   final String studentName;
   final String className;
   final int holderId;
-  final String holderLabel;
+  final SeatParty holder;
   final int claimantId;
-  final String claimantLabel;
+  final SeatParty claimant;
   const SeatConflict({
     required this.id,
     required this.studentName,
     required this.className,
     required this.holderId,
-    required this.holderLabel,
+    required this.holder,
     required this.claimantId,
-    required this.claimantLabel,
+    required this.claimant,
   });
 }
 
@@ -296,6 +321,14 @@ class _ConflictRec {
 class _Quota {
   int count = 0;
   int bytes = 0;
+}
+
+/// A seat the teacher freed for ONE claimant: only that PC may take it until
+/// [until] (N-3).
+class _SeatReserve {
+  int claimantId;
+  final int until;
+  _SeatReserve(this.claimantId, this.until);
 }
 
 class HubState extends ChangeNotifier {
@@ -332,6 +365,7 @@ class HubState extends ChangeNotifier {
   final Map<String, int> _ipInFlight = {};
   final List<_ConflictRec> _conflicts = [];
   final Map<String, int> _rejectedClaims = {};
+  final Map<String, _SeatReserve> _seatReserved = {};
   int _nextConflictId = 1;
   bool _joinsLocked = false;
 
@@ -376,6 +410,9 @@ class HubState extends ChangeNotifier {
   }
 
   int _now() => _ticks();
+
+  /// Students on the pack's roster (the reserve in ShelfHub counts these).
+  int get rosterSize => _studentsById.length;
 
   // ── class code ─────────────────────────────────────────────────────────────
 
@@ -457,12 +494,15 @@ class HubState extends ChangeNotifier {
       // Generous for media bursts at test start; a flooding client still hits it.
       bucket: TokenBucket(120, 40, now),
       lastSeen: now,
-    );
+    )..connectedAt = now;
     for (final old in previous) {
       c.inheritFrom(old);
       for (final rec in _conflicts) {
         if (rec.holderId == old.id) rec.holderId = c.id;
         if (rec.claimantId == old.id) rec.claimantId = c.id;
+      }
+      for (final r in _seatReserved.values) {
+        if (r.claimantId == old.id) r.claimantId = c.id;
       }
       if (_watchedId == old.id) _watchedId = c.id;
       _remove(old);
@@ -648,6 +688,15 @@ class HubState extends ChangeNotifier {
   bool _claimSession(HubClient c, PingInput p, int now) {
     final sid = _rosterId(p.studentCode);
     if (sid != null) {
+      // A seat the teacher freed belongs to the claimant they chose.
+      final reserved = _seatReserved[sid];
+      if (reserved != null) {
+        if (now >= reserved.until) {
+          _seatReserved.remove(sid);
+        } else if (reserved.claimantId != c.id) {
+          return false;
+        }
+      }
       final until = _rejectedClaims['${c.id}|$sid'];
       if (until != null) {
         if (now < until) return false;
@@ -659,6 +708,7 @@ class HubState extends ChangeNotifier {
         return false;
       }
     }
+    if (sid != null) _seatReserved.remove(sid);
     c.sessionId = p.sessionId;
     c.testKey = p.testKey;
     c.studentId = sid ?? '';
@@ -686,6 +736,12 @@ class HubState extends ChangeNotifier {
         now - claimant.lastConflictAt < HubLimits.claimCooldownMs) {
       return;
     }
+    // One address cannot bury the honest conflicts under its own (N-3).
+    var fromIp = 0;
+    for (final r in _conflicts) {
+      if (_byId(r.claimantId)?.ip == claimant.ip) fromIp++;
+    }
+    if (fromIp >= HubLimits.maxOpenConflictsPerIp) return;
     claimant.lastConflictAt = now;
     if (_conflicts.length >= 64) _conflicts.removeAt(0);
     _conflicts
@@ -699,11 +755,13 @@ class HubState extends ChangeNotifier {
       final c = _byId(r.claimantId);
       return h == null || c == null || !h.inTest || h.studentId != r.studentId;
     });
-    String label(HubClient c) => c.deviceName.isNotEmpty
-        ? '${c.deviceName} (${c.ip})'
-        : c.name.isNotEmpty
-            ? '${c.name} (${c.ip})'
-            : c.ip;
+    final now = _now();
+    SeatParty party(HubClient c) => SeatParty(
+          deviceName: c.deviceName.isNotEmpty ? c.deviceName : c.name,
+          ip: c.ip,
+          connectedAgoMs: now - c.connectedAt < 0 ? 0 : now - c.connectedAt,
+          status: _viewOf(c, now).status,
+        );
     return [
       for (final r in _conflicts)
         SeatConflict(
@@ -711,9 +769,9 @@ class HubState extends ChangeNotifier {
           studentName: (_studentsById[r.studentId]?['name'] ?? '').toString(),
           className: _classNameOf(r.studentId),
           holderId: r.holderId,
-          holderLabel: label(_byId(r.holderId)!),
+          holder: party(_byId(r.holderId)!),
           claimantId: r.claimantId,
-          claimantLabel: label(_byId(r.claimantId)!),
+          claimant: party(_byId(r.claimantId)!),
         )
     ];
   }
@@ -731,6 +789,11 @@ class HubState extends ChangeNotifier {
         h.terminatedSessions.add(h.sessionId);
         h.endTest();
       }
+      // Only the claimant the teacher saw may take the freed seat, for a while:
+      // otherwise a second token of the squatter wins the race (N-3).
+      if (_seatReserved.length > 256) _seatReserved.clear();
+      _seatReserved[r.studentId] =
+          _SeatReserve(r.claimantId, _now() + HubLimits.seatReserveMs);
     } else {
       if (_rejectedClaims.length > 256) _rejectedClaims.clear();
       _rejectedClaims['${r.claimantId}|${r.studentId}'] =

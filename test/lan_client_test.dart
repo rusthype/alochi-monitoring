@@ -154,6 +154,61 @@ void main() {
     });
   });
 
+  group('N-4 the old hub\'s bearer token', () {
+    Future<LanClientSession> rejoin(LanClientSession old,
+            {required String host, required int port}) =>
+        LanClientSession.join(
+          host: host,
+          port: port,
+          code: hub.state!.code,
+          client: http.Client(),
+          machineId: 'student-pc-1',
+          deviceName: 'PC',
+          replacing: old,
+          mediaDirFor: (id) async =>
+              Directory(p.join(tmp.path, 'client_media', id)),
+        );
+
+    test(
+        'it goes only to the very host and port that issued it -- never to '
+        'another (rogue) hub', () async {
+      final old = await connect();
+      expect(old.isSameHub('127.0.0.1', hub.port!), isTrue);
+      expect(old.isSameHub('127.0.0.1', hub.port! + 1), isFalse);
+      expect(old.isSameHub('localhost', hub.port!), isFalse);
+
+      // A hub that is not the old one, recording what it is sent.
+      final rogue = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final seen = <HttpHeaders>[];
+      rogue.listen((req) {
+        seen.add(req.headers);
+        req.response
+          ..statusCode = 401
+          ..write('{}');
+        req.response.close();
+      });
+      addTearDown(() => rogue.close(force: true));
+
+      await expectLater(
+          rejoin(old, host: '127.0.0.1', port: rogue.port),
+          throwsA(isA<LanJoinException>()
+              .having((e) => e.code, 'code', LanJoinError.badCode)));
+      expect(seen, hasLength(1));
+      expect(seen.single.value('authorization'), isNull,
+          reason: 'the old hub\'s token must not reach another address');
+    });
+
+    test('...but a re-join to the SAME hub still presents it (join lock)',
+        () async {
+      final old = await connect();
+      hub.state!.setJoinsLocked(true);
+      // Without the token a locked hub refuses; with it, the PC is let back in.
+      final again = await rejoin(old, host: '127.0.0.1', port: hub.port!);
+      sessions.add(again);
+      expect(again.hubName, old.hubName);
+    });
+  });
+
   group('content', () {
     test('LanClientApi serves exactly what OfflinePackageApi would', () async {
       final s = await connect();

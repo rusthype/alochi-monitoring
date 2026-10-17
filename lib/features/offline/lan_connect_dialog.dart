@@ -54,6 +54,14 @@ class _LanConnectDialogState extends State<LanConnectDialog> {
 
   @override
   void dispose() {
+    // Joined but never confirmed (dialog closed, window changed): the hub must
+    // not keep a ghost client that was never allowed to take part (N-5). An
+    // activated session is the app's now and stays.
+    final ghost = _pending;
+    if (ghost != null && !identical(LanClientSession.current, ghost)) {
+      ghost.close();
+    }
+    _pending = null;
     unawaited(_listener.stop());
     _addressCtrl.dispose();
     _codeCtrl.dispose();

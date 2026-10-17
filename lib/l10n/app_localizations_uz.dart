@@ -2739,8 +2739,25 @@ class AppLocalizationsUz extends AppLocalizations {
   String get lanSeatConflictTitle => 'O\'rin to\'qnashuvi';
 
   @override
-  String lanSeatConflictBody(String student, String holder, String claimant) {
-    return '$student: bu o\'quvchi $holder kompyuterida testda. $claimant ham shu o\'quvchi nomidan boshlamoqchi.';
+  String lanSeatConflictBody(String student) {
+    return '$student: bu o\'quvchi allaqachon testda. Boshqa kompyuter ham shu o\'quvchi nomidan boshlamoqchi.';
+  }
+
+  @override
+  String lanSeatPartyHolder(
+      String device, String ip, String ago, String status) {
+    return 'Hozirgi: $device ($ip) · $ago oldin ulangan · $status';
+  }
+
+  @override
+  String lanSeatPartyClaimant(
+      String device, String ip, String ago, String status) {
+    return 'Yangi: $device ($ip) · $ago oldin ulangan · $status';
+  }
+
+  @override
+  String lanSeatMore(int count) {
+    return '+$count ta yana';
   }
 
   @override

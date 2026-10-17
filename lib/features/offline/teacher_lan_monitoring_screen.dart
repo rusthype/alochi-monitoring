@@ -347,51 +347,82 @@ class _TeacherLanMonitoringScreenState
     );
   }
 
+  /// At most this many conflicts are drawn at once; the rest is a count.
+  static const int _maxBanners = 3;
+
   /// Seat conflicts: the first PC keeps working until the teacher decides.
+  /// Bounded in height and count so a flood of them can never push the client
+  /// list off screen (N-3); the safe answer ("reject the new one") is the
+  /// prominent button, freeing the old seat is the quiet one.
   Widget _conflictBanner(AppLocalizations l10n, HubState? state) {
     final list = state?.conflicts() ?? const <SeatConflict>[];
     if (state == null || list.isEmpty) return const SizedBox.shrink();
+    final shown = list.take(_maxBanners).toList();
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
+      constraints: const BoxConstraints(maxHeight: 240),
       decoration: BoxDecoration(
         color: AppColors.warnMuted,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.secondary),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(l10n.lanSeatConflictTitle,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w800, color: AppColors.ink1)),
-          for (final c in list) ...[
-            const SizedBox(height: 6),
-            Text(
-                l10n.lanSeatConflictBody(
-                    c.studentName, c.holderLabel, c.claimantLabel),
-                style: const TextStyle(color: AppColors.ink1, height: 1.35)),
-            const SizedBox(height: 6),
-            Wrap(spacing: 8, runSpacing: 6, children: [
-              FilledButton.tonal(
-                onPressed: () {
-                  state.resolveConflict(c.id, releaseHolder: true);
-                  setState(() {});
-                },
-                child: Text(l10n.lanSeatRelease),
-              ),
-              OutlinedButton(
-                onPressed: () {
-                  state.resolveConflict(c.id, releaseHolder: false);
-                  setState(() {});
-                },
-                child: Text(l10n.lanSeatReject),
-              ),
-            ]),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.lanSeatConflictTitle,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800, color: AppColors.ink1)),
+            for (final c in shown) ...[
+              const SizedBox(height: 8),
+              Text(l10n.lanSeatConflictBody(c.studentName),
+                  style: const TextStyle(
+                      color: AppColors.ink1,
+                      fontWeight: FontWeight.w700,
+                      height: 1.35)),
+              Text(_partyLine(l10n, c.holder, holder: true),
+                  style: const TextStyle(color: AppColors.ink1, height: 1.35)),
+              Text(_partyLine(l10n, c.claimant, holder: false),
+                  style: const TextStyle(color: AppColors.ink1, height: 1.35)),
+              const SizedBox(height: 6),
+              Wrap(spacing: 8, runSpacing: 6, children: [
+                FilledButton(
+                  onPressed: () {
+                    state.resolveConflict(c.id, releaseHolder: false);
+                    setState(() {});
+                  },
+                  child: Text(l10n.lanSeatReject),
+                ),
+                TextButton(
+                  onPressed: () {
+                    state.resolveConflict(c.id, releaseHolder: true);
+                    setState(() {});
+                  },
+                  child: Text(l10n.lanSeatRelease),
+                ),
+              ]),
+            ],
+            if (list.length > shown.length) ...[
+              const SizedBox(height: 8),
+              Text(l10n.lanSeatMore(list.length - shown.length),
+                  style: const TextStyle(
+                      color: AppColors.ink2, fontWeight: FontWeight.w700)),
+            ],
           ],
-        ],
+        ),
       ),
     );
+  }
+
+  String _partyLine(AppLocalizations l10n, SeatParty p,
+      {required bool holder}) {
+    final device = p.deviceName.isEmpty ? l10n.lanUnnamedClient : p.deviceName;
+    final ago = formatRemaining(p.connectedAgoMs ~/ 1000);
+    final status = _statusLabel(l10n, p.status);
+    return holder
+        ? l10n.lanSeatPartyHolder(device, p.ip, ago, status)
+        : l10n.lanSeatPartyClaimant(device, p.ip, ago, status);
   }
 
   Widget _addressBlock(AppLocalizations l10n, ShelfHub hub, HubState state) {
@@ -448,8 +479,14 @@ class _TeacherLanMonitoringScreenState
       ? v.name
       : (v.deviceName.isNotEmpty ? v.deviceName : l10n.lanUnnamedClient);
 
-  (String, Color) _statusOf(AppLocalizations l10n, ClientView v) {
-    switch (v.status) {
+  String _statusLabel(AppLocalizations l10n, ClientStatus s) =>
+      _statusOfStatus(l10n, s).$1;
+
+  (String, Color) _statusOf(AppLocalizations l10n, ClientView v) =>
+      _statusOfStatus(l10n, v.status);
+
+  (String, Color) _statusOfStatus(AppLocalizations l10n, ClientStatus status) {
+    switch (status) {
       case ClientStatus.testing:
         return (l10n.lanStatusTesting, AppColors.ok);
       case ClientStatus.waiting:
@@ -563,6 +600,8 @@ class _TeacherLanMonitoringScreenState
                       ))
                     : Image.memory(frame,
                         key: ValueKey(v.frameVersion),
+                        // Decode at display size, never at the stream's own.
+                        cacheWidth: 960,
                         fit: BoxFit.contain,
                         gaplessPlayback: true,
                         errorBuilder: (_, __, ___) => Center(

@@ -137,6 +137,10 @@ class LanClientSession implements OfflineContentSource {
         _http = client,
         _ownsHttp = ownsClient;
 
+  /// True when [host]:[port] is exactly the address this session joined.
+  bool isSameHub(String host, int port) =>
+      base.port == port && base.host.toLowerCase() == host.toLowerCase();
+
   /// Short tag of the hub's pack, to compare with what the teacher reads out.
   String get fingerprint => packFingerprint(_packUuid);
 
@@ -232,11 +236,15 @@ class LanClientSession implements OfflineContentSource {
     try {
       final req = http.Request('POST', base.replace(path: '/join'))
         ..headers['content-type'] = 'application/json'
+        // A reply must never forward this request (and its bearer token).
+        ..followRedirects = false
         // A PC re-joining while it still holds a live token says so: the hub
-        // then lets it past the global failure gate and the join lock.
-        ..headers.addAll(replacing == null
-            ? const {}
-            : {'authorization': 'Bearer ${replacing._token}'})
+        // then lets it past the global failure gate and the join lock. The
+        // token goes ONLY to the very host and port it was issued by -- never
+        // to a hub that was merely picked or typed next (N-4).
+        ..headers.addAll(replacing != null && replacing.isSameHub(h, port)
+            ? {'authorization': 'Bearer ${replacing._token}'}
+            : const {})
         ..body = jsonEncode({
           'code': code.trim(),
           'machine_id': mid,

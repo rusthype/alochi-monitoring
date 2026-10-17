@@ -20,7 +20,9 @@ import '../api/api_client.dart';
 import '../db/pack_results_db.dart';
 import '../db/test_cache.dart';
 import '../security/incident_log.dart';
+import '../local_server/hub_guard.dart' show Mutex;
 import '../security/monitored_clock.dart';
+import 'export_format.dart';
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart';
 import 'offline_diagnostic_api.dart';
 import 'offline_content_source.dart';
@@ -33,6 +35,14 @@ class OfflinePackSession implements OfflineContentSource {
   final Directory mediaDir;
 
   OfflinePackSession._(this.pack, this.mediaDir);
+
+  /// "Check budget -> append -> account" on this pack's chain is one critical
+  /// section for EVERY writer (LAN hub results and the teacher's own).
+  final Mutex chainLock = Mutex();
+
+  /// Export-format size of the chain, cached by the LAN hub's budget; null =
+  /// unknown (re-measured from the database). Touch only under [chainLock].
+  ChainUsage? chainUsage;
 
   /// The open session, or null in normal (online) mode.
   static OfflinePackSession? current;
@@ -172,13 +182,33 @@ class OfflinePackSession implements OfflineContentSource {
       {String? token}) {
     final key =
         (token == null || token.isEmpty) ? newIdempotencyToken() : token;
-    return PackResultsDb.append(
-      packUuid: pack.packUuid,
-      chainKey: pack.chainKey,
-      idempotencyKey: key,
-      payloadJson: jsonEncode(payload),
-      incidents: IncidentLog.instance.drain(),
-      clockFlags: MonitoredClock.instance.drainFlags(),
-    );
+    // Same critical section the LAN hub budgets the chain in: a result written
+    // here must not slip between its check and its write, and must be counted.
+    return chainLock.run(() async {
+      final uuid = pack.packUuid;
+      final payloadJson = jsonEncode(payload);
+      final incidents = IncidentLog.instance.drain();
+      final flags = MonitoredClock.instance.drainFlags();
+      try {
+        final isNew =
+            chainUsage != null && !await PackResultsDb.hasKey(uuid, key);
+        final row = await PackResultsDb.append(
+          packUuid: uuid,
+          chainKey: pack.chainKey,
+          idempotencyKey: key,
+          payloadJson: payloadJson,
+          incidents: incidents,
+          clockFlags: flags,
+        );
+        if (isNew) {
+          chainUsage?.add(PackResultsDb.studentIdOf(payloadJson),
+              exportEntryBytes(row.payloadJson, row.metaJson));
+        }
+        return row;
+      } catch (_) {
+        chainUsage = null; // unknown outcome: the next budget re-measures
+        rethrow;
+      }
+    });
   }
 }

@@ -1370,17 +1370,53 @@
   "lanJoinsLockedNote": "Подключение закрыто: новые компьютеры не могут подключиться.",
   "lanErrJoinsClosed": "Учитель закрыл подключение новых компьютеров.",
   "lanSeatConflictTitle": "Конфликт места",
-  "lanSeatConflictBody": "{student}: этот ученик уже проходит тест на {holder}. {claimant} тоже пытается начать тест за него.",
+  "lanSeatConflictBody": "{student}: этот ученик уже проходит тест. Другой компьютер тоже пытается начать тест за него.",
   "@lanSeatConflictBody": {
     "placeholders": {
       "student": {
         "type": "String"
-      },
-      "holder": {
+      }
+    }
+  },
+  "lanSeatPartyHolder": "Текущий: {device} ({ip}) · подключён {ago} назад · {status}",
+  "@lanSeatPartyHolder": {
+    "placeholders": {
+      "device": {
         "type": "String"
       },
-      "claimant": {
+      "ip": {
         "type": "String"
+      },
+      "ago": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "lanSeatPartyClaimant": "Новый: {device} ({ip}) · подключён {ago} назад · {status}",
+  "@lanSeatPartyClaimant": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      },
+      "ip": {
+        "type": "String"
+      },
+      "ago": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "lanSeatMore": "Ещё: {count}",
+  "@lanSeatMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
       }
     }
   },

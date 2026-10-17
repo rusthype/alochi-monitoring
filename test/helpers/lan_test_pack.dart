@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:alochi_monitoring/core/offline/pack_loader.dart';
+import 'package:image/image.dart' as img;
 
 const lanSchool = '00000000-0000-4000-8000-0000000000b2';
 const lanG1 = '00000000-0000-4000-8000-0000000000c1';
@@ -52,7 +53,11 @@ Map<String, dynamic> lanTest(String key,
       },
     };
 
-LoadedPack lanTestPack({String? mediaRef}) => LoadedPack(
+/// Id of the i-th extra roster student (see `lanTestPack(extraStudents:)`).
+String lanExtraStudent(int i) =>
+    '00000000-0000-4000-8000-${(0x1000 + i).toRadixString(16).padLeft(12, '0')}';
+
+LoadedPack lanTestPack({String? mediaRef, int extraStudents = 0}) => LoadedPack(
       manifest: PackManifest(
         formatVersion: 1,
         packUuid: lanPackUuid,
@@ -124,6 +129,13 @@ LoadedPack lanTestPack({String? mediaRef}) => LoadedPack(
           'name': 'Karimova Zilola',
           'group_id': lanG2
         },
+        for (var i = 0; i < extraStudents; i++)
+          {
+            'id': lanExtraStudent(i),
+            'code': 'X-$i',
+            'name': 'Extra Student $i',
+            'group_id': lanG1
+          },
       ],
       chainKey: Uint8List.fromList(List.generate(32, (i) => 100 + i)),
     );
@@ -152,16 +164,32 @@ Directory makeMediaDir(Directory parent, String sha256Hex) {
   return media;
 }
 
-/// A tiny but structurally valid JPEG: SOI, SOF0 claiming [w]x[h], a COM
-/// segment carrying [marker] (so tests can search for it), EOI. Not decodable
-/// -- the hub only reads the header.
+final Uint8List _baseJpeg =
+    Uint8List.fromList(img.encodeJpg(img.Image(width: 1, height: 1)));
+
+/// A real (codec-parseable) JPEG whose SOF header claims [w]x[h]: a genuine
+/// 1x1 baseline file with its frame header patched and a COM segment carrying
+/// [marker] (so tests can search for it) inserted after SOI. The hub only
+/// reads headers, so the pixels never matter -- but unlike a hand-made stub,
+/// the platform codec accepts it, as the hub's codec check requires.
 Uint8List lanJpeg({String marker = 'FRAMEMARKER', int w = 640, int h = 360}) {
+  final out = Uint8List.fromList(_baseJpeg);
+  var i = 2;
+  while (i + 8 < out.length) {
+    final m = out[i + 1];
+    if (out[i] == 0xFF && m >= 0xC0 && m <= 0xC2) {
+      out[i + 5] = h >> 8;
+      out[i + 6] = h & 0xFF;
+      out[i + 7] = w >> 8;
+      out[i + 8] = w & 0xFF;
+      break;
+    }
+    i += 2 + ((out[i + 2] << 8) | out[i + 3]);
+  }
   final com = marker.codeUnits;
   return Uint8List.fromList([
-    0xFF, 0xD8, //
-    0xFF, 0xC0, 0, 17, 8, h >> 8, h & 0xFF, w >> 8, w & 0xFF, //
-    3, 1, 0x22, 0, 2, 0x11, 1, 3, 0x11, 1,
-    0xFF, 0xFE, (com.length + 2) >> 8, (com.length + 2) & 0xFF, ...com,
-    0xFF, 0xD9,
+    ...out.sublist(0, 2),
+    0xFF, 0xFE, (com.length + 2) >> 8, (com.length + 2) & 0xFF, ...com, //
+    ...out.sublist(2),
   ]);
 }

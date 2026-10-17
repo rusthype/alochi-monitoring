@@ -5046,8 +5046,28 @@ abstract class AppLocalizations {
   /// No description provided for @lanSeatConflictBody.
   ///
   /// In uz, this message translates to:
-  /// **'{student}: bu o\'quvchi {holder} kompyuterida testda. {claimant} ham shu o\'quvchi nomidan boshlamoqchi.'**
-  String lanSeatConflictBody(String student, String holder, String claimant);
+  /// **'{student}: bu o\'quvchi allaqachon testda. Boshqa kompyuter ham shu o\'quvchi nomidan boshlamoqchi.'**
+  String lanSeatConflictBody(String student);
+
+  /// No description provided for @lanSeatPartyHolder.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozirgi: {device} ({ip}) · {ago} oldin ulangan · {status}'**
+  String lanSeatPartyHolder(
+      String device, String ip, String ago, String status);
+
+  /// No description provided for @lanSeatPartyClaimant.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi: {device} ({ip}) · {ago} oldin ulangan · {status}'**
+  String lanSeatPartyClaimant(
+      String device, String ip, String ago, String status);
+
+  /// No description provided for @lanSeatMore.
+  ///
+  /// In uz, this message translates to:
+  /// **'+{count} ta yana'**
+  String lanSeatMore(int count);
 
   /// No description provided for @lanSeatRelease.
   ///

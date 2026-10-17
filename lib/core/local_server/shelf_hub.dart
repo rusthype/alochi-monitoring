@@ -72,6 +72,9 @@ class ShelfHub extends ChangeNotifier {
   final int maxPackPlainBytes;
   final int maxResultsPerIp;
   final int maxResultBytesPerIp;
+  final int maxResultsPerStudent;
+  final int maxResultBytesPerStudent;
+  final int reservePerStudent;
 
   /// Overrides the UDP announcer (tests aim it at loopback).
   final LanBroadcaster Function(String name, int port, String packLabel)?
@@ -89,6 +92,9 @@ class ShelfHub extends ChangeNotifier {
     this.maxPackPlainBytes = HubLimits.maxPackPlainBytes,
     this.maxResultsPerIp = HubLimits.maxResultsPerIp,
     this.maxResultBytesPerIp = HubLimits.maxResultBytesPerIp,
+    this.maxResultsPerStudent = HubLimits.maxResultsPerStudent,
+    this.maxResultBytesPerStudent = HubLimits.maxResultBytesPerStudent,
+    this.reservePerStudent = HubLimits.reservePerStudent,
   })  : bindAddress = bindAddress ?? InternetAddress.anyIPv4,
         hubName = hubName ?? _hostName(),
         clock = clock ?? MonitoredClock.instance;
@@ -111,12 +117,6 @@ class ShelfHub extends ChangeNotifier {
   final Map<String, TokenBucket> _ipBuckets = {};
   int _inFlight = 0;
   final Map<String, int> _joinInFlight = {};
-
-  /// "Check budget -> append -> account" is one critical section: parallel
-  /// results must not each see room that only one of them can have (S-001).
-  final Mutex _resultLock = Mutex();
-  int? _chainBytes; // export-format bytes of the pack's chain, cached
-  int? _chainCount;
 
   bool get running => _server != null;
   HubState? get state => _state;
@@ -143,8 +143,10 @@ class ShelfHub extends ChangeNotifier {
     _testJson.clear();
     _diagnosticsJson = null;
     _ipBuckets.clear();
-    _chainBytes = null;
-    _chainCount = null;
+    // "Check budget -> append -> account" is one critical section (the
+    // session's chainLock): parallel results must not each see room that only
+    // one of them can have (S-001). The cached size is re-measured per run.
+    session.chainUsage = null;
 
     final durations = <String, int>{};
     for (final t in pack.tests) {
@@ -526,6 +528,11 @@ class ShelfHub extends ChangeNotifier {
 
   static final RegExp _frameTypeRe = RegExp(r'^(keyframe|patch)$');
 
+  static bool _frameTooLarge(int w, int h) =>
+      w > HubLimits.maxFrameSide ||
+      h > HubLimits.maxFrameSide ||
+      w * h > HubLimits.maxFramePixels;
+
   int? _qInt(Map<String, String> q, String k, int min, int max) {
     final v = q[k];
     if (v == null || v.isEmpty) return null;
@@ -560,24 +567,30 @@ class ShelfHub extends ChangeNotifier {
     }
     final bytes =
         await _readBody(req, HubLimits.frameBody, HubLimits.frameBodyTimeout);
-    // Only a real JPEG is ever stored or shown, and only a small one: the
-    // header's claimed size is checked WITHOUT decoding, because a few hundred
-    // KB can declare 10000x10000 pixels and cost hundreds of MB to decode on
-    // the teacher's screen (S-006).
+    // Only a real, small JPEG is ever stored or shown. A few hundred KB can
+    // declare 10000x10000 pixels and cost hundreds of MB to decode on the
+    // teacher's screen (S-006), so the size is checked WITHOUT decoding -- by
+    // the same codec that would decode it (N-1: a hand-written header walker
+    // alone is fooled by a second, fake SOF), then by the cheap walker too.
     if (bytes.length < 4 ||
         bytes[0] != 0xFF ||
         bytes[1] != 0xD8 ||
         bytes[2] != 0xFF) {
       throw const HubHttpError(400, 'bad_frame');
     }
-    final size = jpegSize(bytes);
-    if (size == null || size.width < 1 || size.height < 1) {
+    final header = jpegSize(bytes);
+    if (header != null && _frameTooLarge(header.width, header.height)) {
+      throw const HubHttpError(422, 'frame_too_large');
+    }
+    final codec = await codecFrameSize(bytes);
+    if (codec == null || codec.width < 1 || codec.height < 1) {
       throw const HubHttpError(400, 'bad_frame');
     }
-    if (size.width > HubLimits.maxFrameSide ||
-        size.height > HubLimits.maxFrameSide ||
-        size.width * size.height > HubLimits.maxFramePixels) {
+    if (_frameTooLarge(codec.width, codec.height)) {
       throw const HubHttpError(422, 'frame_too_large');
+    }
+    if (header == null || header.width < 1 || header.height < 1) {
+      throw const HubHttpError(400, 'bad_frame');
     }
     return _json(
         200,
@@ -622,7 +635,7 @@ class ShelfHub extends ChangeNotifier {
     final uuid = session.pack.packUuid;
 
     // Check -> append -> account is ONE critical section.
-    return _resultLock.run(() async {
+    return session.chainLock.run(() async {
       try {
         // A repeat of an already stored result is acknowledged again -- but
         // only if it IS the same result; a different body under the same key is
@@ -637,8 +650,8 @@ class ShelfHub extends ChangeNotifier {
 
         // The chain budget is kept in the unit the server enforces: bytes of
         // the DECRYPTED export JSON, measured by the exporter's own helpers.
-        _chainBytes ??= await PackResultsDb.exportPlainBytes(uuid);
-        _chainCount ??= (await PackResultsDb.stats(uuid)).count;
+        final usage =
+            session.chainUsage ??= await PackResultsDb.chainUsage(uuid);
 
         // (No awaits from here to the append: the clock flags peeked for the
         // size are the ones drained for the entry.)
@@ -652,11 +665,18 @@ class ShelfHub extends ChangeNotifier {
         final metaJson = PackResultsDb.metaJsonFor(
             key, entryIncidents, [...flags, ...hubFlags]);
         final entryBytes = exportEntryBytes(payloadJson, metaJson);
+        final studentId = payloadMap['student_id'] as String;
 
         final quota = st.quotaProblem(ip, entryBytes);
         if (quota != null) throw HubHttpError(403, quota);
-        if (_chainCount! + 1 > maxPackEntries ||
-            _chainBytes! + entryBytes > maxPackPlainBytes) {
+        final mine = usage.perStudent[studentId];
+        if ((mine?.count ?? 0) >= maxResultsPerStudent ||
+            (mine?.bytes ?? 0) + entryBytes > maxResultBytesPerStudent) {
+          throw const HubHttpError(403, 'student_quota');
+        }
+        if (usage.count + 1 > maxPackEntries ||
+            usage.bytes + entryBytes + _reserveFor(usage, st, studentId) >
+                maxPackPlainBytes) {
           throw const HubHttpError(507, 'pack_full');
         }
 
@@ -669,20 +689,32 @@ class ShelfHub extends ChangeNotifier {
           // The hub's own clock flags ride along: the hub stamps the chain.
           clockFlags: [...flags, ...clock.drainFlags()],
         );
-        _chainBytes = _chainBytes! + entryBytes;
-        _chainCount = _chainCount! + 1;
+        usage.add(studentId, entryBytes);
         st.quotaCommit(ip, entryBytes);
-        st.resultStored(c, payloadMap['student_id'] as String);
+        st.resultStored(c, studentId);
         return _json(200, {'ok': true});
       } on HubHttpError {
         rethrow;
       } catch (_) {
         // Unknown outcome of the write: re-measure from the database next time.
-        _chainBytes = null;
-        _chainCount = null;
+        session.chainUsage = null;
         rethrow;
       }
     });
+  }
+
+  /// Room held back for roster students who have no result yet, so a hostile
+  /// PC cannot fill the pack before the honest ones are done (N-2). The
+  /// student whose result this is does not count against itself, and the
+  /// reserve never exceeds half the budget (a huge roster must not make the
+  /// hub refuse everything).
+  int _reserveFor(ChainUsage usage, HubState st, String studentId) {
+    final own = usage.perStudent.containsKey(studentId) ? 0 : 1;
+    final waiting = st.rosterSize - usage.studentsWithResults - own;
+    if (waiting <= 0) return 0;
+    final reserve = waiting * reservePerStudent;
+    final cap = maxPackPlainBytes ~/ 2;
+    return reserve > cap ? cap : reserve;
   }
 
   // ── content ────────────────────────────────────────────────────────────────

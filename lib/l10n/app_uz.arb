@@ -1415,17 +1415,53 @@
   "lanJoinsLockedNote": "Qo'shilish yopiq: yangi kompyuterlar ulana olmaydi.",
   "lanErrJoinsClosed": "O'qituvchi yangi ulanishlarni yopgan.",
   "lanSeatConflictTitle": "O'rin to'qnashuvi",
-  "lanSeatConflictBody": "{student}: bu o'quvchi {holder} kompyuterida testda. {claimant} ham shu o'quvchi nomidan boshlamoqchi.",
+  "lanSeatConflictBody": "{student}: bu o'quvchi allaqachon testda. Boshqa kompyuter ham shu o'quvchi nomidan boshlamoqchi.",
   "@lanSeatConflictBody": {
     "placeholders": {
       "student": {
         "type": "String"
-      },
-      "holder": {
+      }
+    }
+  },
+  "lanSeatPartyHolder": "Hozirgi: {device} ({ip}) · {ago} oldin ulangan · {status}",
+  "@lanSeatPartyHolder": {
+    "placeholders": {
+      "device": {
         "type": "String"
       },
-      "claimant": {
+      "ip": {
         "type": "String"
+      },
+      "ago": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "lanSeatPartyClaimant": "Yangi: {device} ({ip}) · {ago} oldin ulangan · {status}",
+  "@lanSeatPartyClaimant": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      },
+      "ip": {
+        "type": "String"
+      },
+      "ago": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "lanSeatMore": "+{count} ta yana",
+  "@lanSeatMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
       }
     }
   },

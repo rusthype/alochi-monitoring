@@ -50,7 +50,7 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  Future<void> boot() async {
+  Future<void> boot({int? maxResultsPerStudent}) async {
     client = http.Client();
     tmp = Directory.systemTemp.createTempSync('lan_hub_');
     await OfflineQueue.openAtPath(p.join(tmp.path, 'q.db'));
@@ -65,7 +65,9 @@ void main() {
         firstPort: 0,
         lastPort: 0,
         hubName: 'test-hub',
-        clock: clock);
+        clock: clock,
+        maxResultsPerStudent:
+            maxResultsPerStudent ?? HubLimits.maxResultsPerStudent);
     await hub.start(announce: false);
     base = 'http://127.0.0.1:${hub.port}';
   }
@@ -633,6 +635,9 @@ void main() {
     });
 
     test('a client cannot flood the chain: per-PC quota', () async {
+      // (the per-student cap is lifted: this test is about the address quota)
+      await shutdown();
+      await boot(maxResultsPerStudent: 1 << 20);
       final t = await join();
       var accepted = 0;
       int? refused;
@@ -777,8 +782,8 @@ void main() {
       final open = hub.state!.conflicts();
       expect(open, hasLength(1));
       expect(open.single.studentName, 'Valiyev Ali');
-      expect(open.single.holderLabel, contains('pc-a'));
-      expect(open.single.claimantLabel, contains('pc-b'));
+      expect(open.single.holder.deviceName, contains('pc-a'));
+      expect(open.single.claimant.deviceName, contains('pc-b'));
     });
 
     test(

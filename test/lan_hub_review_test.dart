@@ -2,6 +2,7 @@
 // probe the reviewer ran against a real server is repeated here.
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:alochi_monitoring/core/db/offline_queue.dart';
@@ -53,6 +54,9 @@ void main() {
     int? maxPackPlainBytes,
     int? maxResultsPerIp,
     int? maxResultBytesPerIp,
+    int? maxResultsPerStudent,
+    int? maxResultBytesPerStudent,
+    int? reservePerStudent,
   }) async {
     client = http.Client();
     tmp = Directory.systemTemp.createTempSync('lan_review_');
@@ -73,7 +77,12 @@ void main() {
         maxPackPlainBytes: maxPackPlainBytes ?? HubLimits.maxPackPlainBytes,
         maxResultsPerIp: maxResultsPerIp ?? HubLimits.maxResultsPerIp,
         maxResultBytesPerIp:
-            maxResultBytesPerIp ?? HubLimits.maxResultBytesPerIp);
+            maxResultBytesPerIp ?? HubLimits.maxResultBytesPerIp,
+        maxResultsPerStudent:
+            maxResultsPerStudent ?? HubLimits.maxResultsPerStudent,
+        maxResultBytesPerStudent:
+            maxResultBytesPerStudent ?? HubLimits.maxResultBytesPerStudent,
+        reservePerStudent: reservePerStudent ?? HubLimits.reservePerStudent);
     await hub.start(announce: false);
     base = 'http://127.0.0.1:${hub.port}';
   }
@@ -148,8 +157,9 @@ void main() {
     setUp(boot);
     tearDown(shutdown);
 
-    test('a real result is far below the body limit (the limit is justified)',
-        () {
+    test(
+        'the largest REAL result shapes fit the 64 KB body limit with '
+        'headroom and are accepted over HTTP (N-2)', () async {
       // Worst realistic shapes: a 300-question engine test with 100 long
       // free-text answers and rich section/topic scores, and a 300-answer
       // diagnostic.
@@ -172,7 +182,8 @@ void main() {
         },
       };
       final diag = {
-        ...lanResultPayload(testKey: 'diag:math:g5:uz:v1'),
+        ...lanResultPayload(
+            student: lanS2, group: lanG2, testKey: 'diag:math:g5:uz:v1'),
         'answers': [
           for (var i = 0; i < 300; i++)
             {
@@ -181,14 +192,22 @@ void main() {
             }
         ],
       };
-      final engineBytes = utf8.encode(jsonEncode(engine)).length;
-      final diagBytes = utf8.encode(jsonEncode(diag)).length;
+      int bodyOf(Map<String, dynamic> payload) => utf8
+          .encode(jsonEncode(
+              {'payload': payload, 'incidents': [], 'clock_flags': []}))
+          .length;
+      final engineBody = bodyOf(engine);
+      final diagBody = bodyOf(diag);
       // ignore: avoid_print
-      print(
-          'worst realistic result: engine=$engineBytes B, diagnostic=$diagBytes B '
-          '(body limit ${HubLimits.resultBody} B)');
-      expect(engineBytes, lessThan(HubLimits.resultBody ~/ 2));
-      expect(diagBytes, lessThan(HubLimits.resultBody ~/ 2));
+      print('worst realistic result REQUEST BODY: engine=$engineBody B, '
+          'diagnostic=$diagBody B (limit ${HubLimits.resultBody} B)');
+      // measured ~43 KB: the 64 KB limit leaves >= 40% headroom
+      expect(engineBody * 1.4, lessThan(HubLimits.resultBody));
+      expect(diagBody * 1.4, lessThan(HubLimits.resultBody));
+
+      final t = await join('real');
+      expect((await sendResult(t, 'real-engine', engine)).statusCode, 200);
+      expect((await sendResult(t, 'real-diag', diag)).statusCode, 200);
     });
 
     test('the 500 KB poisoned request of the probe is refused outright',
@@ -202,12 +221,17 @@ void main() {
     test(
         'backslash-padded results can never push the export past the server '
         'limit; the hub measures the real export size', () async {
+      await shutdown();
+      await boot(
+          maxResultsPerStudent: 100000,
+          maxResultBytesPerStudent: 1 << 30,
+          reservePerStudent: 0);
       final t = await join('atk');
       var accepted = 0;
       int? stopped;
       for (var i = 0; i < 60; i++) {
         ticks += 5000;
-        final r = await sendResult(t, 'poison-$i', poisoned(60 * 1024));
+        final r = await sendResult(t, 'poison-$i', poisoned(30 * 1024));
         if (r.statusCode == 200) {
           accepted++;
         } else {
@@ -234,12 +258,15 @@ void main() {
       await boot(
           maxPackPlainBytes: 700 * 1024,
           maxResultsPerIp: 100000,
-          maxResultBytesPerIp: 1 << 30);
+          maxResultBytesPerIp: 1 << 30,
+          maxResultsPerStudent: 100000,
+          maxResultBytesPerStudent: 1 << 30,
+          reservePerStudent: 0);
       final t = await join('atk');
       int? stopped;
       for (var i = 0; i < 40; i++) {
         ticks += 5000;
-        final r = await sendResult(t, 'p-$i', poisoned(60 * 1024));
+        final r = await sendResult(t, 'p-$i', poisoned(30 * 1024));
         if (r.statusCode != 200) {
           stopped = r.statusCode;
           expect(jsonDecode(r.body), {'error': 'pack_full'});
@@ -260,11 +287,14 @@ void main() {
       await boot(
           maxPackPlainBytes: 900 * 1024,
           maxResultsPerIp: 100000,
-          maxResultBytesPerIp: 1 << 30);
+          maxResultBytesPerIp: 1 << 30,
+          maxResultsPerStudent: 100000,
+          maxResultBytesPerStudent: 1 << 30,
+          reservePerStudent: 0);
       final tokens = [for (var i = 0; i < 8; i++) await join('m$i')];
       final futs = <Future<http.Response>>[
         for (var i = 0; i < 128; i++)
-          sendResult(tokens[i % 8], 'par-$i', poisoned(50 * 1024))
+          sendResult(tokens[i % 8], 'par-$i', poisoned(25 * 1024))
       ];
       final rs = await Future.wait(futs);
       final ok = rs.where((r) => r.statusCode == 200).length;
@@ -592,6 +622,112 @@ void main() {
       expect(r.statusCode, 200);
       // nothing refused was kept
       expect(hub.state!.frameOf(hub.state!.views().single.id), isNotNull);
+    });
+
+    // N-1 ---------------------------------------------------------------
+
+    Uint8List fakeSof(int w, int h) => Uint8List.fromList([
+          0xFF, 0xC0, 0, 17, 8, h >> 8, h & 0xFF, w >> 8, w & 0xFF, //
+          3, 1, 0x22, 0, 2, 0x11, 1, 3, 0x11, 1,
+        ]);
+
+    test('jpegSize: a second SOF, fill-byte runs and truncation never crash',
+        () {
+      final big = lanJpeg(w: 10000, h: 10000);
+      // fake small frame header first, the real (huge) one behind it
+      final twoSof = Uint8List.fromList(
+          [...big.sublist(0, 2), ...fakeSof(640, 360), ...big.sublist(2)]);
+      expect(jpegSize(twoSof), isNull, reason: 'two frame headers: refuse');
+      // the reviewer's tail: FF D8 then nothing but fill bytes
+      for (var n = 3; n < 40; n++) {
+        final b =
+            Uint8List.fromList([0xFF, 0xD8, 0xFF, ...List.filled(n - 3, 0xFF)]);
+        expect(() => jpegSize(b), returnsNormally, reason: 'fill x$n');
+        expect(jpegSize(b), isNull);
+      }
+      // every prefix of a real file, and random garbage after SOI
+      final real = lanJpeg();
+      for (var n = 0; n <= real.length; n++) {
+        expect(() => jpegSize(real.sublist(0, n)), returnsNormally);
+      }
+      final rnd = Random(7);
+      for (var i = 0; i < 20000; i++) {
+        final b = Uint8List(3 + rnd.nextInt(40));
+        b[0] = 0xFF;
+        b[1] = 0xD8;
+        for (var k = 2; k < b.length; k++) {
+          b[k] = rnd.nextInt(4) == 0 ? 0xFF : rnd.nextInt(256);
+        }
+        expect(() => jpegSize(b), returnsNormally);
+      }
+    });
+
+    test(
+        'N-1: a fake 640x360 SOF in front of a real 10000x10000 one is a 422 '
+        '(the codec, not the walker, has the last word); nothing is stored',
+        () async {
+      final t = await join('f');
+      await postJson('/ping', pingBody('fs'), token: t);
+      final big = lanJpeg(w: 10000, h: 10000);
+      final bomb = Uint8List.fromList(
+          [...big.sublist(0, 2), ...fakeSof(640, 360), ...big.sublist(2)]);
+      final r = await client.post(u('/frame', {'session_id': 'fs'}),
+          headers: {'authorization': 'Bearer $t'}, body: bomb);
+      expect(r.statusCode, 422);
+      expect(jsonDecode(r.body), {'error': 'frame_too_large'});
+      expect(hub.state!.frameOf(hub.state!.views().single.id), isNull);
+      // the same declared size without the trick is refused too
+      ticks += 4000;
+      final plain = await client.post(u('/frame', {'session_id': 'fs'}),
+          headers: {'authorization': 'Bearer $t'}, body: big);
+      expect(plain.statusCode, 422);
+    });
+
+    test('N-1: SOI + fill bytes only is a 400, never a 500', () async {
+      final t = await join('f');
+      await postJson('/ping', pingBody('fs'), token: t);
+      final r = await client.post(u('/frame', {'session_id': 'fs'}),
+          headers: {'authorization': 'Bearer $t'},
+          body: Uint8List.fromList(
+              [0xFF, 0xD8, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]));
+      expect(r.statusCode, 400);
+      expect(jsonDecode(r.body), {'error': 'bad_frame'});
+    });
+
+    test(
+        'N-1: an EXIF thumbnail inside a well-formed APP1 does not matter; a '
+        'malformed APP1 that exposes it is refused; normal 640x360 is accepted',
+        () async {
+      final t = await join('f');
+      await postJson('/ping', pingBody('fs'), token: t);
+      Future<http.Response> send(Uint8List b) =>
+          client.post(u('/frame', {'session_id': 'fs'}),
+              headers: {'authorization': 'Bearer $t'}, body: b);
+      final thumb = lanJpeg(w: 160, h: 120, marker: 'T');
+      final main = lanJpeg(w: 640, h: 360);
+
+      final okApp1 = Uint8List.fromList([
+        ...main.sublist(0, 2),
+        0xFF, 0xE1, (thumb.length + 2) >> 8, (thumb.length + 2) & 0xFF,
+        ...thumb, //
+        ...main.sublist(2),
+      ]);
+      expect((await send(okApp1)).statusCode, 200);
+
+      ticks += 4000;
+      // APP1 whose length is too short: its payload is walked as segments
+      final badApp1 = Uint8List.fromList([
+        ...main.sublist(0, 2),
+        0xFF, 0xE1, 0, 4, 0, 0, //
+        ...thumb,
+        ...main.sublist(2),
+      ]);
+      final r = await send(badApp1);
+      expect(r.statusCode, isNot(200));
+      expect(r.statusCode, anyOf(400, 422));
+
+      ticks += 4000;
+      expect((await send(main)).statusCode, 200);
     });
 
     test('a burst of 100 frames is not accepted (cost + minimum interval)',

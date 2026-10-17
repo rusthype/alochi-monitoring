@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart' show sha256;
 
@@ -23,12 +24,13 @@ class HubLimits {
   static const int frameBody = 512 * 1024;
 
   /// A real result is a few KB (engine: raw answers + section/topic scores;
-  /// diagnostic: ~75 bytes per answered question). test/lan_hub_test.dart
-  /// measures a 300-question worst case at well under half of this; the
-  /// remaining headroom is for long free-text answers and the incident list.
-  /// It used to be 1 MB, which let one PC spend the whole export budget in a
-  /// handful of requests (S-001).
-  static const int resultBody = 128 * 1024;
+  /// diagnostic: ~75 bytes per answered question). test/lan_hub_review_test.dart
+  /// measures the 300-question worst case (~43 KB engine, ~16 KB diagnostic)
+  /// and proves it fits here with headroom. It used to be 1 MB, then 128 KB:
+  /// the biggest entry one request can add to the export is ~2x this (JSON
+  /// escapes backslashes twice), which is what a pack-filling attacker pays
+  /// with (N-2).
+  static const int resultBody = 64 * 1024;
 
   /// Whole-body read deadlines. Small bodies get a short one so a slow-body
   /// connection cannot sit on a slot (S-002).
@@ -53,6 +55,18 @@ class HubLimits {
   /// export_format.dart) and stops 1 MiB short.
   static const int maxPackEntries = 4800;
   static const int maxPackPlainBytes = 9 * 1024 * 1024;
+
+  /// Room kept for every roster student who has no result yet, so a hostile
+  /// PC (or four) cannot fill the pack before the honest ones have finished:
+  /// a further result is accepted only while `used + reserve + entry` fits.
+  /// The reserve never exceeds half the budget (a huge roster must not make
+  /// the hub refuse everything).
+  static const int reservePerStudent = 24 * 1024;
+
+  /// Per STUDENT (not per PC or address: a hostile PC can send as any
+  /// roster student, from any number of addresses).
+  static const int maxResultsPerStudent = 3;
+  static const int maxResultBytesPerStudent = 192 * 1024; // export bytes
 
   /// Server keeps <=201 incidents / <=101 clock flags per entry, <=1 KiB per
   /// item, <=48 KiB per list. The hub adds up to two items of its own.
@@ -91,6 +105,14 @@ class HubLimits {
   /// and a claim the teacher rejected stays refused this long (S-003).
   static const int claimCooldownMs = 10 * 1000;
   static const int rejectedClaimMs = 5 * 60 * 1000;
+
+  /// One address may have this many unresolved seat conflicts at once (a
+  /// hostile PC with many tokens could otherwise bury the honest ones, N-3).
+  static const int maxOpenConflictsPerIp = 4;
+
+  /// After the teacher frees a seat for a claimant, only THAT claimant may take
+  /// it for this long (N-3: another PC must not win the race).
+  static const int seatReserveMs = 60 * 1000;
 
   /// Frame limits against decompression bombs (S-006): a screen capture is
   /// 640x360 or 960x540.
@@ -308,26 +330,33 @@ class Mutex {
   }
 }
 
-/// Pixel size claimed by a JPEG's SOFn header, or null when none is found
-/// (not a JPEG / truncated). Only the header is read -- nothing is decoded.
+/// Pixel size claimed by a JPEG's SOFn header, or null when none is found, a
+/// second SOF is present (the fake-header trick: a decoder may honour a
+/// different one than a walker, N-1), the stream is truncated, or it is not a
+/// JPEG. Only the header is read -- nothing is decoded. The authoritative
+/// number is [codecFrameSize]; this is the cheap second line.
 ({int width, int height})? jpegSize(Uint8List b) {
   if (b.length < 4 || b[0] != 0xFF || b[1] != 0xD8) return null;
-  var i = 2;
-  while (i + 3 < b.length) {
+  ({int width, int height})? found;
+  var i = 2; // always at the 0xFF that starts the next marker
+  while (i + 1 < b.length) {
     if (b[i] != 0xFF) return null;
-    var marker = b[i + 1];
-    while (marker == 0xFF && i + 2 < b.length) {
-      i++; // fill bytes
-      marker = b[i + 1];
+    var m = i + 1;
+    while (m < b.length && b[m] == 0xFF) {
+      m++; // fill bytes before the marker code
     }
+    if (m >= b.length) return null;
+    final marker = b[m];
     if (marker == 0x00 ||
         marker == 0x01 ||
         (marker >= 0xD0 && marker <= 0xD8)) {
-      i += 2; // standalone marker
+      i = m + 1; // standalone marker
       continue;
     }
-    if (marker == 0xD9 || marker == 0xDA) return null; // EOI / SOS before SOF
-    final len = (b[i + 2] << 8) | b[i + 3];
+    if (marker == 0xD9) return null; // EOI before any scan: not a picture
+    if (marker == 0xDA) return found; // SOS: the frame header is behind us
+    if (m + 2 >= b.length) return null;
+    final len = (b[m + 1] << 8) | b[m + 2];
     if (len < 2) return null;
     final isSof = marker >= 0xC0 &&
         marker <= 0xCF &&
@@ -335,14 +364,36 @@ class Mutex {
         marker != 0xC8 &&
         marker != 0xCC;
     if (isSof) {
-      if (i + 9 > b.length) return null;
-      final h = (b[i + 5] << 8) | b[i + 6];
-      final w = (b[i + 7] << 8) | b[i + 8];
-      return (width: w, height: h);
+      if (found != null) return null; // two frame headers: refuse
+      if (m + 7 >= b.length) return null;
+      final h = (b[m + 4] << 8) | b[m + 5];
+      final w = (b[m + 6] << 8) | b[m + 7];
+      found = (width: w, height: h);
     }
-    i += 2 + len;
+    i = m + 1 + len;
   }
   return null;
+}
+
+/// The pixel size the platform's own image codec reports for [bytes], WITHOUT
+/// decoding them (an `ImageDescriptor` only parses the header), or null when
+/// the codec cannot make sense of the data. This is what the teacher's
+/// `Image.memory` will later decode with, so a header that fools a hand-written
+/// walker (two SOFs, N-1) cannot fool this. Both native objects are released on
+/// every path.
+Future<({int width, int height})?> codecFrameSize(Uint8List bytes) async {
+  ui.ImmutableBuffer? buffer;
+  ui.ImageDescriptor? descriptor;
+  try {
+    buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+    descriptor = await ui.ImageDescriptor.encoded(buffer);
+    return (width: descriptor.width, height: descriptor.height);
+  } catch (_) {
+    return null; // not decodable as an image: the caller answers 400
+  } finally {
+    descriptor?.dispose();
+    buffer?.dispose();
+  }
 }
 
 /// Short, non-secret tag of a pack, shown next to the hub name on both sides so

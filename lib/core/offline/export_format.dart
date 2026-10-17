@@ -48,3 +48,34 @@ int exportEntryBytes(String payloadJson, String metaJson) =>
 
 /// Fixed bytes of the plaintext around the entries (`{"entries":[]}`).
 final int exportEnvelopeBytes = utf8.encode(encodeEntries(const [])).length;
+
+/// Running size of one pack's chain in EXPORT bytes (the unit the server's
+/// 10 MiB limit is in), in total and per roster student. Whoever writes to the
+/// chain while the LAN hub budgets it (the hub, and the teacher's own
+/// OfflinePackSession.recordResult) does so under the session's chain lock and
+/// calls [add], so the budget never drifts from what the exporter will write.
+class ChainUsage {
+  int bytes;
+  int count;
+  final Map<String, ({int count, int bytes})> perStudent;
+
+  ChainUsage(this.bytes, this.count, this.perStudent);
+
+  /// A chain with no results yet.
+  ChainUsage.empty()
+      : bytes = exportEnvelopeBytes,
+        count = 0,
+        perStudent = {};
+
+  /// Student ids with at least one stored result.
+  int get studentsWithResults => perStudent.length;
+
+  void add(String? studentId, int entryBytes) {
+    bytes += entryBytes;
+    count++;
+    if (studentId == null || studentId.isEmpty) return;
+    final u = perStudent[studentId];
+    perStudent[studentId] =
+        (count: (u?.count ?? 0) + 1, bytes: (u?.bytes ?? 0) + entryBytes);
+  }
+}

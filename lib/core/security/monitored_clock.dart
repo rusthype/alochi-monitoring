@@ -264,16 +264,19 @@ class MonitoredClock {
 
   /// Returns the flags recorded since the last call and clears them.
   List<Map<String, dynamic>> drainFlags() {
-    final out = List<Map<String, dynamic>>.from(_flags);
-    if (_droppedFlags > 0) {
-      out.add({'type': 'clock_flags_overflow', 'dropped': _droppedFlags});
-    }
+    final out = pendingFlags;
     _flags.clear();
     _droppedFlags = 0;
     return out;
   }
 
-  List<Map<String, dynamic>> get pendingFlags => List.unmodifiable(_flags);
+  /// What [drainFlags] would return now, including the overflow counter item
+  /// (so a size measured from this is what the drain will really write).
+  List<Map<String, dynamic>> get pendingFlags => [
+        ..._flags,
+        if (_droppedFlags > 0)
+          {'type': 'clock_flags_overflow', 'dropped': _droppedFlags},
+      ];
 
   static String _iso(int ms) =>
       DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toIso8601String();

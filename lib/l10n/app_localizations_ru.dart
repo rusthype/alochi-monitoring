@@ -2725,8 +2725,25 @@ class AppLocalizationsRu extends AppLocalizations {
   String get lanSeatConflictTitle => 'Конфликт места';
 
   @override
-  String lanSeatConflictBody(String student, String holder, String claimant) {
-    return '$student: этот ученик уже проходит тест на $holder. $claimant тоже пытается начать тест за него.';
+  String lanSeatConflictBody(String student) {
+    return '$student: этот ученик уже проходит тест. Другой компьютер тоже пытается начать тест за него.';
+  }
+
+  @override
+  String lanSeatPartyHolder(
+      String device, String ip, String ago, String status) {
+    return 'Текущий: $device ($ip) · подключён $ago назад · $status';
+  }
+
+  @override
+  String lanSeatPartyClaimant(
+      String device, String ip, String ago, String status) {
+    return 'Новый: $device ($ip) · подключён $ago назад · $status';
+  }
+
+  @override
+  String lanSeatMore(int count) {
+    return 'Ещё: $count';
   }
 
   @override
