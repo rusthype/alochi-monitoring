@@ -33,6 +33,7 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
 | `GET /health` | `{ok}` |
 | `POST /join {code, machine_id, device_name?}` | `{token, hub_name, pack_uuid, school_id, school_code, ...}` |
 | `POST /keepalive` | 5 soniyada bir; "aloqa yo'q" (15 s) shundan hisoblanadi |
+| `POST /leave` | klient xushmuomala chiqadi (uzish / tasdiqlashni rad etish) |
 | `POST /ping` | `sessionPing` shakli -> `locked`, `extra_time_seconds` (jami), `commands`, `terminated`, `conflict`, `proctor_token`, `proctor_interval_ms`, `target_width` |
 | `POST /frame?session_id=..&frame_type=..` | tana = xom JPEG (multipart emas); javob `/ping` shaklida |
 | `POST /result` + `Idempotency-Key` | tana `{payload, incidents, clock_flags}`; `payload` = onlayn `/result/` tanasi |
@@ -51,19 +52,57 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
   `student_invalid`/`test_not_in_pack` mantiqiga mos, lekin qat'iyroq: bazasi yo'qligi uchun paketda bo'lmagan
   har qanday bo'sh bo'lmagan kalit rad etiladi), keyin mavjud `PackResultsDb.append` orqali zanjirga qo'shadi.
   Idempotent: bir xil kalit — ack, ikkinchi qator yo'q. Hub **hech narsani ballamaydi**.
-- **Chegaralar:** tana `join` 1 KB / `ping` 64 KB / `frame` 512 KB / `result` 1 MB; `Content-Length` majburiy
-  (411), katta bo'lsa 413; JSON chuqurligi 24 / 200k tugun; tana o'qish muddati 10 s; tokenga so'rov tezligi
-  (bucket 120, 40/s); IP bo'yicha autentifikatsiyasiz so'rovlar (bucket 30, 1/s); bir vaqtda 128 so'rov;
-  60 klient, bitta IP'dan 8 tagacha; bitta PC'dan 100 natija; zanjir 4800 yozuv / ~8 MB gacha (server importi
-  5000 / 10 MB dan oshsa butun faylni rad etadi). Incident/clock flag ro'yxatlari serverning 201/101, 1 KiB,
-  48 KiB chegarasiga qisqartiriladi (ortig'i `*_overflow` hisoblagichiga).
+- **Chegaralar:**
+  - Tana: `join` 1 KB / `ping` 64 KB / `frame` 512 KB / **`result` 128 KB** (eng yomon real natija — 300 savollik
+    test, 100 ta uzun matnli javob: ~43 KB; diagnostika ~16 KB; `test/lan_hub_review_test.dart` o'lchaydi). `Content-Length`
+    majburiy (411), katta bo'lsa 413; JSON chuqurligi 24 / 200k tugun, `Infinity`/`NaN` 400; tana o'qish muddati
+    kichik endpointlarda 3 s, natijada 6 s, kadrda 8 s.
+  - **Zanjir hajmi eksport birligida o'lchanadi.** JSON `\` va `"` ni ikki marta ekranlaydi (bir marta
+    `payload_json`da, yana eksport konvertida), shuning uchun saqlangan bayt hisobi 2 baravar kam baholardi.
+    Hub endi `export_format.dart` dagi **eksportyorning o'zi ishlatadigan** funksiyalar bilan har yozuvning
+    haqiqiy plaintext hajmini o'lchaydi va `<= 9 MiB` (server cheklovi 10 MiB = 10 485 760 B plaintext; 1 MiB
+    zaxira) va `<= 4800` yozuv bilan cheklaydi; oshsa `507 pack_full`. Tekshirish → yozish → hisoblash bitta
+    mutex ostida (parallel so'rovlar chegaradan oshira olmaydi).
+  - **Natija kvotasi manba manzil (IP) bo'yicha** (hub ishlash davomida): 150 natija va 2.5 MiB eksport-bayt;
+    token yoki `machine_id` bo'yicha EMAS — ikkalasini qayta join qilib yangilash mumkin. Oshsa `403 client_quota`.
+  - Tezlik/parallellik: token bucket (120, 40/s); **kadr 10 token turadi va yuborilgan intervalning yarmidan tez
+    kelmaydi** (`429 too_fast`); bitta token bir vaqtda 4 so'rov, bitta IP 16 so'rov (`429 too_many_requests`);
+    global 128 so'rov — lekin autentifikatsiyalangan `/keepalive`, `/ping`, `/leave` va `/health` bu limitdan
+    ozod; `lastSeen` autentifikatsiya muvaffaqiyatida, har qanday limitdan OLDIN yangilanadi (hujum qurbonni
+    "aloqa yo'q" qila olmaydi). `/join`: IP bo'yicha bir vaqtda 4 ta.
+  - 60 klient, bitta IP'dan 8 tagacha. Incident/clock flag ro'yxatlari serverning 201/101, 1 KiB, 48 KiB
+    chegarasiga qisqartiriladi (ortig'i `*_overflow` hisoblagichiga).
+  - Kadr: faqat JPEG; SOFn sarlavhasi **dekodsiz** o'qiladi — tomoni > 4096 yoki > 8 MP bo'lsa `422
+    frame_too_large`, sarlavhasi yo'q/buzuq bo'lsa `400 bad_frame`; o'qituvchi ekrani `Image.memory(cacheWidth: 960)`.
+- **Idempotentlik:** kalit payload'ga bog'langan: bir xil kalit + bir xil tana → ack; bir xil kalit + boshqa tana →
+  `409 idempotency_conflict` (klientda "rad etilgan" deb saqlanadi, yo'qolmaydi).
 - **Xato javoblari** faqat barqaror kod (`{"error": "..."}`); stack, yo'l, PIN, kalit, kod, token yo'q.
   Loglarda token/kod/PIN yo'q.
 - **Ekran kadrlari** faqat hub xotirasida (har PC uchun oxirgi *keyframe*), diskka yozilmaydi; test tugasa,
   hub to'xtasa yoki paket yopilsa o'chadi. Patch kadrlar saqlanmaydi (hub rasm yig'maydi); ko'rilayotgan
   o'quvchidan har javobda `request_keyframe` so'raladi.
-- **Bir o'quvchi — ikki PC:** ikkinchi PC `conflict: true` oladi (mavjud "boshqa qurilmada" xabari). Birinchi PC
-  15 s jim bo'lsa — egallab olinadi va eskisiga `terminated` yuboriladi.
+- **Bir o'quvchi — ikki PC (o'rin to'qnashuvi):** ikkinchi PC `conflict: true` oladi (mavjud "boshqa qurilmada"
+  xabari). Birinchi PC **hech qachon o'z-o'zidan to'xtatilmaydi** — qancha jim bo'lmasin (aks holda hujumchi o'rinni
+  "oldindan band qilib", qurbon aloqasi uzilganda o'rinni olib, uning testini majburan yakunlatardi). O'qituvchi
+  ekranida to'qnashuv banneri chiqadi (o'quvchi, ikkala PC nomi/IP): **"Eskisini bo'shat"** (eskisiga `terminated`
+  boradi, yangisi keyingi ping'da o'rinni oladi) yoki **"Yangisini rad et"** (5 daqiqa rad etiladi; banner qayta
+  chiqmaydi).
+- **`machine_id`:** o'rnatishga tasodifiy UUID (birinchi ishga tushishda yaratilib `shared_preferences`da
+  saqlanadi; Windows `MachineGuid` ishlatilmaydi — klonlangan lab image'larida bir xil). Hub eski klientni
+  almashtirish uchun `machine_id` **va** IP ikkalasi mos kelishini talab qiladi; almashtirishda terminated/ended
+  attempt'lar, o'rin va hisoblagichlar yangi klientga ko'chadi.
+- **Qo'shilishni yopish:** o'qituvchi hamma ulangach tugmani bosadi → `/join` `403 joins_locked` (kod tekshirilmaydi,
+  xato hisoblagichlariga tegilmaydi). Noto'g'ri kodlar oqimi (har IP'dan 5 xato / global 60 xato) yangi
+  ulanishlarni 1 daqiqaga bloklashi mumkin; yopilgan hubda bu ahamiyatsiz. Yaroqli tokenli PC o'sha mashinaning
+  qayta join'ida global blok va yopiqlikdan o'tadi.
+- **Ulanishni tasdiqlash:** kod to'g'ri bo'lgach o'quvchi PC rejimga o'tishdan OLDIN "paket izi" (`pack_uuid`dan
+  olingan 6 belgi) va hub nomini ko'radi; o'qituvchi ekranida ham shu iz turadi. UDP e'londa `pack_uuid` yo'q
+  (shu qaror saqlanadi) — iz faqat tasdiqlangan `join` javobidan olinadi. Discovery ro'yxatida bitta manba IP'ga
+  4 tadan ko'p yozuv qo'shilmaydi.
+- **Klient javoblari:** `pack_uuid` qat'iy UUID; `join` javobi <= 64 KB, JSON <= 4 MB (test/diagnostika/paket
+  savollari <= 32 MB), rasm <= 16 MB; oshsa uziladi. Hub to'lgan (`pack_full`/`client_quota`) bo'lsa natija
+  o'chmaydi va "rad etilgan" ham bo'lmaydi: navbatda qoladi, sekin (5 daqiqa) qayta uriniladi, operatorga
+  "o'qituvchiga murojaat qiling" ko'rsatiladi.
 
 ## QABUL QILINGAN CHEKLOVLAR (hujjatlangan)
 
@@ -78,3 +117,19 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
   bermaydi); boshqa niqobli tarmoqda `255.255.255.255` yoki qo'lda `IP:port` ishlatiladi.
 - Assets testlar (unit1, combined, interhouse ...) USB rejimidagi kabi hub'dan o'tmaydi (o'z runner'lari
   onlayn navbatga yozadi) — bu Faza 1 dan meros.
+
+## O'qituvchi uchun tartib (kod chiqib ketsa)
+
+1. **Kodni yangilash** mavjud tokenlarni bekor QILMAYDI — faqat yangi ulanishlar uchun yangi kod kerak bo'ladi.
+2. Keraksiz PC'ni **uzish (kick)** tokenini bekor qiladi, lekin u kodni bilsa qayta join qila oladi.
+3. Shuning uchun tartib: avval kodni yangilang, keyin keraksiz PC'ni uzing, so'ng **Qo'shilishni yopish**ni bosing
+   (yopiq hubda hech kim, kodni bilsa ham, qayta join qila olmaydi).
+
+## Hujjatlangan, qilinmagan (T2 review INFO)
+
+- **S-012** — klient yuborgan incident'lar hub tomonidan tekshirib bo'lmaydi (faqat shakl/hajm); ular metadata,
+  ball emas.
+- **S-013** — butun roster va testlar ulangan har bir klientga ochiq. Guruh bo'yicha tekshiruv qo'shilmadi: guruh
+  id'lari `/groups` da ochiq, shuning uchun hujumchi uchun foydasi yo'q, halol oqim esa buzilishi mumkin.
+- **S-015** — NAT ortidagi bir manzildan ko'p PC ulansa, manzil bo'yicha kvota/parallellik/8-klient chegarasi
+  ularni birga cheklaydi. Sinf tarmog'ida NAT bo'lmasligi kerak.

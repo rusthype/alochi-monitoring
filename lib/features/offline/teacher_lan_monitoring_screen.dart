@@ -199,7 +199,16 @@ class _TeacherLanMonitoringScreenState
                 ? Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(flex: 3, child: _clientList(l10n, views)),
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _conflictBanner(l10n, state),
+                            Expanded(child: _clientList(l10n, views)),
+                          ],
+                        ),
+                      ),
                       const SizedBox(width: 12),
                       SizedBox(
                           width: 380, child: _detailPanel(l10n, hub, selected)),
@@ -291,13 +300,13 @@ class _TeacherLanMonitoringScreenState
         Text(l10n.lanClassCode,
             style: const TextStyle(color: AppColors.ink2, fontSize: 12)),
         const SizedBox(height: 4),
-        Row(children: [
+        Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
           SelectableText(
             '${code.substring(0, 3)} ${code.substring(3)}',
             style: const TextStyle(
-                fontSize: 40,
+                fontSize: 34,
                 fontWeight: FontWeight.w800,
-                letterSpacing: 6,
+                letterSpacing: 5,
                 color: AppColors.ink1,
                 fontFeatures: [FontFeature.tabularFigures()]),
           ),
@@ -315,12 +324,73 @@ class _TeacherLanMonitoringScreenState
             onPressed: () => Clipboard.setData(ClipboardData(text: code)),
             icon: const Icon(Icons.copy_rounded),
           ),
+          // Close joining once everybody is in: nobody new can try codes, and
+          // a flood of wrong codes can no longer lock the class out.
+          TextButton.icon(
+            onPressed: () {
+              state.setJoinsLocked(!state.joinsLocked);
+              setState(() {});
+            },
+            icon: Icon(state.joinsLocked
+                ? Icons.lock_open_rounded
+                : Icons.lock_outline_rounded),
+            label: Text(
+                state.joinsLocked ? l10n.lanUnlockJoins : l10n.lanLockJoins),
+          ),
         ]),
-        Text(l10n.lanClassCodeHint,
+        Text('${l10n.lanClassCodeHint} ${l10n.lanRefreshCodeNote}',
             style: const TextStyle(color: AppColors.ink2, fontSize: 12)),
-        Text(l10n.lanRefreshCodeNote,
-            style: const TextStyle(color: AppColors.ink3, fontSize: 12)),
+        if (state.joinsLocked)
+          Text(l10n.lanJoinsLockedNote,
+              style: const TextStyle(color: AppColors.secondary, fontSize: 12)),
       ],
+    );
+  }
+
+  /// Seat conflicts: the first PC keeps working until the teacher decides.
+  Widget _conflictBanner(AppLocalizations l10n, HubState? state) {
+    final list = state?.conflicts() ?? const <SeatConflict>[];
+    if (state == null || list.isEmpty) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.warnMuted,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.secondary),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.lanSeatConflictTitle,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w800, color: AppColors.ink1)),
+          for (final c in list) ...[
+            const SizedBox(height: 6),
+            Text(
+                l10n.lanSeatConflictBody(
+                    c.studentName, c.holderLabel, c.claimantLabel),
+                style: const TextStyle(color: AppColors.ink1, height: 1.35)),
+            const SizedBox(height: 6),
+            Wrap(spacing: 8, runSpacing: 6, children: [
+              FilledButton.tonal(
+                onPressed: () {
+                  state.resolveConflict(c.id, releaseHolder: true);
+                  setState(() {});
+                },
+                child: Text(l10n.lanSeatRelease),
+              ),
+              OutlinedButton(
+                onPressed: () {
+                  state.resolveConflict(c.id, releaseHolder: false);
+                  setState(() {});
+                },
+                child: Text(l10n.lanSeatReject),
+              ),
+            ]),
+          ],
+        ],
+      ),
     );
   }
 
@@ -338,6 +408,13 @@ class _TeacherLanMonitoringScreenState
           Text(l10n.lanHubPortFallback(port),
               style: const TextStyle(color: AppColors.err, fontSize: 12)),
         ],
+        const SizedBox(height: 4),
+        // Students compare this with what they see when they connect.
+        Text(
+            l10n.lanPackFingerprint(packFingerprint(
+                OfflinePackSession.current?.pack.packUuid ?? '')),
+            style: const TextStyle(
+                fontWeight: FontWeight.w700, color: AppColors.ink1)),
         const SizedBox(height: 8),
         Text(l10n.lanClients(state.clientCount, HubLimits.maxClients),
             style: const TextStyle(color: AppColors.ink1)),

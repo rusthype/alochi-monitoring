@@ -5012,6 +5012,96 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'O\'qituvchi kompyuteri rad etgan natijalar: {count}'**
   String lanRejectedResults(int count);
+
+  /// No description provided for @lanLockJoins.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qo\'shilishni yopish'**
+  String get lanLockJoins;
+
+  /// No description provided for @lanUnlockJoins.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qo\'shilishni ochish'**
+  String get lanUnlockJoins;
+
+  /// No description provided for @lanJoinsLockedNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qo\'shilish yopiq: yangi kompyuterlar ulana olmaydi.'**
+  String get lanJoinsLockedNote;
+
+  /// No description provided for @lanErrJoinsClosed.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi yangi ulanishlarni yopgan.'**
+  String get lanErrJoinsClosed;
+
+  /// No description provided for @lanSeatConflictTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'rin to\'qnashuvi'**
+  String get lanSeatConflictTitle;
+
+  /// No description provided for @lanSeatConflictBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'{student}: bu o\'quvchi {holder} kompyuterida testda. {claimant} ham shu o\'quvchi nomidan boshlamoqchi.'**
+  String lanSeatConflictBody(String student, String holder, String claimant);
+
+  /// No description provided for @lanSeatRelease.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eskisini bo\'shat'**
+  String get lanSeatRelease;
+
+  /// No description provided for @lanSeatReject.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangisini rad et'**
+  String get lanSeatReject;
+
+  /// No description provided for @lanPackFingerprint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket izi: {fp}'**
+  String lanPackFingerprint(String fp);
+
+  /// No description provided for @lanConfirmTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ulanishni tasdiqlang'**
+  String get lanConfirmTitle;
+
+  /// No description provided for @lanConfirmBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi kompyuteri: {hub}\nPaket izi: {fp}\n\nBu iz o\'qituvchi aytgan bilan bir xilmi?'**
+  String lanConfirmBody(String hub, String fp);
+
+  /// No description provided for @lanConfirmYes.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ha, davom etish'**
+  String get lanConfirmYes;
+
+  /// No description provided for @lanConfirmNo.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yo\'q, uzish'**
+  String get lanConfirmNo;
+
+  /// No description provided for @lanHoldPackFull.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi kompyuterida natijalar uchun joy tugagan. Natijalar saqlanmoqda; o\'qituvchiga murojaat qiling.'**
+  String get lanHoldPackFull;
+
+  /// No description provided for @lanHoldClientQuota.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu kompyuter yubora oladigan natijalar chegarasiga yetdi. Natijalar saqlanmoqda; o\'qituvchiga murojaat qiling.'**
+  String get lanHoldClientQuota;
 }
 
 class _AppLocalizationsDelegate

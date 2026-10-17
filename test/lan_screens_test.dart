@@ -4,6 +4,7 @@
 import 'dart:io';
 
 import 'package:alochi_monitoring/core/db/offline_queue.dart';
+import 'package:alochi_monitoring/core/local_server/hub_guard.dart';
 import 'package:alochi_monitoring/core/local_server/hub_state.dart';
 import 'package:alochi_monitoring/core/local_server/shelf_hub.dart';
 import 'package:alochi_monitoring/core/offline/lan_client_session.dart';
@@ -12,6 +13,7 @@ import 'package:alochi_monitoring/features/offline/lan_connect_dialog.dart';
 import 'package:alochi_monitoring/features/offline/teacher_lan_monitoring_screen.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -137,19 +139,23 @@ void main() {
         expect(st.watchedId, joined.client!.id);
         expect(find.text(l10n.lanNoFrame), findsOneWidget);
 
+        await tester.ensureVisible(find.text(l10n.lanAddMinutes(5)));
         await tester.tap(find.text(l10n.lanAddMinutes(5)));
         await tester.pump();
         expect(joined.client!.extraTimeSeconds, 300);
+        await tester.ensureVisible(find.text(l10n.lanAddMinutes(1)));
         await tester.tap(find.text(l10n.lanAddMinutes(1)));
         await tester.pump();
         expect(joined.client!.extraTimeSeconds, 360);
 
+        await tester.ensureVisible(find.text(l10n.lanLock));
         await tester.tap(find.text(l10n.lanLock));
         await tester.pump(const Duration(milliseconds: 600));
         expect(joined.client!.locked, isTrue);
         expect(find.text(l10n.lanUnlock), findsOneWidget);
         expect(find.text(l10n.lanStatusLocked), findsWidgets);
 
+        await tester.ensureVisible(find.text(l10n.lanEndTest));
         await tester.tap(find.text(l10n.lanEndTest));
         await tester.pumpAndSettle();
         expect(
@@ -169,6 +175,62 @@ void main() {
         expect(st.watchedId, isNull);
         expect(hub.running, isTrue);
         // let the hub's coalesced change notification (400 ms) fire
+        await tester.pump(const Duration(seconds: 1));
+      });
+
+      testWidgets(
+          'seat conflict banner: the teacher decides; join lock toggles',
+          (tester) async {
+        final st = hub.state!;
+        PingInput ping(String sid, String dev) => PingInput.fromJson({
+              'session_id': sid,
+              'name': 'Valiyev Ali',
+              'test_key': 't_all',
+              'status': 'active',
+              'student_code': lanS1,
+              'device_name': dev,
+            });
+        final a = st.join(
+            ip: '10.0.0.1', code: st.code, machineId: 'a', deviceName: 'pc-a');
+        final b = st.join(
+            ip: '10.0.0.2', code: st.code, machineId: 'b', deviceName: 'pc-b');
+        st.ping(a.client!, ping('A1', 'pc-a'));
+        expect(st.ping(b.client!, ping('B1', 'pc-b'))['conflict'], true);
+
+        await tester.binding.setSurfaceSize(const Size(1400, 900));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester
+            .pumpWidget(_wrap(const TeacherLanMonitoringScreen(), locale));
+        await tester.pump(const Duration(milliseconds: 600));
+        final l10n =
+            AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+
+        expect(find.text(l10n.lanSeatConflictTitle), findsOneWidget);
+        expect(
+            find.text(l10n.lanSeatConflictBody(
+                'Valiyev Ali', 'pc-a (10.0.0.1)', 'pc-b (10.0.0.2)')),
+            findsOneWidget);
+        // the fingerprint students compare with
+        expect(find.text(l10n.lanPackFingerprint(packFingerprint(lanPackUuid))),
+            findsOneWidget);
+
+        // join lock
+        await tester.tap(find.text(l10n.lanLockJoins));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(st.joinsLocked, isTrue);
+        expect(find.text(l10n.lanJoinsLockedNote), findsOneWidget);
+        await tester.tap(find.text(l10n.lanUnlockJoins));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(st.joinsLocked, isFalse);
+
+        // "release the old one": the holder is told to stop, the banner goes
+        await tester.tap(find.text(l10n.lanSeatRelease));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(a.client!.terminatedSessions, contains('A1'));
+        expect(find.text(l10n.lanSeatConflictTitle), findsNothing);
+        expect(st.ping(b.client!, ping('B2', 'pc-b'))['conflict'], false);
+
+        await tester.pumpWidget(const SizedBox());
         await tester.pump(const Duration(seconds: 1));
       });
 
@@ -261,6 +323,76 @@ void main() {
         }
         expect(find.text(l10n.lanErrBadCode), findsOneWidget);
         expect(LanClientSession.isActive, isFalse);
+        await tester.pumpWidget(const SizedBox());
+      });
+
+      testWidgets(
+          'a correct code first asks the student to confirm the pack tag; '
+          'declining leaves the hub', (tester) async {
+        late Directory tmp;
+        late ShelfHub hub;
+        await tester.runAsync(() async {
+          tmp = Directory.systemTemp.createTempSync('lan_dialog2_');
+          await OfflineQueue.openAtPath(p.join(tmp.path, 'q.db'));
+          final session = await OfflinePackSession.open(
+              lanTestPack(), Directory(p.join(tmp.path, 'media')));
+          hub = ShelfHub(session,
+              bindAddress: InternetAddress.loopbackIPv4,
+              firstPort: 0,
+              lastPort: 0,
+              hubName: 'teacher-pc');
+          await hub.start(announce: false);
+        });
+        // The join creates the per-hub image folder under the app-support dir.
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+                const MethodChannel('plugins.flutter.io/path_provider'),
+                (call) async => tmp.path);
+        addTearDown(() async {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(
+                  const MethodChannel('plugins.flutter.io/path_provider'),
+                  null);
+          await tester.runAsync(() async {
+            await hub.stop();
+            hub.dispose();
+            OfflinePackSession.close();
+            await OfflineQueue.resetForTest();
+            tmp.deleteSync(recursive: true);
+          });
+        });
+        await tester.binding.setSurfaceSize(const Size(900, 900));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        await tester.pumpWidget(_wrap(const LanConnectDialog(), locale));
+        await tester.pump();
+        final l10n = AppLocalizations.of(tester.element(find.byType(Dialog)))!;
+
+        await tester.enterText(
+            find.byType(TextField).first, '127.0.0.1:${hub.port}');
+        await tester.enterText(find.byType(TextField).last, hub.state!.code);
+        await tester.tap(find.text(l10n.lanConnect));
+        for (var i = 0; i < 20; i++) {
+          await tester.runAsync(
+              () => Future<void>.delayed(const Duration(milliseconds: 50)));
+          await tester.pump();
+        }
+        expect(find.text(l10n.lanConfirmTitle), findsOneWidget);
+        expect(
+            find.text(l10n.lanConfirmBody(
+                'teacher-pc', packFingerprint(lanPackUuid))),
+            findsOneWidget);
+        // joined at the hub, but nothing is activated yet
+        expect(hub.state!.clientCount, 1);
+        expect(LanClientSession.isActive, isFalse);
+
+        await tester.tap(find.text(l10n.lanConfirmNo));
+        for (var i = 0; i < 10; i++) {
+          await tester.runAsync(
+              () => Future<void>.delayed(const Duration(milliseconds: 50)));
+          await tester.pump();
+        }
+        expect(hub.state!.clientCount, 0); // told the hub it is leaving
+        expect(find.text(l10n.lanConfirmTitle), findsNothing);
         await tester.pumpWidget(const SizedBox());
       });
     });

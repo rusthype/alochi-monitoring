@@ -25,7 +25,7 @@ import 'hub_guard.dart';
 /// What the teacher sees for one client row.
 enum ClientStatus { waiting, testing, inactive, locked, noContact }
 
-enum JoinOutcome { ok, badCode, blocked, full }
+enum JoinOutcome { ok, badCode, blocked, full, locked }
 
 class JoinResult {
   final JoinOutcome outcome;
@@ -166,6 +166,15 @@ class HubClient {
 
   int resultsAccepted = 0;
 
+  /// Requests being served for this token right now (S-002).
+  int inFlight = 0;
+
+  /// When the last frame arrived (any type), for the minimum frame interval.
+  int lastFrameAt = 0;
+
+  /// When a seat conflict of this client was last reported to the teacher.
+  int lastConflictAt = 0;
+
   HubClient({
     required this.id,
     required this.token,
@@ -177,6 +186,21 @@ class HubClient {
   });
 
   bool get inTest => sessionId.isNotEmpty;
+
+  /// A PC that joined again (same machine AND address) keeps what the hub
+  /// already knows about it: which attempts were terminated or are over (a
+  /// restart must not make a terminated attempt look fresh), its seat, quota
+  /// counters.
+  void inheritFrom(HubClient old) {
+    terminatedSessions.addAll(old.terminatedSessions);
+    endedSessions.addAll(old.endedSessions);
+    sessionId = old.sessionId;
+    testKey = old.testKey;
+    studentId = old.studentId;
+    sessionStartedAt = old.sessionStartedAt;
+    resultsAccepted = old.resultsAccepted;
+    lastConflictAt = old.lastConflictAt;
+  }
 
   /// The test attempt is over (result submitted, idle ping, or taken over):
   /// forget its live state, including the screen frame.
@@ -240,12 +264,48 @@ class ClientView {
   });
 }
 
+/// Two PCs want the same student's seat. The first one keeps it until the
+/// teacher decides; the hub never ends anybody's attempt on its own (S-003).
+class SeatConflict {
+  final int id;
+  final String studentName;
+  final String className;
+  final int holderId;
+  final String holderLabel;
+  final int claimantId;
+  final String claimantLabel;
+  const SeatConflict({
+    required this.id,
+    required this.studentName,
+    required this.className,
+    required this.holderId,
+    required this.holderLabel,
+    required this.claimantId,
+    required this.claimantLabel,
+  });
+}
+
+class _ConflictRec {
+  final int id;
+  final String studentId;
+  int holderId;
+  int claimantId;
+  _ConflictRec(this.id, this.studentId, this.holderId, this.claimantId);
+}
+
+class _Quota {
+  int count = 0;
+  int bytes = 0;
+}
+
 class HubState extends ChangeNotifier {
   final String packUuid;
   final String schoolId;
   final String schoolCode;
   final String hubName;
   final int maxClients;
+  final int maxResultsPerIp;
+  final int maxResultBytesPerIp;
   final TicksFn _ticks;
   final Random _rng;
 
@@ -268,6 +328,13 @@ class HubState extends ChangeNotifier {
 
   int resultsAccepted = 0;
 
+  final Map<String, _Quota> _quota = {};
+  final Map<String, int> _ipInFlight = {};
+  final List<_ConflictRec> _conflicts = [];
+  final Map<String, int> _rejectedClaims = {};
+  int _nextConflictId = 1;
+  bool _joinsLocked = false;
+
   Timer? _notifyTimer;
   bool _disposed = false;
 
@@ -283,6 +350,8 @@ class HubState extends ChangeNotifier {
     TicksFn? ticks,
     Random? random,
     this.maxClients = HubLimits.maxClients,
+    this.maxResultsPerIp = HubLimits.maxResultsPerIp,
+    this.maxResultBytesPerIp = HubLimits.maxResultBytesPerIp,
   })  : _ticks = ticks ?? (() => DateTime.now().millisecondsSinceEpoch),
         _rng = random ?? Random.secure(),
         allowedTestKeys = Set.unmodifiable(allowedTestKeys),
@@ -322,13 +391,33 @@ class HubState extends ChangeNotifier {
 
   // ── join / auth ────────────────────────────────────────────────────────────
 
+  /// While locked, nobody new can join (the teacher closes joining once the
+  /// whole class is in). It also keeps a flood of wrong codes -- which can
+  /// trip the failure gates for everyone -- from mattering any more (S-005).
+  bool get joinsLocked => _joinsLocked;
+
+  void setJoinsLocked(bool locked) {
+    if (_joinsLocked == locked) return;
+    _joinsLocked = locked;
+    _changed();
+  }
+
+  /// [holdsValidToken]: the caller presented a live token of the SAME machine.
+  /// Such a PC is refreshing, not guessing, so the global failure gate and the
+  /// join lock do not apply to it (the per-address gate still does).
   JoinResult join({
     required String ip,
     required String code,
     required String machineId,
     required String deviceName,
+    bool holdsValidToken = false,
   }) {
-    final wait = _gate.blockedForMs(ip);
+    // Locked: refuse BEFORE looking at the code and without touching any
+    // failure counter.
+    if (_joinsLocked && !holdsValidToken) {
+      return const JoinResult(JoinOutcome.locked);
+    }
+    final wait = _gate.blockedForMs(ip, ignoreGlobal: holdsValidToken);
     if (wait != null) {
       return JoinResult(JoinOutcome.blocked,
           retryAfterSec: (wait / 1000).ceil());
@@ -340,16 +429,19 @@ class HubState extends ChangeNotifier {
     _gate.recordSuccess(ip);
 
     sweep();
-    // The same PC joining again (app restarted) replaces its old token.
-    final previous =
-        _byToken.values.where((c) => c.machineId == machineId).toList();
+    // The same PC joining again (app restarted) replaces its old token -- but
+    // ONLY when machine id AND address both match. machine_id alone is a claim
+    // the client makes about itself: anyone could send another PC's id to evict
+    // it, and cloned lab images share ids (S-004).
+    final previous = _byToken.values
+        .where((c) => c.machineId == machineId && c.ip == ip)
+        .toList();
     if (previous.isEmpty && _byToken.length >= maxClients) {
       return const JoinResult(JoinOutcome.full);
     }
-    for (final c in previous) {
-      _remove(c);
-    }
-    final fromThisIp = _byToken.values.where((c) => c.ip == ip).length;
+    final fromThisIp = _byToken.values
+        .where((c) => c.ip == ip && !previous.contains(c))
+        .length;
     if (fromThisIp >= HubLimits.maxClientsPerIp) {
       return const JoinResult(JoinOutcome.full);
     }
@@ -366,6 +458,15 @@ class HubState extends ChangeNotifier {
       bucket: TokenBucket(120, 40, now),
       lastSeen: now,
     );
+    for (final old in previous) {
+      c.inheritFrom(old);
+      for (final rec in _conflicts) {
+        if (rec.holderId == old.id) rec.holderId = c.id;
+        if (rec.claimantId == old.id) rec.claimantId = c.id;
+      }
+      if (_watchedId == old.id) _watchedId = c.id;
+      _remove(old);
+    }
     _byToken[token] = c;
     _changed();
     return JoinResult(JoinOutcome.ok, client: c);
@@ -379,11 +480,55 @@ class HubState extends ChangeNotifier {
 
   HubClient? authenticate(String token) => _byToken[token];
 
-  /// Rate limit per token; false = over the limit.
-  bool allowRequest(HubClient c) => c.bucket.take(_now());
+  /// Rate limit per token; false = over the limit. Frames cost more.
+  bool allowRequest(HubClient c, {double cost = 1}) =>
+      c.bucket.take(_now(), cost);
 
+  /// Liveness: any authenticated request proves the PC is there, so this runs
+  /// BEFORE any cap or limit can turn the request away -- a flood must not make
+  /// its victims look dead (S-002).
   void touch(HubClient c) {
     c.lastSeen = _now();
+  }
+
+  /// Concurrency slots: a token may hold [HubLimits.maxConcurrentPerToken]
+  /// requests, an address [HubLimits.maxConcurrentPerIp]. Pair with [leave].
+  bool tryEnter(HubClient c, String ip) {
+    if (c.inFlight >= HubLimits.maxConcurrentPerToken) return false;
+    if ((_ipInFlight[ip] ?? 0) >= HubLimits.maxConcurrentPerIp) return false;
+    c.inFlight++;
+    _ipInFlight[ip] = (_ipInFlight[ip] ?? 0) + 1;
+    return true;
+  }
+
+  void leave(HubClient c, String ip) {
+    if (c.inFlight > 0) c.inFlight--;
+    final n = (_ipInFlight[ip] ?? 1) - 1;
+    if (n <= 0) {
+      _ipInFlight.remove(ip);
+    } else {
+      _ipInFlight[ip] = n;
+    }
+  }
+
+  // ── result quota (per source address, kept across re-joins) ───────────────
+
+  /// Null when [ip] may still store a result of [bytes] export-format bytes,
+  /// else the stable refusal code.
+  String? quotaProblem(String ip, int bytes) {
+    final q = _quota[ip];
+    if (q == null) return bytes > maxResultBytesPerIp ? 'client_quota' : null;
+    if (q.count >= maxResultsPerIp || q.bytes + bytes > maxResultBytesPerIp) {
+      return 'client_quota';
+    }
+    return null;
+  }
+
+  void quotaCommit(String ip, int bytes) {
+    if (_quota.length > 2048) _quota.clear();
+    final q = _quota.putIfAbsent(ip, _Quota.new);
+    q.count++;
+    q.bytes += bytes;
   }
 
   void _remove(HubClient c) {
@@ -447,11 +592,13 @@ class HubState extends ChangeNotifier {
       // ProctorService only sends frames once it holds a token; real auth is
       // the bearer header, so this is a plain marker.
       'proctor_token': 'lan',
-      'proctor_interval_ms': _watchedId == c.id ? 1500 : 3000,
+      'proctor_interval_ms': _intervalMs(c),
       // 960 = "spotlight" capture profile (single-student close-up).
       'target_width': _watchedId == c.id ? 960 : 640,
     };
   }
+
+  int _intervalMs(HubClient c) => _watchedId == c.id ? 1500 : 3000;
 
   bool _wantsKeyframe(HubClient c) =>
       c.inTest && (c.frame == null || _watchedId == c.id);
@@ -490,19 +637,26 @@ class HubState extends ChangeNotifier {
     return _reply(c, p.sessionId, conflict: conflict);
   }
 
-  /// First ping of a TEST attempt. False = another live PC already holds this
-  /// student's test (decision 7): the newcomer is refused with `conflict`, and
-  /// the client's own startTest() turns that into its "another device" message.
-  /// A holder that has gone silent is taken over instead — its attempt is
-  /// terminated so it cannot go on submitting.
+  /// First ping of a TEST attempt. False = the seat is not available: another
+  /// PC already holds this student's test, or the teacher turned this PC's
+  /// claim down. The newcomer gets `conflict: true` (the client's own
+  /// startTest() turns that into its "another device" message) and the teacher
+  /// gets a [SeatConflict] to decide. The holder is NEVER ended automatically,
+  /// however long it has been silent: a hostile PC could otherwise squat a seat
+  /// and, once the victim's link flickers, take it and have the victim's
+  /// attempt force-submitted (S-003).
   bool _claimSession(HubClient c, PingInput p, int now) {
     final sid = _rosterId(p.studentCode);
     if (sid != null) {
+      final until = _rejectedClaims['${c.id}|$sid'];
+      if (until != null) {
+        if (now < until) return false;
+        _rejectedClaims.remove('${c.id}|$sid');
+      }
       for (final o in _byToken.values) {
         if (identical(o, c) || !o.inTest || o.studentId != sid) continue;
-        if (now - o.lastSeen < HubLimits.noContactMs) return false;
-        o.terminatedSessions.add(o.sessionId);
-        o.endTest();
+        _noteConflict(c, o, sid, now);
+        return false;
       }
     }
     c.sessionId = p.sessionId;
@@ -519,6 +673,70 @@ class HubState extends ChangeNotifier {
     c.frame = null;
     c.frameVersion++;
     return true;
+  }
+
+  void _noteConflict(
+      HubClient claimant, HubClient holder, String sid, int now) {
+    final known = _conflicts
+        .any((r) => r.claimantId == claimant.id && r.studentId == sid);
+    // One report per claimant+student, and a client that was just reported
+    // does not get another banner for a different student for a while.
+    if (known) return;
+    if (claimant.lastConflictAt != 0 &&
+        now - claimant.lastConflictAt < HubLimits.claimCooldownMs) {
+      return;
+    }
+    claimant.lastConflictAt = now;
+    if (_conflicts.length >= 64) _conflicts.removeAt(0);
+    _conflicts
+        .add(_ConflictRec(_nextConflictId++, sid, holder.id, claimant.id));
+  }
+
+  /// Open seat conflicts (pruned of anything that no longer applies).
+  List<SeatConflict> conflicts() {
+    _conflicts.removeWhere((r) {
+      final h = _byId(r.holderId);
+      final c = _byId(r.claimantId);
+      return h == null || c == null || !h.inTest || h.studentId != r.studentId;
+    });
+    String label(HubClient c) => c.deviceName.isNotEmpty
+        ? '${c.deviceName} (${c.ip})'
+        : c.name.isNotEmpty
+            ? '${c.name} (${c.ip})'
+            : c.ip;
+    return [
+      for (final r in _conflicts)
+        SeatConflict(
+          id: r.id,
+          studentName: (_studentsById[r.studentId]?['name'] ?? '').toString(),
+          className: _classNameOf(r.studentId),
+          holderId: r.holderId,
+          holderLabel: label(_byId(r.holderId)!),
+          claimantId: r.claimantId,
+          claimantLabel: label(_byId(r.claimantId)!),
+        )
+    ];
+  }
+
+  /// The teacher's decision. [releaseHolder]: end the holder's attempt (it is
+  /// told `terminated`) so the claimant can take the seat on its next ping.
+  /// Otherwise the claim is turned down and stays refused for a while.
+  void resolveConflict(int id, {required bool releaseHolder}) {
+    final i = _conflicts.indexWhere((r) => r.id == id);
+    if (i < 0) return;
+    final r = _conflicts.removeAt(i);
+    if (releaseHolder) {
+      final h = _byId(r.holderId);
+      if (h != null && h.inTest) {
+        h.terminatedSessions.add(h.sessionId);
+        h.endTest();
+      }
+    } else {
+      if (_rejectedClaims.length > 256) _rejectedClaims.clear();
+      _rejectedClaims['${r.claimantId}|${r.studentId}'] =
+          _now() + HubLimits.rejectedClaimMs;
+    }
+    _changed();
   }
 
   /// Stores a screen frame (KEYFRAMES only: a patch is useless without the
@@ -538,6 +756,11 @@ class HubState extends ChangeNotifier {
     if (!c.inTest || sessionId != c.sessionId) {
       throw const HubHttpError(409, 'stale_session');
     }
+    // A client may not send faster than half the interval it was told (S-007).
+    if (c.lastFrameAt != 0 && now - c.lastFrameAt < _intervalMs(c) ~/ 2) {
+      throw const HubHttpError(429, 'too_fast', headers: {'retry-after': '1'});
+    }
+    c.lastFrameAt = now;
     if (frameType == 'keyframe' || frameType.isEmpty) {
       c.frame = jpeg;
       c.frameAt = now;

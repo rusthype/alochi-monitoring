@@ -17,6 +17,9 @@ const String kLanUnreachable = 'lan_unreachable';
 /// the operator must join again with the class code.
 const String kLanSessionExpired = 'lan_session_expired';
 
+/// LAN client: the hub's answer was malformed or implausibly large.
+const String kLanBadResponse = 'lan_bad_response';
+
 /// Localized text for a known offline error code, or null (caller falls back
 /// to its own generic message).
 String? localizeOfflineError(AppLocalizations l10n, Object error) {
@@ -28,6 +31,8 @@ String? localizeOfflineError(AppLocalizations l10n, Object error) {
       return l10n.lanErrUnreachable;
     case kLanSessionExpired:
       return l10n.lanErrExpired;
+    case kLanBadResponse:
+      return l10n.lanErrGeneric;
   }
   return null;
 }

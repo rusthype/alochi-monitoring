@@ -38,6 +38,9 @@ class _LanConnectDialogState extends State<LanConnectDialog> {
   final _codeCtrl = TextEditingController();
 
   DiscoveredHub? _picked;
+
+  /// Joined but not yet confirmed by the student (see [_confirmCard]).
+  LanClientSession? _pending;
   bool _busy = false;
   String? _error;
   ({int pending, int rejected}) _outbox = (pending: 0, rejected: 0);
@@ -80,6 +83,8 @@ class _LanConnectDialogState extends State<LanConnectDialog> {
         return l10n.lanErrUnreachable;
       case LanJoinError.packActive:
         return l10n.lanClosePackFirst;
+      case LanJoinError.joinsClosed:
+        return l10n.lanErrJoinsClosed;
       case LanJoinError.badResponse:
         return l10n.lanErrGeneric;
     }
@@ -105,9 +110,18 @@ class _LanConnectDialogState extends State<LanConnectDialog> {
     });
     try {
       final session = await LanClientSession.join(
-          host: addr.host, port: addr.port, code: code);
-      await session.activate();
-      if (mounted) Navigator.of(context).pop(session);
+          host: addr.host,
+          port: addr.port,
+          code: code,
+          replacing: LanClientSession.current);
+      // The announcement and the typed address are not authenticated: before
+      // this PC takes part, the student compares the pack tag with what the
+      // teacher reads out (S-008). Nothing is activated until then.
+      if (mounted) {
+        setState(() => _pending = session);
+      } else {
+        session.close();
+      }
     } on LanJoinException catch (e) {
       debugPrint('LanConnectDialog: join refused: ${e.code.name}');
       if (mounted) setState(() => _error = _joinError(l10n, e));
@@ -119,10 +133,78 @@ class _LanConnectDialogState extends State<LanConnectDialog> {
     }
   }
 
+  Future<void> _confirm() async {
+    final s = _pending;
+    if (s == null) return;
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _busy = true);
+    try {
+      await s.activate();
+      if (mounted) Navigator.of(context).pop(s);
+    } catch (e) {
+      debugPrint('LanConnectDialog: activate failed (${e.runtimeType})');
+      s.close();
+      if (mounted) {
+        setState(() {
+          _pending = null;
+          _error =
+              e is LanJoinException ? _joinError(l10n, e) : l10n.lanErrGeneric;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _declineConfirm() {
+    _pending?.close(); // tells the hub we are leaving
+    setState(() => _pending = null);
+  }
+
+  Widget _confirmCard(AppLocalizations l10n, LanClientSession s) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(l10n.lanConfirmTitle,
+            style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink1)),
+        const SizedBox(height: 12),
+        Text(l10n.lanConfirmBody(s.hubName, s.fingerprint),
+            style: const TextStyle(color: AppColors.ink1, height: 1.5)),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: _busy ? null : _confirm,
+          child: Text(l10n.lanConfirmYes),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton(
+          onPressed: _busy ? null : _declineConfirm,
+          child: Text(l10n.lanConfirmNo),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final active = LanClientSession.current;
+    final pending = _pending;
+    if (pending != null) {
+      return Dialog(
+        backgroundColor: AppColors.surface,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: _confirmCard(l10n, pending),
+          ),
+        ),
+      );
+    }
     return Dialog(
       backgroundColor: AppColors.surface,
       child: ConstrainedBox(
@@ -236,7 +318,8 @@ class _LanConnectDialogState extends State<LanConnectDialog> {
 
   Widget _statusCard(AppLocalizations l10n, LanClientSession s) {
     return ListenableBuilder(
-      listenable: Listenable.merge([s.connected, s.needsRejoin, s.pending]),
+      listenable:
+          Listenable.merge([s.connected, s.needsRejoin, s.pending, s.hold]),
       builder: (context, _) {
         final expired = s.needsRejoin.value;
         final ok = s.connected.value && !expired;
@@ -264,6 +347,16 @@ class _LanConnectDialogState extends State<LanConnectDialog> {
               if (s.pending.value > 0)
                 Text(l10n.lanUnsentResults(s.pending.value),
                     style: const TextStyle(color: AppColors.ink1)),
+              if (s.hold.value != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                      s.hold.value == 'client_quota'
+                          ? l10n.lanHoldClientQuota
+                          : l10n.lanHoldPackFull,
+                      style:
+                          const TextStyle(color: AppColors.err, height: 1.35)),
+                ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: () {

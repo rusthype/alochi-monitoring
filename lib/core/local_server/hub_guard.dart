@@ -5,8 +5,11 @@
 // token buckets, and the failed-join gate. Time is always a monotonic
 // `TicksFn` (MonitoredClock.ticksMs), never the wall clock, so changing the
 // system date cannot reset a lockout.
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+
+import 'package:crypto/crypto.dart' show sha256;
 
 import '../security/monitored_clock.dart' show TicksFn;
 
@@ -18,7 +21,20 @@ class HubLimits {
   static const int keepaliveBody = 1024;
   static const int pingBody = 64 * 1024;
   static const int frameBody = 512 * 1024;
-  static const int resultBody = 1024 * 1024;
+
+  /// A real result is a few KB (engine: raw answers + section/topic scores;
+  /// diagnostic: ~75 bytes per answered question). test/lan_hub_test.dart
+  /// measures a 300-question worst case at well under half of this; the
+  /// remaining headroom is for long free-text answers and the incident list.
+  /// It used to be 1 MB, which let one PC spend the whole export budget in a
+  /// handful of requests (S-001).
+  static const int resultBody = 128 * 1024;
+
+  /// Whole-body read deadlines. Small bodies get a short one so a slow-body
+  /// connection cannot sit on a slot (S-002).
+  static const Duration smallBodyTimeout = Duration(seconds: 3);
+  static const Duration frameBodyTimeout = Duration(seconds: 8);
+  static const Duration resultBodyTimeout = Duration(seconds: 6);
 
   static const int maxClients = 60;
 
@@ -26,13 +42,17 @@ class HubLimits {
   /// machine ids would otherwise fill the 60 and lock the class out).
   static const int maxClientsPerIp = 8;
 
-  /// Accepted results per client PC per hub run (a PC takes a handful).
-  static const int maxResultsPerClient = 100;
+  /// Result quota per SOURCE ADDRESS and hub run -- not per token and not per
+  /// machine_id, both of which a hostile PC can renew by joining again (S-001).
+  static const int maxResultsPerIp = 150;
+  static const int maxResultBytesPerIp = 2560 * 1024; // export-format bytes
 
-  /// The server imports at most 5000 entries / 10 MB decrypted per file
-  /// (offline_pack.py); stop well before, or one export would be refused whole.
+  /// The server imports at most 5000 entries / 10 MiB (10,485,760) of
+  /// DECRYPTED JSON per file (offline_pack.py) and rejects the whole file
+  /// above it. The chain budget is measured in exactly that unit (see
+  /// export_format.dart) and stops 1 MiB short.
   static const int maxPackEntries = 4800;
-  static const int maxPackPlainBytes = 8 * 1024 * 1024;
+  static const int maxPackPlainBytes = 9 * 1024 * 1024;
 
   /// Server keeps <=201 incidents / <=101 clock flags per entry, <=1 KiB per
   /// item, <=48 KiB per list. The hub adds up to two items of its own.
@@ -44,15 +64,38 @@ class HubLimits {
   static const int jsonMaxDepth = 24;
   static const int jsonMaxNodes = 200000;
 
-  /// Requests being served at once; more get 503.
+  /// Requests being served at once. Authenticated /keepalive and /ping are
+  /// exempt (they are tiny and carry liveness), as is /health.
   static const int maxInFlight = 128;
-  static const Duration bodyTimeout = Duration(seconds: 10);
+
+  /// Concurrent requests one token / one address may hold (S-002).
+  static const int maxConcurrentPerToken = 4;
+  static const int maxConcurrentPerIp = 16;
+  static const int maxConcurrentJoinPerIp = 4;
+
+  /// A frame costs this many tokens of the per-token bucket, and may not come
+  /// faster than half the interval the hub announced (S-007).
+  static const double frameCost = 10;
+
+  /// Largest media file the hub serves and a client accepts (the backend's
+  /// own ceiling is 15 MiB per image).
+  static const int maxMediaFile = 16 * 1024 * 1024;
 
   /// A client silent this long counts as "no contact".
   static const int noContactMs = 15000;
 
   /// A client silent this long is forgotten (frees its slot).
   static const int evictMs = 20 * 60 * 1000;
+
+  /// A refused seat claim is not re-reported to the teacher within this time,
+  /// and a claim the teacher rejected stays refused this long (S-003).
+  static const int claimCooldownMs = 10 * 1000;
+  static const int rejectedClaimMs = 5 * 60 * 1000;
+
+  /// Frame limits against decompression bombs (S-006): a screen capture is
+  /// 640x360 or 960x540.
+  static const int maxFrameSide = 4096;
+  static const int maxFramePixels = 8 * 1000 * 1000;
 }
 
 /// A refusal that maps to an HTTP status and a stable machine code. Carries no
@@ -95,6 +138,10 @@ Object? decodeJsonBounded(Uint8List bytes) {
   while (stack.isNotEmpty) {
     final (node, depth) = stack.removeLast();
     if (++nodes > HubLimits.jsonMaxNodes || depth > HubLimits.jsonMaxDepth) {
+      throw const HubHttpError(400, 'bad_json');
+    }
+    if (node is double && !node.isFinite) {
+      // `1e999` parses to Infinity; jsonEncode would later throw on it (S-010).
       throw const HubHttpError(400, 'bad_json');
     }
     if (node is Map) {
@@ -193,10 +240,12 @@ class JoinFailureGate {
   });
 
   /// Milliseconds until [ip] may try again, or null when it may try now.
-  int? blockedForMs(String ip) {
+  int? blockedForMs(String ip, {bool ignoreGlobal = false}) {
     final now = ticks();
     var wait = 0;
-    if (now < _globalBlockedUntil) wait = _globalBlockedUntil - now;
+    if (!ignoreGlobal && now < _globalBlockedUntil) {
+      wait = _globalBlockedUntil - now;
+    }
     final e = _ips[ip];
     if (e != null && now < e.blockedUntil) {
       final w = e.blockedUntil - now;
@@ -239,3 +288,68 @@ class _IpFailures {
   int lastAt = 0;
   int blockedUntil = 0;
 }
+
+/// Runs async sections one at a time (first come, first served).
+class Mutex {
+  Future<void> _tail = Future<void>.value();
+
+  Future<T> run<T>(Future<T> Function() section) {
+    final done = Completer<T>();
+    final previous = _tail;
+    _tail = done.future.then<void>((_) {}, onError: (_) {});
+    previous.then((_) async {
+      try {
+        done.complete(await section());
+      } catch (e, st) {
+        done.completeError(e, st);
+      }
+    });
+    return done.future;
+  }
+}
+
+/// Pixel size claimed by a JPEG's SOFn header, or null when none is found
+/// (not a JPEG / truncated). Only the header is read -- nothing is decoded.
+({int width, int height})? jpegSize(Uint8List b) {
+  if (b.length < 4 || b[0] != 0xFF || b[1] != 0xD8) return null;
+  var i = 2;
+  while (i + 3 < b.length) {
+    if (b[i] != 0xFF) return null;
+    var marker = b[i + 1];
+    while (marker == 0xFF && i + 2 < b.length) {
+      i++; // fill bytes
+      marker = b[i + 1];
+    }
+    if (marker == 0x00 ||
+        marker == 0x01 ||
+        (marker >= 0xD0 && marker <= 0xD8)) {
+      i += 2; // standalone marker
+      continue;
+    }
+    if (marker == 0xD9 || marker == 0xDA) return null; // EOI / SOS before SOF
+    final len = (b[i + 2] << 8) | b[i + 3];
+    if (len < 2) return null;
+    final isSof = marker >= 0xC0 &&
+        marker <= 0xCF &&
+        marker != 0xC4 &&
+        marker != 0xC8 &&
+        marker != 0xCC;
+    if (isSof) {
+      if (i + 9 > b.length) return null;
+      final h = (b[i + 5] << 8) | b[i + 6];
+      final w = (b[i + 7] << 8) | b[i + 8];
+      return (width: w, height: h);
+    }
+    i += 2 + len;
+  }
+  return null;
+}
+
+/// Short, non-secret tag of a pack, shown next to the hub name on both sides so
+/// a student can compare it with what the teacher reads out. The pack uuid
+/// itself never goes into the (public) UDP announcement.
+String packFingerprint(String packUuid) => sha256
+    .convert(utf8.encode('alochi-pack:$packUuid'))
+    .toString()
+    .substring(0, 6)
+    .toUpperCase();

@@ -1409,5 +1409,50 @@
         "type": "int"
       }
     }
-  }
+  },
+  "lanLockJoins": "Qo'shilishni yopish",
+  "lanUnlockJoins": "Qo'shilishni ochish",
+  "lanJoinsLockedNote": "Qo'shilish yopiq: yangi kompyuterlar ulana olmaydi.",
+  "lanErrJoinsClosed": "O'qituvchi yangi ulanishlarni yopgan.",
+  "lanSeatConflictTitle": "O'rin to'qnashuvi",
+  "lanSeatConflictBody": "{student}: bu o'quvchi {holder} kompyuterida testda. {claimant} ham shu o'quvchi nomidan boshlamoqchi.",
+  "@lanSeatConflictBody": {
+    "placeholders": {
+      "student": {
+        "type": "String"
+      },
+      "holder": {
+        "type": "String"
+      },
+      "claimant": {
+        "type": "String"
+      }
+    }
+  },
+  "lanSeatRelease": "Eskisini bo'shat",
+  "lanSeatReject": "Yangisini rad et",
+  "lanPackFingerprint": "Paket izi: {fp}",
+  "@lanPackFingerprint": {
+    "placeholders": {
+      "fp": {
+        "type": "String"
+      }
+    }
+  },
+  "lanConfirmTitle": "Ulanishni tasdiqlang",
+  "lanConfirmBody": "O'qituvchi kompyuteri: {hub}\nPaket izi: {fp}\n\nBu iz o'qituvchi aytgan bilan bir xilmi?",
+  "@lanConfirmBody": {
+    "placeholders": {
+      "hub": {
+        "type": "String"
+      },
+      "fp": {
+        "type": "String"
+      }
+    }
+  },
+  "lanConfirmYes": "Ha, davom etish",
+  "lanConfirmNo": "Yo'q, uzish",
+  "lanHoldPackFull": "O'qituvchi kompyuterida natijalar uchun joy tugagan. Natijalar saqlanmoqda; o'qituvchiga murojaat qiling.",
+  "lanHoldClientQuota": "Bu kompyuter yubora oladigan natijalar chegarasiga yetdi. Natijalar saqlanmoqda; o'qituvchiga murojaat qiling."
 }

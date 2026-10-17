@@ -27,6 +27,7 @@ import 'package:pointycastle/export.dart' show RSAPublicKey;
 import '../db/pack_results_db.dart';
 import '../network/network_info.dart';
 import '../security/monitored_clock.dart';
+import 'export_format.dart';
 import 'offline_crypto.dart';
 import 'offline_keys.dart';
 
@@ -72,15 +73,11 @@ class ResultsExporter {
 
     final entries = [
       for (final r in rows)
-        // EXACTLY these four keys (format 2): the server rejects the whole file
-        // on any other key. idempotency_key / incidents / clock_flags live
-        // only inside meta_json, which is part of the HMAC chain.
-        {
-          'prev_hash': r.prevHash,
-          'hash': r.hash,
-          'payload_json': r.payloadJson,
-          'meta_json': r.metaJson,
-        }
+        exportEntry(
+            prevHash: r.prevHash,
+            hash: r.hash,
+            payloadJson: r.payloadJson,
+            metaJson: r.metaJson)
     ];
     final chainTip = rows.last.hash;
 
@@ -88,7 +85,7 @@ class ResultsExporter {
     final payloadEnc = OfflineCrypto.encryptBlob(
       aesKey,
       Uint8List.fromList(utf8.encode(packUuid)),
-      Uint8List.fromList(utf8.encode(jsonEncode({'entries': entries}))),
+      Uint8List.fromList(utf8.encode(encodeEntries(entries))),
     );
     final keyEnc = OfflineCrypto.rsaOaepWrap(resultsKey, aesKey);
 

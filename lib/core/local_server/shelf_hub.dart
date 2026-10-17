@@ -35,6 +35,7 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
 
 import '../db/pack_results_db.dart';
+import '../offline/export_format.dart';
 import '../offline/offline_package_api.dart';
 import '../offline/offline_session.dart';
 import '../security/monitored_clock.dart';
@@ -66,6 +67,12 @@ class ShelfHub extends ChangeNotifier {
   final String hubName;
   final MonitoredClock clock;
 
+  /// Chain budget and result quota (defaults: HubLimits; tests lower them).
+  final int maxPackEntries;
+  final int maxPackPlainBytes;
+  final int maxResultsPerIp;
+  final int maxResultBytesPerIp;
+
   /// Overrides the UDP announcer (tests aim it at loopback).
   final LanBroadcaster Function(String name, int port, String packLabel)?
       broadcasterFactory;
@@ -78,6 +85,10 @@ class ShelfHub extends ChangeNotifier {
     String? hubName,
     MonitoredClock? clock,
     this.broadcasterFactory,
+    this.maxPackEntries = HubLimits.maxPackEntries,
+    this.maxPackPlainBytes = HubLimits.maxPackPlainBytes,
+    this.maxResultsPerIp = HubLimits.maxResultsPerIp,
+    this.maxResultBytesPerIp = HubLimits.maxResultBytesPerIp,
   })  : bindAddress = bindAddress ?? InternetAddress.anyIPv4,
         hubName = hubName ?? _hostName(),
         clock = clock ?? MonitoredClock.instance;
@@ -99,6 +110,13 @@ class ShelfHub extends ChangeNotifier {
   Uint8List? _diagnosticsJson;
   final Map<String, TokenBucket> _ipBuckets = {};
   int _inFlight = 0;
+  final Map<String, int> _joinInFlight = {};
+
+  /// "Check budget -> append -> account" is one critical section: parallel
+  /// results must not each see room that only one of them can have (S-001).
+  final Mutex _resultLock = Mutex();
+  int? _chainBytes; // export-format bytes of the pack's chain, cached
+  int? _chainCount;
 
   bool get running => _server != null;
   HubState? get state => _state;
@@ -125,6 +143,8 @@ class ShelfHub extends ChangeNotifier {
     _testJson.clear();
     _diagnosticsJson = null;
     _ipBuckets.clear();
+    _chainBytes = null;
+    _chainCount = null;
 
     final durations = <String, int>{};
     for (final t in pack.tests) {
@@ -150,6 +170,8 @@ class ShelfHub extends ChangeNotifier {
       ],
       testDurationsMinutes: durations,
       ticks: _now,
+      maxResultsPerIp: maxResultsPerIp,
+      maxResultBytesPerIp: maxResultBytesPerIp,
     )..addListener(notifyListeners);
     _state = st;
 
@@ -222,10 +244,6 @@ class ShelfHub extends ChangeNotifier {
   // ── middleware / helpers ───────────────────────────────────────────────────
 
   Middleware get _guard => (Handler inner) => (Request req) async {
-        if (_inFlight >= HubLimits.maxInFlight) {
-          return _json(503, {'error': 'busy'});
-        }
-        _inFlight++;
         try {
           return await inner(req);
         } on HubHttpError catch (e) {
@@ -235,8 +253,6 @@ class ShelfHub extends ChangeNotifier {
           // Never echo anything about the failure to the peer.
           debugPrint('ShelfHub: request failed (${e.runtimeType})');
           return _json(500, {'error': 'internal'});
-        } finally {
-          _inFlight--;
         }
       };
 
@@ -271,7 +287,7 @@ class ShelfHub extends ChangeNotifier {
 
   /// Reads at most [limit] bytes. A missing or oversized Content-Length is
   /// refused up front; the whole read has a deadline (slow-body protection).
-  Future<Uint8List> _readBody(Request req, int limit) {
+  Future<Uint8List> _readBody(Request req, int limit, Duration timeout) {
     final len = req.contentLength;
     if (len == null) throw const HubHttpError(411, 'length_required');
     if (len > limit) throw const HubHttpError(413, 'too_large');
@@ -279,7 +295,7 @@ class ShelfHub extends ChangeNotifier {
     final done = Completer<Uint8List>();
     var total = 0;
     late final StreamSubscription<List<int>> sub;
-    final timer = Timer(HubLimits.bodyTimeout, () {
+    final timer = Timer(timeout, () {
       sub.cancel();
       if (!done.isCompleted) {
         done.completeError(const HubHttpError(408, 'timeout'));
@@ -308,13 +324,16 @@ class ShelfHub extends ChangeNotifier {
     return done.future;
   }
 
-  Future<Map<String, dynamic>> _readJsonMap(Request req, int limit) async {
-    final decoded = decodeJsonBounded(await _readBody(req, limit));
+  Future<Map<String, dynamic>> _readJsonMap(
+      Request req, int limit, Duration timeout) async {
+    final decoded = decodeJsonBounded(await _readBody(req, limit, timeout));
     if (decoded is! Map) throw const HubHttpError(400, 'bad_request');
     return Map<String, dynamic>.from(decoded);
   }
 
-  /// Resolves the bearer token to its client, or refuses the request.
+  /// Resolves the bearer token to its client, or refuses the request. A valid
+  /// token marks the PC alive FIRST, before any limit can turn the request
+  /// away (S-002).
   HubClient _authenticate(Request req) {
     final st = _state;
     if (st == null) throw const HubHttpError(503, 'busy');
@@ -333,6 +352,7 @@ class ShelfHub extends ChangeNotifier {
       }
       throw const HubHttpError(401, 'unauthorized');
     }
+    st.touch(client);
     if (!st.allowRequest(client)) {
       throw const HubHttpError(429, 'rate_limited',
           headers: {'retry-after': '1'});
@@ -340,15 +360,44 @@ class ShelfHub extends ChangeNotifier {
     return client;
   }
 
-  Handler _auth(FutureOr<Response> Function(Request, HubClient) handler) =>
-      (Request req) => handler(req, _authenticate(req));
+  /// Authenticated handler with concurrency limits: a token holds at most
+  /// [HubLimits.maxConcurrentPerToken] requests and an address
+  /// [HubLimits.maxConcurrentPerIp]; everything except [reserved] endpoints
+  /// (tiny liveness traffic) also counts against the global [HubLimits.maxInFlight].
+  Handler _auth(FutureOr<Response> Function(Request, HubClient) handler,
+      {bool reserved = false}) {
+    return (Request req) async {
+      final c = _authenticate(req);
+      final st = _state!;
+      final ip = _ipOf(req);
+      if (!st.tryEnter(c, ip)) {
+        throw const HubHttpError(429, 'too_many_requests',
+            headers: {'retry-after': '1'});
+      }
+      var counted = false;
+      try {
+        if (!reserved) {
+          if (_inFlight >= HubLimits.maxInFlight) {
+            throw const HubHttpError(503, 'busy');
+          }
+          _inFlight++;
+          counted = true;
+        }
+        return await handler(req, c);
+      } finally {
+        st.leave(c, ip);
+        if (counted) _inFlight--;
+      }
+    };
+  }
 
   Router _router() {
     return Router()
       ..get('/health', (Request _) => _json(200, {'ok': true}))
       ..post('/join', _join)
-      ..post('/keepalive', _auth(_keepalive))
-      ..post('/ping', _auth(_ping))
+      ..post('/keepalive', _auth(_keepalive, reserved: true))
+      ..post('/leave', _auth(_leave, reserved: true))
+      ..post('/ping', _auth(_ping, reserved: true))
       ..post('/frame', _auth(_frame))
       ..post('/result', _auth(_result))
       ..get('/groups', _auth(_groups))
@@ -358,10 +407,8 @@ class ShelfHub extends ChangeNotifier {
       ..get('/diagnostics', _auth(_diagnostics))
       ..get('/packages', _auth(_packages))
       ..get('/package_questions', _auth(_packageQuestions))
-      ..get('/media/<name>', (Request r, String name) {
-        _authenticate(r);
-        return _media(r, name);
-      });
+      ..get('/media/<name>',
+          (Request r, String name) => _auth((r, _) => _media(r, name))(r));
   }
 
   // ── join / liveness ────────────────────────────────────────────────────────
@@ -376,7 +423,30 @@ class ShelfHub extends ChangeNotifier {
       throw const HubHttpError(429, 'rate_limited',
           headers: {'retry-after': '2'});
     }
-    final body = await _readJsonMap(req, HubLimits.joinBody);
+    // Slow-body joiners hold a slot for at most the (short) body deadline, and
+    // one address can hold only a few.
+    if ((_joinInFlight[ip] ?? 0) >= HubLimits.maxConcurrentJoinPerIp ||
+        _inFlight >= HubLimits.maxInFlight) {
+      throw const HubHttpError(503, 'busy');
+    }
+    _joinInFlight[ip] = (_joinInFlight[ip] ?? 0) + 1;
+    _inFlight++;
+    try {
+      return await _joinInner(req, st, ip);
+    } finally {
+      _inFlight--;
+      final n = (_joinInFlight[ip] ?? 1) - 1;
+      if (n <= 0) {
+        _joinInFlight.remove(ip);
+      } else {
+        _joinInFlight[ip] = n;
+      }
+    }
+  }
+
+  Future<Response> _joinInner(Request req, HubState st, String ip) async {
+    final body =
+        await _readJsonMap(req, HubLimits.joinBody, HubLimits.smallBodyTimeout);
     final code = body['code'];
     final machine = body['machine_id'];
     if (code is! String || code.length > 16) {
@@ -390,12 +460,20 @@ class ShelfHub extends ChangeNotifier {
         ? String.fromCharCodes(dn.codeUnits.where((c) => c >= 0x20))
         : '';
 
+    // A PC that still holds a live token of this very machine is refreshing.
+    final header = req.headers['authorization'];
+    final held =
+        (header != null && header.length <= 128 && header.startsWith('Bearer '))
+            ? st.authenticate(header.substring(7).trim())
+            : null;
+
     final r = st.join(
       ip: ip,
       code: code,
       machineId: machine,
       deviceName:
           deviceName.length > 64 ? deviceName.substring(0, 64) : deviceName,
+      holdsValidToken: held != null && held.machineId == machine,
     );
     switch (r.outcome) {
       case JoinOutcome.badCode:
@@ -406,6 +484,8 @@ class ShelfHub extends ChangeNotifier {
             headers: {'retry-after': '${r.retryAfterSec}'});
       case JoinOutcome.full:
         throw const HubHttpError(503, 'hub_full');
+      case JoinOutcome.locked:
+        throw const HubHttpError(403, 'joins_locked');
       case JoinOutcome.ok:
         final pack = session.pack;
         return _json(200, {
@@ -420,21 +500,26 @@ class ShelfHub extends ChangeNotifier {
   }
 
   Response _keepalive(Request req, HubClient c) {
-    // Body (if any) is irrelevant; Content-Length is still required.
-    if (req.contentLength == null) {
-      throw const HubHttpError(411, 'length_required');
-    }
-    if (req.contentLength! > HubLimits.keepaliveBody) {
+    // Body (if any) is not read; Content-Length is still required and capped.
+    final len = req.contentLength;
+    if (len == null) throw const HubHttpError(411, 'length_required');
+    if (len > HubLimits.keepaliveBody) {
       throw const HubHttpError(413, 'too_large');
     }
-    _state!.touch(c);
+    return _json(200, {'ok': true}); // liveness was recorded on authentication
+  }
+
+  /// A PC leaves politely (disconnect / cancelled confirmation).
+  Response _leave(Request req, HubClient c) {
+    _state?.kick(c.id);
     return _json(200, {'ok': true});
   }
 
   // ── proctoring ─────────────────────────────────────────────────────────────
 
   Future<Response> _ping(Request req, HubClient c) async {
-    final body = await _readJsonMap(req, HubLimits.pingBody);
+    final body =
+        await _readJsonMap(req, HubLimits.pingBody, HubLimits.smallBodyTimeout);
     final input = PingInput.fromJson(body);
     return _json(200, _state!.ping(c, input));
   }
@@ -452,6 +537,7 @@ class ShelfHub extends ChangeNotifier {
   }
 
   Future<Response> _frame(Request req, HubClient c) async {
+    final st = _state!;
     final q = req.url.queryParameters;
     final sessionId = q['session_id'] ?? '';
     if (sessionId.isEmpty || sessionId.length > 64) {
@@ -466,17 +552,36 @@ class ShelfHub extends ChangeNotifier {
     final qIdx = _qInt(q, 'q_idx', 0, 100000);
     final total = _qInt(q, 'total', 0, 100000);
 
-    final bytes = await _readBody(req, HubLimits.frameBody);
-    // Only a real JPEG (SOI marker) is ever stored or shown.
+    // A frame is expensive (up to 512 KB to read, keep and later decode): it
+    // costs several tokens (one was taken on authentication). S-007
+    if (!st.allowRequest(c, cost: HubLimits.frameCost - 1)) {
+      throw const HubHttpError(429, 'rate_limited',
+          headers: {'retry-after': '1'});
+    }
+    final bytes =
+        await _readBody(req, HubLimits.frameBody, HubLimits.frameBodyTimeout);
+    // Only a real JPEG is ever stored or shown, and only a small one: the
+    // header's claimed size is checked WITHOUT decoding, because a few hundred
+    // KB can declare 10000x10000 pixels and cost hundreds of MB to decode on
+    // the teacher's screen (S-006).
     if (bytes.length < 4 ||
         bytes[0] != 0xFF ||
         bytes[1] != 0xD8 ||
         bytes[2] != 0xFF) {
-      throw const HubHttpError(400, 'bad_request');
+      throw const HubHttpError(400, 'bad_frame');
+    }
+    final size = jpegSize(bytes);
+    if (size == null || size.width < 1 || size.height < 1) {
+      throw const HubHttpError(400, 'bad_frame');
+    }
+    if (size.width > HubLimits.maxFrameSide ||
+        size.height > HubLimits.maxFrameSide ||
+        size.width * size.height > HubLimits.maxFramePixels) {
+      throw const HubHttpError(422, 'frame_too_large');
     }
     return _json(
         200,
-        _state!.acceptFrame(c,
+        st.acceptFrame(c,
             sessionId: sessionId,
             frameType: frameType,
             jpeg: bytes,
@@ -494,7 +599,8 @@ class ShelfHub extends ChangeNotifier {
     final key = req.headers['idempotency-key'] ?? '';
     if (!_idemRe.hasMatch(key)) throw const HubHttpError(400, 'bad_request');
 
-    final body = await _readJsonMap(req, HubLimits.resultBody);
+    final body = await _readJsonMap(
+        req, HubLimits.resultBody, HubLimits.resultBodyTimeout);
     final payload = body['payload'];
     if (payload is! Map) throw const HubHttpError(400, 'bad_request');
     final payloadMap = Map<String, dynamic>.from(payload);
@@ -505,43 +611,78 @@ class ShelfHub extends ChangeNotifier {
       throw HubHttpError(422, 'rejected', extra: {'reason': reason});
     }
 
-    final pack = session.pack;
-    // A repeat of an already stored result is just acknowledged again.
-    if (!await PackResultsDb.hasKey(pack.packUuid, key)) {
-      if (c.resultsAccepted >= HubLimits.maxResultsPerClient) {
-        throw const HubHttpError(403, 'client_quota');
-      }
-      final stats = await PackResultsDb.stats(pack.packUuid);
-      // stored bytes are base64 of ciphertext: ~3/4 of that is the plain size.
-      final approxPlain = stats.storedBytes * 3 ~/ 4 + stats.count * 400;
-      if (stats.count >= HubLimits.maxPackEntries ||
-          approxPlain >= HubLimits.maxPackPlainBytes) {
-        throw const HubHttpError(507, 'pack_full');
-      }
+    final incidents = sanitizeMetaList(body['incidents'],
+        maxItems: HubLimits.maxClientIncidents,
+        overflowType: 'incident_overflow');
+    final flags = sanitizeMetaList(body['clock_flags'],
+        maxItems: HubLimits.maxClientClockFlags,
+        overflowType: 'clock_flags_overflow');
+    final payloadJson = jsonEncode(payloadMap);
+    final ip = _ipOf(req);
+    final uuid = session.pack.packUuid;
 
-      final incidents = sanitizeMetaList(body['incidents'],
-          maxItems: HubLimits.maxClientIncidents,
-          overflowType: 'incident_overflow');
-      final flags = sanitizeMetaList(body['clock_flags'],
-          maxItems: HubLimits.maxClientClockFlags,
-          overflowType: 'clock_flags_overflow');
-      await PackResultsDb.append(
-        packUuid: pack.packUuid,
-        chainKey: pack.chainKey,
-        idempotencyKey: key,
-        payloadJson: jsonEncode(payloadMap),
-        incidents: [
+    // Check -> append -> account is ONE critical section.
+    return _resultLock.run(() async {
+      try {
+        // A repeat of an already stored result is acknowledged again -- but
+        // only if it IS the same result; a different body under the same key is
+        // a client bug or an attack, never silently "acked" (S-011).
+        final existing = await PackResultsDb.payloadOf(uuid, key);
+        if (existing != null) {
+          if (existing != payloadJson) {
+            throw const HubHttpError(409, 'idempotency_conflict');
+          }
+          return _json(200, {'ok': true});
+        }
+
+        // The chain budget is kept in the unit the server enforces: bytes of
+        // the DECRYPTED export JSON, measured by the exporter's own helpers.
+        _chainBytes ??= await PackResultsDb.exportPlainBytes(uuid);
+        _chainCount ??= (await PackResultsDb.stats(uuid)).count;
+
+        // (No awaits from here to the append: the clock flags peeked for the
+        // size are the ones drained for the entry.)
+        final entryIncidents = [
           ...incidents,
           // Which PC the result came from (informational, authenticated by
           // the chain like every meta field).
           {'type': 'lan_client', 'machine_id': c.machineId},
-        ],
-        // The hub's own clock flags ride along: the hub stamps the chain.
-        clockFlags: [...flags, ...clock.drainFlags()],
-      );
-      st.resultStored(c, payloadMap['student_id'] as String);
-    }
-    return _json(200, {'ok': true});
+        ];
+        final hubFlags = clock.pendingFlags;
+        final metaJson = PackResultsDb.metaJsonFor(
+            key, entryIncidents, [...flags, ...hubFlags]);
+        final entryBytes = exportEntryBytes(payloadJson, metaJson);
+
+        final quota = st.quotaProblem(ip, entryBytes);
+        if (quota != null) throw HubHttpError(403, quota);
+        if (_chainCount! + 1 > maxPackEntries ||
+            _chainBytes! + entryBytes > maxPackPlainBytes) {
+          throw const HubHttpError(507, 'pack_full');
+        }
+
+        await PackResultsDb.append(
+          packUuid: uuid,
+          chainKey: session.pack.chainKey,
+          idempotencyKey: key,
+          payloadJson: payloadJson,
+          incidents: entryIncidents,
+          // The hub's own clock flags ride along: the hub stamps the chain.
+          clockFlags: [...flags, ...clock.drainFlags()],
+        );
+        _chainBytes = _chainBytes! + entryBytes;
+        _chainCount = _chainCount! + 1;
+        st.quotaCommit(ip, entryBytes);
+        st.resultStored(c, payloadMap['student_id'] as String);
+        return _json(200, {'ok': true});
+      } on HubHttpError {
+        rethrow;
+      } catch (_) {
+        // Unknown outcome of the write: re-measure from the database next time.
+        _chainBytes = null;
+        _chainCount = null;
+        rethrow;
+      }
+    });
   }
 
   // ── content ────────────────────────────────────────────────────────────────
@@ -628,7 +769,9 @@ class ShelfHub extends ChangeNotifier {
     final file = File(p.join(session.mediaDir.path, name));
     if (!await file.exists()) throw const HubHttpError(404, 'not_found');
     final len = await file.length();
-    if (len > 32 * 1024 * 1024) throw const HubHttpError(404, 'not_found');
+    if (len > HubLimits.maxMediaFile) {
+      throw const HubHttpError(404, 'not_found');
+    }
     final ext = name.substring(name.lastIndexOf('.') + 1);
     return Response.ok(file.openRead(), headers: {
       ..._baseHeaders,

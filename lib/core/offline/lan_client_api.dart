@@ -228,7 +228,8 @@ class LanClientApi extends MonitoringApi {
       final d = await session.getJson('/test',
           query: {'key': testKey},
           timeout: const Duration(seconds: 30),
-          inIsolate: true);
+          inIsolate: true,
+          maxBytes: kLanMaxBigJson);
       if (d is! Map) return null;
       final data = Map<String, dynamic>.from(d);
       await session.prepareMedia(data);
@@ -270,7 +271,8 @@ class LanClientApi extends MonitoringApi {
     final Object? d;
     try {
       d = await session.getJson('/package_questions',
-          query: {'id': packageId, 'variant': variant.toString()});
+          query: {'id': packageId, 'variant': variant.toString()},
+          maxBytes: kLanMaxBigJson);
     } on ApiException catch (e) {
       if (e.code == kOfflineNotFound) return []; // no such variant in the pack
       rethrow;

@@ -114,6 +114,25 @@ void main() {
     expect(listener.hubs.value, isEmpty);
   });
 
+  test('one source address gets at most 4 entries (S-008)', () async {
+    final port = await _freeUdpPort();
+    final listener = LanDiscoveryListener(port: port, bindAddress: loop);
+    await listener.start();
+    addTearDown(listener.stop);
+    final sender = await RawDatagramSocket.bind(loop, 0);
+    addTearDown(sender.close);
+    for (var i = 0; i < 12; i++) {
+      sender.send(
+          encodeAnnouncement(
+              name: 'fake $i', ip: '127.0.0.1', port: 9000 + i, packLabel: 'x'),
+          loop,
+          port);
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    expect(listener.hubs.value.length, lessThanOrEqualTo(4));
+    expect(listener.hubs.value, isNotEmpty);
+  });
+
   test('a busy UDP port is reported, not thrown', () async {
     final taken = await RawDatagramSocket.bind(loop, 0, reuseAddress: false);
     addTearDown(taken.close);

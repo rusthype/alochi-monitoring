@@ -151,3 +151,17 @@ Directory makeMediaDir(Directory parent, String sha256Hex) {
   File('${media.path}/$sha256Hex.jpg').writeAsBytesSync(lanMediaBytes);
   return media;
 }
+
+/// A tiny but structurally valid JPEG: SOI, SOF0 claiming [w]x[h], a COM
+/// segment carrying [marker] (so tests can search for it), EOI. Not decodable
+/// -- the hub only reads the header.
+Uint8List lanJpeg({String marker = 'FRAMEMARKER', int w = 640, int h = 360}) {
+  final com = marker.codeUnits;
+  return Uint8List.fromList([
+    0xFF, 0xD8, //
+    0xFF, 0xC0, 0, 17, 8, h >> 8, h & 0xFF, w >> 8, w & 0xFF, //
+    3, 1, 0x22, 0, 2, 0x11, 1, 3, 0x11, 1,
+    0xFF, 0xFE, (com.length + 2) >> 8, (com.length + 2) & 0xFF, ...com,
+    0xFF, 0xD9,
+  ]);
+}

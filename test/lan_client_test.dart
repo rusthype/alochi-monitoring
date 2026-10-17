@@ -22,6 +22,8 @@ import 'package:alochi_monitoring/core/offline/offline_session.dart';
 import 'package:alochi_monitoring/core/security/monitored_clock.dart';
 import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_kiosk_api.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:alochi_monitoring/core/local_server/hub_guard.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -222,7 +224,7 @@ void main() {
       await eventually(() async => (await hubRows()) == 1);
       await eventually(
           () async => (await LanOutboxDb.pending(lanPackUuid)).isEmpty);
-      expect(s.pending.value, 0);
+      await eventually(() async => s.pending.value == 0);
 
       // Same token again (a retry): acknowledged, still one row.
       await s.recordResult(lanResultPayload(), token: 'k1');
@@ -387,8 +389,7 @@ void main() {
 
       final id = hub.state!.views().single.id;
       hub.state!.setLocked(id, true);
-      final jpeg =
-          Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 0xFF, 0xD9]);
+      final jpeg = lanJpeg(marker: 'client-frame');
       final fr = await lan.proctorFrame(
           sessionId: 'S1',
           token: reply['proctor_token'] as String,
@@ -431,6 +432,183 @@ void main() {
       expect(await lan.ping(), isTrue);
       await hub.stop();
       expect(await lan.ping(), isFalse);
+    });
+  });
+
+  group('T2 review (client side)', () {
+    test('fingerprint of the pack matches the one the hub shows', () async {
+      final s = await connect();
+      expect(s.fingerprint, packFingerprint(lanPackUuid));
+      expect(s.fingerprint, matches(RegExp(r'^[0-9A-F]{6}$')));
+    });
+
+    test('close() tells the hub (the PC does not linger as a ghost)', () async {
+      final s = await connect();
+      expect(hub.state!.clientCount, 1);
+      s.close();
+      await eventually(() async => hub.state!.clientCount == 0);
+    });
+
+    test('a closed hub says so: joinsClosed; a live token refreshes anyway',
+        () async {
+      final s = await connect(machine: 'in-already');
+      hub.state!.setJoinsLocked(true);
+      await expectLater(
+          connect(machine: 'latecomer'),
+          throwsA(isA<LanJoinException>()
+              .having((e) => e.code, 'code', LanJoinError.joinsClosed)));
+      final again = await LanClientSession.join(
+          host: '127.0.0.1',
+          port: hub.port!,
+          code: hub.state!.code,
+          client: http.Client(),
+          machineId: 'in-already',
+          replacing: s,
+          mediaDirFor: (id) async => Directory(p.join(tmp.path, 'cm2')));
+      sessions.add(again);
+      expect(again.packUuid, lanPackUuid);
+    });
+
+    test(
+        'pack_full / client_quota: the result is NOT dropped; it is held, '
+        'shown, and retried slowly', () async {
+      // A second hub on the same pack that takes only 2 results per address.
+      await hub.stop();
+      final small = ShelfHub(OfflinePackSession.current!,
+          bindAddress: InternetAddress.loopbackIPv4,
+          firstPort: 0,
+          lastPort: 0,
+          clock: clock,
+          maxResultsPerIp: 2);
+      await small.start(announce: false);
+      addTearDown(() async {
+        await small.stop();
+        small.dispose();
+      });
+      final s = await connect(port: small.port, code: small.state!.code);
+      for (var i = 0; i < 3; i++) {
+        await s.recordResult(lanResultPayload(), token: 'held-$i');
+        await s.flushOutbox();
+      }
+      await eventually(() async {
+        await s.flushOutbox();
+        return s.hold.value != null;
+      });
+      expect(s.hold.value, 'client_quota');
+      expect(await PackResultsDb.rowsForPack(lanPackUuid), hasLength(2));
+      // Still queued (pending), never flagged rejected, never deleted.
+      final counts = await LanOutboxDb.counts();
+      expect(counts.pending, 1);
+      expect(counts.rejected, 0);
+      // No retry storm: while held, flushing does not even hit the hub.
+      final before = (await LanOutboxDb.pending(lanPackUuid)).single.attempts;
+      for (var i = 0; i < 5; i++) {
+        await s.flushOutbox();
+      }
+      expect((await LanOutboxDb.pending(lanPackUuid)).single.attempts, before);
+    });
+
+    test('pack_full holds the same way (and a later ack clears the hold)',
+        () async {
+      await hub.stop();
+      final small = ShelfHub(OfflinePackSession.current!,
+          bindAddress: InternetAddress.loopbackIPv4,
+          firstPort: 0,
+          lastPort: 0,
+          clock: clock,
+          maxPackEntries: 1);
+      await small.start(announce: false);
+      addTearDown(() async {
+        await small.stop();
+        small.dispose();
+      });
+      final s = await connect(port: small.port, code: small.state!.code);
+      await s.recordResult(lanResultPayload(), token: 'fits');
+      await s.recordResult(lanResultPayload(), token: 'does-not-fit');
+      await eventually(() async {
+        await s.flushOutbox();
+        return s.hold.value != null;
+      });
+      expect(s.hold.value, 'pack_full');
+      expect((await LanOutboxDb.counts()).rejected, 0);
+      expect((await LanOutboxDb.counts()).pending, 1);
+    });
+
+    test('a pack_uuid that is not a UUID is refused as a bad hub response',
+        () async {
+      final fake = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => fake.close(force: true));
+      fake.listen((req) async {
+        req.response
+          ..statusCode = 200
+          ..write(jsonEncode({
+            'token': 'x' * 32,
+            'pack_uuid': '../../etc/passwd',
+            'hub_name': 'evil'
+          }));
+        await req.response.close();
+      });
+      await expectLater(
+          LanClientSession.join(
+              host: '127.0.0.1', port: fake.port, code: '123456'),
+          throwsA(isA<LanJoinException>()
+              .having((e) => e.code, 'code', LanJoinError.badResponse)));
+    });
+
+    test('hub answers are size-capped (join 64 KB, JSON 4 MB)', () async {
+      final fake = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => fake.close(force: true));
+      var padJoin = true;
+      fake.listen((req) async {
+        final r = req.response..statusCode = 200;
+        if (req.uri.path == '/join') {
+          r.write(jsonEncode({
+            'token': 'x' * 32,
+            'pack_uuid': lanPackUuid,
+            'hub_name': 'fake',
+            if (padJoin) 'pad': 'a' * 200000, // 200 KB > 64 KB cap
+          }));
+        } else {
+          r.write('[${'0,' * 3000000}0]'); // ~6 MB of JSON > 4 MB cap
+        }
+        await r.close();
+      });
+      await expectLater(
+          LanClientSession.join(
+              host: '127.0.0.1', port: fake.port, code: '123456'),
+          throwsA(isA<LanJoinException>()
+              .having((e) => e.code, 'code', LanJoinError.badResponse)));
+
+      padJoin = false;
+      final flooded = await LanClientSession.join(
+          host: '127.0.0.1',
+          port: fake.port,
+          code: '123456',
+          client: http.Client(),
+          machineId: 'm',
+          mediaDirFor: (id) async => Directory(p.join(tmp.path, 'cm3')));
+      sessions.add(flooded);
+      await expectLater(
+          flooded.getJson('/groups'),
+          throwsA(isA<ApiException>()
+              .having((e) => e.code, 'code', kLanBadResponse)));
+    });
+
+    test('the machine id is a random UUID made once and kept in settings',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      final a = await LanClientSession.persistentMachineId();
+      final b = await LanClientSession.persistentMachineId();
+      expect(a, b);
+      expect(
+          a,
+          matches(RegExp(
+              r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$')));
+      // garbage in the settings is replaced, not trusted
+      SharedPreferences.setMockInitialValues(
+          {'lan_machine_id_v1': 'not a uuid'});
+      final c = await LanClientSession.persistentMachineId();
+      expect(c, isNot('not a uuid'));
     });
   });
 

@@ -134,9 +134,7 @@ void main() {
     return jsonDecode(r.body) as Map<String, dynamic>;
   }
 
-  Uint8List jpeg([String marker = 'FRAMEMARKER']) => Uint8List.fromList([
-        0xFF, 0xD8, 0xFF, 0xE0, ...utf8.encode(marker), 0xFF, 0xD9 //
-      ]);
+  Uint8List jpeg([String marker = 'FRAMEMARKER']) => lanJpeg(marker: marker);
 
   // ── decision 1: class code, token, throttling ─────────────────────────────
 
@@ -557,12 +555,11 @@ void main() {
       final t = await join();
       expect((await sendResult(t, 'dup', lanResultPayload())).statusCode, 200);
       expect((await sendResult(t, 'dup', lanResultPayload())).statusCode, 200);
-      // Even a different body under the same key cannot add a row.
-      expect(
-          (await sendResult(
-                  t, 'dup', lanResultPayload(student: lanS2, group: lanG2)))
-              .statusCode,
-          200);
+      // A DIFFERENT body under the same key is never silently "acked" (S-011).
+      final other = await sendResult(
+          t, 'dup', lanResultPayload(student: lanS2, group: lanG2));
+      expect(other.statusCode, 409);
+      expect(jsonDecode(other.body), {'error': 'idempotency_conflict'});
       expect(await PackResultsDb.rowsForPack(lanPackUuid), hasLength(1));
       expect(hub.state!.resultsAccepted, 1);
     });
@@ -639,7 +636,7 @@ void main() {
       final t = await join();
       var accepted = 0;
       int? refused;
-      for (var i = 0; i < HubLimits.maxResultsPerClient + 1; i++) {
+      for (var i = 0; i < HubLimits.maxResultsPerIp + 1; i++) {
         ticks += 1000; // keep the token bucket full
         final r = await sendResult(t, 'q$i', lanResultPayload());
         if (r.statusCode == 200) {
@@ -648,7 +645,7 @@ void main() {
           refused = r.statusCode;
         }
       }
-      expect(accepted, HubLimits.maxResultsPerClient);
+      expect(accepted, HubLimits.maxResultsPerIp);
       expect(refused, 403);
       // A repeat of an ALREADY stored key is still acknowledged.
       expect((await sendResult(t, 'q0', lanResultPayload())).statusCode, 200);
@@ -755,20 +752,80 @@ void main() {
       expect(j['extra_time_seconds'], 0);
     });
 
-    test('one student on two PCs: the newcomer gets conflict:true', () async {
+    test(
+        'one student on two PCs: the newcomer gets conflict:true, the holder '
+        'is never ended on its own (S-003)', () async {
       final a = await join(machine: 'pc-a');
       final b = await join(machine: 'pc-b');
-      expect((await ping(a, pingBody('A1')))['conflict'], false);
-      expect((await ping(b, pingBody('B1')))['conflict'], true);
+      Map<String, dynamic> as(String sid, String dev,
+              {String student = lanS1}) =>
+          {...pingBody(sid, student: student), 'device_name': dev};
+      expect((await ping(a, as('A1', 'pc-a')))['conflict'], false);
+      expect((await ping(b, as('B1', 'pc-b')))['conflict'], true);
       // The refused PC holds nothing; a different student is fine.
       expect(
-          (await ping(b, pingBody('B2', student: lanS2)))['conflict'], false);
+          (await ping(b, as('B2', 'pc-b', student: lanS2)))['conflict'], false);
 
-      // A goes silent (> 15 s): B may take over and A is told to stop.
-      ticks += 20000;
+      // The holder goes silent for a long time (a flaky link, or a flood
+      // aimed at it): the newcomer still does NOT get the seat and the holder
+      // is not told to stop. Only the teacher decides.
+      ticks += 120000;
+      expect((await ping(b, as('B3', 'pc-b')))['conflict'], true);
+      final aReply = await ping(a, as('A1', 'pc-a'));
+      expect(aReply['terminated'], false);
+      expect(aReply['conflict'], false);
+      final open = hub.state!.conflicts();
+      expect(open, hasLength(1));
+      expect(open.single.studentName, 'Valiyev Ali');
+      expect(open.single.holderLabel, contains('pc-a'));
+      expect(open.single.claimantLabel, contains('pc-b'));
+    });
+
+    test(
+        'teacher: "release the old one" ends the holder, then the claimant '
+        'gets the seat', () async {
+      final a = await join(machine: 'pc-a');
+      final b = await join(machine: 'pc-b');
+      await ping(a, pingBody('A1'));
+      expect((await ping(b, pingBody('B1')))['conflict'], true);
+      hub.state!.resolveConflict(hub.state!.conflicts().single.id,
+          releaseHolder: true);
+      expect((await ping(a, pingBody('A1')))['terminated'], true);
+      expect((await ping(b, pingBody('B2')))['conflict'], false);
+      expect(hub.state!.conflicts(), isEmpty);
+    });
+
+    test(
+        'teacher: "reject the new one" keeps the holder; the claim stays '
+        'refused and is not re-reported', () async {
+      final a = await join(machine: 'pc-a');
+      final b = await join(machine: 'pc-b');
+      await ping(a, pingBody('A1'));
+      expect((await ping(b, pingBody('B1')))['conflict'], true);
+      hub.state!.resolveConflict(hub.state!.conflicts().single.id,
+          releaseHolder: false);
+      expect((await ping(a, pingBody('A1')))['terminated'], false);
+      expect((await ping(b, pingBody('B2')))['conflict'], true);
+      expect(hub.state!.conflicts(), isEmpty); // no new banner
+      // ... for a while only.
+      ticks += HubLimits.rejectedClaimMs + 1000;
+      await ping(a, {...pingBody('A1'), 'test_key': ''}); // holder finishes
       expect((await ping(b, pingBody('B3')))['conflict'], false);
-      final aReply = await ping(a, pingBody('A1'));
-      expect(aReply['terminated'], true);
+    });
+
+    test(
+        'squatting on a student id: the victim shows up on the teacher\'s '
+        'banner with both PCs named', () async {
+      final atk = await join(machine: 'atk');
+      final vic = await join(machine: 'vic');
+      await ping(
+          atk, pingBody('atk-sess')); // claims S1 while the real one is idle
+      expect((await ping(vic, pingBody('vic-sess')))['conflict'], true);
+      ticks += 20000;
+      await postJson('/keepalive', {}, token: vic); // the victim stays alive
+      expect((await ping(vic, pingBody('vic-sess')))['conflict'], true);
+      expect((await ping(atk, pingBody('atk-sess')))['terminated'], false);
+      expect(hub.state!.conflicts(), hasLength(1));
     });
 
     test('diagnostic pings (DIAG-offline|student|group|lang) are identified',
@@ -842,6 +899,7 @@ void main() {
 
       // Patches are not stored (nothing to patch); junk and stale are refused.
       final keep = hub.state!.frameOf(id);
+      ticks += 4000; // frames may not come faster than half the interval
       r = await client.post(
           u('/frame', {'session_id': 'S1', 'frame_type': 'patch'}),
           headers: {'authorization': 'Bearer $t'},

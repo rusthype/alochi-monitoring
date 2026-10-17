@@ -2706,4 +2706,59 @@ class AppLocalizationsRu extends AppLocalizations {
   String lanRejectedResults(int count) {
     return 'Результаты, отклонённые компьютером учителя: $count';
   }
+
+  @override
+  String get lanLockJoins => 'Закрыть подключение';
+
+  @override
+  String get lanUnlockJoins => 'Открыть подключение';
+
+  @override
+  String get lanJoinsLockedNote =>
+      'Подключение закрыто: новые компьютеры не могут подключиться.';
+
+  @override
+  String get lanErrJoinsClosed =>
+      'Учитель закрыл подключение новых компьютеров.';
+
+  @override
+  String get lanSeatConflictTitle => 'Конфликт места';
+
+  @override
+  String lanSeatConflictBody(String student, String holder, String claimant) {
+    return '$student: этот ученик уже проходит тест на $holder. $claimant тоже пытается начать тест за него.';
+  }
+
+  @override
+  String get lanSeatRelease => 'Освободить старое';
+
+  @override
+  String get lanSeatReject => 'Отклонить новое';
+
+  @override
+  String lanPackFingerprint(String fp) {
+    return 'Метка пакета: $fp';
+  }
+
+  @override
+  String get lanConfirmTitle => 'Подтвердите подключение';
+
+  @override
+  String lanConfirmBody(String hub, String fp) {
+    return 'Компьютер учителя: $hub\nМетка пакета: $fp\n\nСовпадает ли метка с названной учителем?';
+  }
+
+  @override
+  String get lanConfirmYes => 'Да, продолжить';
+
+  @override
+  String get lanConfirmNo => 'Нет, отключиться';
+
+  @override
+  String get lanHoldPackFull =>
+      'На компьютере учителя закончилось место для результатов. Результаты сохраняются; обратитесь к учителю.';
+
+  @override
+  String get lanHoldClientQuota =>
+      'Достигнут предел результатов, которые может отправить этот компьютер. Результаты сохраняются; обратитесь к учителю.';
 }

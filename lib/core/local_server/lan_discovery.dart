@@ -225,6 +225,7 @@ class LanDiscoveryListener {
   Timer? _expiry;
   final Map<String, DiscoveredHub> _seen = {};
   static const int _maxHubs = 64;
+  static const int _maxPerIp = 4;
 
   Future<void> start() async {
     if (_socket != null) return;
@@ -241,8 +242,14 @@ class LanDiscoveryListener {
           if (d == null) break;
           final hub = parseAnnouncement(d.data, d.address);
           if (hub == null) continue;
-          if (_seen.length >= _maxHubs && !_seen.containsKey(hub.address)) {
-            continue; // a flood of fake hubs must not grow without bound
+          if (!_seen.containsKey(hub.address)) {
+            // A flood of fake hubs must not grow the list without bound, and
+            // one source address gets only a few entries: it cannot push the
+            // real hub (another address) out by filling ports (S-008).
+            if (_seen.length >= _maxHubs) continue;
+            if (_seen.values.where((h) => h.ip == hub.ip).length >= _maxPerIp) {
+              continue;
+            }
           }
           _seen[hub.address] = hub;
           _publish();

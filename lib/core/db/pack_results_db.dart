@@ -23,6 +23,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import '../offline/export_format.dart';
 import '../offline/offline_crypto.dart';
 import '../security/monitored_clock.dart';
 import 'offline_queue.dart';
@@ -112,6 +113,16 @@ class PackResultsDb {
     );
   }
 
+  /// The exact meta text that goes into a chain link (and the export). Public
+  /// so the LAN hub can measure an entry before it stores it.
+  static String metaJsonFor(String idempotencyKey, List<dynamic> incidents,
+          List<dynamic> clockFlags) =>
+      jsonEncode({
+        'idempotency_key': idempotencyKey,
+        'incidents': incidents,
+        'clock_flags': clockFlags,
+      });
+
   /// Appends one result to [packUuid]'s chain and returns the stored link.
   /// Idempotent on [idempotencyKey]: a repeat returns the existing row.
   static Future<PackResultRow> append({
@@ -140,11 +151,7 @@ class PackResultsDb {
           limit: 1);
       final prev =
           last.isEmpty ? OfflineCrypto.zeroHash : last.first['hash'] as String;
-      final metaJson = jsonEncode({
-        'idempotency_key': idempotencyKey,
-        'incidents': incidents,
-        'clock_flags': clockFlags,
-      });
+      final metaJson = metaJsonFor(idempotencyKey, incidents, clockFlags);
       final hash =
           OfflineCrypto.chainHash(chainKey, prev, payloadJson, metaJson);
       final created = nowMs ?? DateTime.now().millisecondsSinceEpoch;
@@ -215,6 +222,35 @@ class PackResultsDb {
         whereArgs: [packUuid, idempotencyKey],
         limit: 1);
     return rows.isNotEmpty;
+  }
+
+  /// The plaintext payload of [idempotencyKey]'s row (decrypted), or null.
+  static Future<String?> payloadOf(
+      String packUuid, String idempotencyKey) async {
+    final d = await _db;
+    final rows = await d.query('pack_results',
+        columns: ['payload'],
+        where: 'pack_uuid = ? AND idempotency_key = ?',
+        whereArgs: [packUuid, idempotencyKey],
+        limit: 1);
+    if (rows.isEmpty) return null;
+    return QueueCrypto.decryptPayload(rows.first['payload'] as String);
+  }
+
+  /// Size in bytes of the DECRYPTED JSON an export of [packUuid] would carry
+  /// today (see export_format.dart). Decrypts every row, so callers cache it.
+  static Future<int> exportPlainBytes(String packUuid) async {
+    final d = await _db;
+    final rows = await d.query('pack_results',
+        columns: ['payload', 'meta_json'],
+        where: 'pack_uuid = ?',
+        whereArgs: [packUuid]);
+    var total = exportEnvelopeBytes;
+    for (final r in rows) {
+      final payload = await QueueCrypto.decryptPayload(r['payload'] as String);
+      total += exportEntryBytes(payload, r['meta_json'] as String);
+    }
+    return total;
   }
 
   /// Rows and stored (encrypted + base64) bytes of one pack's chain. The LAN

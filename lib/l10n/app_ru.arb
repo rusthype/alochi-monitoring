@@ -1364,5 +1364,50 @@
         "type": "int"
       }
     }
-  }
+  },
+  "lanLockJoins": "Закрыть подключение",
+  "lanUnlockJoins": "Открыть подключение",
+  "lanJoinsLockedNote": "Подключение закрыто: новые компьютеры не могут подключиться.",
+  "lanErrJoinsClosed": "Учитель закрыл подключение новых компьютеров.",
+  "lanSeatConflictTitle": "Конфликт места",
+  "lanSeatConflictBody": "{student}: этот ученик уже проходит тест на {holder}. {claimant} тоже пытается начать тест за него.",
+  "@lanSeatConflictBody": {
+    "placeholders": {
+      "student": {
+        "type": "String"
+      },
+      "holder": {
+        "type": "String"
+      },
+      "claimant": {
+        "type": "String"
+      }
+    }
+  },
+  "lanSeatRelease": "Освободить старое",
+  "lanSeatReject": "Отклонить новое",
+  "lanPackFingerprint": "Метка пакета: {fp}",
+  "@lanPackFingerprint": {
+    "placeholders": {
+      "fp": {
+        "type": "String"
+      }
+    }
+  },
+  "lanConfirmTitle": "Подтвердите подключение",
+  "lanConfirmBody": "Компьютер учителя: {hub}\nМетка пакета: {fp}\n\nСовпадает ли метка с названной учителем?",
+  "@lanConfirmBody": {
+    "placeholders": {
+      "hub": {
+        "type": "String"
+      },
+      "fp": {
+        "type": "String"
+      }
+    }
+  },
+  "lanConfirmYes": "Да, продолжить",
+  "lanConfirmNo": "Нет, отключиться",
+  "lanHoldPackFull": "На компьютере учителя закончилось место для результатов. Результаты сохраняются; обратитесь к учителю.",
+  "lanHoldClientQuota": "Достигнут предел результатов, которые может отправить этот компьютер. Результаты сохраняются; обратитесь к учителю."
 }

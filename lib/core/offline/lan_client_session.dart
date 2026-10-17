@@ -15,18 +15,20 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart';
 import '../api/api_client.dart';
 import '../db/lan_outbox_db.dart';
 import '../db/test_cache.dart';
-import '../network/network_info.dart' show machineGuid;
+import '../local_server/hub_guard.dart' show HubLimits, packFingerprint;
 import '../security/incident_log.dart';
 import '../security/monitored_clock.dart';
 import 'lan_client_api.dart';
@@ -60,6 +62,30 @@ import 'offline_session.dart';
   return (host: host, port: port);
 }
 
+/// Response ceilings (S-009): a hub (or whatever answers on its address) must
+/// not be able to make a student PC buffer without bound.
+const int kLanMaxJson = 4 * 1024 * 1024;
+const int kLanMaxBigJson = 32 * 1024 * 1024; // whole tests / diagnostics
+
+/// Reads a streamed response but refuses to buffer more than [maxBytes]: a
+/// declared Content-Length above it, or a body that grows past it, aborts.
+Future<http.Response> readCapped(http.StreamedResponse r, int maxBytes) async {
+  const tooLarge =
+      ApiException(502, 'lan: response too large', code: kLanBadResponse);
+  final declared = r.contentLength;
+  if (declared != null && declared > maxBytes) {
+    unawaited(r.stream.listen((_) {}).cancel());
+    throw tooLarge;
+  }
+  final out = BytesBuilder(copy: false);
+  await for (final chunk in r.stream) {
+    out.add(chunk);
+    if (out.length > maxBytes) throw tooLarge; // leaving the loop cancels it
+  }
+  return http.Response.bytes(out.takeBytes(), r.statusCode,
+      headers: r.headers, request: r.request);
+}
+
 enum LanJoinError {
   badAddress,
   badCode,
@@ -68,6 +94,9 @@ enum LanJoinError {
   unreachable,
   badResponse,
   packActive,
+
+  /// The teacher closed joining (everybody is in).
+  joinsClosed,
 }
 
 class LanJoinException implements Exception {
@@ -108,6 +137,9 @@ class LanClientSession implements OfflineContentSource {
         _http = client,
         _ownsHttp = ownsClient;
 
+  /// Short tag of the hub's pack, to compare with what the teacher reads out.
+  String get fingerprint => packFingerprint(_packUuid);
+
   /// The active LAN session, or null.
   static LanClientSession? current;
   static final ValueNotifier<LanClientSession?> notifier =
@@ -119,6 +151,13 @@ class LanClientSession implements OfflineContentSource {
 
   /// The hub rejected our token (restart / kicked): join again with the code.
   final ValueNotifier<bool> needsRejoin = ValueNotifier<bool>(false);
+
+  /// Why the hub is not taking results right now (`pack_full` / `client_quota`),
+  /// or null. The results stay queued and are retried slowly; the operator is
+  /// told to ask the teacher (S-001).
+  final ValueNotifier<String?> hold = ValueNotifier<String?>(null);
+  int _holdUntilTicks = 0;
+  static const int _holdRetryMs = 5 * 60 * 1000;
 
   /// Results of this pack still waiting for the hub's ack.
   final ValueNotifier<int> pending = ValueNotifier<int>(0);
@@ -135,9 +174,29 @@ class LanClientSession implements OfflineContentSource {
 
   static final RegExp _hostRe = RegExp(r'^[A-Za-z0-9.\-]{1,253}$');
   static String? _processId;
+  static const String _machineKey = 'lan_machine_id_v1';
+  static final RegExp _uuidRe = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
 
-  static String _defaultMachineId() =>
-      machineGuid() ?? (_processId ??= 'proc-${const Uuid().v4()}');
+  /// The id this installation presents to hubs: a random UUID made on first
+  /// use and kept in the app's settings. Deliberately NOT the Windows
+  /// MachineGuid -- that is shared by every PC cloned from one lab image, and
+  /// readable by anyone with registry access (S-004). The hub additionally
+  /// matches on the source address before treating two joins as the same PC.
+  static Future<String> persistentMachineId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_machineKey);
+      if (saved != null && _uuidRe.hasMatch(saved)) return saved;
+      final id = const Uuid().v4();
+      await prefs.setString(_machineKey, id);
+      return id;
+    } catch (e) {
+      debugPrint(
+          'LanClientSession: machine id not persisted (${e.runtimeType})');
+      return _processId ??= 'proc-${const Uuid().v4()}';
+    }
+  }
 
   static String _defaultDeviceName() {
     try {
@@ -158,6 +217,7 @@ class LanClientSession implements OfflineContentSource {
     String? machineId,
     String? deviceName,
     Future<Directory> Function(String packUuid)? mediaDirFor,
+    LanClientSession? replacing,
   }) async {
     final h = host.trim();
     if (!_hostRe.hasMatch(h) || port < 1 || port > 65535) {
@@ -165,19 +225,25 @@ class LanClientSession implements OfflineContentSource {
     }
     final owns = client == null;
     final c = client ?? http.Client();
-    final mid = machineId ?? _defaultMachineId();
+    final mid = machineId ?? await persistentMachineId();
     final base = Uri(scheme: 'http', host: h, port: port);
 
     http.Response resp;
     try {
-      resp = await c
-          .post(base.replace(path: '/join'),
-              headers: {'content-type': 'application/json'},
-              body: jsonEncode({
-                'code': code.trim(),
-                'machine_id': mid,
-                'device_name': deviceName ?? _defaultDeviceName(),
-              }))
+      final req = http.Request('POST', base.replace(path: '/join'))
+        ..headers['content-type'] = 'application/json'
+        // A PC re-joining while it still holds a live token says so: the hub
+        // then lets it past the global failure gate and the join lock.
+        ..headers.addAll(replacing == null
+            ? const {}
+            : {'authorization': 'Bearer ${replacing._token}'})
+        ..body = jsonEncode({
+          'code': code.trim(),
+          'machine_id': mid,
+          'device_name': deviceName ?? _defaultDeviceName(),
+        });
+      final streamed = await c.send(req).timeout(const Duration(seconds: 8));
+      resp = await readCapped(streamed, 64 * 1024)
           .timeout(const Duration(seconds: 8));
     } on TimeoutException {
       if (owns) c.close();
@@ -188,6 +254,9 @@ class LanClientSession implements OfflineContentSource {
     } on http.ClientException {
       if (owns) c.close();
       throw const LanJoinException(LanJoinError.unreachable);
+    } on ApiException {
+      if (owns) c.close();
+      throw const LanJoinException(LanJoinError.badResponse);
     }
 
     Map<String, dynamic>? body;
@@ -211,6 +280,10 @@ class LanClientSession implements OfflineContentSource {
         throw fail(LanJoinError.blocked, retry: ra is int ? ra : 60);
       case 503:
         throw fail(LanJoinError.full);
+      case 403:
+        throw fail(body?['error'] == 'joins_locked'
+            ? LanJoinError.joinsClosed
+            : LanJoinError.badResponse);
       default:
         throw fail(LanJoinError.badResponse);
     }
@@ -221,8 +294,7 @@ class LanClientSession implements OfflineContentSource {
         token.length < 16 ||
         token.length > 128 ||
         packUuid is! String ||
-        packUuid.isEmpty ||
-        packUuid.length > 64) {
+        !_uuidRe.hasMatch(packUuid)) {
       throw fail(LanJoinError.badResponse);
     }
     final dir = await (mediaDirFor ?? OfflinePackSession.mediaDirFor)(packUuid);
@@ -289,10 +361,21 @@ class LanClientSession implements OfflineContentSource {
   }
 
   void _shutdown() {
+    if (_closed) return;
     _closed = true;
     _timer?.cancel();
     _timer = null;
-    if (_ownsHttp) _http.close();
+    // Tell the hub we are gone (best effort), then drop the connection.
+    final http_ = _http;
+    final owns = _ownsHttp;
+    http_
+        .post(base.replace(path: '/leave'),
+            headers: {'authorization': 'Bearer $_token'})
+        .timeout(const Duration(seconds: 2))
+        .then<void>((_) {}, onError: (Object _) {})
+        .whenComplete(() {
+          if (owns) http_.close();
+        });
   }
 
   // ── transport ──────────────────────────────────────────────────────────────
@@ -307,6 +390,7 @@ class LanClientSession implements OfflineContentSource {
     List<int>? body,
     Map<String, String> headers = const {},
     Duration timeout = const Duration(seconds: 10),
+    int maxBytes = kLanMaxJson,
   }) async {
     if (_closed) {
       throw const ApiException(0, 'lan: session closed',
@@ -322,7 +406,7 @@ class LanClientSession implements OfflineContentSource {
     final http.Response resp;
     try {
       final streamed = await _http.send(req).timeout(timeout);
-      resp = await http.Response.fromStream(streamed).timeout(timeout);
+      resp = await readCapped(streamed, maxBytes).timeout(timeout);
     } on TimeoutException {
       connected.value = false;
       throw const ApiException(0, 'lan: hub unreachable',
@@ -349,8 +433,10 @@ class LanClientSession implements OfflineContentSource {
   Future<Object?> getJson(String path,
       {Map<String, String>? query,
       Duration timeout = const Duration(seconds: 15),
-      bool inIsolate = false}) async {
-    final resp = await request('GET', path, query: query, timeout: timeout);
+      bool inIsolate = false,
+      int maxBytes = kLanMaxJson}) async {
+    final resp = await request('GET', path,
+        query: query, timeout: timeout, maxBytes: maxBytes);
     if (resp.statusCode != 200) {
       throw ApiException(resp.statusCode, 'lan: hub refused ($path)',
           code: resp.statusCode == 404 ? kOfflineNotFound : null);
@@ -424,6 +510,11 @@ class LanClientSession implements OfflineContentSource {
   /// transiently (order is kept). Returns how many were acknowledged.
   Future<int> flushOutbox() async {
     if (_flushing || _closed) return 0;
+    // The hub said it is full / this PC is over its quota: do not hammer it.
+    if (hold.value != null &&
+        MonitoredClock.instance.ticksMs < _holdUntilTicks) {
+      return 0;
+    }
     _flushing = true;
     var acked = 0;
     try {
@@ -446,7 +537,17 @@ class LanClientSession implements OfflineContentSource {
         if (s == 200) {
           await LanOutboxDb.ack(row.id);
           acked++;
-        } else if (s == 408 || s == 429 || s >= 500 && s != 507) {
+          hold.value = null;
+        } else if (s == 507 ||
+            (s == 403 && _reasonOf(resp) == 'client_quota')) {
+          // Not this result's fault and not permanent: the teacher can make
+          // room (export + new pack run) or raise nothing -- either way the
+          // result must survive. Keep it queued, retry slowly, show why.
+          await LanOutboxDb.markAttempt(row.id);
+          hold.value = _reasonOf(resp);
+          _holdUntilTicks = MonitoredClock.instance.ticksMs + _holdRetryMs;
+          break;
+        } else if (s == 408 || s == 429 || s >= 500) {
           await LanOutboxDb.markAttempt(row.id);
           break;
         } else {
@@ -523,7 +624,8 @@ class LanClientSession implements OfflineContentSource {
     var attempt = 0;
     while (true) {
       resp = await request('GET', '/media/$name',
-          timeout: const Duration(seconds: 20));
+          timeout: const Duration(seconds: 20),
+          maxBytes: HubLimits.maxMediaFile);
       // A burst of images at test start can empty the hub's per-PC allowance;
       // it refills within a second or two, so wait instead of failing the test.
       if (resp.statusCode != 429 || ++attempt >= 6) break;
@@ -552,7 +654,9 @@ class LanClientSession implements OfflineContentSource {
   Future<void> loadDiagnosticSnapshot() async {
     if (_snapshotLoaded) return;
     final d = await getJson('/diagnostics',
-        timeout: const Duration(seconds: 30), inIsolate: true);
+        timeout: const Duration(seconds: 30),
+        inIsolate: true,
+        maxBytes: kLanMaxBigJson);
     if (d is! Map) {
       throw const ApiException(502, 'lan: bad diagnostics snapshot');
     }

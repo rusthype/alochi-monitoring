@@ -2721,4 +2721,58 @@ class AppLocalizationsUz extends AppLocalizations {
   String lanRejectedResults(int count) {
     return 'O\'qituvchi kompyuteri rad etgan natijalar: $count';
   }
+
+  @override
+  String get lanLockJoins => 'Qo\'shilishni yopish';
+
+  @override
+  String get lanUnlockJoins => 'Qo\'shilishni ochish';
+
+  @override
+  String get lanJoinsLockedNote =>
+      'Qo\'shilish yopiq: yangi kompyuterlar ulana olmaydi.';
+
+  @override
+  String get lanErrJoinsClosed => 'O\'qituvchi yangi ulanishlarni yopgan.';
+
+  @override
+  String get lanSeatConflictTitle => 'O\'rin to\'qnashuvi';
+
+  @override
+  String lanSeatConflictBody(String student, String holder, String claimant) {
+    return '$student: bu o\'quvchi $holder kompyuterida testda. $claimant ham shu o\'quvchi nomidan boshlamoqchi.';
+  }
+
+  @override
+  String get lanSeatRelease => 'Eskisini bo\'shat';
+
+  @override
+  String get lanSeatReject => 'Yangisini rad et';
+
+  @override
+  String lanPackFingerprint(String fp) {
+    return 'Paket izi: $fp';
+  }
+
+  @override
+  String get lanConfirmTitle => 'Ulanishni tasdiqlang';
+
+  @override
+  String lanConfirmBody(String hub, String fp) {
+    return 'O\'qituvchi kompyuteri: $hub\nPaket izi: $fp\n\nBu iz o\'qituvchi aytgan bilan bir xilmi?';
+  }
+
+  @override
+  String get lanConfirmYes => 'Ha, davom etish';
+
+  @override
+  String get lanConfirmNo => 'Yo\'q, uzish';
+
+  @override
+  String get lanHoldPackFull =>
+      'O\'qituvchi kompyuterida natijalar uchun joy tugagan. Natijalar saqlanmoqda; o\'qituvchiga murojaat qiling.';
+
+  @override
+  String get lanHoldClientQuota =>
+      'Bu kompyuter yubora oladigan natijalar chegarasiga yetdi. Natijalar saqlanmoqda; o\'qituvchiga murojaat qiling.';
 }
