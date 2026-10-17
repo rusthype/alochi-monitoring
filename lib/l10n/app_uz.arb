@@ -1165,6 +1165,14 @@
   "usbErrFormat": "Paket formati noto'g'ri.",
   "usbErrUnsafeName": "Paketda ruxsat etilmagan fayl nomi bor.",
   "usbErrRead": "Paketni ochib bo'lmadi.",
+  "usbErrDiag": "Tashxis kodi: {code}",
+  "@usbErrDiag": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
   "usbActivePack": "Faol paket: {school}-maktab, amal qilish muddati {date}",
   "@usbActivePack": {
     "placeholders": {

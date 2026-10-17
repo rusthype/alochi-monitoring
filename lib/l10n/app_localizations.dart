@@ -4515,6 +4515,12 @@ abstract class AppLocalizations {
   /// **'Paketni ochib bo\'lmadi.'**
   String get usbErrRead;
 
+  /// No description provided for @usbErrDiag.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tashxis kodi: {code}'**
+  String usbErrDiag(String code);
+
   /// No description provided for @usbActivePack.
   ///
   /// In uz, this message translates to:

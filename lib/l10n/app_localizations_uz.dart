@@ -2422,6 +2422,11 @@ class AppLocalizationsUz extends AppLocalizations {
   String get usbErrRead => 'Paketni ochib bo\'lmadi.';
 
   @override
+  String usbErrDiag(String code) {
+    return 'Tashxis kodi: $code';
+  }
+
+  @override
   String usbActivePack(String school, String date) {
     return 'Faol paket: $school-maktab, amal qilish muddati $date';
   }

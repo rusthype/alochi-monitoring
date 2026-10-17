@@ -168,6 +168,19 @@ class LoadedPack {
 typedef KdfFn = Future<Uint8List> Function(
     String pin, Uint8List salt, int iterations);
 
+/// Isolate entry points live at top level on purpose: a closure created inside
+/// an async instance/State method captures the enclosing context (and through
+/// it `this`, the widget tree and the zone), which is unsendable and made
+/// "Illegal argument in isolate message" in the real dialog.
+Future<Object?> _decodeJsonOffThread(Uint8List plain) =>
+    Isolate.run(() => jsonDecode(utf8.decode(plain)));
+
+/// Zip decode + RSA verify + per-file SHA-256 of the pack at [path] off the
+/// UI thread. Only the path and the (String-only) [keys] cross the boundary.
+Future<PackArchive> inspectPackFile(String path, OfflineKeys keys) =>
+    Isolate.run(
+        () => PackLoader(keys: keys).inspect(File(path).readAsBytesSync()));
+
 class PackLoader {
   final OfflineKeys keys;
   final DateTime Function() now;
@@ -289,7 +302,7 @@ class PackLoader {
 
     final Object? decoded;
     try {
-      decoded = await Isolate.run(() => jsonDecode(utf8.decode(plain)));
+      decoded = await _decodeJsonOffThread(plain);
     } catch (e) {
       throw PackException(PackError.badFormat, 'content: $e');
     }

@@ -2407,6 +2407,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get usbErrRead => 'Не удалось открыть пакет.';
 
   @override
+  String usbErrDiag(String code) {
+    return 'Код диагностики: $code';
+  }
+
+  @override
   String usbActivePack(String school, String date) {
     return 'Активный пакет: школа $school, действует до $date';
   }

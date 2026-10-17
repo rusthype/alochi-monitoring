@@ -13,7 +13,6 @@
 // never fall back to test keys.
 import 'dart:async';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:file_picker/file_picker.dart';
@@ -126,8 +125,7 @@ class _OfflineControlCenterDialogState
     try {
       // Zip decode + RSA verify + per-file SHA-256 off the UI thread.
       final keys = _keys;
-      final archive = await Isolate.run(
-          () => PackLoader(keys: keys).inspect(File(path).readAsBytesSync()));
+      final archive = await inspectPackFile(path, keys);
       if (!mounted) return;
       setState(() => _busy = false);
 
@@ -161,7 +159,9 @@ class _OfflineControlCenterDialogState
     } catch (e) {
       // Never log the PIN; the exception text does not contain it.
       debugPrint('OfflineControlCenter: load failed: $e');
-      _say(l10n.usbErrRead, error: true);
+      // Type name only: no PIN, no file content, no message text.
+      _say('${l10n.usbErrRead} ${l10n.usbErrDiag(e.runtimeType.toString())}',
+          error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -1120,6 +1120,7 @@
   "usbErrFormat": "Неверный формат пакета.",
   "usbErrUnsafeName": "В пакете есть недопустимое имя файла.",
   "usbErrRead": "Не удалось открыть пакет.",
+  "usbErrDiag": "Код диагностики: {code}",
   "usbActivePack": "Активный пакет: школа {school}, действует до {date}",
   "@usbActivePack": {
     "placeholders": {
