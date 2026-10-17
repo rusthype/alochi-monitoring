@@ -40,6 +40,8 @@ import '../../core/services/heartbeat_service.dart';
 import '../../core/services/html_service.dart';
 import '../../core/services/pdf_service.dart';
 import '../../core/sync/sync_service.dart';
+import '../../core/offline/offline_session.dart';
+import '../offline/offline_saved_screen.dart';
 import '../../shared/theme/app_theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -117,6 +119,13 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   // plain Navigator.of(context).pop() correctly pops '/engine_host' itself.
   ScoredResult? _completedResult;
   String? _completedToken;
+
+  // Offline pack mode: set once the answers are in the pack's result chain.
+  // build() then shows OfflineSavedScreen (no score) instead of a result.
+  bool _offlineSaved = false;
+  String? _completeToken;
+  bool _offlineSaveFailed = false;
+  VoidCallback? _offlineRetry;
 
   // Set by TestEngine.onExpiredAutoSubmit when a relaunch found the
   // deadline already passed and auto-submitted without the student seeing
@@ -239,7 +248,38 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
 
   Future<void> _handleComplete(ScoredResult result, int? elapsedSeconds) async {
     final payload = _buildPayload(result, elapsedSeconds);
-    final token = newIdempotencyToken();
+    // One token per completion: an offline retry re-appends with the SAME
+    // idempotency key, so it can never create a second chain entry.
+    final token = _completeToken ??= newIdempotencyToken();
+
+    // Offline USB pack mode: the pack has no answer key, so the locally
+    // computed score is meaningless and is never stored or shown. The answers
+    // go into the pack's HMAC chain; the server scores them on import.
+    final pack = OfflinePackSession.current;
+    if (pack != null) {
+      try {
+        await pack.recordResult(payload, token: token);
+        await AttemptStore.clear(result.testKey);
+      } catch (e) {
+        debugPrint('EngineHostScreen: offline recordResult error: $e');
+        if (!mounted) return;
+        // Same token on retry -> the chain append is idempotent.
+        setState(() {
+          _offlineSaveFailed = true;
+          _offlineRetry = () {
+            setState(() => _offlineSaveFailed = false);
+            _handleComplete(result, elapsedSeconds);
+          };
+        });
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _offlineSaveFailed = false;
+        _offlineSaved = true;
+      });
+      return;
+    }
 
     // 1. Save to local history DB.
     try {
@@ -310,6 +350,14 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
     if (_spec == null) {
       return _ErrorScaffold(
           message: AppLocalizations.of(context)!.testLoadFailed);
+    }
+    if (_offlineSaved || _offlineSaveFailed) {
+      return OfflineSavedScreen(
+        firstName: widget.firstName,
+        lastName: widget.lastName,
+        onNext: () => Navigator.of(context).pop(),
+        onRetry: _offlineSaveFailed ? _offlineRetry : null,
+      );
     }
     if (_completedResult != null) {
       return _EngineResultScreen(

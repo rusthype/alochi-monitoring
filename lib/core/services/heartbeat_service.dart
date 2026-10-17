@@ -7,6 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../api/api_client.dart';
 import '../network/network_info.dart';
+import '../security/incident_log.dart';
+import '../security/monitored_clock.dart';
+import 'screen_capture_win.dart' show monitorCount;
 
 class HeartbeatService with WidgetsBindingObserver {
   HeartbeatService._();
@@ -62,6 +65,10 @@ class HeartbeatService with WidgetsBindingObserver {
   String _testKey = '';
   String? _studentCode;
   int _tabSwitchCount = 0;
+
+  /// Monotonic ms of the moment focus was lost during a test, null while the
+  /// window has focus — see [didChangeAppLifecycleState].
+  int? _focusLostAtMs;
   int? _currentQuestionIndex;
   int? _totalQuestions;
   List<int>? _questionTimes;
@@ -234,7 +241,19 @@ class HeartbeatService with WidgetsBindingObserver {
     _testKey = testKey;
     _studentCode = studentCode;
     _tabSwitchCount = 0;
+    _focusLostAtMs = null;
     _resetProctorState(); // fresh pause/extra-time baseline for this attempt
+    // Proctoring metadata for this attempt (offline results carry it; see
+    // IncidentLog). Start clean, then note a second monitor if present.
+    IncidentLog.instance.drain();
+    try {
+      final monitors = monitorCount();
+      if (monitors > 1) {
+        IncidentLog.instance.add('multi_monitor', {'count': monitors});
+      }
+    } catch (e) {
+      debugPrint('HeartbeatService: monitorCount failed (non-fatal): $e');
+    }
     final response = await _ping('active');
     return !(response != null && response['conflict'] == true);
   }
@@ -382,6 +401,7 @@ class HeartbeatService with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _recordFocusIncident(state);
     if (state == AppLifecycleState.detached ||
         state == AppLifecycleState.paused) {
       unawaited(_ping('finished'));
@@ -390,6 +410,23 @@ class HeartbeatService with WidgetsBindingObserver {
         _tabSwitchCount++;
       }
       unawaited(_ping('active'));
+    }
+  }
+
+  /// Focus-loss / regain times for the offline result's `incidents`
+  /// (decision 12). Only while a test is running.
+  void _recordFocusIncident(AppLifecycleState state) {
+    if (_testKey.isEmpty) return;
+    final ticks = MonitoredClock.instance.ticksMs;
+    if (state == AppLifecycleState.resumed) {
+      final lostAt = _focusLostAtMs;
+      if (lostAt != null) {
+        _focusLostAtMs = null;
+        IncidentLog.instance.add('focus_regained', {'away_ms': ticks - lostAt});
+      }
+    } else if (_focusLostAtMs == null) {
+      _focusLostAtMs = ticks;
+      IncidentLog.instance.add('focus_lost', {'state': state.name});
     }
   }
 

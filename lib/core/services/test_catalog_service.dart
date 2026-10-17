@@ -104,9 +104,15 @@ class CatalogEntry {
 
 /// Backend test katalogini boshqaradi: yuklash, kesh solishtirish, offline.
 class TestCatalogService {
-  final MonitoringApi _api;
+  final MonitoringApi Function() _apiOf;
 
-  TestCatalogService(this._api);
+  TestCatalogService(MonitoringApi api) : _apiOf = (() => api);
+
+  /// Resolves the API on every call — the global `api` can be swapped for an
+  /// offline-pack implementation at runtime.
+  TestCatalogService.dynamic(this._apiOf);
+
+  MonitoringApi get _api => _apiOf();
 
   /// Last known `locked_until` per test_key from the most recent refresh().
   /// Used by runner_dispatch.dart as a second, defense-in-depth lock check
@@ -348,4 +354,4 @@ class TestCatalogService {
 }
 
 /// Global singleton
-final testCatalogService = TestCatalogService(api);
+final testCatalogService = TestCatalogService.dynamic(() => api);

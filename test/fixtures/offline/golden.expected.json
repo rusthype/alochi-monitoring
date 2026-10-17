@@ -1,0 +1,118 @@
+{
+  "pin": "12345678",
+  "pack_uuid": "00000000-0000-4000-8000-0000000000a1",
+  "salt_b64": "AAECAwQFBgcICQoLDA0ODw==",
+  "media_member": "media/4161eccd30d857ca5633b1fe7fc1bd5762c6adf526cd3ad54e25421ea2457ee9.jpg",
+  "manifest": {
+    "format_version": 1,
+    "pack_uuid": "00000000-0000-4000-8000-0000000000a1",
+    "school_id": "00000000-0000-4000-8000-0000000000b2",
+    "school_code": "999",
+    "created_at": "2026-01-01T00:00:00Z",
+    "expires_at": "2099-01-01T00:00:00Z",
+    "kdf": {
+      "alg": "PBKDF2-HMAC-SHA256",
+      "iter": 600000,
+      "salt": "AAECAwQFBgcICQoLDA0ODw=="
+    },
+    "files": {
+      "content.json.enc": "f188f5e2964585f8ac3f426b16fa14d44c13417ab11a6e60d8dbc583938a6c62",
+      "media/4161eccd30d857ca5633b1fe7fc1bd5762c6adf526cd3ad54e25421ea2457ee9.jpg": "4161eccd30d857ca5633b1fe7fc1bd5762c6adf526cd3ad54e25421ea2457ee9"
+    }
+  },
+  "content": {
+    "tests": [
+      {
+        "type": "test",
+        "key": "golden_test_1",
+        "catalog": {
+          "title": "Golden",
+          "grade": 5,
+          "version": 1,
+          "subject": "english",
+          "duration_minutes": 30,
+          "question_count": 5,
+          "image_count": 1,
+          "runner_type": "engine",
+          "school_buttons": [],
+          "grades": [],
+          "available_until": null,
+          "max_attempts": 1,
+          "group_ids": []
+        },
+        "data": {
+          "test_key": "golden_test_1",
+          "title": "Golden",
+          "grade": 5,
+          "checksum": "x",
+          "subject": "english",
+          "duration_minutes": 30,
+          "runner_type": "engine",
+          "parts": [
+            "Vocabulary",
+            "Reading"
+          ],
+          "variants": {
+            "A": {
+              "Vocabulary": [
+                {
+                  "type": "image_choice",
+                  "img": "media/4161eccd30d857ca5633b1fe7fc1bd5762c6adf526cd3ad54e25421ea2457ee9.jpg",
+                  "q": "What is this?",
+                  "opts": [
+                    "a cat",
+                    "a dog",
+                    "a cow",
+                    "a hen"
+                  ]
+                },
+                {
+                  "type": "spelling",
+                  "scramble": "tca"
+                },
+                {
+                  "type": "sentence_order",
+                  "words": "is / a / It / doll"
+                }
+              ],
+              "Reading": {
+                "title": "T",
+                "text": "Tom has a cat.",
+                "qs": [
+                  {
+                    "type": "yes_no",
+                    "q": "Tom has a dog."
+                  },
+                  {
+                    "type": "text_choice",
+                    "q": "Who has a cat?",
+                    "opts": [
+                      "Tom",
+                      "Ann"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "version": 1
+        }
+      }
+    ],
+    "groups": [
+      {
+        "id": "00000000-0000-4000-8000-0000000000c3",
+        "name": "5-A | Ingliz",
+        "grade": 5
+      }
+    ],
+    "students": [
+      {
+        "id": "00000000-0000-4000-8000-0000000000d4",
+        "code": "G-0001",
+        "name": "Golden O'quvchi",
+        "group_id": "00000000-0000-4000-8000-0000000000c3"
+      }
+    ]
+  }
+}

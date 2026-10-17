@@ -19,8 +19,29 @@ class OfflineQueue {
       databaseFactory = databaseFactoryFfi;
     }
     final dir = await getApplicationSupportDirectory();
-    final path = join(dir.path, 'monitoring_queue.db');
-    _db = await openDatabase(path, version: 6, onCreate: (db, _) async {
+    _db = await _open(join(dir.path, 'monitoring_queue.db'));
+    return _db!;
+  }
+
+  /// Test seam: open the queue at an explicit path (same schema/migrations).
+  @visibleForTesting
+  static Future<void> openAtPath(String path) async {
+    await resetForTest();
+    _db = await _open(path);
+  }
+
+  @visibleForTesting
+  static Future<void> resetForTest() async {
+    await _db?.close();
+    _db = null;
+  }
+
+  // Schema v7 adds the offline-USB-pack tables (pack_results / pack_meta, see
+  // pack_results_db.dart). They are separate tables on purpose: the online
+  // queue/local_queue flush, purgeStale and the diagnostic peek must never see
+  // pack rows, and pack rows must never be dropped by the 7-day stale purge.
+  static Future<Database> _open(String path) {
+    return openDatabase(path, version: 7, onCreate: (db, _) async {
       await db.execute('''
         CREATE TABLE queue (
           id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,6 +73,7 @@ class OfflineQueue {
       await db.execute(
         'CREATE UNIQUE INDEX idx_local_queue_token ON local_queue(token) WHERE token IS NOT NULL',
       );
+      await createPackTables(db);
     }, onUpgrade: (db, oldVersion, newVersion) async {
       if (oldVersion < 2) {
         await db.execute('''
@@ -86,8 +108,41 @@ class OfflineQueue {
           'CREATE UNIQUE INDEX IF NOT EXISTS idx_local_queue_token ON local_queue(token) WHERE token IS NOT NULL',
         );
       }
+      if (oldVersion < 7) {
+        await createPackTables(db);
+      }
     });
-    return _db!;
+  }
+
+  /// v7 tables for offline USB packs. Idempotent (IF NOT EXISTS) so a
+  /// create + upgrade path can never double-apply.
+  @visibleForTesting
+  static Future<void> createPackTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS pack_results (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        pack_uuid        TEXT NOT NULL,
+        idempotency_key  TEXT NOT NULL,
+        payload          TEXT NOT NULL,
+        incidents        TEXT NOT NULL DEFAULT '[]',
+        clock_flags      TEXT NOT NULL DEFAULT '[]',
+        prev_hash        TEXT NOT NULL,
+        hash             TEXT NOT NULL,
+        created          INTEGER NOT NULL,
+        exported_at      INTEGER
+      )
+    ''');
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_pack_results_key ON pack_results(pack_uuid, idempotency_key)',
+    );
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS pack_meta (
+        pack_uuid    TEXT PRIMARY KEY,
+        school_code  TEXT NOT NULL DEFAULT '',
+        expires_at   INTEGER NOT NULL,
+        loaded_at    INTEGER NOT NULL
+      )
+    ''');
   }
 
   static Future<void> enqueue(TestResult result, {String? token}) async {

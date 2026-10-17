@@ -409,4 +409,7 @@ class DiagnosticKioskApi {
   }
 }
 
-final diagnosticKioskApi = DiagnosticKioskApi();
+/// App-wide diagnostic client. NOT `final`: an open offline USB pack swaps in
+/// an `OfflineDiagnosticKioskApi` (core/offline/offline_diagnostic_api.dart)
+/// and restores this online client when it closes.
+DiagnosticKioskApi diagnosticKioskApi = DiagnosticKioskApi();

@@ -978,4 +978,8 @@ class MonitoringApi {
 
 String newIdempotencyToken() => const Uuid().v4();
 
-final api = MonitoringApi();
+/// The app-wide API. NOT `final`: opening an offline USB pack swaps in an
+/// `OfflinePackageApi` (core/offline/offline_package_api.dart) and closing it
+/// restores the online client. Always read through this top-level name — never
+/// cache the instance in a field (see TestCatalogService.dynamic).
+MonitoringApi api = MonitoringApi();

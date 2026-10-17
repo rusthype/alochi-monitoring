@@ -326,6 +326,9 @@ class QuestionBreakdownItem {
 String? _fixUrl(String? url) {
   if (url == null || url.isEmpty) return null;
   if (url.startsWith('http')) return url;
+  // Offline USB pack image reference — resolved to a local file at render time
+  // (core/offline/offline_media.dart), must not get the API host prefixed.
+  if (url.startsWith('media/')) return url;
   if (url.startsWith('//')) return 'https:$url';
   return 'https://api.alochi.org$url';
 }

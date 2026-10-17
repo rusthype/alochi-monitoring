@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/cache/image_cache_manager.dart';
+import '../../core/offline/offline_media.dart';
 import '../../core/theme/app_colors.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -47,6 +48,24 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
 
   @override
   Widget build(BuildContext context) {
+    // Offline USB pack image: a file on disk, not a URL.
+    final packFile = OfflineMedia.fileFor(widget.url);
+    if (packFile != null) {
+      Widget local = Image.file(
+        packFile,
+        height: widget.height,
+        width: widget.width,
+        fit: widget.fit,
+        alignment: widget.alignment,
+        errorBuilder: (_, __, ___) =>
+            widget.errorWidget ??
+            SizedBox(height: widget.height ?? 80, width: widget.width),
+      );
+      if (widget.borderRadius != null) {
+        local = ClipRRect(borderRadius: widget.borderRadius!, child: local);
+      }
+      return local;
+    }
     final fixedUrl = MonitoringApi.fixImageUrl(widget.url);
     if (fixedUrl.isEmpty) {
       return widget.errorWidget ??

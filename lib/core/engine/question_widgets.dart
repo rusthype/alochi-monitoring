@@ -8,6 +8,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../shared/widgets/app_network_image.dart';
+import '../offline/offline_media.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/utils/svg_aspect.dart';
 import 'test_models.dart';
@@ -40,6 +41,25 @@ Widget _buildQuestionImage(
 }) {
   final br = borderRadius ?? BorderRadius.circular(10);
   final isNetwork = src.startsWith('http://') || src.startsWith('https://');
+
+  // Offline USB pack image (`media/<sha256>.<ext>`) — extracted JPEG on disk.
+  final packFile = OfflineMedia.fileFor(src);
+  if (packFile != null) {
+    return SizedBox(
+      width: double.infinity,
+      child: Center(
+        child: ClipRRect(
+          borderRadius: br,
+          child: Image.file(
+            packFile,
+            height: height,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => _brokenImagePlaceholder(height),
+          ),
+        ),
+      ),
+    );
+  }
 
   if (isNetwork) {
     return SizedBox(

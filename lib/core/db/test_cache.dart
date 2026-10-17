@@ -11,6 +11,15 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class TestCache {
   static Database? _db;
 
+  // Offline USB pack mode (core/offline/offline_session.dart): the decrypted
+  // pack content must live in memory only (decision 14), never in this
+  // plaintext SQLite file. While [_memory] is non-null every method below
+  // reads/writes it instead of the database.
+  static Map<String, _MemEntry>? _memory;
+  static bool get isMemoryMode => _memory != null;
+  static void enterMemoryMode() => _memory = {};
+  static void exitMemoryMode() => _memory = null;
+
   static Future<Database> get _database async {
     if (_db != null) return _db!;
     if (!kIsWeb &&
@@ -47,6 +56,15 @@ class TestCache {
     int version,
     String jsonStr,
   ) async {
+    final mem = _memory;
+    if (mem != null) {
+      final decoded = jsonDecode(jsonStr);
+      if (decoded is Map) {
+        mem[testKey] = _MemEntry(
+            title, grade, version, Map<String, dynamic>.from(decoded));
+      }
+      return;
+    }
     final db = await _database;
     await db.insert(
       'cached_tests',
@@ -65,6 +83,11 @@ class TestCache {
   /// Bitta test yozuvini qaytaradi yoki null (topilmasa).
   /// json maydoni decode qilinib qaytariladi.
   static Future<Map<String, dynamic>?> get(String testKey) async {
+    final mem = _memory;
+    if (mem != null) {
+      final e = mem[testKey];
+      return e == null ? null : Map<String, dynamic>.from(e.json);
+    }
     final db = await _database;
     final rows = await db.query(
       'cached_tests',
@@ -88,6 +111,17 @@ class TestCache {
 
   /// Barcha keshlangan yozuvlar ro'yxatini qaytaradi (json maydonsiz — metadata).
   static Future<List<Map<String, dynamic>>> all() async {
+    final mem = _memory;
+    if (mem != null) {
+      return mem.entries
+          .map((e) => <String, dynamic>{
+                'test_key': e.key,
+                'title': e.value.title,
+                'grade': e.value.grade,
+                'version': e.value.version,
+              })
+          .toList();
+    }
     final db = await _database;
     final rows = await db.query(
       'cached_tests',
@@ -100,6 +134,8 @@ class TestCache {
 
   /// Berilgan test_key uchun saqlangan version raqamini qaytaradi yoki null.
   static Future<int?> versionOf(String testKey) async {
+    final mem = _memory;
+    if (mem != null) return mem[testKey]?.version;
     final db = await _database;
     final rows = await db.query(
       'cached_tests',
@@ -119,6 +155,11 @@ class TestCache {
   /// olingandan keyin chaqirilishi kerak — tarmoq xatosida chaqirilmasin
   /// (offline rejim buzilmasligi uchun).
   static Future<void> pruneNotIn(Set<String> keepKeys) async {
+    final mem = _memory;
+    if (mem != null) {
+      mem.removeWhere((k, _) => !keepKeys.contains(k));
+      return;
+    }
     final db = await _database;
     if (keepKeys.isEmpty) {
       await db.delete('cached_tests');
@@ -131,4 +172,12 @@ class TestCache {
       whereArgs: keepKeys.toList(),
     );
   }
+}
+
+class _MemEntry {
+  final String title;
+  final int grade;
+  final int version;
+  final Map<String, dynamic> json;
+  const _MemEntry(this.title, this.grade, this.version, this.json);
 }

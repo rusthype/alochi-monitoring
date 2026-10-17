@@ -17,6 +17,7 @@ import 'test_scorer.dart';
 import 'question_widgets.dart';
 import '../services/heartbeat_service.dart';
 import '../services/proctor_service.dart';
+import '../security/monitored_clock.dart';
 import '../../features/test/question_report_sheet.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -238,6 +239,12 @@ class _TestEngineState extends State<TestEngine>
       };
     ProctorService.instance.start();
 
+    // Clock-change resistance (monitored_clock.dart): deadlines below are in
+    // the clock's trusted timeline, and a periodic check records (never
+    // blocks on) wall-clock jumps.
+    _clock.startMonitoring();
+    unawaited(_clock.checkHighWaterMark());
+
     _restoreAttempt();
   }
 
@@ -249,7 +256,7 @@ class _TestEngineState extends State<TestEngine>
   /// its deadline immediately so a crash right after start can still resume.
   Future<void> _restoreAttempt() async {
     final testKey = widget.spec.testKey;
-    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final nowMs = _nowMs;
 
     // Race local (AttemptStore) vs server (SessionResumeView) resume
     // candidates in parallel — whichever has MORE answered questions wins.
@@ -323,8 +330,18 @@ class _TestEngineState extends State<TestEngine>
         }
       }
       final startedRaw = localAnswers?['started_at'];
-      _startedAtMs = startedRaw is num ? startedRaw.toInt() : nowMs;
-      _deadlineMs = (localAnswers?['deadline_epoch_ms'] as num).toInt();
+      final savedDeadline = (localAnswers?['deadline_epoch_ms'] as num).toInt();
+      // Same boot: carry the remaining time over by monotonic ticks so a date
+      // change while the app was closed cannot add or remove time. Reboot /
+      // legacy record: the stored epoch deadline is used as before.
+      _deadlineMs = _clock.rebaseSavedDeadline(
+        deadlineEpochMs: savedDeadline,
+        epochAtSaveMs: (localAnswers?['epoch_at_save'] as num?)?.toInt(),
+        ticksAtSaveMs: (localAnswers?['ticks_at_save'] as num?)?.toInt(),
+      );
+      final shift = _deadlineMs! - savedDeadline;
+      _startedAtMs =
+          startedRaw is num ? startedRaw.toInt() + shift : nowMs;
       resumed = true;
     }
 
@@ -428,6 +445,7 @@ class _TestEngineState extends State<TestEngine>
       'answers': Map<String, dynamic>.from(_answers),
       'started_at': _startedAtMs,
       'deadline_epoch_ms': _deadlineMs,
+      ..._clock.snapshot(),
       'student_name': _studentName(),
       'student_id': widget.studentId,
       'group_name': widget.group ?? '',
@@ -453,7 +471,7 @@ class _TestEngineState extends State<TestEngine>
     final deadlineMs = _deadlineMs;
     if (deadlineMs == null) return;
     if (!mounted) return;
-    final remainingMs = deadlineMs - DateTime.now().millisecondsSinceEpoch;
+    final remainingMs = deadlineMs - _nowMs;
     if (remainingMs <= 0) {
       _timer?.cancel();
       setState(() => _secs = 0);
@@ -510,7 +528,11 @@ class _TestEngineState extends State<TestEngine>
     _startTimer();
   }
 
-  int get _nowMs => DateTime.now().millisecondsSinceEpoch;
+  MonitoredClock get _clock => MonitoredClock.instance;
+
+  /// Trusted "now" (epoch ms) — immune to the system date being changed
+  /// mid-test; see MonitoredClock.
+  int get _nowMs => _clock.nowMs;
 
   @override
   void dispose() {
@@ -522,6 +544,7 @@ class _TestEngineState extends State<TestEngine>
       t.timer?.cancel();
     }
     ProctorService.instance.stop();
+    _clock.stopMonitoring();
     _fadeCtrl.dispose();
     for (final c in _controllers.values) {
       c.dispose();
@@ -651,7 +674,7 @@ class _TestEngineState extends State<TestEngine>
     final result = TestScorer.score(widget.spec, _variantKey, _answers);
     final startedAtMs = _startedAtMs;
     final elapsedSeconds = startedAtMs != null
-        ? ((DateTime.now().millisecondsSinceEpoch - startedAtMs) / 1000).round()
+        ? ((_nowMs - startedAtMs) / 1000).round()
         : null;
     widget.onComplete(result,
         (elapsedSeconds != null && elapsedSeconds > 0) ? elapsedSeconds : null);

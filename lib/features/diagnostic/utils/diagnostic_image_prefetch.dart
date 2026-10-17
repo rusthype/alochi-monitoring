@@ -8,6 +8,7 @@
 // drifting apart.
 import 'package:flutter/foundation.dart';
 import '../../../core/api/api_client.dart' show MonitoringApi;
+import '../../../core/offline/offline_media.dart';
 import '../../../core/cache/image_cache_manager.dart';
 
 /// Walks a (possibly nested) question map/list for `image_url`/`svg_visual`-
@@ -32,6 +33,8 @@ List<String> collectDiagnosticImageUrls(dynamic node) {
           RegExp(r'\.(png|jpe?g|webp|gif|svg)(\?.*)?$', caseSensitive: false)
               .hasMatch(s);
       if (!looksLikeImage) return;
+      // Offline USB pack image: already a file on disk, nothing to download.
+      if (OfflineMedia.fileFor(s) != null) return;
       final fixed = MonitoringApi.fixImageUrl(s);
       if (fixed.isNotEmpty) urls.add(fixed);
       return;

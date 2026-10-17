@@ -17,6 +17,8 @@ import '../../shared/widgets/hover_region.dart';
 import '../../shared/widgets/signal_strength_indicator.dart';
 
 import '../local_test/sync_images_button.dart';
+import '../offline/offline_control_center_dialog.dart';
+import '../../core/offline/offline_errors.dart';
 
 import '../../core/services/update_service.dart';
 import 'package:go_router/go_router.dart';
@@ -393,6 +395,11 @@ class _LoginScreenState extends State<LoginScreen>
           }
           if (e.statusCode == 429) {
             setState(() => _error = l10n.tooManyAttempts);
+            return;
+          }
+          final offlineMsg = localizeOfflineError(l10n, e);
+          if (offlineMsg != null) {
+            setState(() => _error = offlineMsg);
             return;
           }
           // Boshqa server xatosi — offline bazadan urinib ko'ramiz
@@ -1453,6 +1460,30 @@ class _LoginScreenState extends State<LoginScreen>
                 label: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(l10n.offlineHistory),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 2,
+            child: Container(
+              height: 42,
+              decoration: chipDecoration,
+              child: TextButton.icon(
+                onPressed: () => showOfflineControlCenter(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: palette.ink2,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  textStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                icon: const Icon(Icons.usb_rounded, size: 16),
+                label: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(l10n.usbOfflineButton),
                 ),
               ),
             ),

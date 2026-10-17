@@ -1142,5 +1142,94 @@
       }
     }
   },
-  "testLockedByAdmin": "O'qituvchi tomonidan pauza qilindi"
+  "testLockedByAdmin": "O'qituvchi tomonidan pauza qilindi",
+  "usbOfflineButton": "Oflayn rejim",
+  "usbCenterTitle": "Oflayn rejim",
+  "usbCenterIntro": "Internetsiz test: paketni USB'dan yuklang, natijalarni USB'ga eksport qiling.",
+  "usbNotConfigured": "Oflayn rejim bu o'rnatishda sozlanmagan. Administratorga murojaat qiling.",
+  "usbNoPackOpen": "Paket ochilmagan",
+  "usbLoadPack": "Paket yuklash (.alochipack)",
+  "usbExportResults": "Natijalarni eksport (.alochires)",
+  "usbPickPackTitle": "Paket faylini tanlang",
+  "usbPickExportFolder": "Natijalar saqlanadigan papkani tanlang",
+  "usbPinTitle": "Paket PIN-kodi",
+  "usbPinPrompt": "Paketni ochish uchun 8 xonali PIN-kodni kiriting.",
+  "usbPinHint": "8 xonali PIN",
+  "usbPinInvalid": "PIN 8 ta raqamdan iborat bo'lishi kerak.",
+  "usbUnlock": "Ochish",
+  "usbOpening": "Paket ochilmoqda...",
+  "usbErrBadPin": "PIN noto'g'ri.",
+  "usbErrBadSignature": "Paket imzosi noto'g'ri. Fayl o'zgartirilgan yoki buzilgan.",
+  "usbErrExpired": "Paket muddati tugagan.",
+  "usbErrHash": "Paket fayllari buzilgan (nazorat summasi mos kelmadi).",
+  "usbErrFormat": "Paket formati noto'g'ri.",
+  "usbErrUnsafeName": "Paketda ruxsat etilmagan fayl nomi bor.",
+  "usbErrRead": "Paketni ochib bo'lmadi.",
+  "usbActivePack": "Faol paket: {school}-maktab, amal qilish muddati {date}",
+  "@usbActivePack": {
+    "placeholders": {
+      "school": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "usbStartTests": "Testlarni boshlash",
+  "usbExitMode": "Oflayn rejimdan chiqish",
+  "usbResultsHeader": "Saqlangan natijalar",
+  "usbNoResults": "Hozircha saqlangan natija yo'q.",
+  "usbPackRow": "{school}-maktab · paket {id}",
+  "@usbPackRow": {
+    "placeholders": {
+      "school": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "usbSavedCount": "Saqlangan: {count}",
+  "@usbSavedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usbUnexportedCount": "Eksport qilinmagan: {count}",
+  "@usbUnexportedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usbExportOne": "Eksport",
+  "usbExportDone": "Eksport qilindi: {count} ta natija ({file})",
+  "@usbExportDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "usbExportNothing": "Eksport qilinadigan natija yo'q.",
+  "usbExportFailed": "Eksport muvaffaqiyatsiz tugadi.",
+  "usbSavedTitle": "Javoblaringiz saqlandi",
+  "usbSavedBody": "Natija o'qituvchi tomonidan keyinroq e'lon qilinadi.",
+  "usbErrUnsupported": "Oflayn rejimda bu amal mavjud emas.",
+  "usbSchoolLabel": "{code}-maktab",
+  "@usbSchoolLabel": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  }
 }

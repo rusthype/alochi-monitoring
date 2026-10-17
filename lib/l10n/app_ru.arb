@@ -1097,5 +1097,94 @@
       }
     }
   },
-  "testLockedByAdmin": "Приостановлено учителем"
+  "testLockedByAdmin": "Приостановлено учителем",
+  "usbOfflineButton": "Офлайн-режим",
+  "usbCenterTitle": "Офлайн-режим",
+  "usbCenterIntro": "Тест без интернета: загрузите пакет с USB-накопителя, затем экспортируйте результаты на USB.",
+  "usbNotConfigured": "Офлайн-режим не настроен в этой установке. Обратитесь к администратору.",
+  "usbNoPackOpen": "Пакет не открыт",
+  "usbLoadPack": "Загрузить пакет (.alochipack)",
+  "usbExportResults": "Экспорт результатов (.alochires)",
+  "usbPickPackTitle": "Выберите файл пакета",
+  "usbPickExportFolder": "Выберите папку для сохранения результатов",
+  "usbPinTitle": "PIN-код пакета",
+  "usbPinPrompt": "Введите 8-значный PIN-код, чтобы открыть пакет.",
+  "usbPinHint": "8-значный PIN",
+  "usbPinInvalid": "PIN должен состоять из 8 цифр.",
+  "usbUnlock": "Открыть",
+  "usbOpening": "Открытие пакета...",
+  "usbErrBadPin": "Неверный PIN.",
+  "usbErrBadSignature": "Неверная подпись пакета. Файл изменён или повреждён.",
+  "usbErrExpired": "Срок действия пакета истёк.",
+  "usbErrHash": "Файлы пакета повреждены (контрольная сумма не совпала).",
+  "usbErrFormat": "Неверный формат пакета.",
+  "usbErrUnsafeName": "В пакете есть недопустимое имя файла.",
+  "usbErrRead": "Не удалось открыть пакет.",
+  "usbActivePack": "Активный пакет: школа {school}, действует до {date}",
+  "@usbActivePack": {
+    "placeholders": {
+      "school": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "usbStartTests": "Начать тесты",
+  "usbExitMode": "Выйти из офлайн-режима",
+  "usbResultsHeader": "Сохранённые результаты",
+  "usbNoResults": "Сохранённых результатов пока нет.",
+  "usbPackRow": "Школа {school} · пакет {id}",
+  "@usbPackRow": {
+    "placeholders": {
+      "school": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "usbSavedCount": "Сохранено: {count}",
+  "@usbSavedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usbUnexportedCount": "Не экспортировано: {count}",
+  "@usbUnexportedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usbExportOne": "Экспорт",
+  "usbExportDone": "Экспортировано: {count} результатов ({file})",
+  "@usbExportDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "usbExportNothing": "Нет результатов для экспорта.",
+  "usbExportFailed": "Не удалось выполнить экспорт.",
+  "usbSavedTitle": "Ваши ответы сохранены",
+  "usbSavedBody": "Результат объявит учитель позже.",
+  "usbErrUnsupported": "В офлайн-режиме это действие недоступно.",
+  "usbSchoolLabel": "Школа {code}",
+  "@usbSchoolLabel": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  }
 }

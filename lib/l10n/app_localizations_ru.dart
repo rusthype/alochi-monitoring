@@ -2335,4 +2335,134 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get testLockedByAdmin => 'Приостановлено учителем';
+
+  @override
+  String get usbOfflineButton => 'Офлайн-режим';
+
+  @override
+  String get usbCenterTitle => 'Офлайн-режим';
+
+  @override
+  String get usbCenterIntro =>
+      'Тест без интернета: загрузите пакет с USB-накопителя, затем экспортируйте результаты на USB.';
+
+  @override
+  String get usbNotConfigured =>
+      'Офлайн-режим не настроен в этой установке. Обратитесь к администратору.';
+
+  @override
+  String get usbNoPackOpen => 'Пакет не открыт';
+
+  @override
+  String get usbLoadPack => 'Загрузить пакет (.alochipack)';
+
+  @override
+  String get usbExportResults => 'Экспорт результатов (.alochires)';
+
+  @override
+  String get usbPickPackTitle => 'Выберите файл пакета';
+
+  @override
+  String get usbPickExportFolder => 'Выберите папку для сохранения результатов';
+
+  @override
+  String get usbPinTitle => 'PIN-код пакета';
+
+  @override
+  String get usbPinPrompt => 'Введите 8-значный PIN-код, чтобы открыть пакет.';
+
+  @override
+  String get usbPinHint => '8-значный PIN';
+
+  @override
+  String get usbPinInvalid => 'PIN должен состоять из 8 цифр.';
+
+  @override
+  String get usbUnlock => 'Открыть';
+
+  @override
+  String get usbOpening => 'Открытие пакета...';
+
+  @override
+  String get usbErrBadPin => 'Неверный PIN.';
+
+  @override
+  String get usbErrBadSignature =>
+      'Неверная подпись пакета. Файл изменён или повреждён.';
+
+  @override
+  String get usbErrExpired => 'Срок действия пакета истёк.';
+
+  @override
+  String get usbErrHash =>
+      'Файлы пакета повреждены (контрольная сумма не совпала).';
+
+  @override
+  String get usbErrFormat => 'Неверный формат пакета.';
+
+  @override
+  String get usbErrUnsafeName => 'В пакете есть недопустимое имя файла.';
+
+  @override
+  String get usbErrRead => 'Не удалось открыть пакет.';
+
+  @override
+  String usbActivePack(String school, String date) {
+    return 'Активный пакет: школа $school, действует до $date';
+  }
+
+  @override
+  String get usbStartTests => 'Начать тесты';
+
+  @override
+  String get usbExitMode => 'Выйти из офлайн-режима';
+
+  @override
+  String get usbResultsHeader => 'Сохранённые результаты';
+
+  @override
+  String get usbNoResults => 'Сохранённых результатов пока нет.';
+
+  @override
+  String usbPackRow(String school, String id) {
+    return 'Школа $school · пакет $id';
+  }
+
+  @override
+  String usbSavedCount(int count) {
+    return 'Сохранено: $count';
+  }
+
+  @override
+  String usbUnexportedCount(int count) {
+    return 'Не экспортировано: $count';
+  }
+
+  @override
+  String get usbExportOne => 'Экспорт';
+
+  @override
+  String usbExportDone(int count, String file) {
+    return 'Экспортировано: $count результатов ($file)';
+  }
+
+  @override
+  String get usbExportNothing => 'Нет результатов для экспорта.';
+
+  @override
+  String get usbExportFailed => 'Не удалось выполнить экспорт.';
+
+  @override
+  String get usbSavedTitle => 'Ваши ответы сохранены';
+
+  @override
+  String get usbSavedBody => 'Результат объявит учитель позже.';
+
+  @override
+  String get usbErrUnsupported => 'В офлайн-режиме это действие недоступно.';
+
+  @override
+  String usbSchoolLabel(String code) {
+    return 'Школа $code';
+  }
 }

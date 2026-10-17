@@ -2349,4 +2349,136 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get testLockedByAdmin => 'O\'qituvchi tomonidan pauza qilindi';
+
+  @override
+  String get usbOfflineButton => 'Oflayn rejim';
+
+  @override
+  String get usbCenterTitle => 'Oflayn rejim';
+
+  @override
+  String get usbCenterIntro =>
+      'Internetsiz test: paketni USB\'dan yuklang, natijalarni USB\'ga eksport qiling.';
+
+  @override
+  String get usbNotConfigured =>
+      'Oflayn rejim bu o\'rnatishda sozlanmagan. Administratorga murojaat qiling.';
+
+  @override
+  String get usbNoPackOpen => 'Paket ochilmagan';
+
+  @override
+  String get usbLoadPack => 'Paket yuklash (.alochipack)';
+
+  @override
+  String get usbExportResults => 'Natijalarni eksport (.alochires)';
+
+  @override
+  String get usbPickPackTitle => 'Paket faylini tanlang';
+
+  @override
+  String get usbPickExportFolder => 'Natijalar saqlanadigan papkani tanlang';
+
+  @override
+  String get usbPinTitle => 'Paket PIN-kodi';
+
+  @override
+  String get usbPinPrompt =>
+      'Paketni ochish uchun 8 xonali PIN-kodni kiriting.';
+
+  @override
+  String get usbPinHint => '8 xonali PIN';
+
+  @override
+  String get usbPinInvalid => 'PIN 8 ta raqamdan iborat bo\'lishi kerak.';
+
+  @override
+  String get usbUnlock => 'Ochish';
+
+  @override
+  String get usbOpening => 'Paket ochilmoqda...';
+
+  @override
+  String get usbErrBadPin => 'PIN noto\'g\'ri.';
+
+  @override
+  String get usbErrBadSignature =>
+      'Paket imzosi noto\'g\'ri. Fayl o\'zgartirilgan yoki buzilgan.';
+
+  @override
+  String get usbErrExpired => 'Paket muddati tugagan.';
+
+  @override
+  String get usbErrHash =>
+      'Paket fayllari buzilgan (nazorat summasi mos kelmadi).';
+
+  @override
+  String get usbErrFormat => 'Paket formati noto\'g\'ri.';
+
+  @override
+  String get usbErrUnsafeName => 'Paketda ruxsat etilmagan fayl nomi bor.';
+
+  @override
+  String get usbErrRead => 'Paketni ochib bo\'lmadi.';
+
+  @override
+  String usbActivePack(String school, String date) {
+    return 'Faol paket: $school-maktab, amal qilish muddati $date';
+  }
+
+  @override
+  String get usbStartTests => 'Testlarni boshlash';
+
+  @override
+  String get usbExitMode => 'Oflayn rejimdan chiqish';
+
+  @override
+  String get usbResultsHeader => 'Saqlangan natijalar';
+
+  @override
+  String get usbNoResults => 'Hozircha saqlangan natija yo\'q.';
+
+  @override
+  String usbPackRow(String school, String id) {
+    return '$school-maktab · paket $id';
+  }
+
+  @override
+  String usbSavedCount(int count) {
+    return 'Saqlangan: $count';
+  }
+
+  @override
+  String usbUnexportedCount(int count) {
+    return 'Eksport qilinmagan: $count';
+  }
+
+  @override
+  String get usbExportOne => 'Eksport';
+
+  @override
+  String usbExportDone(int count, String file) {
+    return 'Eksport qilindi: $count ta natija ($file)';
+  }
+
+  @override
+  String get usbExportNothing => 'Eksport qilinadigan natija yo\'q.';
+
+  @override
+  String get usbExportFailed => 'Eksport muvaffaqiyatsiz tugadi.';
+
+  @override
+  String get usbSavedTitle => 'Javoblaringiz saqlandi';
+
+  @override
+  String get usbSavedBody =>
+      'Natija o\'qituvchi tomonidan keyinroq e\'lon qilinadi.';
+
+  @override
+  String get usbErrUnsupported => 'Oflayn rejimda bu amal mavjud emas.';
+
+  @override
+  String usbSchoolLabel(String code) {
+    return '$code-maktab';
+  }
 }

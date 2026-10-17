@@ -4382,6 +4382,234 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'O\'qituvchi tomonidan pauza qilindi'**
   String get testLockedByAdmin;
+
+  /// No description provided for @usbOfflineButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oflayn rejim'**
+  String get usbOfflineButton;
+
+  /// No description provided for @usbCenterTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oflayn rejim'**
+  String get usbCenterTitle;
+
+  /// No description provided for @usbCenterIntro.
+  ///
+  /// In uz, this message translates to:
+  /// **'Internetsiz test: paketni USB\'dan yuklang, natijalarni USB\'ga eksport qiling.'**
+  String get usbCenterIntro;
+
+  /// No description provided for @usbNotConfigured.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oflayn rejim bu o\'rnatishda sozlanmagan. Administratorga murojaat qiling.'**
+  String get usbNotConfigured;
+
+  /// No description provided for @usbNoPackOpen.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket ochilmagan'**
+  String get usbNoPackOpen;
+
+  /// No description provided for @usbLoadPack.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket yuklash (.alochipack)'**
+  String get usbLoadPack;
+
+  /// No description provided for @usbExportResults.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijalarni eksport (.alochires)'**
+  String get usbExportResults;
+
+  /// No description provided for @usbPickPackTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket faylini tanlang'**
+  String get usbPickPackTitle;
+
+  /// No description provided for @usbPickExportFolder.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijalar saqlanadigan papkani tanlang'**
+  String get usbPickExportFolder;
+
+  /// No description provided for @usbPinTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket PIN-kodi'**
+  String get usbPinTitle;
+
+  /// No description provided for @usbPinPrompt.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paketni ochish uchun 8 xonali PIN-kodni kiriting.'**
+  String get usbPinPrompt;
+
+  /// No description provided for @usbPinHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'8 xonali PIN'**
+  String get usbPinHint;
+
+  /// No description provided for @usbPinInvalid.
+  ///
+  /// In uz, this message translates to:
+  /// **'PIN 8 ta raqamdan iborat bo\'lishi kerak.'**
+  String get usbPinInvalid;
+
+  /// No description provided for @usbUnlock.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ochish'**
+  String get usbUnlock;
+
+  /// No description provided for @usbOpening.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket ochilmoqda...'**
+  String get usbOpening;
+
+  /// No description provided for @usbErrBadPin.
+  ///
+  /// In uz, this message translates to:
+  /// **'PIN noto\'g\'ri.'**
+  String get usbErrBadPin;
+
+  /// No description provided for @usbErrBadSignature.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket imzosi noto\'g\'ri. Fayl o\'zgartirilgan yoki buzilgan.'**
+  String get usbErrBadSignature;
+
+  /// No description provided for @usbErrExpired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket muddati tugagan.'**
+  String get usbErrExpired;
+
+  /// No description provided for @usbErrHash.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket fayllari buzilgan (nazorat summasi mos kelmadi).'**
+  String get usbErrHash;
+
+  /// No description provided for @usbErrFormat.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket formati noto\'g\'ri.'**
+  String get usbErrFormat;
+
+  /// No description provided for @usbErrUnsafeName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paketda ruxsat etilmagan fayl nomi bor.'**
+  String get usbErrUnsafeName;
+
+  /// No description provided for @usbErrRead.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paketni ochib bo\'lmadi.'**
+  String get usbErrRead;
+
+  /// No description provided for @usbActivePack.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faol paket: {school}-maktab, amal qilish muddati {date}'**
+  String usbActivePack(String school, String date);
+
+  /// No description provided for @usbStartTests.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testlarni boshlash'**
+  String get usbStartTests;
+
+  /// No description provided for @usbExitMode.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oflayn rejimdan chiqish'**
+  String get usbExitMode;
+
+  /// No description provided for @usbResultsHeader.
+  ///
+  /// In uz, this message translates to:
+  /// **'Saqlangan natijalar'**
+  String get usbResultsHeader;
+
+  /// No description provided for @usbNoResults.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozircha saqlangan natija yo\'q.'**
+  String get usbNoResults;
+
+  /// No description provided for @usbPackRow.
+  ///
+  /// In uz, this message translates to:
+  /// **'{school}-maktab · paket {id}'**
+  String usbPackRow(String school, String id);
+
+  /// No description provided for @usbSavedCount.
+  ///
+  /// In uz, this message translates to:
+  /// **'Saqlangan: {count}'**
+  String usbSavedCount(int count);
+
+  /// No description provided for @usbUnexportedCount.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eksport qilinmagan: {count}'**
+  String usbUnexportedCount(int count);
+
+  /// No description provided for @usbExportOne.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eksport'**
+  String get usbExportOne;
+
+  /// No description provided for @usbExportDone.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eksport qilindi: {count} ta natija ({file})'**
+  String usbExportDone(int count, String file);
+
+  /// No description provided for @usbExportNothing.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eksport qilinadigan natija yo\'q.'**
+  String get usbExportNothing;
+
+  /// No description provided for @usbExportFailed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Eksport muvaffaqiyatsiz tugadi.'**
+  String get usbExportFailed;
+
+  /// No description provided for @usbSavedTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Javoblaringiz saqlandi'**
+  String get usbSavedTitle;
+
+  /// No description provided for @usbSavedBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natija o\'qituvchi tomonidan keyinroq e\'lon qilinadi.'**
+  String get usbSavedBody;
+
+  /// No description provided for @usbErrUnsupported.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oflayn rejimda bu amal mavjud emas.'**
+  String get usbErrUnsupported;
+
+  /// No description provided for @usbSchoolLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'{code}-maktab'**
+  String usbSchoolLabel(String code);
 }
 
 class _AppLocalizationsDelegate
