@@ -246,12 +246,12 @@ void main() {
       expect(await PackResultsDb.rowsForPack('pk'), isEmpty);
     });
 
-    test('a system-date jump a year ahead does not trigger a purge', () async {
+    test(
+        'a freshly exported row survives expiry+30d until the export itself '
+        'is 30 days old', () async {
       final expires = DateTime.utc(2026, 1, 1);
-      var ticks = 5000;
-      var wall = expires.millisecondsSinceEpoch + 5 * 86400000; // 5d after
-      final clock = MonitoredClock(
-          ticks: () => ticks, wall: () => wall, highWaterStore: _NoHwm());
+      final day = const Duration(days: 1).inMilliseconds;
+      final t0 = expires.millisecondsSinceEpoch;
       await PackResultsDb.registerPack(
           packUuid: 'pk', schoolCode: '9', expiresAt: expires);
       await PackResultsDb.append(
@@ -259,11 +259,44 @@ void main() {
           chainKey: _chainKey,
           idempotencyKey: 'a',
           payloadJson: '{}');
-      await PackResultsDb.markExported('pk', 1); // even exported rows survive
-      wall += 365 * 86400000; // user moves the date a year forward
+      await PackResultsDb.markExported('pk', t0 + 40 * day);
+
+      // pack expired >30d ago, but the export is only 10 days old: keep
+      expect(await PackResultsDb.purgeExpired(nowMs: t0 + 50 * day), 0);
+      expect(await PackResultsDb.rowsForPack('pk'), hasLength(1));
+      // export now 31 days old AND pack expired >30d: purge
+      expect(await PackResultsDb.purgeExpired(nowMs: t0 + 71 * day), 1);
+      expect(await PackResultsDb.rowsForPack('pk'), isEmpty);
+    });
+
+    test(
+        'a system-date jump a year ahead never purges a recent export or an '
+        'unexported row', () async {
+      final day = const Duration(days: 1).inMilliseconds;
+      final expires = DateTime.utc(2026, 1, 1);
+      var ticks = 5000;
+      var wall =
+          expires.millisecondsSinceEpoch + 60 * day; // pack expired 60d ago
+      final clock = MonitoredClock(
+          ticks: () => ticks, wall: () => wall, highWaterStore: _NoHwm());
+      await PackResultsDb.registerPack(
+          packUuid: 'pk', schoolCode: '9', expiresAt: expires);
+      for (final k in ['exported', 'pending']) {
+        await PackResultsDb.append(
+            packUuid: 'pk',
+            chainKey: _chainKey,
+            idempotencyKey: k,
+            payloadJson: '{"k":"$k"}');
+      }
+      // Real exporter path: stamps exported_at from the monitored clock.
+      final db = await OfflineQueue.db;
+      await db.update('pack_results', {'exported_at': clock.nowMs},
+          where: 'idempotency_key = ?', whereArgs: ['exported']);
+
+      wall += 365 * day; // user moves the date a year forward
       ticks += 1000;
       expect(await PackResultsDb.purgeExpired(clock: clock), 0);
-      expect(await PackResultsDb.rowsForPack('pk'), hasLength(1));
+      expect(await PackResultsDb.rowsForPack('pk'), hasLength(2));
     });
 
     test('countKeyPrefix numbers repeat attempts and escapes LIKE wildcards',

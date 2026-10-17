@@ -124,7 +124,8 @@ class ResultsExporter {
     final name = '$school${packUuid.substring(0, 8)}_$stamp.alochires';
     final file = File(p.join(dir.path, name));
     await file.writeAsBytes(built.bytes, flush: true);
-    await PackResultsDb.markExported(packUuid, clock.wallMs);
+    // Trusted (monotonic-anchored) time, same clock purgeExpired compares with.
+    await PackResultsDb.markExported(packUuid, clock.nowMs);
     return ExportOutcome(file, built.count, built.chainTip);
   }
 

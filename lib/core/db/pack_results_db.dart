@@ -234,13 +234,16 @@ class PackResultsDb {
     }).toList();
   }
 
-  /// Housekeeping 30 days after a pack's `expires_at`.
-  ///
-  /// Only rows that were already EXPORTED are deleted — a result nobody has
-  /// carried to the server yet is never dropped, however old. The cutoff uses
-  /// the monitored clock (monotonic-anchored), not the raw system clock, so a
-  /// student/teacher setting the date a year ahead cannot trigger a purge. A
-  /// pack's meta row is kept while any of its rows remain.
+  /// Housekeeping. A row is deleted only when ALL of these hold:
+  ///   * the pack expired more than 30 days ago (`expires_at + 30d`), AND
+  ///   * the row was EXPORTED (`exported_at IS NOT NULL`) — a result nobody
+  ///     has carried to the server is never dropped, however old, AND
+  ///   * the export itself is more than 30 days old, so a lost USB stick still
+  ///     leaves time to export again.
+  /// "Now" is the monitored clock (monotonic-anchored), not the raw system
+  /// clock; `exported_at` is stamped from the same clock. A date set a year
+  /// ahead — before or after the app started — therefore cannot make a fresh
+  /// export look old. A pack's meta row is kept while any of its rows remain.
   static Future<int> purgeExpired({int? nowMs, MonitoredClock? clock}) async {
     final d = await _db;
     final now = nowMs ?? (clock ?? MonitoredClock.instance).nowMs;
@@ -251,7 +254,9 @@ class PackResultsDb {
     for (final m in stale) {
       final id = m['pack_uuid'] as String;
       removed += await d.delete('pack_results',
-          where: 'pack_uuid = ? AND exported_at IS NOT NULL', whereArgs: [id]);
+          where:
+              'pack_uuid = ? AND exported_at IS NOT NULL AND exported_at < ?',
+          whereArgs: [id, cutoff]);
       final left = await d.rawQuery(
           'SELECT COUNT(*) c FROM pack_results WHERE pack_uuid = ?', [id]);
       if (((left.first['c'] as int?) ?? 0) == 0) {
