@@ -269,8 +269,8 @@ void main() {
       expect(rows.single.incidents.single['type'], 'focus_lost');
       expect(
           rows.single.hash,
-          OfflineCrypto.chainHash(
-              _pack().chainKey, '0' * 64, rows.single.payloadJson));
+          OfflineCrypto.chainHash(_pack().chainKey, '0' * 64,
+              rows.single.payloadJson, rows.single.metaJson));
       // drained into the row
       expect(IncidentLog.instance.snapshot, isEmpty);
     });
@@ -359,14 +359,23 @@ void main() {
       ]);
       expect(r2['next_subject'], '');
 
-      // repeating a finish is idempotent
+      // a second finish of the same subject is a numbered RETAKE, not lost
       await diagnosticKioskApi.finishAttempt(attemptId: attemptId, answers: [
         {'question_id': 'math-q1', 'selected': 'B'}
       ]);
 
       final rows = await PackResultsDb.rowsForPack(
           '00000000-0000-4000-8000-0000000000a1');
-      expect(rows, hasLength(2));
+      expect(rows, hasLength(3));
+      final keys = rows.map((r) => r.idempotencyKey).toList();
+      expect(keys.toSet(), hasLength(3));
+      expect(keys.every((k) => k.length <= 64), isTrue);
+      // rows: math #1, english #1, math #2 (retake) -- same prefix, next ordinal
+      expect(keys[0].endsWith(':1'), isTrue);
+      expect(keys[2].endsWith(':2'), isTrue);
+      expect(keys[2].substring(0, keys[2].length - 1),
+          keys[0].substring(0, keys[0].length - 1));
+      expect(keys[1], isNot(keys[0]));
       final first = jsonDecode(rows.first.payloadJson) as Map;
       expect(first['test_key'], 'diag:math:g5:uz:v1');
       expect(first['student_id'], _s1);

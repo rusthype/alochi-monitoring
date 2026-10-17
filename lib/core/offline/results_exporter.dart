@@ -2,11 +2,12 @@
 //
 // Writes a `.alochires` (see offline_pack.py docstring):
 //
-//   export_meta.json  pack_uuid, machine_id, mac, exported_at, monotonic_ms,
+//   export_meta.json  format_version (2), pack_uuid, machine_id, mac, exported_at, monotonic_ms,
 //                     count, chain_tip
 //   key.enc           RSA-OAEP(SHA-256, MGF1-SHA-256) of a fresh AES-256 key,
 //                     wrapped to the RESULTS public key
-//   payload.enc       nonce(12) || AES-256-GCM(entries JSON) || tag(16),
+//   payload.enc       nonce(12) || AES-256-GCM({entries:[{prev_hash, hash,
+//                     payload_json, meta_json}]}) || tag(16),
 //                     AAD = pack_uuid
 //
 // The HMAC chain was already computed when each result was enqueued, so no PIN
@@ -14,7 +15,7 @@
 //
 // An export always carries the pack's WHOLE chain (hash links cannot be
 // re-based), so exporting again is safe: the server de-duplicates on
-// idempotency_key. Rows are kept and only stamped `exported_at` (decision 13).
+// the chain hash (its client_token). Rows are kept and only stamped `exported_at` (decision 13).
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -71,13 +72,14 @@ class ResultsExporter {
 
     final entries = [
       for (final r in rows)
+        // EXACTLY these four keys (format 2): the server rejects the whole file
+        // on any other key. idempotency_key / incidents / clock_flags live
+        // only inside meta_json, which is part of the HMAC chain.
         {
-          'idempotency_key': r.idempotencyKey,
           'prev_hash': r.prevHash,
           'hash': r.hash,
           'payload_json': r.payloadJson,
-          'incidents': r.incidents,
-          'clock_flags': r.clockFlags,
+          'meta_json': r.metaJson,
         }
     ];
     final chainTip = rows.last.hash;
@@ -91,6 +93,7 @@ class ResultsExporter {
     final keyEnc = OfflineCrypto.rsaOaepWrap(resultsKey, aesKey);
 
     final meta = {
+      'format_version': 2,
       'pack_uuid': packUuid,
       'machine_id': await machineId(),
       'mac': await mac(),

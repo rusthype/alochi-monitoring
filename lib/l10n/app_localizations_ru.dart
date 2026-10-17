@@ -2465,4 +2465,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String usbSchoolLabel(String code) {
     return 'Школа $code';
   }
+
+  @override
+  String get usbErrTooLarge => 'Размер пакета превышает допустимый предел.';
 }

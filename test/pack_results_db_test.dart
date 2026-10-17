@@ -5,11 +5,19 @@ import 'dart:typed_data';
 import 'package:alochi_monitoring/core/db/offline_queue.dart';
 import 'package:alochi_monitoring/core/db/pack_results_db.dart';
 import 'package:alochi_monitoring/core/offline/offline_crypto.dart';
+import 'package:alochi_monitoring/core/security/monitored_clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 final Uint8List _chainKey = Uint8List.fromList(List.generate(32, (i) => i + 1));
+
+class _NoHwm implements HighWaterStore {
+  @override
+  Future<DateTime?> read() async => null;
+  @override
+  Future<void> write(DateTime utc) async {}
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -117,9 +125,13 @@ void main() {
           idempotencyKey: 'b',
           payloadJson: '{"n":2}');
       expect(a.prevHash, '0' * 64);
-      expect(a.hash, OfflineCrypto.chainHash(_chainKey, '0' * 64, '{"n":1}'));
+      expect(a.metaJson,
+          '{"idempotency_key":"a","incidents":[],"clock_flags":[]}');
+      expect(a.hash,
+          OfflineCrypto.chainHash(_chainKey, '0' * 64, '{"n":1}', a.metaJson));
       expect(b.prevHash, a.hash);
-      expect(b.hash, OfflineCrypto.chainHash(_chainKey, a.hash, '{"n":2}'));
+      expect(b.hash,
+          OfflineCrypto.chainHash(_chainKey, a.hash, '{"n":2}', b.metaJson));
     });
 
     test('rows are stored encrypted but read back as the exact payload text',
@@ -183,7 +195,33 @@ void main() {
       expect(s.single.unexported, 0);
     });
 
-    test('purge removes a pack only 30 days after it expired', () async {
+    test('meta_json carries incidents/clock flags inside the hash', () async {
+      final r = await PackResultsDb.append(
+          packUuid: 'pk',
+          chainKey: _chainKey,
+          idempotencyKey: 'k',
+          payloadJson: '{}',
+          incidents: [
+            {'type': 'focus_lost'}
+          ],
+          clockFlags: [
+            {'type': 'clock_forward'}
+          ]);
+      expect(r.incidents.single['type'], 'focus_lost');
+      expect(r.clockFlags.single['type'], 'clock_forward');
+      // changing the meta text changes the link
+      expect(
+          OfflineCrypto.chainHash(_chainKey, '0' * 64, '{}',
+              r.metaJson.replaceAll('focus_lost', 'x')),
+          isNot(r.hash));
+      // reading back returns the exact stored text (hash stays reproducible)
+      final back = (await PackResultsDb.rowsForPack('pk')).single;
+      expect(back.metaJson, r.metaJson);
+      expect(back.hash, r.hash);
+    });
+
+    test('purge removes only EXPORTED rows, 30 days after the pack expired',
+        () async {
       final expires = DateTime.utc(2026, 1, 1);
       await PackResultsDb.registerPack(
           packUuid: 'pk', schoolCode: '9', expiresAt: expires);
@@ -197,8 +235,48 @@ void main() {
 
       expect(await PackResultsDb.purgeExpired(nowMs: t0 + 29 * day), 0);
       expect(await PackResultsDb.rowsForPack('pk'), hasLength(1));
+
+      // Not exported yet: never purged, however old (S-007).
+      expect(await PackResultsDb.purgeExpired(nowMs: t0 + 400 * day), 0);
+      expect(await PackResultsDb.rowsForPack('pk'), hasLength(1));
+      expect((await PackResultsDb.summaries()).single.unexported, 1);
+
+      await PackResultsDb.markExported('pk', 1);
       expect(await PackResultsDb.purgeExpired(nowMs: t0 + 31 * day), 1);
       expect(await PackResultsDb.rowsForPack('pk'), isEmpty);
+    });
+
+    test('a system-date jump a year ahead does not trigger a purge', () async {
+      final expires = DateTime.utc(2026, 1, 1);
+      var ticks = 5000;
+      var wall = expires.millisecondsSinceEpoch + 5 * 86400000; // 5d after
+      final clock = MonitoredClock(
+          ticks: () => ticks, wall: () => wall, highWaterStore: _NoHwm());
+      await PackResultsDb.registerPack(
+          packUuid: 'pk', schoolCode: '9', expiresAt: expires);
+      await PackResultsDb.append(
+          packUuid: 'pk',
+          chainKey: _chainKey,
+          idempotencyKey: 'a',
+          payloadJson: '{}');
+      await PackResultsDb.markExported('pk', 1); // even exported rows survive
+      wall += 365 * 86400000; // user moves the date a year forward
+      ticks += 1000;
+      expect(await PackResultsDb.purgeExpired(clock: clock), 0);
+      expect(await PackResultsDb.rowsForPack('pk'), hasLength(1));
+    });
+
+    test('countKeyPrefix numbers repeat attempts and escapes LIKE wildcards',
+        () async {
+      for (final k in ['diag:ab_c:1', 'diag:ab_c:2', 'diag:abxc:1']) {
+        await PackResultsDb.append(
+            packUuid: 'pk',
+            chainKey: _chainKey,
+            idempotencyKey: k,
+            payloadJson: '{}');
+      }
+      expect(await PackResultsDb.countKeyPrefix('pk', 'diag:ab_c:'), 2);
+      expect(await PackResultsDb.countKeyPrefix('pk', 'diag:nope:'), 0);
     });
   });
 }

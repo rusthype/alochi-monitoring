@@ -4610,6 +4610,12 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'{code}-maktab'**
   String usbSchoolLabel(String code);
+
+  /// No description provided for @usbErrTooLarge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Paket hajmi ruxsat etilgan chegaradan katta.'**
+  String get usbErrTooLarge;
 }
 
 class _AppLocalizationsDelegate

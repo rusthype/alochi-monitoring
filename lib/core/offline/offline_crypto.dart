@@ -78,11 +78,13 @@ class OfflineCrypto {
           .convert(utf8.encode(chainLabel))
           .bytes);
 
-  /// hex_lowercase(HMAC-SHA256(chain_key, (prev_hash + ":" + payload_json)))
-  static String chainHash(
-      Uint8List chainKey, String prevHash, String payloadJson) {
+  /// hex_lowercase(HMAC-SHA256(chain_key,
+  ///   utf8(prev_hash + ":" + payload_json + ":" + meta_json))) -- format 2.
+  /// Both JSON strings are hashed as TEXT, exactly as stored/exported.
+  static String chainHash(Uint8List chainKey, String prevHash,
+      String payloadJson, String metaJson) {
     return crypto.Hmac(crypto.sha256, chainKey)
-        .convert(utf8.encode('$prevHash:$payloadJson'))
+        .convert(utf8.encode('$prevHash:$payloadJson:$metaJson'))
         .toString();
   }
 

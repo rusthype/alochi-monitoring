@@ -16,6 +16,13 @@
 //
 // Decision 8 of the offline plan: flags are metadata for the teacher/boss —
 // nothing here ever blocks or ends a test.
+//
+// KNOWN LIMITATION (sleep / hibernation): whether Windows' `GetTickCount64`
+// keeps counting while the PC is suspended is NOT verified on hardware here.
+// If it excludes suspended time, a student could close the lid mid-test and
+// the countdown would not advance meanwhile (extra time); the wall-vs-monotonic
+// skew check would then record a `clock_forward` flag on resume, but the test
+// is not shortened. This is documented, not solved.
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io' show Platform;
@@ -126,7 +133,19 @@ class MonitoredClock {
   /// date was set back before the pack even existed.
   DateTime? packCreatedAt;
 
+  /// Bound on stored flags per attempt; further ones are counted, not lost
+  /// silently (a `clock_flags_overflow` entry is appended on drain).
+  static const int _maxFlags = 100;
   final List<Map<String, dynamic>> _flags = [];
+  int _droppedFlags = 0;
+
+  void _addFlag(Map<String, dynamic> flag) {
+    if (_flags.length >= _maxFlags) {
+      _droppedFlags++;
+      return;
+    }
+    _flags.add(flag);
+  }
 
   // ── time ───────────────────────────────────────────────────────────────────
 
@@ -195,7 +214,7 @@ class MonitoredClock {
     final dMono = ticks - _lastCheckTicks;
     final skew = dWall - dMono;
     if (skew.abs() > skewThresholdMs) {
-      _flags.add({
+      _addFlag({
         'type': skew > 0 ? 'clock_forward' : 'clock_backward',
         'skew_ms': skew,
         'wall_delta_ms': dWall,
@@ -218,7 +237,7 @@ class MonitoredClock {
     final wall = _wall();
     final seen = await _hwm.read();
     if (seen != null && wall < seen.millisecondsSinceEpoch - skewThresholdMs) {
-      _flags.add({
+      _addFlag({
         'type': 'clock_before_high_water_mark',
         'high_water_utc': seen.toIso8601String(),
         'wall_utc': _iso(wall),
@@ -226,7 +245,7 @@ class MonitoredClock {
     }
     final created = packCreatedAt;
     if (created != null && wall < created.millisecondsSinceEpoch) {
-      _flags.add({
+      _addFlag({
         'type': 'clock_before_pack_created',
         'pack_created_utc': created.toUtc().toIso8601String(),
         'wall_utc': _iso(wall),
@@ -246,7 +265,11 @@ class MonitoredClock {
   /// Returns the flags recorded since the last call and clears them.
   List<Map<String, dynamic>> drainFlags() {
     final out = List<Map<String, dynamic>>.from(_flags);
+    if (_droppedFlags > 0) {
+      out.add({'type': 'clock_flags_overflow', 'dropped': _droppedFlags});
+    }
     _flags.clear();
+    _droppedFlags = 0;
     return out;
   }
 

@@ -1,12 +1,16 @@
 // lib/core/db/pack_results_db.dart
 //
 // Results produced while an offline USB pack is open. Each row is one link of
-// the pack's HMAC chain (see offline_pack.py docstring):
+// the pack's HMAC chain (`.alochires` format 2, see offline_pack.py docstring):
 //
-//   hash_i = HMAC(chain_key, prev_hash_i + ":" + payload_json_i)
+//   hash_i = HMAC(chain_key, prev_hash_i + ":" + payload_json_i + ":" + meta_json_i)
 //
-// The link is computed at enqueue time, inside one transaction with the read
-// of the previous link, so the chain is gap-free per pack_uuid. Rows are NEVER
+// meta_json is the TEXT {"idempotency_key","incidents","clock_flags"}; it sits
+// inside the chain so those fields are authenticated too. The link is computed
+// ONCE at enqueue time (inside one transaction with the read of the previous
+// link) and stored — never recomputed — so the hash is stable across
+// re-exports. The server uses the hash as the result's client_token: a repeat
+// export of the same rows is therefore a duplicate, not a second result. Rows are NEVER
 // deleted by an export (decision 13): `exported_at` is stamped instead, and a
 // pack's rows are only purged `expires_at + 30 days` after the pack expired.
 //
@@ -20,6 +24,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../offline/offline_crypto.dart';
+import '../security/monitored_clock.dart';
 import 'offline_queue.dart';
 import 'queue_crypto.dart';
 
@@ -28,8 +33,9 @@ class PackResultRow {
   final String packUuid;
   final String idempotencyKey;
   final String payloadJson;
-  final List<dynamic> incidents;
-  final List<dynamic> clockFlags;
+
+  /// Exact meta text that went into the chain (and into the export).
+  final String metaJson;
   final String prevHash;
   final String hash;
   final int created;
@@ -40,13 +46,26 @@ class PackResultRow {
     required this.packUuid,
     required this.idempotencyKey,
     required this.payloadJson,
-    required this.incidents,
-    required this.clockFlags,
+    required this.metaJson,
     required this.prevHash,
     required this.hash,
     required this.created,
     required this.exportedAt,
   });
+
+  Map<String, dynamic> get _meta {
+    try {
+      final d = jsonDecode(metaJson);
+      return d is Map ? Map<String, dynamic>.from(d) : const {};
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  List<dynamic> get incidents =>
+      _meta['incidents'] is List ? _meta['incidents'] as List : const [];
+  List<dynamic> get clockFlags =>
+      _meta['clock_flags'] is List ? _meta['clock_flags'] as List : const [];
 }
 
 class PackSummary {
@@ -121,14 +140,19 @@ class PackResultsDb {
           limit: 1);
       final prev =
           last.isEmpty ? OfflineCrypto.zeroHash : last.first['hash'] as String;
-      final hash = OfflineCrypto.chainHash(chainKey, prev, payloadJson);
+      final metaJson = jsonEncode({
+        'idempotency_key': idempotencyKey,
+        'incidents': incidents,
+        'clock_flags': clockFlags,
+      });
+      final hash =
+          OfflineCrypto.chainHash(chainKey, prev, payloadJson, metaJson);
       final created = nowMs ?? DateTime.now().millisecondsSinceEpoch;
       final id = await txn.insert('pack_results', {
         'pack_uuid': packUuid,
         'idempotency_key': idempotencyKey,
         'payload': encrypted,
-        'incidents': jsonEncode(incidents),
-        'clock_flags': jsonEncode(clockFlags),
+        'meta_json': metaJson,
         'prev_hash': prev,
         'hash': hash,
         'created': created,
@@ -138,8 +162,7 @@ class PackResultsDb {
         packUuid: packUuid,
         idempotencyKey: idempotencyKey,
         payloadJson: payloadJson,
-        incidents: incidents,
-        clockFlags: clockFlags,
+        metaJson: metaJson,
         prevHash: prev,
         hash: hash,
         created: created,
@@ -211,41 +234,50 @@ class PackResultsDb {
     }).toList();
   }
 
-  /// Deletes rows (and meta) of packs whose `expires_at + 30 days` is past.
-  /// Rows of packs with no meta are kept — we cannot tell how old they are.
-  static Future<int> purgeExpired({int? nowMs}) async {
+  /// Housekeeping 30 days after a pack's `expires_at`.
+  ///
+  /// Only rows that were already EXPORTED are deleted — a result nobody has
+  /// carried to the server yet is never dropped, however old. The cutoff uses
+  /// the monitored clock (monotonic-anchored), not the raw system clock, so a
+  /// student/teacher setting the date a year ahead cannot trigger a purge. A
+  /// pack's meta row is kept while any of its rows remain.
+  static Future<int> purgeExpired({int? nowMs, MonitoredClock? clock}) async {
     final d = await _db;
-    final cutoff = (nowMs ?? DateTime.now().millisecondsSinceEpoch) -
-        retentionAfterExpiry.inMilliseconds;
+    final now = nowMs ?? (clock ?? MonitoredClock.instance).nowMs;
+    final cutoff = now - retentionAfterExpiry.inMilliseconds;
     final stale = await d.query('pack_meta',
         columns: ['pack_uuid'], where: 'expires_at < ?', whereArgs: [cutoff]);
     var removed = 0;
     for (final m in stale) {
       final id = m['pack_uuid'] as String;
-      removed += await d
-          .delete('pack_results', where: 'pack_uuid = ?', whereArgs: [id]);
-      await d.delete('pack_meta', where: 'pack_uuid = ?', whereArgs: [id]);
+      removed += await d.delete('pack_results',
+          where: 'pack_uuid = ? AND exported_at IS NOT NULL', whereArgs: [id]);
+      final left = await d.rawQuery(
+          'SELECT COUNT(*) c FROM pack_results WHERE pack_uuid = ?', [id]);
+      if (((left.first['c'] as int?) ?? 0) == 0) {
+        await d.delete('pack_meta', where: 'pack_uuid = ?', whereArgs: [id]);
+      }
     }
     return removed;
   }
 
-  static PackResultRow _rowOf(Map<String, Object?> r, String payloadJson) {
-    List<dynamic> list(Object? v) {
-      try {
-        final d = jsonDecode((v as String?) ?? '[]');
-        return d is List ? d : const [];
-      } catch (_) {
-        return const [];
-      }
-    }
+  /// How many rows of [packUuid] have an idempotency key starting with
+  /// [prefix] (used to number repeat attempts).
+  static Future<int> countKeyPrefix(String packUuid, String prefix) async {
+    final d = await _db;
+    final res = await d.rawQuery(
+        "SELECT COUNT(*) c FROM pack_results WHERE pack_uuid = ? AND idempotency_key LIKE ? ESCAPE '\\'",
+        [packUuid, '${prefix.replaceAll('%', r'\%').replaceAll('_', r'\_')}%']);
+    return (res.first['c'] as int?) ?? 0;
+  }
 
+  static PackResultRow _rowOf(Map<String, Object?> r, String payloadJson) {
     return PackResultRow(
       id: r['id'] as int,
       packUuid: r['pack_uuid'] as String,
       idempotencyKey: r['idempotency_key'] as String,
       payloadJson: payloadJson,
-      incidents: list(r['incidents']),
-      clockFlags: list(r['clock_flags']),
+      metaJson: r['meta_json'] as String,
       prevHash: r['prev_hash'] as String,
       hash: r['hash'] as String,
       created: r['created'] as int,

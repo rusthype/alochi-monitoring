@@ -19,6 +19,7 @@ import 'dart:convert';
 
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart';
 import '../api/api_client.dart' show ApiException;
+import '../db/pack_results_db.dart';
 import 'offline_crypto.dart';
 import 'offline_errors.dart';
 import 'offline_session.dart';
@@ -337,9 +338,14 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
         'flagged_question_ids': flaggedQuestionIds,
       'detail': {'test_key': finished.key, 'subject': finished.subject},
     };
-    // Deterministic per (attempt, subject) so a repeated finish is a no-op.
-    await session.recordResult(payload,
-        token: _token('${a.studentId}:${a.groupId}:${finished.subject}'));
+    // meta_json.idempotency_key: unique per pack, student, group, subject AND
+    // attempt ordinal, so a genuine retake is a new entry rather than being
+    // swallowed. (The server keys results on the chain hash, not on this.)
+    final seed = _keyPrefix(
+        session.pack.packUuid, a.studentId, a.groupId, finished.subject);
+    final attemptNo =
+        await PackResultsDb.countKeyPrefix(session.pack.packUuid, seed) + 1;
+    await session.recordResult(payload, token: '$seed$attemptNo');
 
     final idx = subjects.indexOf(finished.subject);
     final next =
@@ -354,11 +360,11 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
       // Nothing is ever queued for upload in pack mode.
       const {'synced': true};
 
-  /// Idempotency key <= 64 chars (becomes MonitoringResult.client_token).
-  /// Stable across restarts, so a repeated finish of the same subject is a
-  /// duplicate rather than a second result.
-  String _token(String seed) =>
-      'diag:${OfflineCrypto.sha256Hex(utf8.encode(seed)).substring(0, 32)}';
+  /// `diag:<24 hex>:` — the attempt ordinal is appended by the caller. With the
+  /// ordinal (<= 6 digits) the key stays far below the 64-char limit.
+  String _keyPrefix(
+          String packUuid, String studentId, String groupId, String subject) =>
+      'diag:${OfflineCrypto.sha256Hex(utf8.encode('$packUuid|$studentId|$groupId|$subject')).substring(0, 24)}:';
 
   /// Process-independent hash (String.hashCode is not guaranteed stable).
   static int _stableHash(String s) {

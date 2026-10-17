@@ -8,6 +8,7 @@
 //
 // Closing it restores the online client. The session holds only the derived
 // chain key — never the PIN.
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -44,17 +45,41 @@ class OfflinePackSession {
   static MonitoringApi? _onlineApi;
   static DiagnosticKioskApi? _onlineDiagnosticApi;
 
-  /// Where pack images are extracted: `<appSupport>/offline_store/media`.
-  static Future<Directory> defaultMediaDir() async {
+  static Future<Directory> _mediaRoot() async {
     final base = await getApplicationSupportDirectory();
     return Directory(p.join(base.path, 'offline_store', 'media'));
+  }
+
+  /// Where ONE pack's images are extracted:
+  /// `<appSupport>/offline_store/media/<pack_uuid>/`.
+  static Future<Directory> mediaDirFor(String packUuid) async =>
+      Directory(p.join((await _mediaRoot()).path, packUuid));
+
+  /// Deletes extracted images of every pack except [keepPackUuid] (and any
+  /// stray files from older layouts). Called when a pack is opened, when
+  /// offline mode is left, and when the control center opens with no pack
+  /// open — decrypted-at-rest content must not outlive its session (the pack
+  /// has to be re-opened with its PIN after a restart anyway).
+  static Future<void> cleanupMedia({String? keepPackUuid}) async {
+    try {
+      final root = await _mediaRoot();
+      if (!await root.exists()) return;
+      await for (final e in root.list()) {
+        if (keepPackUuid != null && p.basename(e.path) == keepPackUuid) {
+          continue;
+        }
+        await e.delete(recursive: true);
+      }
+    } catch (e) {
+      debugPrint('OfflinePackSession.cleanupMedia failed (non-fatal): $e');
+    }
   }
 
   /// Switches the app into pack mode for [pack] (already unlocked; its images
   /// are already extracted into [mediaDir]).
   static Future<OfflinePackSession> open(
       LoadedPack pack, Directory mediaDir) async {
-    if (current != null) close();
+    if (current != null) _restoreOnline();
 
     await PackResultsDb.registerPack(
       packUuid: pack.packUuid,
@@ -77,11 +102,19 @@ class OfflinePackSession {
     MonitoredClock.instance.packCreatedAt = pack.manifest.createdAt;
     current = session;
     notifier.value = session;
+    await cleanupMedia(keepPackUuid: pack.packUuid);
     return session;
   }
 
-  /// Back to online mode. Drops the in-memory content and the chain key.
+  /// Back to online mode. Drops the in-memory content and the chain key, and
+  /// deletes the extracted images.
   static void close() {
+    if (current == null) return;
+    _restoreOnline();
+    unawaited(cleanupMedia());
+  }
+
+  static void _restoreOnline() {
     if (current == null) return;
     final online = _onlineApi;
     if (online != null) api = online;

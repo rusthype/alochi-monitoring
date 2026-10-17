@@ -148,6 +148,7 @@ void main() {
     final meta = jsonDecode(utf8.decode(zip.files
         .firstWhere((f) => f.name == 'export_meta.json')
         .readBytes()!)) as Map<String, dynamic>;
+    expect(meta['format_version'], 2);
     expect(meta['pack_uuid'], pack.packUuid);
     expect(meta['machine_id'], 'MACHINE-GUID-1');
     expect(meta['mac'], 'AA:BB:CC:DD:EE:FF');
@@ -195,6 +196,45 @@ void main() {
     expect((await verify(again.file.path)).exitCode, 0);
   }, skip: skipReason);
 
+  test('Dart HMAC chain reproduces the backend golden hashes exactly',
+      () async {
+    final golden =
+        jsonDecode(File('$_fixtures/golden.expected.json').readAsStringSync())
+            as Map<String, dynamic>;
+    final results = golden['results'] as Map<String, dynamic>;
+
+    // chain key = HMAC(PBKDF2(PIN, salt), "alochires-chain-v1")
+    String hex(List<int> b) =>
+        b.map((e) => e.toRadixString(16).padLeft(2, '0')).join();
+    expect(hex(pack.chainKey), results['chain_key_hex']);
+
+    final entries = (results['entries'] as List).cast<Map<String, dynamic>>();
+    for (final e in entries) {
+      expect(
+          OfflineCrypto.chainHash(pack.chainKey, e['prev_hash'] as String,
+              e['payload_json'] as String, e['meta_json'] as String),
+          e['hash']);
+    }
+
+    // And the enqueue path produces the very same links + meta text.
+    for (final e in entries) {
+      final meta = jsonDecode(e['meta_json'] as String) as Map<String, dynamic>;
+      final row = await PackResultsDb.append(
+        packUuid: pack.packUuid,
+        chainKey: pack.chainKey,
+        idempotencyKey: meta['idempotency_key'] as String,
+        payloadJson: e['payload_json'] as String,
+        incidents: meta['incidents'] as List,
+        clockFlags: meta['clock_flags'] as List,
+      );
+      expect(row.metaJson, e['meta_json']);
+      expect(row.prevHash, e['prev_hash']);
+      expect(row.hash, e['hash']);
+    }
+    final built = await exporter().build(pack.packUuid);
+    expect(built.chainTip, (results['export_meta'] as Map)['chain_tip']);
+  });
+
   test('wrong PIN cannot verify the chain (server would reject the file)',
       () async {
     await seed();
@@ -213,6 +253,28 @@ void main() {
     final r = await verify(out.file.path);
     expect(r.exitCode, 2, reason: '${r.stdout}${r.stderr}');
   }, skip: skipReason);
+
+  test('editing meta_json (incidents) breaks the chain', () async {
+    await seed();
+    final db = await OfflineQueue.db;
+    await db.rawUpdate(
+        "UPDATE pack_results SET meta_json = REPLACE(meta_json, 'focus_lost', 'nothing') WHERE idempotency_key = 'key-0'");
+    final out = await exporter().exportPack(pack.packUuid, tmp);
+    final r = await verify(out.file.path);
+    expect(r.exitCode, 2, reason: '${r.stdout}${r.stderr}');
+    expect(jsonDecode(r.stdout as String)['rejected'], 'chain_broken');
+  }, skip: skipReason);
+
+  test('re-export keeps identical hashes (server dedupes on the hash)',
+      () async {
+    await seed();
+    final a = await exporter().build(pack.packUuid);
+    await exporter().exportPack(pack.packUuid, tmp);
+    final b = await exporter().build(pack.packUuid);
+    expect(b.chainTip, a.chainTip);
+    final rows = await PackResultsDb.rowsForPack(pack.packUuid);
+    expect(rows.last.hash, a.chainTip);
+  });
 
   test('nothing stored -> nothingToExport; no keys -> notConfigured', () async {
     expect(

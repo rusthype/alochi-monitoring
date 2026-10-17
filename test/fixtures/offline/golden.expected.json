@@ -16,7 +16,7 @@
       "salt": "AAECAwQFBgcICQoLDA0ODw=="
     },
     "files": {
-      "content.json.enc": "f188f5e2964585f8ac3f426b16fa14d44c13417ab11a6e60d8dbc583938a6c62",
+      "content.json.enc": "1ac087b2e8ffeffdbf0a102b7dac8bcc037b910e40f7516b9ecaec7650d5ebe1",
       "media/4161eccd30d857ca5633b1fe7fc1bd5762c6adf526cd3ad54e25421ea2457ee9.jpg": "4161eccd30d857ca5633b1fe7fc1bd5762c6adf526cd3ad54e25421ea2457ee9"
     }
   },
@@ -112,6 +112,33 @@
         "code": "G-0001",
         "name": "Golden O'quvchi",
         "group_id": "00000000-0000-4000-8000-0000000000c3"
+      }
+    ]
+  },
+  "results": {
+    "export_meta": {
+      "format_version": 2,
+      "pack_uuid": "00000000-0000-4000-8000-0000000000a1",
+      "machine_id": "golden-pc",
+      "mac": "00:11:22:33:44:55",
+      "exported_at": "2026-01-02T00:00:00Z",
+      "monotonic_ms": 1000,
+      "count": 2,
+      "chain_tip": "9ac8bb1f9c666fd32dd9bda45b70908f42f82d6c03569e571256f3226351a842"
+    },
+    "chain_key_hex": "6100348e7b062d089f18b418463df1c84d362e8bcca58d5fbb009ee4733c5c6c",
+    "entries": [
+      {
+        "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "hash": "d1fc314a56ab53187701d11a3ab3521e9dfd658e7b0fd82d54a83a1c6ad7bbb0",
+        "payload_json": "{\"name\":\"Golden\",\"test_key\":\"golden_test_1\",\"student_id\":\"00000000-0000-4000-8000-0000000000d4\",\"raw_answers\":{\"Vocabulary/0\":2}}",
+        "meta_json": "{\"idempotency_key\":\"golden-1\",\"incidents\":[],\"clock_flags\":[]}"
+      },
+      {
+        "prev_hash": "d1fc314a56ab53187701d11a3ab3521e9dfd658e7b0fd82d54a83a1c6ad7bbb0",
+        "hash": "9ac8bb1f9c666fd32dd9bda45b70908f42f82d6c03569e571256f3226351a842",
+        "payload_json": "{\"name\":\"Golden\",\"test_key\":\"golden_test_1\",\"student_id\":\"00000000-0000-4000-8000-0000000000d4\",\"raw_answers\":{\"Vocabulary/0\":1}}",
+        "meta_json": "{\"idempotency_key\":\"golden-2\",\"incidents\":[{\"kind\":\"focus_lost\",\"at_ms\":5}],\"clock_flags\":[{\"skew_s\":9}]}"
       }
     ]
   }

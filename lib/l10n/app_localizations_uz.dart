@@ -2481,4 +2481,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String usbSchoolLabel(String code) {
     return '$code-maktab';
   }
+
+  @override
+  String get usbErrTooLarge => 'Paket hajmi ruxsat etilgan chegaradan katta.';
 }

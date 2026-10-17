@@ -17,6 +17,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/db/offline_queue.dart';
+import '../../core/offline/offline_session.dart';
 import '../../core/sync/sync_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radii.dart';
@@ -113,7 +114,11 @@ class _QuestionReportSheetState extends State<_QuestionReportSheet> {
       'test_key': widget.testKey,
       'variant': widget.variant,
       'slot_key': widget.slotKey,
-      'question_snapshot': widget.questionSnapshot,
+      // Pack mode: question text is decrypted-in-memory content and must not
+      // reach the disk queue; test_key + slot_key + variant identify the
+      // question for the server, which already holds its text.
+      'question_snapshot':
+          OfflinePackSession.isActive ? '' : widget.questionSnapshot,
       'student_code': widget.studentCode,
       'student_name': widget.studentName,
       'school_code': widget.schoolCode,

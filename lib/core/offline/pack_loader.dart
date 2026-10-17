@@ -29,6 +29,10 @@ enum PackError {
   expired,
   hashMismatch,
   wrongPin,
+
+  /// A zip member (or the whole archive) is larger than any real pack —
+  /// refused before it is read into memory (zip-bomb guard).
+  tooLarge,
 }
 
 class PackException implements Exception {
@@ -38,6 +42,28 @@ class PackException implements Exception {
   @override
   String toString() =>
       'PackException(${code.name}${detail == null ? '' : ': $detail'})';
+}
+
+/// PBKDF2 work factor floor (offline_pack.py KDF_ITER).
+const int minKdfIter = 600000;
+
+/// Size ceilings enforced on the zip's DECLARED member sizes before anything
+/// is read into memory. Real packs are far below these.
+class PackLimits {
+  final int maxMembers;
+  final int maxManifestBytes;
+  final int maxSigBytes;
+  final int maxContentBytes;
+  final int maxMediaBytes;
+  final int maxTotalBytes;
+  const PackLimits({
+    this.maxMembers = 20000,
+    this.maxManifestBytes = 1 << 20,
+    this.maxSigBytes = 4096,
+    this.maxContentBytes = 128 << 20,
+    this.maxMediaBytes = 32 << 20,
+    this.maxTotalBytes = 1 << 30,
+  });
 }
 
 class PackManifest {
@@ -76,7 +102,9 @@ class PackManifest {
         throw FormatException('unsupported kdf ${kdf['alg']}');
       }
       final iter = (kdf['iter'] as num).toInt();
-      if (iter <= 0 || iter > 10000000) {
+      // Lower bound = the backend's KDF_ITER. The manifest is signed, but a
+      // weak work factor must never be accepted even from a signed file.
+      if (iter < minKdfIter || iter > 10000000) {
         throw const FormatException('kdf iter out of range');
       }
       final m = PackManifest(
@@ -144,11 +172,13 @@ class PackLoader {
   final OfflineKeys keys;
   final DateTime Function() now;
   final KdfFn kdf;
+  final PackLimits limits;
 
   PackLoader({
     OfflineKeys? keys,
     DateTime Function()? now,
     KdfFn? kdf,
+    this.limits = const PackLimits(),
   })  : keys = keys ?? OfflineKeys.current,
         now = now ?? DateTime.now,
         kdf = kdf ?? OfflineCrypto.deriveKeyAsync;
@@ -174,10 +204,29 @@ class PackLoader {
     }
 
     final members = <String, Uint8List>{};
+    var total = 0;
+    var count = 0;
     for (final f in archive.files) {
       if (!f.isFile) continue;
       if (!_knownName(f.name)) {
         throw PackException(PackError.unsafeName, f.name);
+      }
+      // Every member of a real pack is STORED, so nothing ever needs
+      // decompressing; refusing compressed members closes the zip-bomb door.
+      if (f.compression != CompressionType.none) {
+        throw PackException(PackError.badFormat, 'compressed member ${f.name}');
+      }
+      final cap = switch (f.name) {
+        'manifest.json' => limits.maxManifestBytes,
+        'manifest.sig' => limits.maxSigBytes,
+        'content.json.enc' => limits.maxContentBytes,
+        _ => limits.maxMediaBytes,
+      };
+      total += f.size;
+      if (++count > limits.maxMembers ||
+          f.size > cap ||
+          total > limits.maxTotalBytes) {
+        throw PackException(PackError.tooLarge, f.name);
       }
       if (members.containsKey(f.name)) {
         throw PackException(PackError.badFormat, 'duplicate ${f.name}');

@@ -9,6 +9,7 @@
 // When the public keys are not compiled in (OfflineKeys.isConfigured == false)
 // everything is disabled behind a "not configured" notice — release builds
 // never fall back to test keys.
+import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -55,6 +56,10 @@ class _OfflineControlCenterDialogState
   @override
   void initState() {
     super.initState();
+    // No pack open -> no decrypted images should be lying around.
+    if (!OfflinePackSession.isActive) {
+      unawaited(OfflinePackSession.cleanupMedia());
+    }
     _refresh();
   }
 
@@ -91,6 +96,8 @@ class _OfflineControlCenterDialogState
         return l10n.usbErrUnsafeName;
       case PackError.badFormat:
         return l10n.usbErrFormat;
+      case PackError.tooLarge:
+        return l10n.usbErrTooLarge;
     }
   }
 
@@ -130,7 +137,8 @@ class _OfflineControlCenterDialogState
         _busy = true;
         _busyLabel = l10n.usbOpening;
       });
-      final mediaDir = await OfflinePackSession.defaultMediaDir();
+      final mediaDir =
+          await OfflinePackSession.mediaDirFor(archive.manifest.packUuid);
       final pack =
           await PackLoader(keys: keys).unlock(archive, pin, mediaDir: mediaDir);
       final session = await OfflinePackSession.open(pack, mediaDir);

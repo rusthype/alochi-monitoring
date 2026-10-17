@@ -261,6 +261,11 @@ class OfflinePackageApi extends MonitoringApi {
     try {
       await session.recordResult({
         ...result.toJson(detail: detail),
+        // Server format: {"<Question.id>": "a".."d"} -- lowercase letters.
+        'answers': {
+          for (final e in result.answers.entries)
+            e.key: e.value.trim().toLowerCase(),
+        },
         'source': 'flutter',
         'school_code': session.pack.schoolCode,
         'test_key': 'package:${result.packageId}:v${result.variant}',

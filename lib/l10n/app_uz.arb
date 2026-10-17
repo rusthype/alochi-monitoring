@@ -1231,5 +1231,6 @@
         "type": "String"
       }
     }
-  }
+  },
+  "usbErrTooLarge": "Paket hajmi ruxsat etilgan chegaradan katta."
 }
