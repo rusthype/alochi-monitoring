@@ -2484,4 +2484,241 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get usbErrTooLarge => 'Paket hajmi ruxsat etilgan chegaradan katta.';
+
+  @override
+  String get lanHubButton => 'Lokal server yoqish (LAN)';
+
+  @override
+  String get lanConnectButton => 'O\'qituvchi kompyuteriga ulanish';
+
+  @override
+  String get lanHubOpenMonitor => 'Monitoring ekranini ochish';
+
+  @override
+  String lanHubStatusRunning(int port) {
+    return 'Lokal server ishlayapti (port $port)';
+  }
+
+  @override
+  String lanActiveHub(String name) {
+    return 'Ulangan kompyuter: $name';
+  }
+
+  @override
+  String get lanDisconnect => 'Uzish';
+
+  @override
+  String get lanDisconnectFirst => 'Avval o\'qituvchi kompyuteridan uzing.';
+
+  @override
+  String get lanClosePackFirst => 'Ulanish uchun avval oflayn paketni yoping.';
+
+  @override
+  String get lanHubTitle => 'Sinf monitoringi (LAN)';
+
+  @override
+  String get lanHubRunning => 'Server ishlayapti';
+
+  @override
+  String get lanHubStopped => 'Server o\'chiq';
+
+  @override
+  String get lanHubStart => 'Serverni yoqish';
+
+  @override
+  String get lanHubStop => 'Serverni to\'xtatish';
+
+  @override
+  String lanHubAddress(String address) {
+    return 'Manzil: $address';
+  }
+
+  @override
+  String lanHubPortFallback(int port) {
+    return 'Standart port band edi — $port-port ishlatilmoqda.';
+  }
+
+  @override
+  String get lanHubFirewall =>
+      'Birinchi ishga tushirishda Windows xavfsizlik devori (Firewall) so\'rov chiqaradi: \"Ruxsat berish\" (Allow access) tugmasini bosing, aks holda o\'quvchi kompyuterlari ulana olmaydi.';
+
+  @override
+  String get lanHubNoPort =>
+      'Bo\'sh port topilmadi (8080–8090). Portni band qilgan dasturni yoping.';
+
+  @override
+  String get lanHubStartFailed => 'Serverni ishga tushirib bo\'lmadi.';
+
+  @override
+  String get lanHubNeedPack => 'Server uchun avval paketni oching.';
+
+  @override
+  String get lanClassCode => 'Sinf kodi';
+
+  @override
+  String get lanClassCodeHint =>
+      'Bu kodni o\'quvchilarga ayting yoki doskaga yozing.';
+
+  @override
+  String get lanRefreshCode => 'Kodni yangilash';
+
+  @override
+  String get lanRefreshCodeNote => 'Allaqachon ulangan kompyuterlar uzilmaydi.';
+
+  @override
+  String lanClients(int count, int max) {
+    return 'Ulangan: $count / $max';
+  }
+
+  @override
+  String lanResultsReceived(int count) {
+    return 'Qabul qilingan natijalar: $count';
+  }
+
+  @override
+  String get lanNoClients => 'Hali hech qaysi kompyuter ulanmagan.';
+
+  @override
+  String get lanUnnamedClient => 'Noma\'lum kompyuter';
+
+  @override
+  String get lanStatusWaiting => 'Kutmoqda';
+
+  @override
+  String get lanStatusTesting => 'Testda';
+
+  @override
+  String get lanStatusLocked => 'To\'xtatilgan';
+
+  @override
+  String get lanStatusNoContact => 'Aloqa yo\'q';
+
+  @override
+  String get lanStatusInactive => 'Faol emas';
+
+  @override
+  String lanQuestionOf(int n, int total) {
+    return 'Savol $n/$total';
+  }
+
+  @override
+  String lanTabSwitches(int n) {
+    return 'Oynadan chiqish: $n';
+  }
+
+  @override
+  String lanLastSeen(int sec) {
+    return '$sec s oldin';
+  }
+
+  @override
+  String lanRemaining(String time) {
+    return 'Qolgan: $time';
+  }
+
+  @override
+  String get lanLock => 'Pauza';
+
+  @override
+  String get lanUnlock => 'Davom ettirish';
+
+  @override
+  String lanAddMinutes(int n) {
+    return '+$n daqiqa';
+  }
+
+  @override
+  String get lanEndTest => 'Testni yakunlash';
+
+  @override
+  String lanEndTestConfirm(String name) {
+    return '$name testini hozir yakunlaysizmi? Berilgan javoblar saqlanadi.';
+  }
+
+  @override
+  String get lanEndTestYes => 'Yakunlash';
+
+  @override
+  String get lanNoFrame => 'Ekran tasviri hali kelmadi.';
+
+  @override
+  String get lanSelectClient => 'Ro\'yxatdan o\'quvchini tanlang.';
+
+  @override
+  String get lanConnectTitle => 'O\'qituvchi kompyuteriga ulanish';
+
+  @override
+  String get lanConnectIntro =>
+      'O\'qituvchi ko\'rsatgan 6 xonali sinf kodini kiriting.';
+
+  @override
+  String get lanFoundHubs => 'Topilgan kompyuterlar';
+
+  @override
+  String get lanNoHubsFound =>
+      'Hech narsa topilmadi. Manzilni qo\'lda kiriting.';
+
+  @override
+  String get lanDiscoveryUnavailable =>
+      'Avtomatik qidirish ishlamayapti (xavfsizlik devori?). Manzilni qo\'lda kiriting.';
+
+  @override
+  String get lanManualAddress => 'Yoki manzilni qo\'lda kiriting';
+
+  @override
+  String get lanAddressHint => 'masalan 192.168.1.5:8080';
+
+  @override
+  String get lanCodeHint => '6 xonali kod';
+
+  @override
+  String get lanConnect => 'Ulanish';
+
+  @override
+  String get lanConnecting => 'Ulanmoqda...';
+
+  @override
+  String get lanErrBadCode => 'Sinf kodi noto\'g\'ri.';
+
+  @override
+  String lanErrBlocked(int sec) {
+    return 'Juda ko\'p urinish. $sec soniyadan keyin qayta urinib ko\'ring.';
+  }
+
+  @override
+  String get lanErrFull =>
+      'Sinf to\'lgan: ulangan kompyuterlar soni chegarasiga yetdi.';
+
+  @override
+  String get lanErrUnreachable => 'O\'qituvchi kompyuteriga ulanib bo\'lmadi.';
+
+  @override
+  String get lanErrExpired =>
+      'Ulanish uzildi. Sinf kodini kiritib, qayta ulaning.';
+
+  @override
+  String get lanErrAddress => 'Manzil noto\'g\'ri. Misol: 192.168.1.5:8080';
+
+  @override
+  String get lanErrCodeFormat => 'Kod 6 ta raqamdan iborat bo\'lishi kerak.';
+
+  @override
+  String get lanErrGeneric => 'Ulanishda xato yuz berdi.';
+
+  @override
+  String get lanStatusConnected => 'Aloqa bor';
+
+  @override
+  String get lanStatusDisconnected =>
+      'Aloqa yo\'q — natijalar saqlanmoqda va aloqa tiklangach yuboriladi.';
+
+  @override
+  String lanUnsentResults(int count) {
+    return 'Yuborilmagan natijalar: $count';
+  }
+
+  @override
+  String lanRejectedResults(int count) {
+    return 'O\'qituvchi kompyuteri rad etgan natijalar: $count';
+  }
 }

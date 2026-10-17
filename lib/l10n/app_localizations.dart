@@ -4616,6 +4616,402 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Paket hajmi ruxsat etilgan chegaradan katta.'**
   String get usbErrTooLarge;
+
+  /// No description provided for @lanHubButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Lokal server yoqish (LAN)'**
+  String get lanHubButton;
+
+  /// No description provided for @lanConnectButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi kompyuteriga ulanish'**
+  String get lanConnectButton;
+
+  /// No description provided for @lanHubOpenMonitor.
+  ///
+  /// In uz, this message translates to:
+  /// **'Monitoring ekranini ochish'**
+  String get lanHubOpenMonitor;
+
+  /// No description provided for @lanHubStatusRunning.
+  ///
+  /// In uz, this message translates to:
+  /// **'Lokal server ishlayapti (port {port})'**
+  String lanHubStatusRunning(int port);
+
+  /// No description provided for @lanActiveHub.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ulangan kompyuter: {name}'**
+  String lanActiveHub(String name);
+
+  /// No description provided for @lanDisconnect.
+  ///
+  /// In uz, this message translates to:
+  /// **'Uzish'**
+  String get lanDisconnect;
+
+  /// No description provided for @lanDisconnectFirst.
+  ///
+  /// In uz, this message translates to:
+  /// **'Avval o\'qituvchi kompyuteridan uzing.'**
+  String get lanDisconnectFirst;
+
+  /// No description provided for @lanClosePackFirst.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ulanish uchun avval oflayn paketni yoping.'**
+  String get lanClosePackFirst;
+
+  /// No description provided for @lanHubTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinf monitoringi (LAN)'**
+  String get lanHubTitle;
+
+  /// No description provided for @lanHubRunning.
+  ///
+  /// In uz, this message translates to:
+  /// **'Server ishlayapti'**
+  String get lanHubRunning;
+
+  /// No description provided for @lanHubStopped.
+  ///
+  /// In uz, this message translates to:
+  /// **'Server o\'chiq'**
+  String get lanHubStopped;
+
+  /// No description provided for @lanHubStart.
+  ///
+  /// In uz, this message translates to:
+  /// **'Serverni yoqish'**
+  String get lanHubStart;
+
+  /// No description provided for @lanHubStop.
+  ///
+  /// In uz, this message translates to:
+  /// **'Serverni to\'xtatish'**
+  String get lanHubStop;
+
+  /// No description provided for @lanHubAddress.
+  ///
+  /// In uz, this message translates to:
+  /// **'Manzil: {address}'**
+  String lanHubAddress(String address);
+
+  /// No description provided for @lanHubPortFallback.
+  ///
+  /// In uz, this message translates to:
+  /// **'Standart port band edi — {port}-port ishlatilmoqda.'**
+  String lanHubPortFallback(int port);
+
+  /// No description provided for @lanHubFirewall.
+  ///
+  /// In uz, this message translates to:
+  /// **'Birinchi ishga tushirishda Windows xavfsizlik devori (Firewall) so\'rov chiqaradi: \"Ruxsat berish\" (Allow access) tugmasini bosing, aks holda o\'quvchi kompyuterlari ulana olmaydi.'**
+  String get lanHubFirewall;
+
+  /// No description provided for @lanHubNoPort.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bo\'sh port topilmadi (8080–8090). Portni band qilgan dasturni yoping.'**
+  String get lanHubNoPort;
+
+  /// No description provided for @lanHubStartFailed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Serverni ishga tushirib bo\'lmadi.'**
+  String get lanHubStartFailed;
+
+  /// No description provided for @lanHubNeedPack.
+  ///
+  /// In uz, this message translates to:
+  /// **'Server uchun avval paketni oching.'**
+  String get lanHubNeedPack;
+
+  /// No description provided for @lanClassCode.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinf kodi'**
+  String get lanClassCode;
+
+  /// No description provided for @lanClassCodeHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu kodni o\'quvchilarga ayting yoki doskaga yozing.'**
+  String get lanClassCodeHint;
+
+  /// No description provided for @lanRefreshCode.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kodni yangilash'**
+  String get lanRefreshCode;
+
+  /// No description provided for @lanRefreshCodeNote.
+  ///
+  /// In uz, this message translates to:
+  /// **'Allaqachon ulangan kompyuterlar uzilmaydi.'**
+  String get lanRefreshCodeNote;
+
+  /// No description provided for @lanClients.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ulangan: {count} / {max}'**
+  String lanClients(int count, int max);
+
+  /// No description provided for @lanResultsReceived.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qabul qilingan natijalar: {count}'**
+  String lanResultsReceived(int count);
+
+  /// No description provided for @lanNoClients.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hali hech qaysi kompyuter ulanmagan.'**
+  String get lanNoClients;
+
+  /// No description provided for @lanUnnamedClient.
+  ///
+  /// In uz, this message translates to:
+  /// **'Noma\'lum kompyuter'**
+  String get lanUnnamedClient;
+
+  /// No description provided for @lanStatusWaiting.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kutmoqda'**
+  String get lanStatusWaiting;
+
+  /// No description provided for @lanStatusTesting.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testda'**
+  String get lanStatusTesting;
+
+  /// No description provided for @lanStatusLocked.
+  ///
+  /// In uz, this message translates to:
+  /// **'To\'xtatilgan'**
+  String get lanStatusLocked;
+
+  /// No description provided for @lanStatusNoContact.
+  ///
+  /// In uz, this message translates to:
+  /// **'Aloqa yo\'q'**
+  String get lanStatusNoContact;
+
+  /// No description provided for @lanStatusInactive.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faol emas'**
+  String get lanStatusInactive;
+
+  /// No description provided for @lanQuestionOf.
+  ///
+  /// In uz, this message translates to:
+  /// **'Savol {n}/{total}'**
+  String lanQuestionOf(int n, int total);
+
+  /// No description provided for @lanTabSwitches.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oynadan chiqish: {n}'**
+  String lanTabSwitches(int n);
+
+  /// No description provided for @lanLastSeen.
+  ///
+  /// In uz, this message translates to:
+  /// **'{sec} s oldin'**
+  String lanLastSeen(int sec);
+
+  /// No description provided for @lanRemaining.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qolgan: {time}'**
+  String lanRemaining(String time);
+
+  /// No description provided for @lanLock.
+  ///
+  /// In uz, this message translates to:
+  /// **'Pauza'**
+  String get lanLock;
+
+  /// No description provided for @lanUnlock.
+  ///
+  /// In uz, this message translates to:
+  /// **'Davom ettirish'**
+  String get lanUnlock;
+
+  /// No description provided for @lanAddMinutes.
+  ///
+  /// In uz, this message translates to:
+  /// **'+{n} daqiqa'**
+  String lanAddMinutes(int n);
+
+  /// No description provided for @lanEndTest.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testni yakunlash'**
+  String get lanEndTest;
+
+  /// No description provided for @lanEndTestConfirm.
+  ///
+  /// In uz, this message translates to:
+  /// **'{name} testini hozir yakunlaysizmi? Berilgan javoblar saqlanadi.'**
+  String lanEndTestConfirm(String name);
+
+  /// No description provided for @lanEndTestYes.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yakunlash'**
+  String get lanEndTestYes;
+
+  /// No description provided for @lanNoFrame.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ekran tasviri hali kelmadi.'**
+  String get lanNoFrame;
+
+  /// No description provided for @lanSelectClient.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ro\'yxatdan o\'quvchini tanlang.'**
+  String get lanSelectClient;
+
+  /// No description provided for @lanConnectTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi kompyuteriga ulanish'**
+  String get lanConnectTitle;
+
+  /// No description provided for @lanConnectIntro.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi ko\'rsatgan 6 xonali sinf kodini kiriting.'**
+  String get lanConnectIntro;
+
+  /// No description provided for @lanFoundHubs.
+  ///
+  /// In uz, this message translates to:
+  /// **'Topilgan kompyuterlar'**
+  String get lanFoundHubs;
+
+  /// No description provided for @lanNoHubsFound.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hech narsa topilmadi. Manzilni qo\'lda kiriting.'**
+  String get lanNoHubsFound;
+
+  /// No description provided for @lanDiscoveryUnavailable.
+  ///
+  /// In uz, this message translates to:
+  /// **'Avtomatik qidirish ishlamayapti (xavfsizlik devori?). Manzilni qo\'lda kiriting.'**
+  String get lanDiscoveryUnavailable;
+
+  /// No description provided for @lanManualAddress.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yoki manzilni qo\'lda kiriting'**
+  String get lanManualAddress;
+
+  /// No description provided for @lanAddressHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'masalan 192.168.1.5:8080'**
+  String get lanAddressHint;
+
+  /// No description provided for @lanCodeHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'6 xonali kod'**
+  String get lanCodeHint;
+
+  /// No description provided for @lanConnect.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ulanish'**
+  String get lanConnect;
+
+  /// No description provided for @lanConnecting.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ulanmoqda...'**
+  String get lanConnecting;
+
+  /// No description provided for @lanErrBadCode.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinf kodi noto\'g\'ri.'**
+  String get lanErrBadCode;
+
+  /// No description provided for @lanErrBlocked.
+  ///
+  /// In uz, this message translates to:
+  /// **'Juda ko\'p urinish. {sec} soniyadan keyin qayta urinib ko\'ring.'**
+  String lanErrBlocked(int sec);
+
+  /// No description provided for @lanErrFull.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinf to\'lgan: ulangan kompyuterlar soni chegarasiga yetdi.'**
+  String get lanErrFull;
+
+  /// No description provided for @lanErrUnreachable.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi kompyuteriga ulanib bo\'lmadi.'**
+  String get lanErrUnreachable;
+
+  /// No description provided for @lanErrExpired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ulanish uzildi. Sinf kodini kiritib, qayta ulaning.'**
+  String get lanErrExpired;
+
+  /// No description provided for @lanErrAddress.
+  ///
+  /// In uz, this message translates to:
+  /// **'Manzil noto\'g\'ri. Misol: 192.168.1.5:8080'**
+  String get lanErrAddress;
+
+  /// No description provided for @lanErrCodeFormat.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kod 6 ta raqamdan iborat bo\'lishi kerak.'**
+  String get lanErrCodeFormat;
+
+  /// No description provided for @lanErrGeneric.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ulanishda xato yuz berdi.'**
+  String get lanErrGeneric;
+
+  /// No description provided for @lanStatusConnected.
+  ///
+  /// In uz, this message translates to:
+  /// **'Aloqa bor'**
+  String get lanStatusConnected;
+
+  /// No description provided for @lanStatusDisconnected.
+  ///
+  /// In uz, this message translates to:
+  /// **'Aloqa yo\'q — natijalar saqlanmoqda va aloqa tiklangach yuboriladi.'**
+  String get lanStatusDisconnected;
+
+  /// No description provided for @lanUnsentResults.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuborilmagan natijalar: {count}'**
+  String lanUnsentResults(int count);
+
+  /// No description provided for @lanRejectedResults.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'qituvchi kompyuteri rad etgan natijalar: {count}'**
+  String lanRejectedResults(int count);
 }
 
 class _AppLocalizationsDelegate

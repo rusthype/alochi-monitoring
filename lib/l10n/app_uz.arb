@@ -1232,5 +1232,182 @@
       }
     }
   },
-  "usbErrTooLarge": "Paket hajmi ruxsat etilgan chegaradan katta."
+  "usbErrTooLarge": "Paket hajmi ruxsat etilgan chegaradan katta.",
+  "lanHubButton": "Lokal server yoqish (LAN)",
+  "lanConnectButton": "O'qituvchi kompyuteriga ulanish",
+  "lanHubOpenMonitor": "Monitoring ekranini ochish",
+  "lanHubStatusRunning": "Lokal server ishlayapti (port {port})",
+  "@lanHubStatusRunning": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "lanActiveHub": "Ulangan kompyuter: {name}",
+  "@lanActiveHub": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lanDisconnect": "Uzish",
+  "lanDisconnectFirst": "Avval o'qituvchi kompyuteridan uzing.",
+  "lanClosePackFirst": "Ulanish uchun avval oflayn paketni yoping.",
+  "lanHubTitle": "Sinf monitoringi (LAN)",
+  "lanHubRunning": "Server ishlayapti",
+  "lanHubStopped": "Server o'chiq",
+  "lanHubStart": "Serverni yoqish",
+  "lanHubStop": "Serverni to'xtatish",
+  "lanHubAddress": "Manzil: {address}",
+  "@lanHubAddress": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "lanHubPortFallback": "Standart port band edi — {port}-port ishlatilmoqda.",
+  "@lanHubPortFallback": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "lanHubFirewall": "Birinchi ishga tushirishda Windows xavfsizlik devori (Firewall) so'rov chiqaradi: \"Ruxsat berish\" (Allow access) tugmasini bosing, aks holda o'quvchi kompyuterlari ulana olmaydi.",
+  "lanHubNoPort": "Bo'sh port topilmadi (8080–8090). Portni band qilgan dasturni yoping.",
+  "lanHubStartFailed": "Serverni ishga tushirib bo'lmadi.",
+  "lanHubNeedPack": "Server uchun avval paketni oching.",
+  "lanClassCode": "Sinf kodi",
+  "lanClassCodeHint": "Bu kodni o'quvchilarga ayting yoki doskaga yozing.",
+  "lanRefreshCode": "Kodni yangilash",
+  "lanRefreshCodeNote": "Allaqachon ulangan kompyuterlar uzilmaydi.",
+  "lanClients": "Ulangan: {count} / {max}",
+  "@lanClients": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "lanResultsReceived": "Qabul qilingan natijalar: {count}",
+  "@lanResultsReceived": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lanNoClients": "Hali hech qaysi kompyuter ulanmagan.",
+  "lanUnnamedClient": "Noma'lum kompyuter",
+  "lanStatusWaiting": "Kutmoqda",
+  "lanStatusTesting": "Testda",
+  "lanStatusLocked": "To'xtatilgan",
+  "lanStatusNoContact": "Aloqa yo'q",
+  "lanStatusInactive": "Faol emas",
+  "lanQuestionOf": "Savol {n}/{total}",
+  "@lanQuestionOf": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "lanTabSwitches": "Oynadan chiqish: {n}",
+  "@lanTabSwitches": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "lanLastSeen": "{sec} s oldin",
+  "@lanLastSeen": {
+    "placeholders": {
+      "sec": {
+        "type": "int"
+      }
+    }
+  },
+  "lanRemaining": "Qolgan: {time}",
+  "@lanRemaining": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "lanLock": "Pauza",
+  "lanUnlock": "Davom ettirish",
+  "lanAddMinutes": "+{n} daqiqa",
+  "@lanAddMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "lanEndTest": "Testni yakunlash",
+  "lanEndTestConfirm": "{name} testini hozir yakunlaysizmi? Berilgan javoblar saqlanadi.",
+  "@lanEndTestConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lanEndTestYes": "Yakunlash",
+  "lanNoFrame": "Ekran tasviri hali kelmadi.",
+  "lanSelectClient": "Ro'yxatdan o'quvchini tanlang.",
+  "lanConnectTitle": "O'qituvchi kompyuteriga ulanish",
+  "lanConnectIntro": "O'qituvchi ko'rsatgan 6 xonali sinf kodini kiriting.",
+  "lanFoundHubs": "Topilgan kompyuterlar",
+  "lanNoHubsFound": "Hech narsa topilmadi. Manzilni qo'lda kiriting.",
+  "lanDiscoveryUnavailable": "Avtomatik qidirish ishlamayapti (xavfsizlik devori?). Manzilni qo'lda kiriting.",
+  "lanManualAddress": "Yoki manzilni qo'lda kiriting",
+  "lanAddressHint": "masalan 192.168.1.5:8080",
+  "lanCodeHint": "6 xonali kod",
+  "lanConnect": "Ulanish",
+  "lanConnecting": "Ulanmoqda...",
+  "lanErrBadCode": "Sinf kodi noto'g'ri.",
+  "lanErrBlocked": "Juda ko'p urinish. {sec} soniyadan keyin qayta urinib ko'ring.",
+  "@lanErrBlocked": {
+    "placeholders": {
+      "sec": {
+        "type": "int"
+      }
+    }
+  },
+  "lanErrFull": "Sinf to'lgan: ulangan kompyuterlar soni chegarasiga yetdi.",
+  "lanErrUnreachable": "O'qituvchi kompyuteriga ulanib bo'lmadi.",
+  "lanErrExpired": "Ulanish uzildi. Sinf kodini kiritib, qayta ulaning.",
+  "lanErrAddress": "Manzil noto'g'ri. Misol: 192.168.1.5:8080",
+  "lanErrCodeFormat": "Kod 6 ta raqamdan iborat bo'lishi kerak.",
+  "lanErrGeneric": "Ulanishda xato yuz berdi.",
+  "lanStatusConnected": "Aloqa bor",
+  "lanStatusDisconnected": "Aloqa yo'q — natijalar saqlanmoqda va aloqa tiklangach yuboriladi.",
+  "lanUnsentResults": "Yuborilmagan natijalar: {count}",
+  "@lanUnsentResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lanRejectedResults": "O'qituvchi kompyuteri rad etgan natijalar: {count}",
+  "@lanRejectedResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

@@ -2468,4 +2468,242 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get usbErrTooLarge => 'Размер пакета превышает допустимый предел.';
+
+  @override
+  String get lanHubButton => 'Включить локальный сервер (LAN)';
+
+  @override
+  String get lanConnectButton => 'Подключиться к компьютеру учителя';
+
+  @override
+  String get lanHubOpenMonitor => 'Открыть экран мониторинга';
+
+  @override
+  String lanHubStatusRunning(int port) {
+    return 'Локальный сервер работает (порт $port)';
+  }
+
+  @override
+  String lanActiveHub(String name) {
+    return 'Подключено к: $name';
+  }
+
+  @override
+  String get lanDisconnect => 'Отключиться';
+
+  @override
+  String get lanDisconnectFirst => 'Сначала отключитесь от компьютера учителя.';
+
+  @override
+  String get lanClosePackFirst =>
+      'Чтобы подключиться, сначала закройте офлайн-пакет.';
+
+  @override
+  String get lanHubTitle => 'Мониторинг класса (LAN)';
+
+  @override
+  String get lanHubRunning => 'Сервер работает';
+
+  @override
+  String get lanHubStopped => 'Сервер выключен';
+
+  @override
+  String get lanHubStart => 'Включить сервер';
+
+  @override
+  String get lanHubStop => 'Остановить сервер';
+
+  @override
+  String lanHubAddress(String address) {
+    return 'Адрес: $address';
+  }
+
+  @override
+  String lanHubPortFallback(int port) {
+    return 'Стандартный порт занят — используется порт $port.';
+  }
+
+  @override
+  String get lanHubFirewall =>
+      'При первом запуске брандмауэр Windows задаст вопрос: нажмите «Разрешить доступ» (Allow access), иначе компьютеры учеников не смогут подключиться.';
+
+  @override
+  String get lanHubNoPort =>
+      'Свободный порт не найден (8080–8090). Закройте программу, занявшую порт.';
+
+  @override
+  String get lanHubStartFailed => 'Не удалось запустить сервер.';
+
+  @override
+  String get lanHubNeedPack =>
+      'Сначала откройте пакет, чтобы запустить сервер.';
+
+  @override
+  String get lanClassCode => 'Код класса';
+
+  @override
+  String get lanClassCodeHint =>
+      'Назовите этот код ученикам или напишите на доске.';
+
+  @override
+  String get lanRefreshCode => 'Обновить код';
+
+  @override
+  String get lanRefreshCodeNote => 'Уже подключённые компьютеры не отключатся.';
+
+  @override
+  String lanClients(int count, int max) {
+    return 'Подключено: $count / $max';
+  }
+
+  @override
+  String lanResultsReceived(int count) {
+    return 'Принято результатов: $count';
+  }
+
+  @override
+  String get lanNoClients => 'Пока ни один компьютер не подключён.';
+
+  @override
+  String get lanUnnamedClient => 'Неизвестный компьютер';
+
+  @override
+  String get lanStatusWaiting => 'Ожидает';
+
+  @override
+  String get lanStatusTesting => 'Проходит тест';
+
+  @override
+  String get lanStatusLocked => 'Приостановлен';
+
+  @override
+  String get lanStatusNoContact => 'Нет связи';
+
+  @override
+  String get lanStatusInactive => 'Неактивен';
+
+  @override
+  String lanQuestionOf(int n, int total) {
+    return 'Вопрос $n/$total';
+  }
+
+  @override
+  String lanTabSwitches(int n) {
+    return 'Выходов из окна: $n';
+  }
+
+  @override
+  String lanLastSeen(int sec) {
+    return '$sec с назад';
+  }
+
+  @override
+  String lanRemaining(String time) {
+    return 'Осталось: $time';
+  }
+
+  @override
+  String get lanLock => 'Пауза';
+
+  @override
+  String get lanUnlock => 'Продолжить';
+
+  @override
+  String lanAddMinutes(int n) {
+    return '+$n мин';
+  }
+
+  @override
+  String get lanEndTest => 'Завершить тест';
+
+  @override
+  String lanEndTestConfirm(String name) {
+    return 'Завершить тест ученика $name сейчас? Уже данные ответы сохранятся.';
+  }
+
+  @override
+  String get lanEndTestYes => 'Завершить';
+
+  @override
+  String get lanNoFrame => 'Изображение экрана пока не получено.';
+
+  @override
+  String get lanSelectClient => 'Выберите ученика в списке.';
+
+  @override
+  String get lanConnectTitle => 'Подключение к компьютеру учителя';
+
+  @override
+  String get lanConnectIntro =>
+      'Введите 6-значный код класса, который показал учитель.';
+
+  @override
+  String get lanFoundHubs => 'Найденные компьютеры';
+
+  @override
+  String get lanNoHubsFound => 'Ничего не найдено. Введите адрес вручную.';
+
+  @override
+  String get lanDiscoveryUnavailable =>
+      'Автоматический поиск не работает (брандмауэр?). Введите адрес вручную.';
+
+  @override
+  String get lanManualAddress => 'Или введите адрес вручную';
+
+  @override
+  String get lanAddressHint => 'например 192.168.1.5:8080';
+
+  @override
+  String get lanCodeHint => '6-значный код';
+
+  @override
+  String get lanConnect => 'Подключиться';
+
+  @override
+  String get lanConnecting => 'Подключение...';
+
+  @override
+  String get lanErrBadCode => 'Неверный код класса.';
+
+  @override
+  String lanErrBlocked(int sec) {
+    return 'Слишком много попыток. Повторите через $sec с.';
+  }
+
+  @override
+  String get lanErrFull =>
+      'Класс заполнен: достигнут предел числа подключённых компьютеров.';
+
+  @override
+  String get lanErrUnreachable => 'Не удалось связаться с компьютером учителя.';
+
+  @override
+  String get lanErrExpired =>
+      'Соединение потеряно. Введите код класса и подключитесь снова.';
+
+  @override
+  String get lanErrAddress => 'Неверный адрес. Пример: 192.168.1.5:8080';
+
+  @override
+  String get lanErrCodeFormat => 'Код должен состоять из 6 цифр.';
+
+  @override
+  String get lanErrGeneric => 'Ошибка при подключении.';
+
+  @override
+  String get lanStatusConnected => 'Связь есть';
+
+  @override
+  String get lanStatusDisconnected =>
+      'Нет связи — результаты сохраняются и будут отправлены после восстановления связи.';
+
+  @override
+  String lanUnsentResults(int count) {
+    return 'Неотправленные результаты: $count';
+  }
+
+  @override
+  String lanRejectedResults(int count) {
+    return 'Результаты, отклонённые компьютером учителя: $count';
+  }
 }

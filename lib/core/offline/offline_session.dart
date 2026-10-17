@@ -23,11 +23,12 @@ import '../security/incident_log.dart';
 import '../security/monitored_clock.dart';
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart';
 import 'offline_diagnostic_api.dart';
+import 'offline_content_source.dart';
 import 'offline_media.dart';
 import 'offline_package_api.dart';
 import 'pack_loader.dart';
 
-class OfflinePackSession {
+class OfflinePackSession implements OfflineContentSource {
   final LoadedPack pack;
   final Directory mediaDir;
 
@@ -131,6 +132,25 @@ class OfflinePackSession {
 
   // ── pack content ──────────────────────────────────────────────────────────
 
+  @override
+  String get packUuid => pack.packUuid;
+  @override
+  String get schoolId => pack.schoolId;
+  @override
+  String get schoolCode => pack.schoolCode;
+  @override
+  List<Map<String, dynamic>> get groups => pack.groups;
+  @override
+  List<Map<String, dynamic>> get students => pack.students;
+
+  @override
+  Future<int> nextAttemptOrdinal(String keyPrefix) async =>
+      await PackResultsDb.countKeyPrefix(pack.packUuid, keyPrefix) + 1;
+
+  @override
+  Future<void> prepareMedia(Object? data) async {} // images already on disk
+
+  @override
   List<Map<String, dynamic>> testsOfType(String type) =>
       pack.tests.where((t) => t['type'] == type).toList(growable: false);
 
@@ -147,6 +167,7 @@ class OfflinePackSession {
   /// the body the online `POST /monitoring/result/` would get; it is hashed as
   /// text, so it is serialised once, here. Proctoring metadata and clock flags
   /// gathered since the last result ride along (decision 12).
+  @override
   Future<PackResultRow> recordResult(Map<String, dynamic> payload,
       {String? token}) {
     final key =

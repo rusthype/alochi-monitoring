@@ -59,6 +59,10 @@ dependencies:
   ffi: ^2.2.0
   image: ^4.8.0
 
+  # Offline LAN hub (teacher PC serves the open pack to student PCs).
+  shelf: ^1.4.3
+  shelf_router: ^1.1.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

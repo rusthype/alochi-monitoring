@@ -212,8 +212,9 @@ class OfflinePackageApi extends MonitoringApi {
   // Legacy MonitoringPackage variants: key "package:<id>:v<variant>".
   static final RegExp _pkgKey = RegExp(r'^package:(.+):v(\d+)$');
 
-  @override
-  Future<List<TestPackage>> getPackages(int grade) async {
+  /// One catalog map per legacy package id (`variant_count` included), not yet
+  /// grade-filtered. Public so the LAN hub can serve exactly this list.
+  List<Map<String, dynamic>> packageCatalog() {
     final byId = <String, Map<String, dynamic>>{};
     final variants = <String, int>{};
     for (final t in session.testsOfType('package')) {
@@ -231,10 +232,19 @@ class OfflinePackageApi extends MonitoringApi {
     }
     if (byId.isEmpty) return [];
     return byId.entries
-        .map((e) => TestPackage.fromJson({
+        .map((e) => <String, dynamic>{
               ...e.value,
               'variant_count': variants[e.key] ?? 1,
-            }))
+            })
+        .toList();
+  }
+
+  @override
+  Future<List<TestPackage>> getPackages(int grade) async {
+    final items = packageCatalog();
+    if (items.isEmpty) return [];
+    return items
+        .map(TestPackage.fromJson)
         .where((p) => p.grade == grade)
         .toList();
   }
@@ -253,13 +263,12 @@ class OfflinePackageApi extends MonitoringApi {
 
   // ── results ────────────────────────────────────────────────────────────────
 
-  /// Legacy package result: stored in the chain as-is. The server re-scores
-  /// whatever it can resolve and marks the rest unverified.
-  @override
-  Future<Map<String, dynamic>> submitResultFull(TestResult result,
-      {Map<String, dynamic>? detail, String? idempotencyToken}) async {
-    try {
-      await session.recordResult({
+  /// Body of a legacy package result as the server expects it (shared with the
+  /// LAN client, which queues the same payload for the hub).
+  static Map<String, dynamic> legacyResultPayload(
+          TestResult result, String schoolCode,
+          {Map<String, dynamic>? detail}) =>
+      {
         ...result.toJson(detail: detail),
         // Server format: {"<Question.id>": "a".."d"} -- lowercase letters.
         'answers': {
@@ -267,10 +276,20 @@ class OfflinePackageApi extends MonitoringApi {
             e.key: e.value.trim().toLowerCase(),
         },
         'source': 'flutter',
-        'school_code': session.pack.schoolCode,
+        'school_code': schoolCode,
         'test_key': 'package:${result.packageId}:v${result.variant}',
         'pct': result.totalPct,
-      }, token: idempotencyToken);
+      };
+
+  /// Legacy package result: stored in the chain as-is. The server re-scores
+  /// whatever it can resolve and marks the rest unverified.
+  @override
+  Future<Map<String, dynamic>> submitResultFull(TestResult result,
+      {Map<String, dynamic>? detail, String? idempotencyToken}) async {
+    try {
+      await session.recordResult(
+          legacyResultPayload(result, session.pack.schoolCode, detail: detail),
+          token: idempotencyToken);
       return {
         'synced': true,
         'offline_saved': true,

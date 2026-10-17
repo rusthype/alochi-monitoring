@@ -1187,5 +1187,182 @@
       }
     }
   },
-  "usbErrTooLarge": "Размер пакета превышает допустимый предел."
+  "usbErrTooLarge": "Размер пакета превышает допустимый предел.",
+  "lanHubButton": "Включить локальный сервер (LAN)",
+  "lanConnectButton": "Подключиться к компьютеру учителя",
+  "lanHubOpenMonitor": "Открыть экран мониторинга",
+  "lanHubStatusRunning": "Локальный сервер работает (порт {port})",
+  "@lanHubStatusRunning": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "lanActiveHub": "Подключено к: {name}",
+  "@lanActiveHub": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lanDisconnect": "Отключиться",
+  "lanDisconnectFirst": "Сначала отключитесь от компьютера учителя.",
+  "lanClosePackFirst": "Чтобы подключиться, сначала закройте офлайн-пакет.",
+  "lanHubTitle": "Мониторинг класса (LAN)",
+  "lanHubRunning": "Сервер работает",
+  "lanHubStopped": "Сервер выключен",
+  "lanHubStart": "Включить сервер",
+  "lanHubStop": "Остановить сервер",
+  "lanHubAddress": "Адрес: {address}",
+  "@lanHubAddress": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "lanHubPortFallback": "Стандартный порт занят — используется порт {port}.",
+  "@lanHubPortFallback": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "lanHubFirewall": "При первом запуске брандмауэр Windows задаст вопрос: нажмите «Разрешить доступ» (Allow access), иначе компьютеры учеников не смогут подключиться.",
+  "lanHubNoPort": "Свободный порт не найден (8080–8090). Закройте программу, занявшую порт.",
+  "lanHubStartFailed": "Не удалось запустить сервер.",
+  "lanHubNeedPack": "Сначала откройте пакет, чтобы запустить сервер.",
+  "lanClassCode": "Код класса",
+  "lanClassCodeHint": "Назовите этот код ученикам или напишите на доске.",
+  "lanRefreshCode": "Обновить код",
+  "lanRefreshCodeNote": "Уже подключённые компьютеры не отключатся.",
+  "lanClients": "Подключено: {count} / {max}",
+  "@lanClients": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "lanResultsReceived": "Принято результатов: {count}",
+  "@lanResultsReceived": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lanNoClients": "Пока ни один компьютер не подключён.",
+  "lanUnnamedClient": "Неизвестный компьютер",
+  "lanStatusWaiting": "Ожидает",
+  "lanStatusTesting": "Проходит тест",
+  "lanStatusLocked": "Приостановлен",
+  "lanStatusNoContact": "Нет связи",
+  "lanStatusInactive": "Неактивен",
+  "lanQuestionOf": "Вопрос {n}/{total}",
+  "@lanQuestionOf": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "lanTabSwitches": "Выходов из окна: {n}",
+  "@lanTabSwitches": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "lanLastSeen": "{sec} с назад",
+  "@lanLastSeen": {
+    "placeholders": {
+      "sec": {
+        "type": "int"
+      }
+    }
+  },
+  "lanRemaining": "Осталось: {time}",
+  "@lanRemaining": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "lanLock": "Пауза",
+  "lanUnlock": "Продолжить",
+  "lanAddMinutes": "+{n} мин",
+  "@lanAddMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "lanEndTest": "Завершить тест",
+  "lanEndTestConfirm": "Завершить тест ученика {name} сейчас? Уже данные ответы сохранятся.",
+  "@lanEndTestConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lanEndTestYes": "Завершить",
+  "lanNoFrame": "Изображение экрана пока не получено.",
+  "lanSelectClient": "Выберите ученика в списке.",
+  "lanConnectTitle": "Подключение к компьютеру учителя",
+  "lanConnectIntro": "Введите 6-значный код класса, который показал учитель.",
+  "lanFoundHubs": "Найденные компьютеры",
+  "lanNoHubsFound": "Ничего не найдено. Введите адрес вручную.",
+  "lanDiscoveryUnavailable": "Автоматический поиск не работает (брандмауэр?). Введите адрес вручную.",
+  "lanManualAddress": "Или введите адрес вручную",
+  "lanAddressHint": "например 192.168.1.5:8080",
+  "lanCodeHint": "6-значный код",
+  "lanConnect": "Подключиться",
+  "lanConnecting": "Подключение...",
+  "lanErrBadCode": "Неверный код класса.",
+  "lanErrBlocked": "Слишком много попыток. Повторите через {sec} с.",
+  "@lanErrBlocked": {
+    "placeholders": {
+      "sec": {
+        "type": "int"
+      }
+    }
+  },
+  "lanErrFull": "Класс заполнен: достигнут предел числа подключённых компьютеров.",
+  "lanErrUnreachable": "Не удалось связаться с компьютером учителя.",
+  "lanErrExpired": "Соединение потеряно. Введите код класса и подключитесь снова.",
+  "lanErrAddress": "Неверный адрес. Пример: 192.168.1.5:8080",
+  "lanErrCodeFormat": "Код должен состоять из 6 цифр.",
+  "lanErrGeneric": "Ошибка при подключении.",
+  "lanStatusConnected": "Связь есть",
+  "lanStatusDisconnected": "Нет связи — результаты сохраняются и будут отправлены после восстановления связи.",
+  "lanUnsentResults": "Неотправленные результаты: {count}",
+  "@lanUnsentResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "lanRejectedResults": "Результаты, отклонённые компьютером учителя: {count}",
+  "@lanRejectedResults": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

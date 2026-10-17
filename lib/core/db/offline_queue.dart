@@ -36,12 +36,16 @@ class OfflineQueue {
     _db = null;
   }
 
+  // Schema v8 adds `lan_outbox` (lan_outbox_db.dart): results a LAN client has
+  // not yet handed to the teacher's hub. Its own table, so neither the online
+  // flush nor purgeStale() can ever see (or drop) those rows.
+  //
   // Schema v7 adds the offline-USB-pack tables (pack_results / pack_meta, see
   // pack_results_db.dart). They are separate tables on purpose: the online
   // queue/local_queue flush, purgeStale and the diagnostic peek must never see
   // pack rows, and pack rows must never be dropped by the 7-day stale purge.
   static Future<Database> _open(String path) {
-    return openDatabase(path, version: 7, onCreate: (db, _) async {
+    return openDatabase(path, version: 8, onCreate: (db, _) async {
       await db.execute('''
         CREATE TABLE queue (
           id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,6 +78,7 @@ class OfflineQueue {
         'CREATE UNIQUE INDEX idx_local_queue_token ON local_queue(token) WHERE token IS NOT NULL',
       );
       await createPackTables(db);
+      await createLanTables(db);
     }, onUpgrade: (db, oldVersion, newVersion) async {
       if (oldVersion < 2) {
         await db.execute('''
@@ -111,6 +116,9 @@ class OfflineQueue {
       if (oldVersion < 7) {
         await createPackTables(db);
       }
+      if (oldVersion < 8) {
+        await createLanTables(db);
+      }
     });
   }
 
@@ -142,6 +150,26 @@ class OfflineQueue {
         loaded_at    INTEGER NOT NULL
       )
     ''');
+  }
+
+  /// v8 table for the LAN client outbox. Idempotent like [createPackTables].
+  @visibleForTesting
+  static Future<void> createLanTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS lan_outbox (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        pack_uuid        TEXT NOT NULL,
+        idempotency_key  TEXT NOT NULL,
+        envelope         TEXT NOT NULL,
+        created          INTEGER NOT NULL,
+        attempts         INTEGER NOT NULL DEFAULT 0,
+        status           INTEGER NOT NULL DEFAULT 0,
+        reject_reason    TEXT
+      )
+    ''');
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_lan_outbox_key ON lan_outbox(pack_uuid, idempotency_key)',
+    );
   }
 
   static Future<void> enqueue(TestResult result, {String? token}) async {

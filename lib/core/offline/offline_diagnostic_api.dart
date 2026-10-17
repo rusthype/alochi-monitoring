@@ -19,13 +19,12 @@ import 'dart:convert';
 
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart';
 import '../api/api_client.dart' show ApiException;
-import '../db/pack_results_db.dart';
 import 'offline_crypto.dart';
 import 'offline_errors.dart';
-import 'offline_session.dart';
+import 'offline_content_source.dart';
 
 class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
-  final OfflinePackSession session;
+  final OfflineContentSource session;
   OfflineDiagnosticKioskApi(this.session);
 
   static const ApiException _unsupported = ApiException(
@@ -49,14 +48,14 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
   }
 
   Map<String, dynamic>? _group(String id) {
-    for (final g in session.pack.groups) {
+    for (final g in session.groups) {
       if (g['id']?.toString() == id) return g;
     }
     return null;
   }
 
   Map<String, dynamic>? _student(String id, String groupId) {
-    for (final s in session.pack.students) {
+    for (final s in session.students) {
       if (s['id']?.toString() == id && s['group_id']?.toString() == groupId) {
         return s;
       }
@@ -112,7 +111,7 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
 
   @override
   Future<(List<Map<String, dynamic>>, bool)> listSchools() async {
-    final p = session.pack;
+    final p = session;
     return (
       <Map<String, dynamic>>[
         {
@@ -130,7 +129,7 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
   Future<(List<Map<String, dynamic>>, bool)> listClasses(
       String schoolId) async {
     final lang = _defaultLang();
-    final rows = session.pack.groups
+    final rows = session.groups
         .map((g) => <String, dynamic>{
               'class_label': g['name']?.toString() ?? '',
               'language': lang,
@@ -143,11 +142,11 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
   Future<(List<Map<String, dynamic>>, bool)> listStudents(
       String schoolId, String classLabel) async {
     final lang = _defaultLang();
-    final groupIds = session.pack.groups
+    final groupIds = session.groups
         .where((g) => g['name']?.toString() == classLabel)
         .map((g) => g['id']?.toString() ?? '')
         .toSet();
-    final rows = session.pack.students
+    final rows = session.students
         .where((s) => groupIds.contains(s['group_id']?.toString()))
         .map((s) => <String, dynamic>{
               'attempt_id': _attemptId(s['id']?.toString() ?? '',
@@ -198,6 +197,9 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
     }
     // Stable per student so a restart resumes the same variant.
     final pick = candidates[_stableHash(a.studentId) % candidates.length];
+    // LAN mode: the images come from the hub; pull them before the runner
+    // paints the first question. (No-op for a local pack.)
+    await session.prepareMedia(pick.data);
     final qs = (pick.data is Map ? (pick.data as Map)['questions'] : null);
     final questions = <Map<String, dynamic>>[
       if (qs is List)
@@ -322,7 +324,7 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
       'english': const {'cor': 0, 'tot': 0},
       'vocab': const {'cor': 0, 'tot': 0},
       'pct': 0,
-      'school_code': session.pack.schoolCode,
+      'school_code': session.schoolCode,
       'group_name': group['name']?.toString() ?? '',
       'group_id': a.groupId,
       'student_id': a.studentId,
@@ -341,10 +343,9 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
     // meta_json.idempotency_key: unique per pack, student, group, subject AND
     // attempt ordinal, so a genuine retake is a new entry rather than being
     // swallowed. (The server keys results on the chain hash, not on this.)
-    final seed = _keyPrefix(
-        session.pack.packUuid, a.studentId, a.groupId, finished.subject);
-    final attemptNo =
-        await PackResultsDb.countKeyPrefix(session.pack.packUuid, seed) + 1;
+    final seed =
+        _keyPrefix(session.packUuid, a.studentId, a.groupId, finished.subject);
+    final attemptNo = await session.nextAttemptOrdinal(seed);
     await session.recordResult(payload, token: '$seed$attemptNo');
 
     final idx = subjects.indexOf(finished.subject);

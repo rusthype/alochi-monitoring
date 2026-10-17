@@ -205,6 +205,33 @@ class PackResultsDb {
     return (res.first['c'] as int?) ?? 0;
   }
 
+  /// True when [idempotencyKey] is already a link of [packUuid]'s chain (a
+  /// repeat [append] with it would be a no-op).
+  static Future<bool> hasKey(String packUuid, String idempotencyKey) async {
+    final d = await _db;
+    final rows = await d.query('pack_results',
+        columns: ['id'],
+        where: 'pack_uuid = ? AND idempotency_key = ?',
+        whereArgs: [packUuid, idempotencyKey],
+        limit: 1);
+    return rows.isNotEmpty;
+  }
+
+  /// Rows and stored (encrypted + base64) bytes of one pack's chain. The LAN
+  /// hub uses it to stop accepting results before the chain grows past what the
+  /// server will import (5000 entries / 10 MB decrypted per file).
+  static Future<({int count, int storedBytes})> stats(String packUuid) async {
+    final d = await _db;
+    final res = await d.rawQuery(
+        'SELECT COUNT(*) c, COALESCE(SUM(LENGTH(payload) + LENGTH(meta_json)), 0) b '
+        'FROM pack_results WHERE pack_uuid = ?',
+        [packUuid]);
+    return (
+      count: (res.first['c'] as int?) ?? 0,
+      storedBytes: (res.first['b'] as int?) ?? 0,
+    );
+  }
+
   /// One entry per pack that has stored results.
   static Future<List<PackSummary>> summaries() async {
     final d = await _db;

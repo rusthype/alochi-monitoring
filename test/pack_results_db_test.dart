@@ -37,7 +37,9 @@ void main() {
     tmp.deleteSync(recursive: true);
   });
 
-  test('v6 database upgrades to v7 and keeps every existing row', () async {
+  test(
+      'v6 database upgrades to the current schema and keeps every existing row',
+      () async {
     final path = p.join(tmp.path, 'monitoring_queue.db');
     // Hand-build a v6 database exactly as shipped before this feature.
     final old = await databaseFactoryFfi.openDatabase(path,
@@ -70,7 +72,7 @@ void main() {
 
     await OfflineQueue.openAtPath(path);
     final d = await OfflineQueue.db;
-    expect(await d.getVersion(), 7);
+    expect(await d.getVersion(), 8);
 
     final q = await d.query('queue');
     expect(q, hasLength(1));
@@ -95,18 +97,24 @@ void main() {
     expect(await PackResultsDb.unexportedCount(), 1);
   });
 
-  test('fresh install creates the v7 schema directly', () async {
+  test('fresh install creates the current (v8) schema directly', () async {
     await OfflineQueue.openAtPath(p.join(tmp.path, 'fresh.db'));
     final d = await OfflineQueue.db;
-    expect(await d.getVersion(), 7);
+    expect(await d.getVersion(), 8);
     final names =
         (await d.rawQuery("SELECT name FROM sqlite_master WHERE type='table'"))
             .map((r) => r['name'])
             .toSet();
     expect(
         names,
-        containsAll(
-            ['queue', 'tg_queue', 'local_queue', 'pack_results', 'pack_meta']));
+        containsAll([
+          'queue',
+          'tg_queue',
+          'local_queue',
+          'pack_results',
+          'pack_meta',
+          'lan_outbox'
+        ]));
   });
 
   group('HMAC chain', () {
