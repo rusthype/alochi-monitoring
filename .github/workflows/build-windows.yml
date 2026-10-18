@@ -38,8 +38,27 @@ jobs:
         run: flutter pub get
 
       # ── 1. ZIP build ─────────────────────────────────────────
+      - name: Guard offline production public keys
+        shell: bash
+        run: |
+          bad="2ba8a1673058f198e6348c727150bb704bb3f0c619663ca5b850945c0b33a25a f508d7b40fec7a51d9eeba7097f7263220c16589ba74e9c85bf1d486ca5b4624"
+          for f in offline_keys/signing_public.pem offline_keys/results_public.pem; do
+            [ -f "$f" ] || { echo "::error::missing $f"; exit 1; }
+            openssl pkey -pubin -in "$f" -noout || { echo "::error::$f is not a public key"; exit 1; }
+            fp=$(openssl pkey -pubin -in "$f" -outform DER | openssl dgst -sha256 | awk '{print $NF}')
+            echo "$f sha256(DER)=$fp"
+            for b in $bad; do
+              [ "$fp" != "$b" ] || { echo "::error::$f is a TEST key"; exit 1; }
+            done
+          done
+
       - name: Build Windows (Release)
-        run: flutter build windows --release
+        shell: pwsh
+        run: |
+          $sig = [Convert]::ToBase64String([IO.File]::ReadAllBytes("offline_keys/signing_public.pem"))
+          $res = [Convert]::ToBase64String([IO.File]::ReadAllBytes("offline_keys/results_public.pem"))
+          flutter build windows --release "--dart-define=OFFLINE_SIGNING_PUBKEY_B64=$sig" "--dart-define=OFFLINE_RESULTS_PUBKEY_B64=$res"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Sign app EXE (Authenticode)
         continue-on-error: true

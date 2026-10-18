@@ -41,8 +41,27 @@ jobs:
           # Disable automatic signing so Xcode doesn't try to fetch a provisioning profile.
           defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintVerification -bool YES || true
 
+      - name: Guard offline production public keys
+        shell: bash
+        run: |
+          bad="2ba8a1673058f198e6348c727150bb704bb3f0c619663ca5b850945c0b33a25a f508d7b40fec7a51d9eeba7097f7263220c16589ba74e9c85bf1d486ca5b4624"
+          for f in offline_keys/signing_public.pem offline_keys/results_public.pem; do
+            [ -f "$f" ] || { echo "::error::missing $f"; exit 1; }
+            openssl pkey -pubin -in "$f" -noout || { echo "::error::$f is not a public key"; exit 1; }
+            fp=$(openssl pkey -pubin -in "$f" -outform DER | openssl dgst -sha256 | awk '{print $NF}')
+            echo "$f sha256(DER)=$fp"
+            for b in $bad; do
+              [ "$fp" != "$b" ] || { echo "::error::$f is a TEST key"; exit 1; }
+            done
+          done
+
       - name: Build macOS release
-        run: flutter build macos --release
+        run: |
+          SIG=$(base64 < offline_keys/signing_public.pem | tr -d '\n')
+          RES=$(base64 < offline_keys/results_public.pem | tr -d '\n')
+          flutter build macos --release \
+            "--dart-define=OFFLINE_SIGNING_PUBKEY_B64=$SIG" \
+            "--dart-define=OFFLINE_RESULTS_PUBKEY_B64=$RES"
 
       - name: Ad-hoc codesign
         run: |
