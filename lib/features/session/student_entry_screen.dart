@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/offline/offline_session.dart';
 import '../../shared/theme/app_theme.dart';
 import 'runner_dispatch.dart';
 import 'test_session.dart';
@@ -39,6 +40,8 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
   List<Map<String, dynamic>> _students = [];
   Map<String, dynamic>? _selectedStudent;
   bool _loadingStudents = false;
+  // Pack mode only: roster ids that already finished this test.
+  Set<String> _done = {};
 
   bool get _rosterActive =>
       _selectedGroup != null && (_loadingStudents || _students.isNotEmpty);
@@ -104,10 +107,14 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     });
     try {
       final s = await api.fetchStudents(groupId);
+      final done = await OfflinePackSession.current
+              ?.finishedStudentIds(widget.session.testKey) ??
+          <String>{};
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       setState(() {
         _students = s;
+        _done = done;
         _loadingStudents = false;
         _err = s.isEmpty ? l10n.noStudentsInGroup : null;
       });
@@ -183,6 +190,9 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       groupName = '';
       groupId = '';
     }
+    if (_selectedStudent != null && _done.contains(studentId)) {
+      if (!await _confirmRetake() || !mounted) return;
+    }
     setState(() {
       _err = null;
       _launching = true;
@@ -202,6 +212,26 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     // Foydalanuvchi "Keyingi o'quvchi"ni bossa yoki testdan qaytsa, 
     // to'g'ridan-to'g'ri Guruh tanlash oynasiga (GroupSelectScreen) qaytarib yuboramiz.
     Navigator.of(context).pop();
+  }
+
+  Future<bool> _confirmRetake() async {
+    final l10n = AppLocalizations.of(context)!;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.diagnosticRetakeTitle),
+        content: Text(l10n.testRetakeBody),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.cancel)),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l10n.diagnosticRetakeConfirm)),
+        ],
+      ),
+    );
+    return ok == true;
   }
 
   @override
@@ -508,6 +538,11 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                         name: name,
                                         avatarLetter: initial,
                                         isSelected: _selectedStudent == student,
+                                        isDone: _done.contains(
+                                            (student['student_code'] ??
+                                                    student['id'] ??
+                                                    '')
+                                                .toString()),
                                         onTap: () => setState(
                                             () => _selectedStudent = student),
                                       );
@@ -798,12 +833,14 @@ class _StudentCard extends StatefulWidget {
   final String name;
   final String avatarLetter;
   final bool isSelected;
+  final bool isDone;
   final VoidCallback onTap;
 
   const _StudentCard({
     required this.name,
     required this.avatarLetter,
     required this.isSelected,
+    this.isDone = false,
     required this.onTap,
   });
 
@@ -920,6 +957,31 @@ class _StudentCardState extends State<_StudentCard> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (widget.isDone)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Tooltip(
+                        message: AppLocalizations.of(context)!.rosterDoneBadge,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.brand.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.check_circle_rounded,
+                                size: 12, color: AppColors.brand),
+                            const SizedBox(width: 4),
+                            Text(AppLocalizations.of(context)!.rosterDoneBadge,
+                                style: const TextStyle(
+                                    color: AppColors.brand,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600)),
+                          ]),
+                        ),
+                      ),
+                    ),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     width: 20,

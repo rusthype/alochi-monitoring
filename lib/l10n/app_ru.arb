@@ -1471,5 +1471,7 @@
   "diagnosticOnlineRequiredTooltip": "Требуется интернет",
   "diagnosticRetakeTitle": "Ученик уже сдал",
   "diagnosticRetakeBody": "Этот ученик уже сдал все предметы. Начать ещё одну попытку?",
-  "diagnosticRetakeConfirm": "Начать заново"
+  "diagnosticRetakeConfirm": "Начать заново",
+  "testRetakeBody": "Этот ученик уже сдал этот тест. Начать ещё одну попытку?",
+  "rosterDoneBadge": "Сдал"
 }

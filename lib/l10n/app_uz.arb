@@ -1523,5 +1523,7 @@
   "diagnosticOnlineRequiredTooltip": "Onlayn kerak",
   "diagnosticRetakeTitle": "O'quvchi allaqachon topshirgan",
   "diagnosticRetakeBody": "Bu o'quvchi barcha fanlarni topshirib bo'lgan. Yana bir urinish boshlansinmi?",
-  "diagnosticRetakeConfirm": "Qayta boshlash"
+  "diagnosticRetakeConfirm": "Qayta boshlash",
+  "testRetakeBody": "Bu o'quvchi bu testni allaqachon topshirgan. Yana bir urinish boshlansinmi?",
+  "rosterDoneBadge": "Topshirgan"
 }
