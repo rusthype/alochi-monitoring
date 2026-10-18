@@ -13,7 +13,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+// ignore: depend_on_referenced_packages
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+/// Every directory is [path]. The MethodChannel mock alone is not enough:
+/// on Windows `getDownloadsDirectory` throws UnsupportedError in the channel
+/// implementation (the real plugin is a separate Dart package there), which
+/// made the product code's catch-all report "flash copy failed".
+class _FakePathProvider extends PathProviderPlatform {
+  _FakePathProvider(this.path);
+  final String path;
+  @override
+  Future<String?> getDownloadsPath() async => path;
+  @override
+  Future<String?> getApplicationDocumentsPath() async => path;
+  @override
+  Future<String?> getApplicationSupportPath() async => path;
+  @override
+  Future<String?> getTemporaryPath() async => path;
+}
 
 const _fixtures = 'test/fixtures/offline';
 
@@ -21,6 +40,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late OfflineKeys saved;
   late Directory tmp;
+  late PathProviderPlatform savedPaths;
 
   setUp(() {
     saved = OfflineKeys.current;
@@ -29,9 +49,12 @@ void main() {
       resultsPem: File('$_fixtures/test_results_public.pem').readAsStringSync(),
     );
     tmp = Directory.systemTemp.createTempSync('flash_dlg_');
+    savedPaths = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = _FakePathProvider(tmp.path);
   });
   tearDown(() {
     OfflineKeys.current = saved;
+    PathProviderPlatform.instance = savedPaths;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
             const MethodChannel('plugins.flutter.io/path_provider'), null);
