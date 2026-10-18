@@ -217,11 +217,18 @@ void main() {
       expect(forG1.first['version'], 3);
     });
 
-    test('catalog entries are "cached" while a pack is open (no download)',
-        () async {
+    test(
+        'catalog refresh with a pack open really fills the cache '
+        '(no download tap): status cached AND test data resolvable', () async {
+      expect(await TestCache.get('t_all'), isNull);
       final entries = await testCatalogService.refresh(groupId: _g1);
       expect(entries, isNotEmpty);
       expect(entries.every((e) => e.status == CatalogStatus.cached), isTrue);
+      // what launchRunner reads before opening the engine
+      final cached = await TestCache.get('t_all');
+      expect(cached, isNotNull);
+      expect(cached!['title'], 'T t_all');
+      expect(await TestCache.get('t_g1_only'), isNotNull);
     });
 
     test('fetchTest returns the body; download lands in MEMORY, not sqlite',

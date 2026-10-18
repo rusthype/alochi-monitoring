@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/db/attempt_store.dart';
 import '../../core/db/test_cache.dart';
+import '../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
 import '../../core/services/heartbeat_service.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../core/services/toast_service.dart';
@@ -32,10 +33,18 @@ Future<void> launchRunner(
   }
 
   // 3) Make sure package is fully downloaded
-  final cached = await TestCache.get(session.testKey);
+  var cached = await TestCache.get(session.testKey);
+  if (cached == null && isOfflineModeOpen) {
+    // USB pack / LAN client: load it from the open pack instead of failing.
+    await testCatalogService.download(session.testKey,
+        groupId: groupId.isEmpty ? null : groupId,
+        schoolCode: session.schoolCode);
+    cached = await TestCache.get(session.testKey);
+  }
   if (cached == null) {
     if (context.mounted) {
-      ToastService.showError(context, AppLocalizations.of(context)!.testNotInCache);
+      ToastService.showError(
+          context, AppLocalizations.of(context)!.testNotInCache);
     }
     return;
   }
@@ -77,25 +86,25 @@ Future<void> launchRunner(
     // device-level id instead of pinging a session that doesn't exist.
     HeartbeatService.instance.cancelTest();
     if (context.mounted) {
-      ToastService.showError(context, AppLocalizations.of(context)!.sessionConflictOtherDevice);
+      ToastService.showError(
+          context, AppLocalizations.of(context)!.sessionConflictOtherDevice);
     }
     return;
   }
 
   if (!context.mounted) return;
 
-  await GoRouter.of(context).push('/engine_host',
-      extra: {
-        'testData': cached,
-        'variant': variant,
-        'firstName': firstName,
-        'lastName': lastName,
-        'school': session.schoolCode,
-        'group': groupName.isEmpty ? null : groupName,
-        'groupId': groupId.isEmpty ? null : groupId,
-        'grade': studentGrade,
-        'studentId': studentId,
-      });
+  await GoRouter.of(context).push('/engine_host', extra: {
+    'testData': cached,
+    'variant': variant,
+    'firstName': firstName,
+    'lastName': lastName,
+    'school': session.schoolCode,
+    'group': groupName.isEmpty ? null : groupName,
+    'groupId': groupId.isEmpty ? null : groupId,
+    'grade': studentGrade,
+    'studentId': studentId,
+  });
 
   HeartbeatService.instance.finishTest();
 }

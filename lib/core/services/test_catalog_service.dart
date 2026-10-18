@@ -207,10 +207,20 @@ class TestCatalogService {
 
       final cachedVer = cachedVersions[key];
       final CatalogStatus status;
-      if (isOfflineModeOpen) {
-        // USB pack / LAN client: the content is served from the pack itself,
-        // so there is nothing to download — never show "Не скачано".
-        status = CatalogStatus.cached;
+      if (isOfflineModeOpen && (cachedVer == null || version > cachedVer)) {
+        // USB pack / LAN client: the content comes from the pack itself, so
+        // copy it into the cache now (what the "Скачать" button did by hand).
+        // Only a real copy reports `cached`; a failure stays visible as the
+        // normal not-downloaded / updatable state with its button.
+        final ok = await download(key,
+            groupId: groupId, schoolCode: schoolCode, schoolId: schoolId);
+        if (ok) {
+          status = CatalogStatus.cached;
+        } else {
+          status = cachedVer == null
+              ? CatalogStatus.notDownloaded
+              : CatalogStatus.updatable;
+        }
       } else if (cachedVer == null) {
         status = CatalogStatus.notDownloaded;
       } else if (version > cachedVer) {
