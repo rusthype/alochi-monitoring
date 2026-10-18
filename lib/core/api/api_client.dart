@@ -983,3 +983,12 @@ String newIdempotencyToken() => const Uuid().v4();
 /// restores the online client. Always read through this top-level name — never
 /// cache the instance in a field (see TestCatalogService.dynamic).
 MonitoringApi api = MonitoringApi();
+
+/// The real client while an offline pack / LAN session has swapped [api]
+/// (parked by `OfflinePackSession` / `LanClientSession`, null otherwise).
+MonitoringApi? parkedOnlineApi;
+
+/// The client that talks to the REAL server regardless of an open offline
+/// session. Use it for "is the server reachable" probes; everything else must
+/// keep going through [api] so pack/LAN mode keeps working.
+MonitoringApi get onlineApi => parkedOnlineApi ?? api;

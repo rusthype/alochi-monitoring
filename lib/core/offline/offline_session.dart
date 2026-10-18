@@ -53,7 +53,6 @@ class OfflinePackSession implements OfflineContentSource {
 
   static bool get isActive => current != null;
 
-  static MonitoringApi? _onlineApi;
   static DiagnosticKioskApi? _onlineDiagnosticApi;
 
   static Future<Directory> _mediaRoot() async {
@@ -104,7 +103,7 @@ class OfflinePackSession implements OfflineContentSource {
     }
 
     final session = OfflinePackSession._(pack, mediaDir);
-    _onlineApi = api;
+    parkedOnlineApi = api;
     _onlineDiagnosticApi = diagnosticKioskApi;
     api = OfflinePackageApi(session);
     diagnosticKioskApi = OfflineDiagnosticKioskApi(session);
@@ -127,11 +126,11 @@ class OfflinePackSession implements OfflineContentSource {
 
   static void _restoreOnline() {
     if (current == null) return;
-    final online = _onlineApi;
+    final online = parkedOnlineApi;
     if (online != null) api = online;
     final onlineDiag = _onlineDiagnosticApi;
     if (onlineDiag != null) diagnosticKioskApi = onlineDiag;
-    _onlineApi = null;
+    parkedOnlineApi = null;
     _onlineDiagnosticApi = null;
     TestCache.exitMemoryMode();
     OfflineMedia.root = null;

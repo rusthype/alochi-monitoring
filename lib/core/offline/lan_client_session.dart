@@ -107,6 +107,18 @@ class LanJoinException implements Exception {
   String toString() => 'LanJoinException(${code.name})';
 }
 
+/// True while a pack or LAN-client session has swapped the global `api`.
+bool get isOfflineModeOpen =>
+    OfflinePackSession.isActive || LanClientSession.isActive;
+
+/// Leaves whichever offline session is open: restores the real `api`, exits
+/// TestCache memory mode, drops the session. The one exit used by both the
+/// control center and the login-screen banner.
+void exitOfflineMode() {
+  OfflinePackSession.close();
+  LanClientSession.current?.close();
+}
+
 class LanClientSession implements OfflineContentSource {
   final Uri base;
   final String machineId;
@@ -172,7 +184,6 @@ class LanClientSession implements OfflineContentSource {
   bool _closed = false;
   bool _flushing = false;
 
-  static MonitoringApi? _onlineApi;
   static DiagnosticKioskApi? _onlineDiagnosticApi;
 
   // ── join ───────────────────────────────────────────────────────────────────
@@ -329,7 +340,7 @@ class LanClientSession implements OfflineContentSource {
       throw const LanJoinException(LanJoinError.packActive);
     }
     current?._restoreOnline();
-    _onlineApi = api;
+    parkedOnlineApi = api;
     _onlineDiagnosticApi = diagnosticKioskApi;
     api = LanClientApi(this);
     diagnosticKioskApi = LanDiagnosticKioskApi(this);
@@ -356,11 +367,11 @@ class LanClientSession implements OfflineContentSource {
 
   void _restoreOnline() {
     if (!identical(current, this)) return;
-    final online = _onlineApi;
+    final online = parkedOnlineApi;
     if (online != null) api = online;
     final onlineDiag = _onlineDiagnosticApi;
     if (onlineDiag != null) diagnosticKioskApi = onlineDiag;
-    _onlineApi = null;
+    parkedOnlineApi = null;
     _onlineDiagnosticApi = null;
     TestCache.exitMemoryMode();
     OfflineMedia.root = null;

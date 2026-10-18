@@ -152,7 +152,7 @@ class ConnectivityService {
     _measuring = true;
     try {
       final result = await pingWithRetry(
-        () => api.ping(),
+        () => onlineApi.ping(),
         timeout: _timeout,
         retryDelay: _retryDelay,
         delay: _cancellableDelay,
@@ -172,7 +172,7 @@ class ConnectivityService {
         // down" if this is ever logged) — neither flips the tier away from
         // `none`, because the app fundamentally needs api.alochi.org
         // reachable, not just generic internet.
-        final healthOk = await api
+        final healthOk = await onlineApi
             .pingHealth(timeout: _fallbackTimeout)
             .catchError((_) => false);
         if (!healthOk) await _dnsReachable();

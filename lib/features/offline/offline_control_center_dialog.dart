@@ -213,7 +213,7 @@ class _OfflineControlCenterDialogState
   }
 
   void _exitMode() {
-    OfflinePackSession.close();
+    exitOfflineMode();
     setState(() {});
   }
 

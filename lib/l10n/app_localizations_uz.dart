@@ -2438,6 +2438,17 @@ class AppLocalizationsUz extends AppLocalizations {
   String get usbExitMode => 'Oflayn rejimdan chiqish';
 
   @override
+  String get offlineSessionBannerTitle => 'Oflayn rejim ochiq';
+
+  @override
+  String get offlineSessionBannerHint =>
+      'Oflayn rejim ochiq ekan, oddiy kirish mavjud emas.';
+
+  @override
+  String get offlineSessionBannerOnlineHint =>
+      'Internet bor — oflayn rejimdan chiqish mumkin.';
+
+  @override
   String get usbResultsHeader => 'Saqlangan natijalar';
 
   @override

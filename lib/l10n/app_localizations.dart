@@ -4539,6 +4539,24 @@ abstract class AppLocalizations {
   /// **'Oflayn rejimdan chiqish'**
   String get usbExitMode;
 
+  /// No description provided for @offlineSessionBannerTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oflayn rejim ochiq'**
+  String get offlineSessionBannerTitle;
+
+  /// No description provided for @offlineSessionBannerHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oflayn rejim ochiq ekan, oddiy kirish mavjud emas.'**
+  String get offlineSessionBannerHint;
+
+  /// No description provided for @offlineSessionBannerOnlineHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'Internet bor — oflayn rejimdan chiqish mumkin.'**
+  String get offlineSessionBannerOnlineHint;
+
   /// No description provided for @usbResultsHeader.
   ///
   /// In uz, this message translates to:

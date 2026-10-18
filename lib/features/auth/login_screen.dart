@@ -10,6 +10,8 @@ import '../../core/api/api_client.dart';
 import '../../core/db/credential_cache.dart';
 import '../../core/network/connectivity_provider.dart';
 import '../../core/network/connectivity_service.dart';
+import '../../core/offline/lan_client_session.dart';
+import '../../core/offline/offline_session.dart';
 import '../../core/services/heartbeat_service.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
@@ -761,6 +763,7 @@ class _LoginScreenState extends State<LoginScreen>
               ),
               const SizedBox(height: 10),
               _buildNetworkStatus(palette),
+              _buildOfflineSessionBanner(palette),
               const SizedBox(height: 16),
               _buildSegmentedControl(palette),
               const SizedBox(height: 18),
@@ -802,6 +805,68 @@ class _LoginScreenState extends State<LoginScreen>
           child: Image.asset('assets/logo.png', fit: BoxFit.contain),
         ),
       ],
+    );
+  }
+
+  /// Shown only while a pack / LAN-client session has swapped the global
+  /// `api`: the normal login form cannot work in that state, so say so and
+  /// offer the one-tap way out. Never auto-exits (a student may be mid-exam).
+  Widget _buildOfflineSessionBanner(_LoginPalette palette) {
+    final l10n = AppLocalizations.of(context)!;
+    return ListenableBuilder(
+      listenable: Listenable.merge(
+          [OfflinePackSession.notifier, LanClientSession.notifier]),
+      builder: (context, _) {
+        if (!isOfflineModeOpen) return const SizedBox.shrink();
+        return Consumer(
+          builder: (context, ref, _) {
+            final signal = ref.watch(signalProvider);
+            final serverUp = !signal.checking && signal.tier != SignalTier.none;
+            return Padding(
+              key: const ValueKey('offline-session-banner'),
+              padding: const EdgeInsets.only(top: 12),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.brand.withValues(alpha: .08),
+                  borderRadius: BorderRadius.circular(13),
+                  border:
+                      Border.all(color: AppColors.brand.withValues(alpha: .35)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(l10n.offlineSessionBannerTitle,
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                            color: palette.ink1, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(
+                        serverUp
+                            ? l10n.offlineSessionBannerOnlineHint
+                            : l10n.offlineSessionBannerHint,
+                        key: const ValueKey('offline-session-banner-hint'),
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.caption
+                            .copyWith(color: palette.ink2)),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      key: const ValueKey('offline-session-banner-exit'),
+                      onPressed: () {
+                        exitOfflineMode();
+                        // Re-probe now instead of waiting for the next tick.
+                        ref.read(signalProvider.notifier).refresh();
+                      },
+                      icon: const Icon(Icons.logout_rounded),
+                      label: Text(l10n.usbExitMode),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -2195,8 +2260,8 @@ class _CatalogBottomSheetState extends State<_CatalogBottomSheet> {
       final schoolId = (ids != null && ids.length == 1)
           ? ids.first
           : (ids != null && ids.contains(key) ? key : '');
-      schoolWidgets.add(
-          _buildSchoolCard(code, schoolId, label, groups[key]!.first));
+      schoolWidgets
+          .add(_buildSchoolCard(code, schoolId, label, groups[key]!.first));
     }
 
     // 2. Add other schools from the global list

@@ -2423,6 +2423,17 @@ class AppLocalizationsRu extends AppLocalizations {
   String get usbExitMode => 'Выйти из офлайн-режима';
 
   @override
+  String get offlineSessionBannerTitle => 'Офлайн-режим открыт';
+
+  @override
+  String get offlineSessionBannerHint =>
+      'Обычный вход недоступен, пока открыт офлайн-режим.';
+
+  @override
+  String get offlineSessionBannerOnlineHint =>
+      'Интернет доступен — можно выйти из офлайн-режима.';
+
+  @override
   String get usbResultsHeader => 'Сохранённые результаты';
 
   @override
