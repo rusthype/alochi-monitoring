@@ -9,6 +9,7 @@
 import 'dart:async';
 import 'dart:io';
 import '../api/api_client.dart';
+import '../offline/lan_client_session.dart';
 
 /// 5-value latency bucket. `none` covers both a failed request and a
 /// timeout — rendered as a red X by the UI, never as "0 bars" alongside the
@@ -147,12 +148,18 @@ class ConnectivityService {
         .whenComplete(() => _pendingRetryCancels.remove(gate.cancel));
   }
 
+  /// What the chip measures. USB pack: the REAL server (OfflinePackageApi
+  /// pings are a hard false by design). LAN client: the current `api`, whose
+  /// ping() is deliberately the hub health check — in a school without
+  /// internet the chip must show the hub link, not the internet.
+  MonitoringApi get _probeApi => LanClientSession.isActive ? api : onlineApi;
+
   Future<void> _measure() async {
     if (_measuring) return;
     _measuring = true;
     try {
       final result = await pingWithRetry(
-        () => onlineApi.ping(),
+        () => _probeApi.ping(),
         timeout: _timeout,
         retryDelay: _retryDelay,
         delay: _cancellableDelay,
@@ -172,7 +179,7 @@ class ConnectivityService {
         // down" if this is ever logged) — neither flips the tier away from
         // `none`, because the app fundamentally needs api.alochi.org
         // reachable, not just generic internet.
-        final healthOk = await onlineApi
+        final healthOk = await _probeApi
             .pingHealth(timeout: _fallbackTimeout)
             .catchError((_) => false);
         if (!healthOk) await _dnsReachable();

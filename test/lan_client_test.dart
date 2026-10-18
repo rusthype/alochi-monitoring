@@ -11,6 +11,7 @@ import 'package:alochi_monitoring/core/db/offline_queue.dart';
 import 'package:alochi_monitoring/core/db/pack_results_db.dart';
 import 'package:alochi_monitoring/core/db/test_cache.dart';
 import 'package:alochi_monitoring/core/local_server/shelf_hub.dart';
+import 'package:alochi_monitoring/core/network/connectivity_service.dart';
 import 'package:alochi_monitoring/core/offline/lan_client_api.dart';
 import 'package:alochi_monitoring/core/offline/lan_client_session.dart';
 import 'package:alochi_monitoring/core/offline/lan_diagnostic_api.dart';
@@ -29,6 +30,16 @@ import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'helpers/lan_test_pack.dart';
+
+/// The "real server" on a school LAN without internet: unreachable.
+class _NoInternetApi extends MonitoringApi {
+  @override
+  Future<bool> ping() async => false;
+  @override
+  Future<bool> pingHealth(
+          {Duration timeout = const Duration(seconds: 2)}) async =>
+      false;
+}
 
 class _MemHwm implements HighWaterStore {
   @override
@@ -694,6 +705,42 @@ void main() {
   });
 
   group('mode switch', () {
+    test('connectivity chip on a LAN client measures the HUB, not the internet',
+        () async {
+      final s = await connect();
+      // A real student PC has no pack. Closing it stops the in-process hub,
+      // so a stub answers GET /health on the hub's port (hub up, internet down).
+      final port = hub.port!;
+      OfflinePackSession.close();
+      await eventually(() async => !hub.running);
+      final stub = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
+      stub.listen((r) {
+        r.response.statusCode = 200;
+        r.response.close();
+      });
+      addTearDown(() => stub.close(force: true));
+      final savedApi = api;
+      api = _NoInternetApi();
+      addTearDown(() {
+        ConnectivityService.instance.dispose();
+        api = savedApi;
+      });
+
+      await s.activate();
+      expect(api, isA<LanClientApi>());
+      await ConnectivityService.instance.refresh();
+      expect(ConnectivityService.instance.last.tier, isNot(SignalTier.none));
+
+      s.close();
+      // Leaving LAN mode: the (unreachable) real client is probed again.
+      expect(api, isA<_NoInternetApi>());
+      await ConnectivityService.instance.refresh();
+      expect(ConnectivityService.instance.last.tier, SignalTier.none);
+
+      await OfflinePackSession.open(
+          lanTestPack(), Directory(p.join(tmp.path, 'media_again2')));
+    });
+
     test('activate() swaps the global clients; close() restores them',
         () async {
       final s = await connect();

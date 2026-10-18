@@ -821,7 +821,11 @@ class _LoginScreenState extends State<LoginScreen>
         return Consumer(
           builder: (context, ref, _) {
             final signal = ref.watch(signalProvider);
-            final serverUp = !signal.checking && signal.tier != SignalTier.none;
+            // "Internet is up" is only meaningful for a USB pack; on a LAN
+            // client the chip measures the hub link.
+            final serverUp = OfflinePackSession.isActive &&
+                !signal.checking &&
+                signal.tier != SignalTier.none;
             return Padding(
               key: const ValueKey('offline-session-banner'),
               padding: const EdgeInsets.only(top: 12),
