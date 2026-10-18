@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import '../../../core/offline/offline_session.dart';
 import '../../../core/utils/student_name_formatter.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../widgets/celebration_particles.dart';
@@ -146,7 +147,10 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
                 child: CelebrationParticles(animation: _particlesController),
               ),
             ),
-            const Positioned(top: 12, right: 12, child: SyncStatusBadge()),
+            // Pack mode: answers sit in the pack, not on the server, so the
+            // green "synced" badge would be false.
+            if (!OfflinePackSession.isActive)
+              const Positioned(top: 12, right: 12, child: SyncStatusBadge()),
             Center(
               child: SingleChildScrollView(
                 child: Padding(
@@ -257,7 +261,9 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
                             children: [
                               _StatusPill(
                                 icon: Icons.check_circle_rounded,
-                                label: l10n.diagnosticFinishedSubmittedPill,
+                                label: OfflinePackSession.isActive
+                                    ? l10n.usbSavedTitle
+                                    : l10n.diagnosticFinishedSubmittedPill,
                                 color: AppColors.success,
                               ),
                               if (widget.subjectsCompleted.isNotEmpty)

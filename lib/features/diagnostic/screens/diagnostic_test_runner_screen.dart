@@ -24,6 +24,7 @@ import '../../../core/db/attempt_store.dart';
 import '../../../core/db/diagnostic_answer_store.dart';
 import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/db/offline_queue.dart';
+import '../../../core/offline/offline_session.dart';
 import '../../../core/session/session_handoff.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../core/services/heartbeat_service.dart';
@@ -1643,7 +1644,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // again inside the same throttle window instead of succeeding.
       final status = e is ApiException ? e.statusCode : 0;
       final isNetworkFailure = status == 0 || status >= 500 || status == 429;
-      if (isNetworkFailure) {
+      // Pack mode: a failed chain write must surface (retry UI), never be
+      // queued for the online server under an `offline|...` attempt id.
+      if (isNetworkFailure && !OfflinePackSession.isActive) {
         // The finish-call itself failed transiently, but we still know the
         // full subject order locally — don't end the whole diagnostic if
         // there's another subject left to attempt (diagnostic-premature-
@@ -1808,6 +1811,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     int? mathScore,
     int? englishScore,
   }) async {
+    // Pack mode: nothing is sent and there is no score, so a 'sent' row would
+    // lie, and the roster names would outlive the pack in this plain on-disk
+    // DB. The pack's own chain is the record.
+    if (OfflinePackSession.isActive) return;
     try {
       await DiagnosticHistoryDb.upsert(
         attemptId: widget.attemptId,

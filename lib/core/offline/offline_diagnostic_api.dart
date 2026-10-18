@@ -17,7 +17,10 @@
 // the student taps is the letter the server expects.
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart';
+import '../db/diagnostic_answer_store.dart';
 import '../api/api_client.dart' show ApiException;
 import 'offline_crypto.dart';
 import 'offline_errors.dart';
@@ -173,8 +176,12 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
     required String attemptId,
     required String subject,
   }) async =>
-      // No server-side package to warm: the runner starts live (from the pack).
-      const {'fixed_variant': false};
+      // The pack IS the package: report it as a ready fixed variant so the
+      // roster doesn't flag every student "needs online" (CAT-only marker).
+      {
+        ...await startAttempt(attemptId: attemptId, subject: subject),
+        'fixed_variant': true,
+      };
 
   @override
   Future<Map<String, dynamic>> startAttempt({
@@ -347,6 +354,16 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
         _keyPrefix(session.packUuid, a.studentId, a.groupId, finished.subject);
     final attemptNo = await session.nextAttemptOrdinal(seed);
     await session.recordResult(payload, token: '$seed$attemptNo');
+    // The runner autosaved these into DiagnosticAnswerStore (unsynced); the
+    // chain row is their only destination, so close them out or they would be
+    // re-sent to the real server as attempt `offline|...` once online again.
+    try {
+      await DiagnosticAnswerStore.markSynced(attemptId,
+          answers.map((e) => (e['question_id'] ?? '').toString()).toList());
+    } catch (e) {
+      debugPrint(
+          'OfflineDiagnosticKioskApi: markSynced failed (non-fatal): $e');
+    }
 
     final idx = subjects.indexOf(finished.subject);
     final next =
