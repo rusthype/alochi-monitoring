@@ -1,3 +1,4 @@
+import '../../shared/widgets/exit_error_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
@@ -105,7 +106,10 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final entry = ref.watch(selectedCatalogEntryProvider);
-    if (entry == null) return const Scaffold();
+    if (entry == null) {
+      return ExitErrorScaffold(
+          message: AppLocalizations.of(context)!.testLoadFailed);
+    }
     if (_selected == null) {
       return const Scaffold(
         backgroundColor: AppColors.pageBg,

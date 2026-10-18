@@ -43,6 +43,7 @@ import '../../core/sync/sync_service.dart';
 import '../../core/offline/lan_client_session.dart';
 import '../../core/offline/offline_session.dart';
 import '../offline/offline_saved_screen.dart';
+import '../../shared/widgets/exit_error_scaffold.dart';
 import '../../shared/theme/app_theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -347,16 +348,16 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   @override
   Widget build(BuildContext context) {
     if (_parseDataEmpty) {
-      return _ErrorScaffold(
+      return ExitErrorScaffold(
           message: AppLocalizations.of(context)!.testDataEmptyMsg);
     }
     if (_parseException != null) {
-      return _ErrorScaffold(
+      return ExitErrorScaffold(
           message: AppLocalizations.of(context)!
               .testLoadErrorMsg(_parseException.toString()));
     }
     if (_spec == null) {
-      return _ErrorScaffold(
+      return ExitErrorScaffold(
           message: AppLocalizations.of(context)!.testLoadFailed);
     }
     if (_offlineSaved || _offlineSaveFailed) {
@@ -490,48 +491,6 @@ _Agg _sumSections(List<SectionScore> sections) {
 }
 
 // ── Error scaffold ────────────────────────────────────────────────────────────
-
-class _ErrorScaffold extends StatelessWidget {
-  final String message;
-  const _ErrorScaffold({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        leading: const BackButton(color: AppColors.ink1),
-        title: Text(AppLocalizations.of(context)!.testTitle,
-            style: AppTextStyles.titleMedium),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline_rounded,
-                  size: 56, color: AppColors.err),
-              const SizedBox(height: 16),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.bodyLarge.copyWith(color: AppColors.ink2),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(AppLocalizations.of(context)!.backButton),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _EngineResultScreen

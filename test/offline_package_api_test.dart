@@ -217,6 +217,13 @@ void main() {
       expect(forG1.first['version'], 3);
     });
 
+    test('catalog entries are "cached" while a pack is open (no download)',
+        () async {
+      final entries = await testCatalogService.refresh(groupId: _g1);
+      expect(entries, isNotEmpty);
+      expect(entries.every((e) => e.status == CatalogStatus.cached), isTrue);
+    });
+
     test('fetchTest returns the body; download lands in MEMORY, not sqlite',
         () async {
       final data = await api.fetchTest('t_all');

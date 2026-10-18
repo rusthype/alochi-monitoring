@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../api/api_client.dart';
 import '../cache/image_cache_manager.dart';
 import '../db/test_cache.dart';
+import '../offline/lan_client_session.dart' show isOfflineModeOpen;
 
 /// Test katalog yozuvi holati.
 enum CatalogStatus {
@@ -85,7 +86,8 @@ class CatalogEntry {
 
   /// Test so'nggi [_newThreshold] ichida yaratilganmi.
   bool get isNew =>
-      createdAt != null && DateTime.now().difference(createdAt!) < _newThreshold;
+      createdAt != null &&
+      DateTime.now().difference(createdAt!) < _newThreshold;
 
   const CatalogEntry({
     required this.testKey,
@@ -176,7 +178,8 @@ class TestCatalogService {
       // GroupSelectScreen._selectGroup) buni ochiq xato holati sifatida
       // ko'rsatib, qayta urinish imkonini bersin — jim tarzda bo'sh ro'yxat
       // qaytarish o'rniga.
-      if (cachedRows.isEmpty) throw fetchError ?? Exception('catalog fetch failed');
+      if (cachedRows.isEmpty)
+        throw fetchError ?? Exception('catalog fetch failed');
       return cachedRows.map((row) {
         final key = row['test_key']?.toString() ?? '';
         final title = row['title']?.toString() ?? '';
@@ -203,7 +206,11 @@ class TestCatalogService {
 
       final cachedVer = cachedVersions[key];
       final CatalogStatus status;
-      if (cachedVer == null) {
+      if (isOfflineModeOpen) {
+        // USB pack / LAN client: the content is served from the pack itself,
+        // so there is nothing to download — never show "Не скачано".
+        status = CatalogStatus.cached;
+      } else if (cachedVer == null) {
         status = CatalogStatus.notDownloaded;
       } else if (version > cachedVer) {
         status = CatalogStatus.updatable;

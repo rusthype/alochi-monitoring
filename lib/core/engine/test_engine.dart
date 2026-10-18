@@ -19,6 +19,7 @@ import '../services/heartbeat_service.dart';
 import '../services/proctor_service.dart';
 import '../security/monitored_clock.dart';
 import '../../features/test/question_report_sheet.dart';
+import '../../shared/widgets/exit_error_scaffold.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TestEngine
@@ -340,8 +341,7 @@ class _TestEngineState extends State<TestEngine>
         ticksAtSaveMs: (localAnswers?['ticks_at_save'] as num?)?.toInt(),
       );
       final shift = _deadlineMs! - savedDeadline;
-      _startedAtMs =
-          startedRaw is num ? startedRaw.toInt() + shift : nowMs;
+      _startedAtMs = startedRaw is num ? startedRaw.toInt() + shift : nowMs;
       resumed = true;
     }
 
@@ -673,9 +673,8 @@ class _TestEngineState extends State<TestEngine>
 
     final result = TestScorer.score(widget.spec, _variantKey, _answers);
     final startedAtMs = _startedAtMs;
-    final elapsedSeconds = startedAtMs != null
-        ? ((_nowMs - startedAtMs) / 1000).round()
-        : null;
+    final elapsedSeconds =
+        startedAtMs != null ? ((_nowMs - startedAtMs) / 1000).round() : null;
     widget.onComplete(result,
         (elapsedSeconds != null && elapsedSeconds > 0) ? elapsedSeconds : null);
   }
@@ -686,15 +685,8 @@ class _TestEngineState extends State<TestEngine>
   Widget build(BuildContext context) {
     final sections = _sections;
     if (sections.isEmpty) {
-      return Scaffold(
-        backgroundColor: AppColors.bg,
-        body: Center(
-          child: Text(
-            AppLocalizations.of(context)!.testDataNotFoundMsg,
-            style: const TextStyle(color: AppColors.ink2),
-          ),
-        ),
-      );
+      return ExitErrorScaffold(
+          message: AppLocalizations.of(context)!.testDataNotFoundMsg);
     }
 
     final progress =
