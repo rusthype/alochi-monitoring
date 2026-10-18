@@ -178,8 +178,9 @@ class TestCatalogService {
       // GroupSelectScreen._selectGroup) buni ochiq xato holati sifatida
       // ko'rsatib, qayta urinish imkonini bersin — jim tarzda bo'sh ro'yxat
       // qaytarish o'rniga.
-      if (cachedRows.isEmpty)
+      if (cachedRows.isEmpty) {
         throw fetchError ?? Exception('catalog fetch failed');
+      }
       return cachedRows.map((row) {
         final key = row['test_key']?.toString() ?? '';
         final title = row['title']?.toString() ?? '';
