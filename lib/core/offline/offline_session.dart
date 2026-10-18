@@ -168,6 +168,28 @@ class OfflinePackSession implements OfflineContentSource {
   Future<bool> hasAttempt(String keyPrefix) async =>
       await PackResultsDb.countKeyPrefix(pack.packUuid, keyPrefix) > 0;
 
+  /// Student ids (the payload's `student_id`, = the roster `id`) that already
+  /// have a stored result for [testKey]. Monitoring keys are random UUIDs (no
+  /// per-student prefix like the diagnostic's), so the done-state is read from
+  /// the payloads. ponytail: decrypts the whole chain per roster load; add a
+  /// key->student index if packs grow past a few thousand rows.
+  Future<Set<String>> finishedStudentIds(String testKey) async {
+    final out = <String>{};
+    for (final r in await PackResultsDb.rowsForPack(pack.packUuid)) {
+      try {
+        final m = jsonDecode(r.payloadJson);
+        if (m is! Map) continue;
+        final d = m['detail'];
+        final key = (d is Map ? d['test_key'] : null) ?? m['test_key'];
+        final sid = m['student_id']?.toString() ?? '';
+        if (sid.isNotEmpty && key?.toString() == testKey) out.add(sid);
+      } catch (e) {
+        debugPrint('finishedStudentIds: skipped unreadable row: $e');
+      }
+    }
+    return out;
+  }
+
   @override
   Future<void> prepareMedia(Object? data) async {} // images already on disk
 

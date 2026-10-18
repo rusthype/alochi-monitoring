@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
 import '../../../shared/theme/app_theme.dart';
+import '../../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
 import '../../../core/offline/offline_session.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../data/diagnostic_prefetch_cache.dart';
@@ -605,6 +606,8 @@ class _DiagnosticStudentSelectScreenState
                                     ),
                                   ),
                                   const SizedBox(height: 12),
+                                  // Pack/LAN content is already local: nothing to download.
+                                  if (!isOfflineModeOpen)
                                   Align(
                                     alignment: Alignment.centerRight,
                                     child: OutlinedButton.icon(

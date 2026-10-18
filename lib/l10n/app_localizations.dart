@@ -63,7 +63,7 @@ import 'app_localizations_uz.dart';
 /// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
-      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -86,16 +86,16 @@ abstract class AppLocalizations {
   /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('ru'),
-    Locale('uz')
+    Locale('uz'),
   ];
 
   /// No description provided for @appTitle.
@@ -1069,7 +1069,9 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'{fromSubject} yakunlandi! Endi {toSubject} boshlanadi'**
   String diagnosticSubjectTransitionMessage(
-      String fromSubject, String toSubject);
+    String fromSubject,
+    String toSubject,
+  );
 
   /// No description provided for @finishConfirmTitle.
   ///
@@ -5078,14 +5080,22 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Hozirgi: {device} ({ip}) · {ago} oldin ulangan · {status}'**
   String lanSeatPartyHolder(
-      String device, String ip, String ago, String status);
+    String device,
+    String ip,
+    String ago,
+    String status,
+  );
 
   /// No description provided for @lanSeatPartyClaimant.
   ///
   /// In uz, this message translates to:
   /// **'Yangi: {device} ({ip}) · {ago} oldin ulangan · {status}'**
   String lanSeatPartyClaimant(
-      String device, String ip, String ago, String status);
+    String device,
+    String ip,
+    String ago,
+    String status,
+  );
 
   /// No description provided for @lanSeatMore.
   ///
@@ -5194,6 +5204,18 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Qayta boshlash'**
   String get diagnosticRetakeConfirm;
+
+  /// No description provided for @testRetakeBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu o\'quvchi bu testni allaqachon topshirgan. Yana bir urinish boshlansinmi?'**
+  String get testRetakeBody;
+
+  /// No description provided for @rosterDoneBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Topshirgan'**
+  String get rosterDoneBadge;
 }
 
 class _AppLocalizationsDelegate
@@ -5223,8 +5245,9 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   }
 
   throw FlutterError(
-      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-      'an issue with the localizations generation tool. Please file an issue '
-      'on GitHub with a reproducible sample app and the gen-l10n configuration '
-      'that was used.');
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
 }
