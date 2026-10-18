@@ -4,16 +4,41 @@
 // ignore_for_file: prefer_const_constructors
 import 'dart:io';
 
+import 'package:alochi_monitoring/core/db/offline_queue.dart';
+import 'package:alochi_monitoring/core/offline/lan_client_session.dart';
 import 'package:alochi_monitoring/core/offline/offline_keys.dart';
+import 'package:alochi_monitoring/core/offline/offline_session.dart';
+import 'package:alochi_monitoring/core/offline/pack_loader.dart';
 import 'package:alochi_monitoring/features/offline/offline_control_center_dialog.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 // ignore: depend_on_referenced_packages
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 const _dir = 'test/fixtures/offline';
+
+class _CancelPicker extends FilePicker with MockPlatformInterfaceMixin {
+  @override
+  Future<FilePickerResult?> pickFiles({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    Function(FilePickerStatus)? onFileLoading,
+    bool allowCompression = true,
+    int compressionQuality = 30,
+    bool allowMultiple = false,
+    bool withData = false,
+    bool withReadStream = false,
+    bool lockParentWindow = false,
+    bool readSequential = false,
+  }) async =>
+      null;
+}
 
 class _FakePicker extends FilePicker with MockPlatformInterfaceMixin {
   _FakePicker(this.path);
@@ -68,5 +93,46 @@ void main() {
 
     expect(find.text(l10n.usbErrRead), findsNothing);
     expect(find.text(l10n.usbPinTitle), findsOneWidget);
+  });
+
+  testWidgets('cancelling the file dialog keeps the already open pack',
+      (tester) async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    final tmp = Directory.systemTemp.createTempSync('dlg_cancel_');
+    addTearDown(() async {
+      exitOfflineMode();
+      await OfflineQueue.resetForTest();
+      tmp.deleteSync(recursive: true);
+    });
+    await tester.runAsync(() async {
+      await OfflineQueue.openAtPath(p.join(tmp.path, 'q.db'));
+      final media = Directory(p.join(tmp.path, 'media'))..createSync();
+      final pack = await PackLoader(keys: OfflineKeys.current).open(
+          File('$_dir/golden.alochipack').readAsBytesSync(), '12345678',
+          mediaDir: media);
+      await OfflinePackSession.open(pack, media);
+    });
+    final opened = OfflinePackSession.current;
+    expect(opened, isNotNull);
+
+    FilePicker.platform = _CancelPicker();
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('uz'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: const Scaffold(body: OfflineControlCenterDialog()),
+    ));
+    await tester.pump();
+    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+    expect(find.text(l10n.usbNoPackOpen), findsNothing);
+
+    await tester.tap(find.text(l10n.usbLoadPack));
+    await tester.pump();
+    await tester.pump();
+
+    expect(identical(OfflinePackSession.current, opened), isTrue);
+    expect(find.text(l10n.usbNoPackOpen), findsNothing);
+    expect(find.text(l10n.usbStartTests), findsOneWidget);
   });
 }

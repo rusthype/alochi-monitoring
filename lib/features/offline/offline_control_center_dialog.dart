@@ -12,10 +12,8 @@
 // everything is disabled behind a "not configured" notice — release builds
 // never fall back to test keys.
 import 'dart:async';
-import 'dart:io';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -30,6 +28,7 @@ import '../../core/offline/pack_loader.dart';
 import '../../core/offline/results_exporter.dart';
 import '../../shared/theme/app_theme.dart';
 import 'lan_connect_dialog.dart';
+import 'safe_file_picker.dart';
 
 Future<void> showOfflineControlCenter(BuildContext context) {
   return showDialog<void>(
@@ -123,12 +122,9 @@ class _OfflineControlCenterDialogState
 
   Future<void> _loadPackInner({bool thenOpenHub = false}) async {
     final l10n = AppLocalizations.of(context)!;
-    final picked = await FilePicker.platform.pickFiles(
-      dialogTitle: l10n.usbPickPackTitle,
-      type: FileType.custom,
-      allowedExtensions: const ['alochipack'],
-    );
-    final path = picked?.files.single.path;
+    final path = await pickPackFile(title: l10n.usbPickPackTitle);
+    // Cancel is a pure no-op: the open pack (OfflinePackSession.current) and
+    // everything derived from it stay untouched.
     if (path == null) return;
 
     setState(() {
@@ -242,24 +238,21 @@ class _OfflineControlCenterDialogState
       _say(l10n.usbExportNothing);
       return;
     }
-    final dirPath = await FilePicker.platform
-        .getDirectoryPath(dialogTitle: l10n.usbPickExportFolder);
-    if (dirPath == null) return;
-
     setState(() {
       _busy = true;
       _busyLabel = null;
       _message = null;
     });
     try {
+      final dir = await defaultExportDir();
       final exporter = ResultsExporter(keys: _keys);
       var total = 0;
       String lastFile = '';
       for (final s in list) {
-        final out = await exporter.exportPack(s.packUuid, Directory(dirPath),
+        final out = await exporter.exportPack(s.packUuid, dir,
             schoolCode: s.schoolCode);
         total += out.count;
-        lastFile = out.file.uri.pathSegments.last;
+        lastFile = out.file.path;
       }
       await _refresh();
       _say(l10n.usbExportDone(total, lastFile));

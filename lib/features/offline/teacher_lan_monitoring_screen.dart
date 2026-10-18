@@ -8,10 +8,8 @@
 // Frames come straight from the hub's memory (ShelfHub.state.frameOf) and are
 // only ever drawn with Image.memory — nothing here touches the disk.
 import 'dart:async';
-import 'dart:io';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -22,6 +20,7 @@ import '../../core/offline/offline_keys.dart';
 import '../../core/offline/offline_session.dart';
 import '../../core/offline/results_exporter.dart';
 import '../../shared/theme/app_theme.dart';
+import 'safe_file_picker.dart';
 
 /// `m:ss` / `h:mm:ss`.
 String formatRemaining(int seconds) {
@@ -128,20 +127,16 @@ class _TeacherLanMonitoringScreenState
     final session = OfflinePackSession.current;
     if (session == null || _exporting) return;
     final l10n = AppLocalizations.of(context)!;
-    final dirPath = await FilePicker.platform
-        .getDirectoryPath(dialogTitle: l10n.usbPickExportFolder);
-    if (dirPath == null) return;
     setState(() {
       _exporting = true;
       _exportMessage = null;
     });
     try {
       final out = await ResultsExporter(keys: OfflineKeys.current).exportPack(
-          session.pack.packUuid, Directory(dirPath),
+          session.pack.packUuid, await defaultExportDir(),
           schoolCode: session.pack.schoolCode);
       _exportIsError = false;
-      _exportMessage =
-          l10n.usbExportDone(out.count, out.file.uri.pathSegments.last);
+      _exportMessage = l10n.usbExportDone(out.count, out.file.path);
     } on ExportException catch (e) {
       _exportIsError = e.code == ExportError.notConfigured;
       _exportMessage = e.code == ExportError.notConfigured
