@@ -1468,5 +1468,8 @@
     }
   },
   "lanSeatCollapse": "Свернуть",
-  "diagnosticOnlineRequiredTooltip": "Требуется интернет"
+  "diagnosticOnlineRequiredTooltip": "Требуется интернет",
+  "diagnosticRetakeTitle": "Ученик уже сдал",
+  "diagnosticRetakeBody": "Этот ученик уже сдал все предметы. Начать ещё одну попытку?",
+  "diagnosticRetakeConfirm": "Начать заново"
 }

@@ -16,6 +16,11 @@ abstract class OfflineContentSource {
   /// (`<keyPrefix><ordinal>`); must not repeat for a genuine retake.
   Future<int> nextAttemptOrdinal(String keyPrefix);
 
+  /// Whether at least one result whose idempotency key starts with
+  /// [keyPrefix] is already stored (exported or not). Drives the roster's
+  /// "done" marker; a source without a local chain answers false.
+  Future<bool> hasAttempt(String keyPrefix);
+
   /// Stores one finished result (chain row in USB mode, hub outbox in LAN).
   Future<void> recordResult(Map<String, dynamic> payload, {String? token});
 

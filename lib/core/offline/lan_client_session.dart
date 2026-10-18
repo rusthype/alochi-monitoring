@@ -711,6 +711,11 @@ class LanClientSession implements OfflineContentSource {
   List<Map<String, dynamic>> testsOfType(String type) =>
       type == 'diagnostic' ? _diagTests : const <Map<String, dynamic>>[];
 
+  // ponytail: the LAN client keeps no chain, so no "done" marker there; the
+  // hub owns the results. Add a hub query if the roster must show it too.
+  @override
+  Future<bool> hasAttempt(String keyPrefix) async => false;
+
   static int _lastOrdinal = 0;
 
   /// Unique per submission (the client keeps no chain to count rows in).

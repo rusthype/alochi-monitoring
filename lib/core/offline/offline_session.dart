@@ -85,36 +85,44 @@ class OfflinePackSession implements OfflineContentSource {
     }
   }
 
+  static final Mutex _openLock = Mutex();
+
   /// Switches the app into pack mode for [pack] (already unlocked; its images
   /// are already extracted into [mediaDir]).
-  static Future<OfflinePackSession> open(
-      LoadedPack pack, Directory mediaDir) async {
-    if (current != null) _restoreOnline();
+  ///
+  /// Opens are serialised and every awaited step runs BEFORE the active
+  /// session is touched: a second open (double click, re-open of the same
+  /// pack) that fails must never leave the first one closed, and two opens
+  /// must never both park "the online api" (the second would park the first's
+  /// offline api and close() could never get back online).
+  static Future<OfflinePackSession> open(LoadedPack pack, Directory mediaDir) =>
+      _openLock.run(() async {
+        await PackResultsDb.registerPack(
+          packUuid: pack.packUuid,
+          schoolCode: pack.schoolCode,
+          expiresAt: pack.manifest.expiresAt,
+        );
+        try {
+          await PackResultsDb.purgeExpired();
+        } catch (e) {
+          debugPrint('OfflinePackSession: purgeExpired failed (non-fatal): $e');
+        }
 
-    await PackResultsDb.registerPack(
-      packUuid: pack.packUuid,
-      schoolCode: pack.schoolCode,
-      expiresAt: pack.manifest.expiresAt,
-    );
-    try {
-      await PackResultsDb.purgeExpired();
-    } catch (e) {
-      debugPrint('OfflinePackSession: purgeExpired failed (non-fatal): $e');
-    }
-
-    final session = OfflinePackSession._(pack, mediaDir);
-    parkedOnlineApi = api;
-    _onlineDiagnosticApi = diagnosticKioskApi;
-    api = OfflinePackageApi(session);
-    diagnosticKioskApi = OfflineDiagnosticKioskApi(session);
-    TestCache.enterMemoryMode();
-    OfflineMedia.root = mediaDir;
-    MonitoredClock.instance.packCreatedAt = pack.manifest.createdAt;
-    current = session;
-    notifier.value = session;
-    await cleanupMedia(keepPackUuid: pack.packUuid);
-    return session;
-  }
+        // From here to `notifier.value = session` nothing awaits.
+        if (current != null) _restoreOnline();
+        final session = OfflinePackSession._(pack, mediaDir);
+        parkedOnlineApi = api;
+        _onlineDiagnosticApi = diagnosticKioskApi;
+        api = OfflinePackageApi(session);
+        diagnosticKioskApi = OfflineDiagnosticKioskApi(session);
+        TestCache.enterMemoryMode();
+        OfflineMedia.root = mediaDir;
+        MonitoredClock.instance.packCreatedAt = pack.manifest.createdAt;
+        current = session;
+        notifier.value = session;
+        await cleanupMedia(keepPackUuid: pack.packUuid);
+        return session;
+      });
 
   /// Back to online mode. Drops the in-memory content and the chain key, and
   /// deletes the extracted images.
@@ -155,6 +163,10 @@ class OfflinePackSession implements OfflineContentSource {
   @override
   Future<int> nextAttemptOrdinal(String keyPrefix) async =>
       await PackResultsDb.countKeyPrefix(pack.packUuid, keyPrefix) + 1;
+
+  @override
+  Future<bool> hasAttempt(String keyPrefix) async =>
+      await PackResultsDb.countKeyPrefix(pack.packUuid, keyPrefix) > 0;
 
   @override
   Future<void> prepareMedia(Object? data) async {} // images already on disk

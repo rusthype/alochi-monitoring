@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
 import '../../../shared/theme/app_theme.dart';
+import '../../../core/offline/offline_session.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../data/diagnostic_prefetch_cache.dart';
 import '../utils/diagnostic_image_prefetch.dart';
@@ -238,7 +239,8 @@ class _DiagnosticStudentSelectScreenState
       if (subjectsResp == null) {
         final availableSubjects = widget.availableSubjectsOverride ??
             diagnosticKioskApi.availableSubjects;
-        subjectsResp = await availableSubjects(grade, language: widget.language);
+        subjectsResp =
+            await availableSubjects(grade, language: widget.language);
         _subjectsByGradeLanguage[subjectsCacheKey] = subjectsResp;
       }
       final subjects = (subjectsResp['subjects'] as List?)
@@ -408,6 +410,13 @@ class _DiagnosticStudentSelectScreenState
       }
     }
     if (!mounted) return;
+    // A fully finished student must not silently get a duplicate attempt.
+    if (OfflinePackSession.isActive &&
+        s['status'] == 'completed' &&
+        !await _confirmRetake()) {
+      return;
+    }
+    if (!mounted) return;
     if (!widget.hasWebTest) {
       _startCat(s);
       return;
@@ -426,8 +435,53 @@ class _DiagnosticStudentSelectScreenState
     }
   }
 
+  Future<bool> _confirmRetake() async {
+    final l10n = AppLocalizations.of(context)!;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.diagnosticRetakeTitle),
+        content: Text(l10n.diagnosticRetakeBody),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.cancel)),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l10n.diagnosticRetakeConfirm)),
+        ],
+      ),
+    );
+    return ok == true;
+  }
+
+  /// Set when a test was launched from this roster. The finished screen
+  /// returns with `go()` (same route, State reused, push-future never
+  /// completes), so the router's rebuild (didUpdateWidget) is the signal: the
+  /// roster then re-reads the chain and drops the previous student's selection.
+  bool _attemptLaunched = false;
+
+  void _afterAttempt() {
+    // The router also rebuilds this widget when the runner is pushed on top;
+    // only a roster that is the current route again has been returned to.
+    if (!_attemptLaunched || !mounted) return;
+    if (ModalRoute.of(context)?.isCurrent == false) return;
+    _attemptLaunched = false;
+    setState(() => _selected = null);
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(DiagnosticStudentSelectScreen old) {
+    super.didUpdateWidget(old);
+    if (_attemptLaunched) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _afterAttempt());
+    }
+  }
+
   void _startCat(Map<String, dynamic> s) {
     final attemptId = (s['attempt_id'] ?? '').toString();
+    _attemptLaunched = true;
     context.push('/diagnostic_test_runner', extra: {
       'attemptId': attemptId,
       // Raw (unformatted) name on purpose — this flows into
@@ -455,7 +509,7 @@ class _DiagnosticStudentSelectScreenState
       // Same "may still be in flight" caveat as prefetchedSubjects above —
       // an empty/absent list just falls back to the runner's own live fetch.
       'prefetchedAllSubjects': _allSubjectsCache[attemptId] ?? const <String>[],
-    });
+    }).then((_) => _afterAttempt());
   }
 
   Future<void> _startWebTest(Map<String, dynamic> s) async {

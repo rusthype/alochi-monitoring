@@ -1520,5 +1520,8 @@
     }
   },
   "lanSeatCollapse": "Yig'ish",
-  "diagnosticOnlineRequiredTooltip": "Onlayn kerak"
+  "diagnosticOnlineRequiredTooltip": "Onlayn kerak",
+  "diagnosticRetakeTitle": "O'quvchi allaqachon topshirgan",
+  "diagnosticRetakeBody": "Bu o'quvchi barcha fanlarni topshirib bo'lgan. Yana bir urinish boshlansinmi?",
+  "diagnosticRetakeConfirm": "Qayta boshlash"
 }

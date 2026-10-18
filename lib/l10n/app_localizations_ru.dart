@@ -2822,4 +2822,14 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get diagnosticOnlineRequiredTooltip => 'Требуется интернет';
+
+  @override
+  String get diagnosticRetakeTitle => 'Ученик уже сдал';
+
+  @override
+  String get diagnosticRetakeBody =>
+      'Этот ученик уже сдал все предметы. Начать ещё одну попытку?';
+
+  @override
+  String get diagnosticRetakeConfirm => 'Начать заново';
 }

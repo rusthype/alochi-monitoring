@@ -107,7 +107,21 @@ class _OfflineControlCenterDialogState
 
   // ── load a pack ────────────────────────────────────────────────────────────
 
+  /// True from the first tap until the flow ends, so a double click on
+  /// "open" (or on the PIN dialog's button) cannot start a second unlock/open.
+  bool _loadingPack = false;
+
   Future<void> _loadPack({bool thenOpenHub = false}) async {
+    if (_loadingPack || _busy) return;
+    _loadingPack = true;
+    try {
+      await _loadPackInner(thenOpenHub: thenOpenHub);
+    } finally {
+      _loadingPack = false;
+    }
+  }
+
+  Future<void> _loadPackInner({bool thenOpenHub = false}) async {
     final l10n = AppLocalizations.of(context)!;
     final picked = await FilePicker.platform.pickFiles(
       dialogTitle: l10n.usbPickPackTitle,
@@ -490,12 +504,16 @@ class _PinDialogState extends State<_PinDialog> {
     super.dispose();
   }
 
+  bool _submitted = false;
+
   void _submit() {
+    if (_submitted) return;
     final pin = _ctrl.text.trim();
     if (!RegExp(r'^\d{8}$').hasMatch(pin)) {
       setState(() => _error = AppLocalizations.of(context)!.usbPinInvalid);
       return;
     }
+    _submitted = true;
     Navigator.of(context).pop(pin);
   }
 

@@ -2833,4 +2833,14 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get diagnosticOnlineRequiredTooltip => 'Onlayn kerak';
+
+  @override
+  String get diagnosticRetakeTitle => 'O\'quvchi allaqachon topshirgan';
+
+  @override
+  String get diagnosticRetakeBody =>
+      'Bu o\'quvchi barcha fanlarni topshirib bo\'lgan. Yana bir urinish boshlansinmi?';
+
+  @override
+  String get diagnosticRetakeConfirm => 'Qayta boshlash';
 }

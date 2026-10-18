@@ -149,16 +149,39 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
         .where((g) => g['name']?.toString() == classLabel)
         .map((g) => g['id']?.toString() ?? '')
         .toSet();
-    final rows = session.students
-        .where((s) => groupIds.contains(s['group_id']?.toString()))
-        .map((s) => <String, dynamic>{
-              'attempt_id': _attemptId(s['id']?.toString() ?? '',
-                  s['group_id']?.toString() ?? '', lang),
-              'student_name': s['name']?.toString() ?? '',
-              'class_label': classLabel,
-              'language': lang,
-            })
-        .toList();
+    final rows = <Map<String, dynamic>>[];
+    for (final s in session.students) {
+      final gid = s['group_id']?.toString() ?? '';
+      if (!groupIds.contains(gid)) continue;
+      final sid = s['id']?.toString() ?? '';
+      // Same signal the online roster carries: status + next_subject, here
+      // derived from the chain (exported and unexported rows both count).
+      final group = _group(gid);
+      final subjects =
+          _subjectsOf(_matching(group == null ? null : _gradeOf(group), lang));
+      String? next;
+      var done = 0;
+      for (final sub in subjects) {
+        if (await session
+            .hasAttempt(_keyPrefix(session.packUuid, sid, gid, sub))) {
+          done++;
+        } else {
+          next ??= sub;
+        }
+      }
+      rows.add(<String, dynamic>{
+        'attempt_id': _attemptId(sid, gid, lang),
+        'student_name': s['name']?.toString() ?? '',
+        'class_label': classLabel,
+        'language': lang,
+        'status': subjects.isEmpty || done == 0
+            ? 'not_started'
+            : done == subjects.length
+                ? 'completed'
+                : 'partial',
+        'next_subject': next ?? '',
+      });
+    }
     return (rows, false);
   }
 

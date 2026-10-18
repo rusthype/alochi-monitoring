@@ -5176,6 +5176,24 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Onlayn kerak'**
   String get diagnosticOnlineRequiredTooltip;
+
+  /// No description provided for @diagnosticRetakeTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'O\'quvchi allaqachon topshirgan'**
+  String get diagnosticRetakeTitle;
+
+  /// No description provided for @diagnosticRetakeBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu o\'quvchi barcha fanlarni topshirib bo\'lgan. Yana bir urinish boshlansinmi?'**
+  String get diagnosticRetakeBody;
+
+  /// No description provided for @diagnosticRetakeConfirm.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qayta boshlash'**
+  String get diagnosticRetakeConfirm;
 }
 
 class _AppLocalizationsDelegate
