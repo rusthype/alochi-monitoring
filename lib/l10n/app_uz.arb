@@ -1219,7 +1219,7 @@
     }
   },
   "usbExportOne": "Eksport",
-  "usbExportDone": "Eksport qilindi: {count} ta natija ({file})",
+  "usbExportDone": "{count, plural, other{Eksport qilindi: {count} ta natija ({file})}}",
   "@usbExportDone": {
     "placeholders": {
       "count": {

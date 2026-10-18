@@ -2459,7 +2459,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String usbExportDone(int count, String file) {
-    return 'Экспортировано: $count результатов ($file)';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Экспортировано: $count результата ($file)',
+      many: 'Экспортировано: $count результатов ($file)',
+      few: 'Экспортировано: $count результата ($file)',
+      one: 'Экспортировано: $count результат ($file)',
+    );
+    return '$_temp0';
   }
 
   @override

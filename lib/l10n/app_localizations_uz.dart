@@ -2474,7 +2474,12 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String usbExportDone(int count, String file) {
-    return 'Eksport qilindi: $count ta natija ($file)';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Eksport qilindi: $count ta natija ($file)',
+    );
+    return '$_temp0';
   }
 
   @override

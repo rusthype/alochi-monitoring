@@ -4596,7 +4596,7 @@ abstract class AppLocalizations {
   /// No description provided for @usbExportDone.
   ///
   /// In uz, this message translates to:
-  /// **'Eksport qilindi: {count} ta natija ({file})'**
+  /// **'{count, plural, other{Eksport qilindi: {count} ta natija ({file})}}'**
   String usbExportDone(int count, String file);
 
   /// No description provided for @usbExportNothing.

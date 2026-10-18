@@ -1167,7 +1167,7 @@
     }
   },
   "usbExportOne": "Экспорт",
-  "usbExportDone": "Экспортировано: {count} результатов ({file})",
+  "usbExportDone": "{count, plural, one{Экспортировано: {count} результат ({file})} few{Экспортировано: {count} результата ({file})} many{Экспортировано: {count} результатов ({file})} other{Экспортировано: {count} результата ({file})}}",
   "@usbExportDone": {
     "placeholders": {
       "count": {
