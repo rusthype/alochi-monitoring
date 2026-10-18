@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/login_screen.dart';
 import '../../features/session/session_providers.dart';
+import '../../features/session/test_session.dart';
 import '../widgets/error_screen.dart';
 import '../../features/session/session_setup_screen.dart';
 import '../../features/session/group_select_screen.dart';
@@ -53,6 +54,15 @@ import '../../features/diagnostic/widgets/diagnostic_locale_shell.dart';
 ProviderContainer _ref(BuildContext context) =>
     ProviderScope.containerOf(context);
 
+/// Route-level guard: bounces to the login screen when a route that needs
+/// `extra[...]` values is rebuilt without them (e.g. pushed by bare path),
+/// instead of throwing "type 'Null' is not a subtype of ..." from the builder.
+GoRouterRedirect _requireExtra(List<String> keys) => (context, state) {
+      final extra = state.extra;
+      final ok = extra is Map && keys.every((k) => extra[k] != null);
+      return ok ? null : '/';
+    };
+
 final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/',
@@ -83,10 +93,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           }),
       GoRoute(
           path: '/student_entry',
+          // session_setup_screen.dart sets [currentSessionProvider] and
+          // pushes this path WITHOUT extra; fall back to the provider and
+          // only bounce to login when neither source has a session.
+          redirect: (context, state) {
+            final extra = state.extra;
+            final fromExtra = extra is Map ? extra['session'] : null;
+            return fromExtra == null && ref.read(currentSessionProvider) == null
+                ? '/'
+                : null;
+          },
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             return StudentEntryScreen(
-              session: extra['session'],
+              session: extra['session'] as TestSession? ??
+                  _ref(context).read(currentSessionProvider)!,
               preselectedGroup: extra['preselectedGroup'],
             );
           }),
@@ -94,6 +115,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       // Additional screens mapped properly
       GoRoute(
           path: '/package',
+          redirect: _requireExtra(['session']),
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             return PackageScreen(
@@ -238,6 +260,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           }),
       GoRoute(
           path: '/test',
+          redirect: _requireExtra(['session', 'package']),
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             return TestScreen(
@@ -248,6 +271,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           }),
       GoRoute(
           path: '/result',
+          redirect: _requireExtra(['session', 'package', 'result']),
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             return ResultScreen(
