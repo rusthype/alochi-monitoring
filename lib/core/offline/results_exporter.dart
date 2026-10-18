@@ -32,6 +32,14 @@ import 'export_format.dart';
 import 'offline_crypto.dart';
 import 'offline_keys.dart';
 
+/// `<school>_<uuid8>` (school part omitted when empty), safe as a file/dir name.
+String packFilePrefix(String packUuid, String schoolCode) {
+  String clean(String v) => v.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+  final short =
+      clean(packUuid.length < 8 ? packUuid : packUuid.substring(0, 8));
+  return schoolCode.isEmpty ? short : '${clean(schoolCode)}_$short';
+}
+
 enum ExportError { notConfigured, nothingToExport }
 
 class ExportException implements Exception {
@@ -66,7 +74,7 @@ class ResultsExporter {
 
   /// Builds the `.alochires` bytes for [packUuid] without touching disk or
   /// stamping `exported_at`. Public so tests can inspect/verify the bytes.
-  Future<({Uint8List bytes, int count, String chainTip})> build(
+  Future<({Uint8List bytes, int count, String chainTip, int maxId})> build(
       String packUuid) async {
     final resultsKey = _resultsKeyOrThrow();
     final rows = await PackResultsDb.rowsForPack(packUuid);
@@ -106,7 +114,12 @@ class ResultsExporter {
       ..addFile(_stored('key.enc', keyEnc))
       ..addFile(_stored('payload.enc', payloadEnc));
     final bytes = Uint8List.fromList(ZipEncoder().encode(archive));
-    return (bytes: bytes, count: rows.length, chainTip: chainTip);
+    return (
+      bytes: bytes,
+      count: rows.length,
+      chainTip: chainTip,
+      maxId: rows.last.id
+    );
   }
 
   /// Writes the file into [dir] and stamps the pack's rows as exported.
@@ -118,12 +131,11 @@ class ResultsExporter {
         .replaceAll(RegExp(r'[-:]'), '')
         .replaceAll('T', '-')
         .replaceAll('Z', '');
-    final school = schoolCode.isEmpty ? '' : '${schoolCode}_';
-    final name = '$school${packUuid.substring(0, 8)}_$stamp.alochires';
+    final name = '${packFilePrefix(packUuid, schoolCode)}_$stamp.alochires';
     final file = File(p.join(dir.path, name));
     await file.writeAsBytes(built.bytes, flush: true);
     // Trusted (monotonic-anchored) time, same clock purgeExpired compares with.
-    await PackResultsDb.markExported(packUuid, clock.nowMs);
+    await PackResultsDb.markExported(packUuid, clock.nowMs, built.maxId);
     return ExportOutcome(file, built.count, built.chainTip);
   }
 
@@ -140,7 +152,21 @@ class ResultsExporter {
       final file = File(p.join(dir.path, 'latest.alochires'));
       final tmp = File('${file.path}.tmp');
       await tmp.writeAsBytes(built.bytes, flush: true);
-      await tmp.rename(file.path);
+      try {
+        await tmp.rename(file.path);
+      } catch (_) {
+        // Target may be briefly locked (Windows): retry once, else keep the
+        // old file and drop the temp.
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        try {
+          await tmp.rename(file.path);
+        } catch (_) {
+          try {
+            await tmp.delete();
+          } catch (_) {}
+          rethrow;
+        }
+      }
       return ExportOutcome(file, built.count, built.chainTip);
     });
   }

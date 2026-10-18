@@ -195,10 +195,13 @@ class PackResultsDb {
     return out;
   }
 
-  static Future<void> markExported(String packUuid, int atMs) async {
+  /// Stamps rows with `id <= [upToId]` only: a result appended after the
+  /// export snapshot is not in the file, so it must stay unexported.
+  static Future<void> markExported(
+      String packUuid, int atMs, int upToId) async {
     final d = await _db;
     await d.update('pack_results', {'exported_at': atMs},
-        where: 'pack_uuid = ?', whereArgs: [packUuid]);
+        where: 'pack_uuid = ? AND id <= ?', whereArgs: [packUuid, upToId]);
   }
 
   static Future<int> unexportedCount([String? packUuid]) async {

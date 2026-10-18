@@ -193,7 +193,7 @@ void main() {
           idempotencyKey: 'a',
           payloadJson: '{}');
       expect(await PackResultsDb.unexportedCount('pk'), 1);
-      await PackResultsDb.markExported('pk', 12345);
+      await PackResultsDb.markExported('pk', 12345, 1 << 30);
       expect(await PackResultsDb.unexportedCount('pk'), 0);
       final rows = await PackResultsDb.rowsForPack('pk');
       expect(rows, hasLength(1));
@@ -249,7 +249,7 @@ void main() {
       expect(await PackResultsDb.rowsForPack('pk'), hasLength(1));
       expect((await PackResultsDb.summaries()).single.unexported, 1);
 
-      await PackResultsDb.markExported('pk', 1);
+      await PackResultsDb.markExported('pk', 1, 1 << 30);
       expect(await PackResultsDb.purgeExpired(nowMs: t0 + 31 * day), 1);
       expect(await PackResultsDb.rowsForPack('pk'), isEmpty);
     });
@@ -267,7 +267,7 @@ void main() {
           chainKey: _chainKey,
           idempotencyKey: 'a',
           payloadJson: '{}');
-      await PackResultsDb.markExported('pk', t0 + 40 * day);
+      await PackResultsDb.markExported('pk', t0 + 40 * day, 1 << 30);
 
       // pack expired >30d ago, but the export is only 10 days old: keep
       expect(await PackResultsDb.purgeExpired(nowMs: t0 + 50 * day), 0);

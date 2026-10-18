@@ -291,29 +291,31 @@ class _OfflineControlCenterDialogState
     try {
       final dir = await defaultExportDir();
       final exporter = ResultsExporter(keys: _keys);
-      final copied = <String>[];
-      FlashResult? last;
-      for (final s in list) {
-        last = await exportToFlash(
-          export: () async => (await exporter.exportPack(s.packUuid, dir,
-                  schoolCode: s.schoolCode))
-              .file,
-          drives: widget.listDrives,
-          pick: _pickDrive,
-        );
-        if (last.status != FlashStatus.ok) break;
-        copied.add(last.path!);
-      }
+      final r = await exportToFlash(
+        exports: [
+          for (final s in list)
+            () async => (await exporter.exportPack(s.packUuid, dir,
+                    schoolCode: s.schoolCode))
+                .file,
+        ],
+        drives: widget.listDrives,
+        pick: _pickDrive,
+      );
       await _refresh();
-      switch (last!.status) {
+      switch (r.status) {
         case FlashStatus.ok:
-          _say(l10n.usbFlashDone(copied.join(', ')));
+          _say(l10n.usbFlashDone(r.paths.join(', ')));
         case FlashStatus.noDrive:
           _say(l10n.usbFlashNone, error: true);
         case FlashStatus.cancelled:
           break;
         case FlashStatus.failed:
-          _say(l10n.usbFlashFailed, error: true);
+          // Keep what already reached the drive visible next to the failure.
+          _say(
+              r.paths.isEmpty
+                  ? l10n.usbFlashFailed
+                  : '${l10n.usbFlashDone(r.paths.join(', '))}\n${l10n.usbFlashFailed}',
+              error: true);
       }
     } on ExportException catch (e) {
       _say(

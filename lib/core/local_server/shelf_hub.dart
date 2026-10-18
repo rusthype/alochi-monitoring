@@ -725,7 +725,7 @@ class ShelfHub extends ChangeNotifier {
           // The hub's own clock flags ride along: the hub stamps the chain.
           clockFlags: [...flags, ...clock.drainFlags()],
         );
-        autoSaveLatest(uuid, session.pack.schoolCode);
+        unawaited(autoSaveLatest(uuid, session.pack.schoolCode));
         usage.add(studentId, entryBytes);
         st.quotaCommit(ip, entryBytes);
         st.resultStored(c, studentId);

@@ -1,6 +1,7 @@
 // writeLatest (safety backup), re-export of already-exported rows, and the
 // flash-drive copy flow with fake drives.
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:alochi_monitoring/core/db/offline_queue.dart';
 import 'package:alochi_monitoring/core/db/pack_results_db.dart';
@@ -20,6 +21,25 @@ class _MemHwm implements HighWaterStore {
   Future<DateTime?> read() async => null;
   @override
   Future<void> write(DateTime utc) async {}
+}
+
+class _CountingExporter extends ResultsExporter {
+  _CountingExporter(ResultsExporter base)
+      : super(
+            keys: base.keys,
+            clock: base.clock,
+            machineId: base.machineId,
+            mac: base.mac);
+  int builds = 0;
+  int lastCount = 0;
+  @override
+  Future<({Uint8List bytes, int count, String chainTip, int maxId})> build(
+      String packUuid) async {
+    builds++;
+    final r = await super.build(packUuid);
+    lastCount = r.count;
+    return r;
+  }
 }
 
 void main() {
@@ -96,12 +116,59 @@ void main() {
 
     test('autoSaveLatest never throws (unconfigured keys)', () async {
       await add('a');
-      autoSaveLatest(pack.packUuid, '1',
+      await autoSaveLatest(pack.packUuid, '1',
           exporter: ResultsExporter(
               keys: const OfflineKeys(signingPem: '', resultsPem: '')),
           baseDir: () async => tmp);
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(
+          Directory(p.join(tmp.path, packFilePrefix(pack.packUuid, '1')))
+              .existsSync(),
+          isFalse);
+      expect(File(p.join(tmp.path, 'latest.alochires')).existsSync(), isFalse);
     });
+
+    test('autoSaveLatest coalesces a burst into few builds', () async {
+      for (var i = 0; i < 20; i++) {
+        await add('r$i');
+      }
+      final e = _CountingExporter(exporter());
+      await Future.wait([
+        for (var i = 0; i < 20; i++)
+          autoSaveLatest(pack.packUuid, '1',
+              exporter: e, baseDir: () async => tmp)
+      ]);
+      expect(e.builds, lessThanOrEqualTo(2));
+      final f = File(p.join(
+          tmp.path, packFilePrefix(pack.packUuid, '1'), 'latest.alochires'));
+      expect(f.existsSync(), isTrue);
+      expect(e.lastCount, 20);
+    });
+
+    test('failed rename leaves the old file and no .tmp', () async {
+      await add('a');
+      final dir = Directory(p.join(tmp.path, 'bk'))..createSync();
+      // A directory squatting on the target makes rename fail.
+      Directory(p.join(dir.path, 'latest.alochires')).createSync();
+      await expectLater(
+          exporter().writeLatest(pack.packUuid, dir), throwsA(anything));
+      expect(
+          File(p.join(dir.path, 'latest.alochires.tmp')).existsSync(), isFalse);
+    });
+  });
+
+  test('packFilePrefix sanitizes school code and short uuids', () {
+    expect(packFilePrefix('12345678-aaaa', r'a/b\c:*?"'), 'a_b_c_____12345678');
+    expect(packFilePrefix('abc', ''), 'abc');
+    expect(packFilePrefix('', '1'), '1_');
+  });
+
+  test('a row appended after the snapshot stays unexported', () async {
+    await add('a');
+    final e = exporter();
+    final built = await e.build(pack.packUuid);
+    await add('late'); // arrives between snapshot and stamp
+    await PackResultsDb.markExported(pack.packUuid, 5, built.maxId);
+    expect(await PackResultsDb.unexportedCount(pack.packUuid), 1);
   });
 
   test('global export still exports packs whose rows are all exported',
@@ -127,7 +194,7 @@ void main() {
     Future<FlashResult> run(List<String> drives,
             {Future<void> Function(File, File)? copier}) =>
         exportToFlash(
-            export: () async => exported,
+            exports: [() async => exported],
             drives: () async => drives,
             pick: (d) async => d.last,
             copier: copier);
@@ -159,15 +226,39 @@ void main() {
           isFalse);
     });
 
+    test('ExportException propagates, not mapped to failed', () async {
+      await expectLater(
+          exportToFlash(exports: [
+            () async => throw const ExportException(ExportError.notConfigured)
+          ], drives: () async => [drive.path], pick: (d) async => d.first),
+          throwsA(isA<ExportException>()));
+    });
+
+    test('later pack failing still reports the packs already copied', () async {
+      final second = File(p.join(tmp.path, 'y.alochires'))
+        ..writeAsBytesSync(List.filled(500, 3));
+      var n = 0;
+      final r = await exportToFlash(
+          exports: [() async => exported, () async => second],
+          drives: () async => [drive.path],
+          pick: (d) async => d.first,
+          copier: (src, dst) async {
+            if (++n == 2) throw const FileSystemException('boom');
+            await src.copy(dst.path);
+          });
+      expect(r.status, FlashStatus.failed);
+      expect(r.paths, hasLength(1));
+      expect(File(r.paths.single).existsSync(), isTrue);
+    });
+
     test('no drive -> noDrive and export is not run', () async {
       var exports = 0;
-      final r = await exportToFlash(
-          export: () async {
-            exports++;
-            return exported;
-          },
-          drives: () async => const [],
-          pick: (_) async => null);
+      final r = await exportToFlash(exports: [
+        () async {
+          exports++;
+          return exported;
+        }
+      ], drives: () async => const [], pick: (_) async => null);
       expect(r.status, FlashStatus.noDrive);
       expect(exports, 0);
     });

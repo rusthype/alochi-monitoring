@@ -224,8 +224,8 @@ class OfflinePackSession implements OfflineContentSource {
       final incidents = IncidentLog.instance.drain();
       final flags = MonitoredClock.instance.drainFlags();
       try {
-        final isNew =
-            chainUsage != null && !await PackResultsDb.hasKey(uuid, key);
+        final fresh = !await PackResultsDb.hasKey(uuid, key);
+        final isNew = chainUsage != null && fresh;
         final row = await PackResultsDb.append(
           packUuid: uuid,
           chainKey: pack.chainKey,
@@ -238,7 +238,7 @@ class OfflinePackSession implements OfflineContentSource {
           chainUsage?.add(PackResultsDb.studentIdOf(payloadJson),
               exportEntryBytes(row.payloadJson, row.metaJson));
         }
-        autoSaveLatest(uuid, pack.schoolCode);
+        if (fresh) unawaited(autoSaveLatest(uuid, pack.schoolCode));
         return row;
       } catch (_) {
         chainUsage = null; // unknown outcome: the next budget re-measures
