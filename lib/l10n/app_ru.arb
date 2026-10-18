@@ -1104,7 +1104,7 @@
   "usbNotConfigured": "Офлайн-режим не настроен в этой установке. Обратитесь к администратору.",
   "usbNoPackOpen": "Пакет не открыт",
   "usbLoadPack": "Загрузить пакет (.alochipack)",
-  "usbExportResults": "Экспорт результатов (.alochires)",
+  "usbExportResults": "Экспортировать все заново (.alochires)",
   "usbPickPackTitle": "Выберите файл пакета",
   "usbPickExportFolder": "Выберите папку для сохранения результатов",
   "usbPinTitle": "PIN-код пакета",
@@ -1179,6 +1179,18 @@
     }
   },
   "usbExportNothing": "Нет результатов для экспорта.",
+  "usbFlashButton": "Скопировать на флешку",
+  "usbFlashNone": "Флешка не найдена.",
+  "usbFlashDone": "Копия готова, флешку можно извлекать: {path}",
+  "usbFlashFailed": "Не удалось скопировать на флешку. Файл сохранён в папке «Загрузки».",
+  "usbFlashPick": "Выберите флешку",
+  "@usbFlashDone": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "usbExportFailed": "Не удалось выполнить экспорт.",
   "usbSavedTitle": "Ваши ответы сохранены",
   "usbSavedBody": "Результат объявит учитель позже.",

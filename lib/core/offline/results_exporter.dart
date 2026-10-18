@@ -25,6 +25,7 @@ import 'package:path/path.dart' as p;
 import 'package:pointycastle/export.dart' show RSAPublicKey;
 
 import '../db/pack_results_db.dart';
+import '../local_server/hub_guard.dart' show Mutex;
 import '../network/network_info.dart';
 import '../security/monitored_clock.dart';
 import 'export_format.dart';
@@ -124,6 +125,24 @@ class ResultsExporter {
     // Trusted (monotonic-anchored) time, same clock purgeExpired compares with.
     await PackResultsDb.markExported(packUuid, clock.nowMs);
     return ExportOutcome(file, built.count, built.chainTip);
+  }
+
+  static final Map<String, Mutex> _latestLocks = {};
+
+  /// Safety backup: (re)writes the pack's WHOLE chain to `<dir>/latest.alochires`
+  /// via temp file + atomic rename, so a half-written file is never visible.
+  /// Does NOT stamp `exported_at` (only a manual export does). Calls for the
+  /// same pack are serialised.
+  Future<ExportOutcome> writeLatest(String packUuid, Directory dir) {
+    return (_latestLocks[packUuid] ??= Mutex()).run(() async {
+      final built = await build(packUuid);
+      await dir.create(recursive: true);
+      final file = File(p.join(dir.path, 'latest.alochires'));
+      final tmp = File('${file.path}.tmp');
+      await tmp.writeAsBytes(built.bytes, flush: true);
+      await tmp.rename(file.path);
+      return ExportOutcome(file, built.count, built.chainTip);
+    });
   }
 
   static ArchiveFile _stored(String name, List<int> data) =>

@@ -39,6 +39,7 @@ import '../offline/asset_test_keys.dart';
 import '../offline/export_format.dart';
 import '../offline/offline_package_api.dart';
 import '../offline/offline_session.dart';
+import '../offline/usb_backup.dart';
 import '../security/monitored_clock.dart';
 import 'hub_guard.dart';
 import 'hub_state.dart';
@@ -724,6 +725,7 @@ class ShelfHub extends ChangeNotifier {
           // The hub's own clock flags ride along: the hub stamps the chain.
           clockFlags: [...flags, ...clock.drainFlags()],
         );
+        autoSaveLatest(uuid, session.pack.schoolCode);
         usage.add(studentId, entryBytes);
         st.quotaCommit(ip, entryBytes);
         st.resultStored(c, studentId);

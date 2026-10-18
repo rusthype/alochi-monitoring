@@ -29,6 +29,7 @@ import 'offline_content_source.dart';
 import 'offline_media.dart';
 import 'offline_package_api.dart';
 import 'pack_loader.dart';
+import 'usb_backup.dart';
 
 class OfflinePackSession implements OfflineContentSource {
   final LoadedPack pack;
@@ -237,6 +238,7 @@ class OfflinePackSession implements OfflineContentSource {
           chainUsage?.add(PackResultsDb.studentIdOf(payloadJson),
               exportEntryBytes(row.payloadJson, row.metaJson));
         }
+        autoSaveLatest(uuid, pack.schoolCode);
         return row;
       } catch (_) {
         chainUsage = null; // unknown outcome: the next budget re-measures

@@ -543,9 +543,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String diagnosticSubjectTransitionMessage(
-    String fromSubject,
-    String toSubject,
-  ) {
+      String fromSubject, String toSubject) {
     return '$fromSubject yakunlandi! Endi $toSubject boshlanadi';
   }
 
@@ -2373,7 +2371,7 @@ class AppLocalizationsUz extends AppLocalizations {
   String get usbLoadPack => 'Paket yuklash (.alochipack)';
 
   @override
-  String get usbExportResults => 'Natijalarni eksport (.alochires)';
+  String get usbExportResults => 'Barchasini qayta eksport qilish (.alochires)';
 
   @override
   String get usbPickPackTitle => 'Paket faylini tanlang';
@@ -2486,6 +2484,24 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get usbExportNothing => 'Eksport qilinadigan natija yo\'q.';
+
+  @override
+  String get usbFlashButton => 'Flashkaga ko\'chirish';
+
+  @override
+  String get usbFlashNone => 'Flashka topilmadi.';
+
+  @override
+  String usbFlashDone(String path) {
+    return 'Nusxa tayyor, flashkani chiqarishingiz mumkin: $path';
+  }
+
+  @override
+  String get usbFlashFailed =>
+      'Flashkaga ko\'chirib bo\'lmadi. Fayl Yuklashlar papkasida saqlangan.';
+
+  @override
+  String get usbFlashPick => 'Flashkani tanlang';
 
   @override
   String get usbExportFailed => 'Eksport muvaffaqiyatsiz tugadi.';
@@ -2768,21 +2784,13 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String lanSeatPartyHolder(
-    String device,
-    String ip,
-    String ago,
-    String status,
-  ) {
+      String device, String ip, String ago, String status) {
     return 'Hozirgi: $device ($ip) · $ago oldin ulangan · $status';
   }
 
   @override
   String lanSeatPartyClaimant(
-    String device,
-    String ip,
-    String ago,
-    String status,
-  ) {
+      String device, String ip, String ago, String status) {
     return 'Yangi: $device ($ip) · $ago oldin ulangan · $status';
   }
 

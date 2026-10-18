@@ -1149,7 +1149,7 @@
   "usbNotConfigured": "Oflayn rejim bu o'rnatishda sozlanmagan. Administratorga murojaat qiling.",
   "usbNoPackOpen": "Paket ochilmagan",
   "usbLoadPack": "Paket yuklash (.alochipack)",
-  "usbExportResults": "Natijalarni eksport (.alochires)",
+  "usbExportResults": "Barchasini qayta eksport qilish (.alochires)",
   "usbPickPackTitle": "Paket faylini tanlang",
   "usbPickExportFolder": "Natijalar saqlanadigan papkani tanlang",
   "usbPinTitle": "Paket PIN-kodi",
@@ -1231,6 +1231,18 @@
     }
   },
   "usbExportNothing": "Eksport qilinadigan natija yo'q.",
+  "usbFlashButton": "Flashkaga ko'chirish",
+  "usbFlashNone": "Flashka topilmadi.",
+  "usbFlashDone": "Nusxa tayyor, flashkani chiqarishingiz mumkin: {path}",
+  "usbFlashFailed": "Flashkaga ko'chirib bo'lmadi. Fayl Yuklashlar papkasida saqlangan.",
+  "usbFlashPick": "Flashkani tanlang",
+  "@usbFlashDone": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
   "usbExportFailed": "Eksport muvaffaqiyatsiz tugadi.",
   "usbSavedTitle": "Javoblaringiz saqlandi",
   "usbSavedBody": "Natija o'qituvchi tomonidan keyinroq e'lon qilinadi.",

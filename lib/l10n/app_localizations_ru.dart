@@ -539,9 +539,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String diagnosticSubjectTransitionMessage(
-    String fromSubject,
-    String toSubject,
-  ) {
+      String fromSubject, String toSubject) {
     return '$fromSubject завершён! Теперь начинается $toSubject';
   }
 
@@ -2359,7 +2357,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get usbLoadPack => 'Загрузить пакет (.alochipack)';
 
   @override
-  String get usbExportResults => 'Экспорт результатов (.alochires)';
+  String get usbExportResults => 'Экспортировать все заново (.alochires)';
 
   @override
   String get usbPickPackTitle => 'Выберите файл пакета';
@@ -2474,6 +2472,24 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get usbExportNothing => 'Нет результатов для экспорта.';
+
+  @override
+  String get usbFlashButton => 'Скопировать на флешку';
+
+  @override
+  String get usbFlashNone => 'Флешка не найдена.';
+
+  @override
+  String usbFlashDone(String path) {
+    return 'Копия готова, флешку можно извлекать: $path';
+  }
+
+  @override
+  String get usbFlashFailed =>
+      'Не удалось скопировать на флешку. Файл сохранён в папке «Загрузки».';
+
+  @override
+  String get usbFlashPick => 'Выберите флешку';
 
   @override
   String get usbExportFailed => 'Не удалось выполнить экспорт.';
@@ -2757,21 +2773,13 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String lanSeatPartyHolder(
-    String device,
-    String ip,
-    String ago,
-    String status,
-  ) {
+      String device, String ip, String ago, String status) {
     return 'Текущий: $device ($ip) · подключён $ago назад · $status';
   }
 
   @override
   String lanSeatPartyClaimant(
-    String device,
-    String ip,
-    String ago,
-    String status,
-  ) {
+      String device, String ip, String ago, String status) {
     return 'Новый: $device ($ip) · подключён $ago назад · $status';
   }
 

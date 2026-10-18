@@ -26,6 +26,7 @@ import '../../core/offline/offline_keys.dart';
 import '../../core/offline/offline_session.dart';
 import '../../core/offline/pack_loader.dart';
 import '../../core/offline/results_exporter.dart';
+import '../../core/offline/usb_backup.dart';
 import '../../shared/theme/app_theme.dart';
 import 'lan_connect_dialog.dart';
 import 'safe_file_picker.dart';
@@ -38,7 +39,11 @@ Future<void> showOfflineControlCenter(BuildContext context) {
 }
 
 class OfflineControlCenterDialog extends StatefulWidget {
-  const OfflineControlCenterDialog({super.key});
+  const OfflineControlCenterDialog(
+      {super.key, this.listDrives = listRemovableDrives});
+
+  /// Injectable for tests (real Windows drive detection otherwise).
+  final DriveLister listDrives;
 
   @override
   State<OfflineControlCenterDialog> createState() =>
@@ -229,11 +234,11 @@ class _OfflineControlCenterDialogState
 
   // ── export ─────────────────────────────────────────────────────────────────
 
-  /// Exports [targets] (or, when null, every pack that still has unexported
-  /// rows) into a folder the operator picks.
+  /// Exports [targets] (or, when null, every pack with at least one saved
+  /// result, exported before or not) into `<Downloads>/alochi-offline`.
   Future<void> _export({List<PackSummary>? targets}) async {
     final l10n = AppLocalizations.of(context)!;
-    final list = targets ?? _summaries.where((s) => s.unexported > 0).toList();
+    final list = targets ?? _summaries.where((s) => s.total > 0).toList();
     if (list.isEmpty) {
       _say(l10n.usbExportNothing);
       return;
@@ -268,6 +273,78 @@ class _OfflineControlCenterDialogState
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Fresh export of every pack with results, then copy onto a removable drive.
+  Future<void> _copyToFlash() async {
+    final l10n = AppLocalizations.of(context)!;
+    final list = _summaries.where((s) => s.total > 0).toList();
+    if (list.isEmpty) {
+      _say(l10n.usbExportNothing);
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _busyLabel = null;
+      _message = null;
+    });
+    try {
+      final dir = await defaultExportDir();
+      final exporter = ResultsExporter(keys: _keys);
+      final copied = <String>[];
+      FlashResult? last;
+      for (final s in list) {
+        last = await exportToFlash(
+          export: () async => (await exporter.exportPack(s.packUuid, dir,
+                  schoolCode: s.schoolCode))
+              .file,
+          drives: widget.listDrives,
+          pick: _pickDrive,
+        );
+        if (last.status != FlashStatus.ok) break;
+        copied.add(last.path!);
+      }
+      await _refresh();
+      switch (last!.status) {
+        case FlashStatus.ok:
+          _say(l10n.usbFlashDone(copied.join(', ')));
+        case FlashStatus.noDrive:
+          _say(l10n.usbFlashNone, error: true);
+        case FlashStatus.cancelled:
+          break;
+        case FlashStatus.failed:
+          _say(l10n.usbFlashFailed, error: true);
+      }
+    } on ExportException catch (e) {
+      _say(
+          e.code == ExportError.notConfigured
+              ? l10n.usbNotConfigured
+              : l10n.usbExportNothing,
+          error: e.code == ExportError.notConfigured);
+    } catch (e) {
+      debugPrint('OfflineControlCenter: flash copy failed: ${e.runtimeType}');
+      _say(l10n.usbFlashFailed, error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<String?> _pickDrive(List<String> drives) {
+    if (!mounted) return Future.value(null);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        backgroundColor: AppColors.surface,
+        title: Text(AppLocalizations.of(ctx)!.usbFlashPick),
+        children: [
+          for (final d in drives)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(ctx).pop(d),
+              child: Text(d),
+            ),
+        ],
+      ),
+    );
   }
 
   // ── UI ─────────────────────────────────────────────────────────────────────
@@ -345,6 +422,14 @@ class _OfflineControlCenterDialogState
                   onPressed: (_busy || !_configured) ? null : () => _export(),
                   icon: const Icon(Icons.upload_file_rounded),
                   label: Text(l10n.usbExportResults),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: (_busy || !_configured || totalSaved == 0)
+                      ? null
+                      : _copyToFlash,
+                  icon: const Icon(Icons.usb_rounded),
+                  label: Text(l10n.usbFlashButton),
                 ),
                 const SizedBox(height: 16),
                 ..._lanSection(l10n),
