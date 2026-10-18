@@ -16,7 +16,7 @@
       "salt": "AAECAwQFBgcICQoLDA0ODw=="
     },
     "files": {
-      "content.json.enc": "1ac087b2e8ffeffdbf0a102b7dac8bcc037b910e40f7516b9ecaec7650d5ebe1",
+      "content.json.enc": "34ef90760259a58869b59676b508859dff8562966e40a917603c2b0b1e18481d",
       "media/4161eccd30d857ca5633b1fe7fc1bd5762c6adf526cd3ad54e25421ea2457ee9.jpg": "4161eccd30d857ca5633b1fe7fc1bd5762c6adf526cd3ad54e25421ea2457ee9"
     }
   },
@@ -53,7 +53,7 @@
             "Reading"
           ],
           "variants": {
-            "A": {
+            "1": {
               "Vocabulary": [
                 {
                   "type": "image_choice",
