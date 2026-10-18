@@ -2819,4 +2819,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get lanSeatCollapse => 'Свернуть';
+
+  @override
+  String get diagnosticOnlineRequiredTooltip => 'Требуется интернет';
 }

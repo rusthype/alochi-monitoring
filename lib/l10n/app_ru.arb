@@ -1467,5 +1467,6 @@
       }
     }
   },
-  "lanSeatCollapse": "Свернуть"
+  "lanSeatCollapse": "Свернуть",
+  "diagnosticOnlineRequiredTooltip": "Требуется интернет"
 }

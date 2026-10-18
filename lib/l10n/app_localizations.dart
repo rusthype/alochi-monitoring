@@ -5170,6 +5170,12 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Yig\'ish'**
   String get lanSeatCollapse;
+
+  /// No description provided for @diagnosticOnlineRequiredTooltip.
+  ///
+  /// In uz, this message translates to:
+  /// **'Onlayn kerak'**
+  String get diagnosticOnlineRequiredTooltip;
 }
 
 class _AppLocalizationsDelegate

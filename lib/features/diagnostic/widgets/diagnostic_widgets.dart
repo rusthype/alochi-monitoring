@@ -301,8 +301,7 @@ class DiagnosticStudentCard extends StatelessWidget {
                       child: Text(
                         name,
                         style: TextStyle(
-                          color:
-                              isSelected ? AppColors.brand : AppColors.ink1,
+                          color: isSelected ? AppColors.brand : AppColors.ink1,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -322,9 +321,10 @@ class DiagnosticStudentCard extends StatelessWidget {
               ),
               if (hasOnlineOnlySubject) ...[
                 const SizedBox(width: 6),
-                const Tooltip(
-                  message: 'Onlayn kerak',
-                  child: Icon(Icons.wifi_tethering,
+                Tooltip(
+                  message: AppLocalizations.of(context)!
+                      .diagnosticOnlineRequiredTooltip,
+                  child: const Icon(Icons.wifi_tethering,
                       size: 14, color: AppColors.ink3),
                 ),
               ],
@@ -377,8 +377,8 @@ class _StudentStatusBadge extends StatelessWidget {
       case StudentPrefetchStatus.error:
         return InkWell(
           onTap: onRetryTap,
-          child: const Icon(Icons.error_outline,
-              size: 16, color: AppColors.error),
+          child:
+              const Icon(Icons.error_outline, size: 16, color: AppColors.error),
         );
     }
   }

@@ -2830,4 +2830,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get lanSeatCollapse => 'Yig\'ish';
+
+  @override
+  String get diagnosticOnlineRequiredTooltip => 'Onlayn kerak';
 }

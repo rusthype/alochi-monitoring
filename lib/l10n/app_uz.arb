@@ -1519,5 +1519,6 @@
       }
     }
   },
-  "lanSeatCollapse": "Yig'ish"
+  "lanSeatCollapse": "Yig'ish",
+  "diagnosticOnlineRequiredTooltip": "Onlayn kerak"
 }
