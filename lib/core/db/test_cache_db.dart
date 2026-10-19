@@ -23,7 +23,7 @@ class TestCacheDb {
 
   static Future<void> _create(Database db, int version) async {
     await db.execute('''
-      CREATE TABLE test_cache (
+      CREATE TABLE IF NOT EXISTS test_cache (
         test_key      TEXT PRIMARY KEY,
         version       INTEGER NOT NULL,
         json          TEXT NOT NULL,
@@ -36,7 +36,8 @@ class TestCacheDb {
   static Future<void> openInMemory() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
-    _db = await openDatabase(inMemoryDatabasePath, version: 1, onCreate: _create);
+    _db =
+        await openDatabase(inMemoryDatabasePath, version: 1, onCreate: _create);
   }
 
   @visibleForTesting

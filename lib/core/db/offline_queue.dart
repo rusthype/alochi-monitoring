@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/models.dart';
 import '../api/api_client.dart';
+import 'db_migrate.dart';
 import 'queue_crypto.dart';
 
 class OfflineQueue {
@@ -45,81 +46,52 @@ class OfflineQueue {
   // queue/local_queue flush, purgeStale and the diagnostic peek must never see
   // pack rows, and pack rows must never be dropped by the 7-day stale purge.
   static Future<Database> _open(String path) {
-    return openDatabase(path, version: 8, onCreate: (db, _) async {
-      await db.execute('''
-        CREATE TABLE queue (
-          id       INTEGER PRIMARY KEY AUTOINCREMENT,
-          payload  TEXT NOT NULL,
-          created  INTEGER NOT NULL,
-          attempts INTEGER NOT NULL DEFAULT 0,
-          token    TEXT
-        )
-      ''');
-      await db.execute(
-        'CREATE UNIQUE INDEX idx_queue_token ON queue(token) WHERE token IS NOT NULL',
-      );
-      await db.execute('''
-        CREATE TABLE tg_queue (
-          id       INTEGER PRIMARY KEY AUTOINCREMENT,
-          msg      TEXT NOT NULL,
-          created  INTEGER NOT NULL
-        )
-      ''');
-      await db.execute('''
-        CREATE TABLE local_queue (
-          id       INTEGER PRIMARY KEY AUTOINCREMENT,
-          payload  TEXT NOT NULL,
-          created  INTEGER NOT NULL,
-          attempts INTEGER NOT NULL DEFAULT 0,
-          token    TEXT
-        )
-      ''');
-      await db.execute(
-        'CREATE UNIQUE INDEX idx_local_queue_token ON local_queue(token) WHERE token IS NOT NULL',
-      );
-      await createPackTables(db);
-      await createLanTables(db);
-    }, onUpgrade: (db, oldVersion, newVersion) async {
-      if (oldVersion < 2) {
-        await db.execute('''
-          CREATE TABLE tg_queue (
-            id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            msg      TEXT NOT NULL,
-            created  INTEGER NOT NULL
-          )
-        ''');
-      }
-      if (oldVersion < 3) {
-        await db.execute('''
-          CREATE TABLE local_queue (
-            id       INTEGER PRIMARY KEY AUTOINCREMENT,
-            payload  TEXT NOT NULL,
-            created  INTEGER NOT NULL,
-            attempts INTEGER NOT NULL DEFAULT 0
-          )
-        ''');
-      }
-      if (oldVersion < 4) {
-        await db.execute('ALTER TABLE local_queue ADD COLUMN token TEXT');
-      }
-      if (oldVersion < 5) {
-        await db.execute('ALTER TABLE queue ADD COLUMN token TEXT');
-        await db.execute(
-          'CREATE UNIQUE INDEX IF NOT EXISTS idx_queue_token ON queue(token) WHERE token IS NOT NULL',
-        );
-      }
-      if (oldVersion < 6) {
-        await db.execute(
-          'CREATE UNIQUE INDEX IF NOT EXISTS idx_local_queue_token ON local_queue(token) WHERE token IS NOT NULL',
-        );
-      }
-      if (oldVersion < 7) {
-        await createPackTables(db);
-      }
-      if (oldVersion < 8) {
-        await createLanTables(db);
-      }
-    });
+    // One idempotent ensureSchema for create, upgrade AND every open: the
+    // stored user_version cannot be trusted (see db_migrate.dart), so the
+    // schema is verified against reality instead of replayed by version.
+    return openDatabase(path, version: 8, onOpen: ensureSchema);
+  }
+
+  /// Brings any queue DB (fresh, any older version, or version-drifted) to the
+  /// v8 schema without touching existing rows.
+  @visibleForTesting
+  static Future<void> ensureSchema(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS queue (
+        id       INTEGER PRIMARY KEY AUTOINCREMENT,
+        payload  TEXT NOT NULL,
+        created  INTEGER NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        token    TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS tg_queue (
+        id       INTEGER PRIMARY KEY AUTOINCREMENT,
+        msg      TEXT NOT NULL,
+        created  INTEGER NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS local_queue (
+        id       INTEGER PRIMARY KEY AUTOINCREMENT,
+        payload  TEXT NOT NULL,
+        created  INTEGER NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        token    TEXT
+      )
+    ''');
+    // v4/v5: token columns on tables created by older builds without them.
+    await addColumnIfMissing(db, 'local_queue', 'token', 'TEXT');
+    await addColumnIfMissing(db, 'queue', 'token', 'TEXT');
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_queue_token ON queue(token) WHERE token IS NOT NULL',
+    );
+    await db.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_local_queue_token ON local_queue(token) WHERE token IS NOT NULL',
+    );
+    await createPackTables(db);
+    await createLanTables(db);
   }
 
   /// v7 tables for offline USB packs. Idempotent (IF NOT EXISTS) so a

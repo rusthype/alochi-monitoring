@@ -13,6 +13,7 @@
 // (apps.diagnostic.models.DiagnosticAnswer) bilan mos kelmaydi — bular
 // butunlay ikki xil ma'lumotlar bazasi; farqli nom ikkalasini kod/logda
 // chalkashtirmaslik uchun.
+import 'db_migrate.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
@@ -37,7 +38,7 @@ class DiagnosticAnswerStore {
 
   static Future<void> _create(Database db, int version) async {
     await db.execute('''
-      CREATE TABLE local_diagnostic_answers (
+      CREATE TABLE IF NOT EXISTS local_diagnostic_answers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         attempt_id TEXT NOT NULL,
         subject TEXT NOT NULL,
@@ -50,7 +51,7 @@ class DiagnosticAnswerStore {
       )
     ''');
     await db.execute(
-      'CREATE UNIQUE INDEX idx_local_diag_answers_attempt_question '
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_local_diag_answers_attempt_question '
       'ON local_diagnostic_answers(attempt_id, question_id)',
     );
   }
@@ -62,8 +63,8 @@ class DiagnosticAnswerStore {
   static Future<void> upgrade(
       Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      await db.execute(
-          'ALTER TABLE local_diagnostic_answers ADD COLUMN generation INTEGER');
+      await addColumnIfMissing(
+          db, 'local_diagnostic_answers', 'generation', 'INTEGER');
     }
   }
 
