@@ -214,8 +214,8 @@ class OfflinePackSession implements OfflineContentSource {
   @override
   Future<PackResultRow> recordResult(Map<String, dynamic> payload,
       {String? token}) {
-    final key =
-        (token == null || token.isEmpty) ? newIdempotencyToken() : token;
+    final key = PackResultsDb.safeKey(
+        (token == null || token.isEmpty) ? newIdempotencyToken() : token);
     // Same critical section the LAN hub budgets the chain in: a result written
     // here must not slip between its check and its write, and must be counted.
     return chainLock.run(() async {

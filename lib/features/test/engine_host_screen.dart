@@ -20,6 +20,7 @@
 //
 // Duration default: 60 seconds per answerable question, clamped to [60s, 90min].
 
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -41,6 +42,7 @@ import '../../core/services/html_service.dart';
 import '../../core/services/pdf_service.dart';
 import '../../core/sync/sync_service.dart';
 import '../../core/offline/lan_client_session.dart';
+import '../../core/offline/offline_crypto.dart';
 import '../../core/offline/offline_session.dart';
 import '../offline/offline_saved_screen.dart';
 import '../../shared/widgets/exit_error_scaffold.dart';
@@ -401,8 +403,12 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
 
 /// Idempotency token for one attempt: stable across a crash-replay of the
 /// SAME attempt (same `attempt_id` nonce), different for every new attempt.
+///
+/// A fixed-length digest (`mw-` + 40 hex = 43 chars): real combined test keys
+/// are ~70 chars, and the server caps the key at 64 (online `client_token`,
+/// `.alochires` meta, LAN hub).
 String buildResultToken(String testKey, String studentId, String attemptId) =>
-    'mw-$testKey-$studentId-$attemptId';
+    'mw-${OfflineCrypto.sha256Hex(utf8.encode('$testKey|$studentId|$attemptId')).substring(0, 40)}';
 
 /// Token for the attempt currently saved for [testKey]/[studentId]. Records
 /// without an `attempt_id` (written by builds before it existed) or a missing

@@ -252,15 +252,21 @@ class _OfflineControlCenterDialogState
       final dir = await defaultExportDir();
       final exporter = ResultsExporter(keys: _keys);
       var total = 0;
+      var badKeys = 0;
       String lastFile = '';
       for (final s in list) {
         final out = await exporter.exportPack(s.packUuid, dir,
             schoolCode: s.schoolCode);
         total += out.count;
+        badKeys += out.invalidKeyCount;
         lastFile = out.file.path;
       }
       await _refresh();
-      _say(l10n.usbExportDone(total, lastFile));
+      _say(
+          badKeys > 0
+              ? l10n.usbExportBadKeys(badKeys)
+              : l10n.usbExportDone(total, lastFile),
+          error: badKeys > 0);
     } on ExportException catch (e) {
       _say(
           e.code == ExportError.notConfigured

@@ -21,6 +21,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:path/path.dart' as p;
 import 'package:pointycastle/export.dart' show RSAPublicKey;
 
@@ -53,7 +54,14 @@ class ExportOutcome {
   final File file;
   final int count;
   final String chainTip;
-  const ExportOutcome(this.file, this.count, this.chainTip);
+
+  /// Entries whose idempotency_key violates the server rule (len 1..64). The
+  /// server rejects the WHOLE file because of them (`bad_meta_json`); they
+  /// cannot be skipped or re-keyed here (the HMAC chain covers the key and
+  /// needs the PIN-derived key), so the UI must warn the teacher.
+  final int invalidKeyCount;
+  const ExportOutcome(this.file, this.count, this.chainTip,
+      {this.invalidKeyCount = 0});
 }
 
 class ResultsExporter {
@@ -74,7 +82,14 @@ class ResultsExporter {
 
   /// Builds the `.alochires` bytes for [packUuid] without touching disk or
   /// stamping `exported_at`. Public so tests can inspect/verify the bytes.
-  Future<({Uint8List bytes, int count, String chainTip, int maxId})> build(
+  Future<
+      ({
+        Uint8List bytes,
+        int count,
+        String chainTip,
+        int maxId,
+        int invalidKeyCount
+      })> build(
       String packUuid) async {
     final resultsKey = _resultsKeyOrThrow();
     final rows = await PackResultsDb.rowsForPack(packUuid);
@@ -89,6 +104,12 @@ class ResultsExporter {
             metaJson: r.metaJson)
     ];
     final chainTip = rows.last.hash;
+    final invalid =
+        rows.where((r) => !PackResultsDb.isValidKey(r.idempotencyKey)).length;
+    if (invalid > 0) {
+      debugPrint('ResultsExporter: $invalid entries have an invalid '
+          'idempotency_key; the server will reject this file');
+    }
 
     final aesKey = OfflineCrypto.randomBytes(OfflineCrypto.keyLen);
     final payloadEnc = OfflineCrypto.encryptBlob(
@@ -118,7 +139,8 @@ class ResultsExporter {
       bytes: bytes,
       count: rows.length,
       chainTip: chainTip,
-      maxId: rows.last.id
+      maxId: rows.last.id,
+      invalidKeyCount: invalid
     );
   }
 
@@ -140,7 +162,8 @@ class ResultsExporter {
     await file.writeAsBytes(built.bytes, flush: true);
     // Trusted (monotonic-anchored) time, same clock purgeExpired compares with.
     await PackResultsDb.markExported(packUuid, clock.nowMs, built.maxId);
-    return ExportOutcome(file, built.count, built.chainTip);
+    return ExportOutcome(file, built.count, built.chainTip,
+          invalidKeyCount: built.invalidKeyCount);
   }
 
   static final Map<String, Mutex> _latestLocks = {};
@@ -171,7 +194,8 @@ class ResultsExporter {
           rethrow;
         }
       }
-      return ExportOutcome(file, built.count, built.chainTip);
+      return ExportOutcome(file, built.count, built.chainTip,
+          invalidKeyCount: built.invalidKeyCount);
     });
   }
 

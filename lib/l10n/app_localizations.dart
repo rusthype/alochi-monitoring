@@ -4635,6 +4635,12 @@ abstract class AppLocalizations {
   /// **'Flashkani tanlang'**
   String get usbFlashPick;
 
+  /// No description provided for @usbExportBadKeys.
+  ///
+  /// In uz, this message translates to:
+  /// **'Diqqat: {count} ta natija kalitida xato bor, server faylni qabul qilmaydi. Natijani qayta topshiring.'**
+  String usbExportBadKeys(int count);
+
   /// No description provided for @usbExportFailed.
   ///
   /// In uz, this message translates to:
