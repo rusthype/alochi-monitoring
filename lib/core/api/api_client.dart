@@ -245,6 +245,7 @@ class MonitoringApi {
     String? deviceName,
     Map<String, dynamic>? answers,
     int? elapsedSeconds,
+    int? remainingSeconds,
     String? localIp,
     String? machineId,
     String? macAddress,

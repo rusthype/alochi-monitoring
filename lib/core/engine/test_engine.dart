@@ -121,6 +121,7 @@ class _TestEngineState extends State<TestEngine>
 
   /// Crash-recovery attempt bookkeeping (attempt_store.dart).
   int? _startedAtMs;
+  bool _pausedRestoreNeedsSave = false;
 
   /// Nonce of this attempt (attempt_store `attempt_id`); null for records
   /// written before it existed. Carried through every persist, never changed.
@@ -236,6 +237,7 @@ class _TestEngineState extends State<TestEngine>
           // _secs from the OLD deadline and undo this extension.
           if (_deadlineMs != null) _deadlineMs = _deadlineMs! + secs * 1000;
           setState(() => _secs += secs);
+          HeartbeatService.instance.remainingSeconds = _secs;
           unawaited(_persistNow());
           var minutes = (secs / 60).round();
           if (minutes < 1) minutes = 1;
@@ -358,6 +360,14 @@ class _TestEngineState extends State<TestEngine>
         epochAtSaveMs: (localAnswers?['epoch_at_save'] as num?)?.toInt(),
         ticksAtSaveMs: (localAnswers?['ticks_at_save'] as num?)?.toInt(),
       );
+      // Saved while paused: the deadline on disk went stale (the pause froze
+      // the countdown). Rebuild it from the frozen remaining time so neither
+      // the pause nor a long absence eats or resets the student's time.
+      final pausedMs = localAnswers?['paused_remaining_ms'];
+      if (pausedMs is num && !localCompleted) {
+        _deadlineMs = nowMs + pausedMs.toInt();
+        _pausedRestoreNeedsSave = true;
+      }
       final shift = _deadlineMs! - savedDeadline;
       _startedAtMs = startedRaw is num ? startedRaw.toInt() + shift : nowMs;
       resumed = true;
@@ -394,7 +404,17 @@ class _TestEngineState extends State<TestEngine>
     }
 
     setState(() => _secs = (remainingMs / 1000).ceil());
-    _startTimer();
+    HeartbeatService.instance.remainingSeconds = _secs;
+    if (_pausedRestoreNeedsSave) await _persistNow();
+    if (!mounted) return;
+    if (HeartbeatService.instance.locked) {
+      // The hub still has this attempt paused (the first ping reply arrived
+      // before this screen existed, so no callback will ever fire for it).
+      _lockShieldVisible = false;
+      _pauseForLock();
+    } else {
+      _startTimer();
+    }
 
     // Crash-recovery resume restores _answers directly (bypassing
     // _setAnswer), so the heartbeat wouldn't otherwise see this session's
@@ -476,6 +496,7 @@ class _TestEngineState extends State<TestEngine>
       if (_attemptId != null) 'attempt_id': _attemptId,
       if (_completed) 'completed': true,
       'deadline_epoch_ms': _deadlineMs,
+      if (_pausedRemainingMs != null) 'paused_remaining_ms': _pausedRemainingMs,
       ..._clock.snapshot(),
       'student_name': _studentName(),
       'student_id': widget.studentId,
@@ -502,6 +523,9 @@ class _TestEngineState extends State<TestEngine>
     final deadlineMs = _deadlineMs;
     if (deadlineMs == null) return;
     if (!mounted) return;
+    // Paused: the countdown is frozen, the (stale) deadline must not expire
+    // the attempt behind the shield -- e.g. on a window-focus resume.
+    if (_lockShieldVisible) return;
     final remainingMs = deadlineMs - _nowMs;
     if (remainingMs <= 0) {
       _timer?.cancel();
@@ -510,6 +534,7 @@ class _TestEngineState extends State<TestEngine>
       return;
     }
     setState(() => _secs = (remainingMs / 1000).ceil());
+    HeartbeatService.instance.remainingSeconds = _secs;
   }
 
   @override
@@ -541,6 +566,8 @@ class _TestEngineState extends State<TestEngine>
     _pausedRemainingMs =
         deadlineMs != null ? (deadlineMs - _nowMs).clamp(0, 1 << 62) : null;
     setState(() => _lockShieldVisible = true);
+    // Survive leaving the screen while paused (deadline on disk goes stale).
+    unawaited(_persistNow());
   }
 
   /// Resumes the countdown from wherever it was frozen — NOT from the stale
@@ -549,11 +576,11 @@ class _TestEngineState extends State<TestEngine>
   void _resumeFromLock() {
     if (!_lockShieldVisible) return;
     final remaining = _pausedRemainingMs;
+    _pausedRemainingMs = null;
     if (remaining != null) {
       _deadlineMs = _nowMs + remaining;
       unawaited(_persistNow());
     }
-    _pausedRemainingMs = null;
     setState(() => _lockShieldVisible = false);
     _syncSecsFromDeadline();
     _startTimer();
@@ -590,13 +617,12 @@ class _TestEngineState extends State<TestEngine>
     HeartbeatService.instance.onWarning = null;
     HeartbeatService.instance.onExtendSeconds = null;
     if (!_finishing) {
-      // Route popped/replaced without ever calling _finishNow() — the
-      // student's attempt was abandoned mid-test (app closed, screen
-      // backed out of, etc.), not properly submitted. Drop the
-      // crash-recovery record so re-selecting this student later doesn't
-      // silently resume it after its deadline has elapsed and auto-submit
-      // it as a blank, all-wrong "finished" result.
-      AttemptStore.clear(widget.spec.testKey);
+      // Route popped/replaced without ever calling _finishNow() (kiosk
+      // logout, navigation, ...). The attempt is KEPT: re-entering resumes the
+      // same variant/answers/remaining time (and pause) -- wiping it let a
+      // student start over with a full timer. Only tell the hub this PC left
+      // the test, otherwise it keeps a ghost in-test (paused) row.
+      HeartbeatService.instance.finishTest();
     }
     super.dispose();
   }

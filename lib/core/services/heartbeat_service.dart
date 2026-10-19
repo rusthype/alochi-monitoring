@@ -77,6 +77,10 @@ class HeartbeatService with WidgetsBindingObserver {
   Map<String, dynamic>? _answers;
   int? _elapsedSeconds;
 
+  /// The active test's own countdown (seconds left), set by TestEngine every
+  /// tick so a hub/teacher shows what the student sees, not an estimate.
+  int? remainingSeconds;
+
   String? _cachedPlatform;
   String? _cachedAppVersion;
   String? _cachedDeviceName;
@@ -91,6 +95,15 @@ class HeartbeatService with WidgetsBindingObserver {
   /// (see `_TestEngineState._finishNow`). Null when no test is in progress;
   /// the pre-test roster/catalog screens never set this.
   VoidCallback? onTerminated;
+
+  /// True while a test screen is mounted (it owns [onTerminated]). The kiosk
+  /// inactivity logout must not pull a student out of a running -- possibly
+  /// teacher-paused -- test.
+  bool get testScreenActive => onTerminated != null;
+
+  /// The reconciled admin-lock (pause) state; a re-entering test screen reads
+  /// it because the first ping reply arrives before the screen is mounted.
+  bool get locked => _locked;
 
   // ── Admin-lock (pause) + extra-time reconciliation ──────────────────────
   // Both channels that can carry this state — this 30s ping AND
@@ -233,8 +246,11 @@ class HeartbeatService with WidgetsBindingObserver {
     required String variant,
     required String testKey,
     String? studentCode,
+    String? sessionId,
   }) async {
-    _testSessionId = const Uuid().v4();
+    _testSessionId = (sessionId != null && sessionId.isNotEmpty)
+        ? sessionId
+        : const Uuid().v4();
     _schoolCode = schoolCode;
     _name = name;
     _variant = variant;
@@ -276,12 +292,13 @@ class HeartbeatService with WidgetsBindingObserver {
     _studentCode = null;
     _tabSwitchCount = 0;
     _proctorToken = null;
+    remainingSeconds = null;
     _resetProctorState();
   }
 
   void finishTest() {
     if (_testSessionId == null) return;
-    unawaited(_ping('finished'));
+    unawaited(_ping('finished', idle: true));
     _testSessionId = null;
     _schoolCode = '';
     _name = '';
@@ -297,6 +314,7 @@ class HeartbeatService with WidgetsBindingObserver {
     _proctorToken = null;
     _answers = null;
     _elapsedSeconds = null;
+    remainingSeconds = null;
     _resetProctorState();
   }
 
@@ -350,9 +368,14 @@ class HeartbeatService with WidgetsBindingObserver {
     unawaited(_ping('active'));
   }
 
-  Future<Map<String, dynamic>?> _ping(String status) async {
+  /// [idle]: leaving the test -- sent with no test key (a device-level ping),
+  /// which is what tells a hub the PC is no longer in the test.
+  Future<Map<String, dynamic>?> _ping(String status,
+      {bool idle = false}) async {
     final id = _activeSessionId;
     if (id == null) return null;
+    final testKey = idle ? '' : _testKey;
+    final remaining = idle ? null : remainingSeconds;
     await _resolveDeviceInfoOnce();
     final localIp = await getLocalIpAddress();
     try {
@@ -361,7 +384,7 @@ class HeartbeatService with WidgetsBindingObserver {
         schoolCode: _schoolCode,
         name: _name,
         variant: _variant,
-        testKey: _testKey,
+        testKey: testKey,
         status: status,
         studentCode: _studentCode,
         tabSwitchCount: _tabSwitchCount,
@@ -373,6 +396,7 @@ class HeartbeatService with WidgetsBindingObserver {
         deviceName: _cachedDeviceName,
         answers: _answers,
         elapsedSeconds: _elapsedSeconds,
+        remainingSeconds: remaining,
         localIp: localIp,
         machineId: _cachedMachineId,
         macAddress: _cachedMacAddress,

@@ -50,7 +50,7 @@ Future<void> launchRunner(
     return;
   }
 
-  final variant = await _resolveVariant(
+  final variant = await resolveAttemptVariant(
     cached,
     testKey: session.testKey,
     firstName: firstName,
@@ -59,6 +59,14 @@ Future<void> launchRunner(
     groupName: groupName,
   );
 
+  if (!context.mounted) return;
+
+  // The attempt id doubles as the hub session id: re-entering the same
+  // attempt re-claims the same hub session (pause + extra time kept), a new
+  // attempt is a new session.
+  final attemptId = (await AttemptStore.loadForStudent(
+          session.testKey, studentId))?['attempt_id']
+      ?.toString();
   if (!context.mounted) return;
 
   // Best-effort concurrent-session check: block only if the backend
@@ -75,6 +83,7 @@ Future<void> launchRunner(
           variant: variant.toString(),
           testKey: session.testKey,
           studentCode: studentId,
+          sessionId: attemptId,
         )
         .timeout(const Duration(seconds: 3));
   } catch (_) {
@@ -117,7 +126,10 @@ Future<void> launchRunner(
 /// same attempt by test_key + variant at initState) — this function only
 /// decides which variant to run and seeds a fresh attempt record when
 /// starting over.
-Future<int> _resolveVariant(
+const _staleAttemptMs = 12 * 60 * 60 * 1000;
+
+@visibleForTesting
+Future<int> resolveAttemptVariant(
   Map<String, dynamic> cached, {
   required String testKey,
   required String firstName,
@@ -137,7 +149,12 @@ Future<int> _resolveVariant(
     // it must be resumed even past its deadline so the engine can replay the
     // identical submission instead of silently dropping it.
     final completed = saved['completed'] == true;
-    if (savedVariant != null && (notExpired || completed)) {
+    // An unfinished attempt is resumed even when its deadline has passed: the
+    // engine then auto-submits what the student had. Starting a fresh attempt
+    // here would hand out a full timer again. Only a record from another
+    // day (long abandoned) is dropped.
+    final stale = deadlineMs != null && nowMs - deadlineMs > _staleAttemptMs;
+    if (savedVariant != null && (notExpired || completed || !stale)) {
       return savedVariant;
     }
   }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../db/credential_cache.dart';
+import '../services/heartbeat_service.dart';
 
 class InactivityWrapper extends StatefulWidget {
   final Widget child;
@@ -38,6 +39,12 @@ class _InactivityWrapperState extends State<InactivityWrapper> {
   }
 
   Future<void> _handleInactivity() async {
+    // A running (or teacher-paused) test is never logged out from under the
+    // student: its own deadline / the teacher ends it.
+    if (HeartbeatService.instance.testScreenActive) {
+      _startTimer();
+      return;
+    }
     if (mounted) {
       // Talaba oldingi talabaning login/parolini ko'rmasligi uchun
       // saqlangan credential'larni tozalaymiz — navigatsiyadan oldin
