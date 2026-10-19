@@ -550,8 +550,9 @@ class _OfflineControlCenterDialogState
                         style: const TextStyle(
                             color: AppColors.ink3, fontSize: 12));
                   }
-                  // Failed, or results exist but no auto-save succeeded yet.
-                  if (s.total > 0) {
+                  // Only a failure recorded this session; no entry = unknown
+                  // (e.g. after restart), so show nothing.
+                  if (e != null && e.failed) {
                     return Text(l10n.autoSaveFailed,
                         style: const TextStyle(
                             color: AppColors.err, fontSize: 12));

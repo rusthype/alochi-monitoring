@@ -205,6 +205,11 @@ void main() {
   group('AutoSaveStatus', () {
     setUp(() => AutoSaveStatus.all.value = const {});
 
+    test('no entry before any run (e.g. after restart) = unknown, not failed',
+        () {
+      expect(AutoSaveStatus.all.value[pack.packUuid], isNull);
+    });
+
     test('failure sets error state and never throws', () async {
       await add('a');
       await autoSaveLatest(pack.packUuid, '1',

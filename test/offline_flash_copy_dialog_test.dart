@@ -117,14 +117,17 @@ void main() {
 
   Directory drive(String n) => Directory(p.join(tmp.path, n))..createSync();
 
-  testWidgets('auto-save line: warning when failed/never ok, time when ok',
+  testWidgets('auto-save line: nothing unknown, warning on fail, ok after',
       (tester) async {
     AutoSaveStatus.all.value = const {};
     addTearDown(() => AutoSaveStatus.all.value = const {});
     await pump(tester, () async => const []);
     final l10n = l10nOf(tester);
-    expect(
-        find.text(l10n.autoSaveFailed), findsOneWidget); // results, no ok yet
+    expect(find.text(l10n.autoSaveFailed), findsNothing); // no entry = unknown
+
+    AutoSaveStatus.fail('pk-one-uuid');
+    await tester.pump();
+    expect(find.text(l10n.autoSaveFailed), findsOneWidget);
 
     AutoSaveStatus.ok('pk-one-uuid', 1);
     await tester.pump();
