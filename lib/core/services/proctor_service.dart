@@ -129,6 +129,9 @@ class ProctorService {
             locked: result['locked'] as bool?,
             extraTimeSeconds: result['extra_time_seconds'] as int?,
             commands: result['commands'] as List<dynamic>?,
+            // The LAN hub's teacher "finish test" must not wait for the 30 s
+            // ping. Online keeps its ping-only behaviour.
+            terminated: api.isLan && result['terminated'] == true,
           );
           // Multi-monitor switch request from the panel — applied starting
           // the NEXT tick (see _requestedMonitorIndex's doc comment). Absent
