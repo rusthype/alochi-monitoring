@@ -158,4 +158,49 @@ void main() {
     ticks += 600000;
     expect(hub.state!.views().single.remainingSeconds, 5855);
   });
+
+  Map<String, dynamic> finished(String session) =>
+      {...inTest(session), 'status': 'finished'};
+
+  test(
+      "a 'finished' ping that keeps the test key abandons the attempt; the "
+      'same attempt re-claims pause and extra time', () async {
+    final t = await join();
+    await ping(t, inTest('attempt-1'));
+    final id = hub.state!.views().single.id;
+    hub.state!.setLocked(id, true);
+    hub.state!.addExtraTime(id, 120);
+
+    await ping(t, finished('attempt-1'));
+    final gone = hub.state!.views().single;
+    expect(gone.inTest, isFalse);
+    expect(gone.locked, isFalse);
+
+    final back = await ping(t, inTest('attempt-1'));
+    expect(back['conflict'], false);
+    expect(back['locked'], true);
+    expect(back['extra_time_seconds'], 120);
+  });
+
+  test("a 'finished' ping AFTER a stored result does not resurrect it",
+      () async {
+    final t = await join();
+    await ping(t, inTest('attempt-1'));
+    final r = await client.post(Uri.parse('$base/result'),
+        headers: {
+          'content-type': 'application/json',
+          'authorization': 'Bearer $t',
+          'idempotency-key': 'k-1'
+        },
+        body: jsonEncode({'payload': lanResultPayload()}));
+    expect(r.statusCode, 200, reason: r.body);
+    expect(hub.state!.views().single.inTest, isFalse);
+
+    await ping(t, finished('attempt-1'));
+    expect(hub.state!.views().single.inTest, isFalse);
+    // The attempt is over for good: re-claiming it is refused (ended).
+    final late = await ping(t, inTest('attempt-1'));
+    expect(late['conflict'], false);
+    expect(hub.state!.views().single.inTest, isFalse);
+  });
 }

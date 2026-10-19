@@ -298,7 +298,7 @@ class HeartbeatService with WidgetsBindingObserver {
 
   void finishTest() {
     if (_testSessionId == null) return;
-    unawaited(_ping('finished', idle: true));
+    unawaited(_ping('finished'));
     _testSessionId = null;
     _schoolCode = '';
     _name = '';
@@ -368,14 +368,13 @@ class HeartbeatService with WidgetsBindingObserver {
     unawaited(_ping('active'));
   }
 
-  /// [idle]: leaving the test -- sent with no test key (a device-level ping),
-  /// which is what tells a hub the PC is no longer in the test.
-  Future<Map<String, dynamic>?> _ping(String status,
-      {bool idle = false}) async {
+  Future<Map<String, dynamic>?> _ping(String status) async {
     final id = _activeSessionId;
     if (id == null) return null;
-    final testKey = idle ? '' : _testKey;
-    final remaining = idle ? null : remainingSeconds;
+    // Snapshot before the first await: finishTest() clears these right after
+    // firing its 'finished' ping, and that ping must carry the real key.
+    final testKey = _testKey;
+    final remaining = remainingSeconds;
     await _resolveDeviceInfoOnce();
     final localIp = await getLocalIpAddress();
     try {
