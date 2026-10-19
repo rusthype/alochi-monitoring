@@ -31,7 +31,7 @@ class DiagnosticHistoryDb {
 
   static Future<void> _create(Database db, int version) async {
     await db.execute('''
-      CREATE TABLE diagnostic_history (
+      CREATE TABLE IF NOT EXISTS diagnostic_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         attempt_id TEXT UNIQUE,
         student_name TEXT,

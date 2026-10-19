@@ -22,8 +22,7 @@ class TestCache {
 
   static Future<Database> get _database async {
     if (_db != null) return _db!;
-    if (!kIsWeb &&
-        (Platform.isWindows || Platform.isLinux)) {
+    if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
     }
@@ -34,7 +33,7 @@ class TestCache {
       version: 1,
       onCreate: (db, _) async {
         await db.execute('''
-          CREATE TABLE cached_tests (
+          CREATE TABLE IF NOT EXISTS cached_tests (
             test_key       TEXT PRIMARY KEY,
             title          TEXT NOT NULL,
             grade          INTEGER NOT NULL,

@@ -19,7 +19,7 @@ class HistoryDb {
       version: 1,
       onCreate: (db, _) async {
         await db.execute('''
-          CREATE TABLE history (
+          CREATE TABLE IF NOT EXISTS history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             first_name TEXT,
             last_name TEXT,
