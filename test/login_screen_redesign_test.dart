@@ -1,3 +1,4 @@
+import 'package:alochi_monitoring/core/api/api_client.dart';
 import 'package:alochi_monitoring/core/locale/locale_provider.dart';
 import 'package:alochi_monitoring/core/network/connectivity_service.dart';
 import 'package:alochi_monitoring/features/auth/login_screen.dart';
@@ -8,7 +9,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// LoginScreen starts ConnectivityService, whose probe against an unreachable
+/// API falls through to a DNS lookup guarded by a 2s Timer that dispose()
+/// cannot cancel — flutter_test then fails the first test with "A Timer is
+/// still pending". A reachable stub keeps the probe on its success path.
+class _ReachableApi extends MonitoringApi {
+  @override
+  Future<bool> ping() async => true;
+}
+
 void main() {
+  late MonitoringApi savedApi;
+  setUp(() {
+    savedApi = api;
+    api = _ReachableApi();
+  });
+  tearDown(() => api = savedApi);
+
   testWidgets('first frame renders the 460px unified login card',
       (tester) async {
     tester.view.physicalSize = const Size(1440, 1200);

@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import '../../core/api/api_client.dart' show newIdempotencyToken;
 import '../../core/db/attempt_store.dart';
 import '../../core/db/test_cache.dart';
 import '../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
@@ -132,7 +133,11 @@ Future<int> _resolveVariant(
     final deadlineRaw = saved['deadline_epoch_ms'];
     final deadlineMs = deadlineRaw is num ? deadlineRaw.toInt() : null;
     final notExpired = deadlineMs == null || deadlineMs > nowMs;
-    if (savedVariant != null && notExpired) {
+    // A record already marked completed was (or is about to be) submitted:
+    // it must be resumed even past its deadline so the engine can replay the
+    // identical submission instead of silently dropping it.
+    final completed = saved['completed'] == true;
+    if (savedVariant != null && (notExpired || completed)) {
       return savedVariant;
     }
   }
@@ -142,6 +147,10 @@ Future<int> _resolveVariant(
     'variant': variant,
     'answers': <String, dynamic>{},
     'started_at': nowMs,
+    // One-time nonce identifying THIS attempt; never rewritten on resume.
+    // The completion idempotency token is derived from it (see
+    // buildResultToken), so a crash-replay dedupes but a retake does not.
+    'attempt_id': newIdempotencyToken(),
     'deadline_epoch_ms': null,
     'student_name': '$firstName $lastName'.trim(),
     'student_id': studentId,
