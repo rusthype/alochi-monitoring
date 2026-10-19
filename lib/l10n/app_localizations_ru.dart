@@ -2857,4 +2857,13 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get rosterDoneBadge => 'Сдал';
+
+  @override
+  String autoSaveOk(String time, int count) {
+    return 'Резервная копия: $time, $count результатов';
+  }
+
+  @override
+  String get autoSaveFailed =>
+      'Резервная копия не сохранена — используйте Экспорт';
 }

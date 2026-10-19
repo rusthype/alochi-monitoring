@@ -1485,5 +1485,13 @@
   "diagnosticRetakeBody": "Этот ученик уже сдал все предметы. Начать ещё одну попытку?",
   "diagnosticRetakeConfirm": "Начать заново",
   "testRetakeBody": "Этот ученик уже сдал этот тест. Начать ещё одну попытку?",
-  "rosterDoneBadge": "Сдал"
+  "rosterDoneBadge": "Сдал",
+  "autoSaveOk": "Резервная копия: {time}, {count} результатов",
+  "@autoSaveOk": {
+    "placeholders": {
+      "time": {"type": "String"},
+      "count": {"type": "int"}
+    }
+  },
+  "autoSaveFailed": "Резервная копия не сохранена — используйте Экспорт"
 }

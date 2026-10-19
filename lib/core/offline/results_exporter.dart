@@ -32,12 +32,12 @@ import 'export_format.dart';
 import 'offline_crypto.dart';
 import 'offline_keys.dart';
 
-/// `<school>_<uuid8>` (school part omitted when empty), safe as a file/dir name.
+/// `<school>_<uuid>` (full uuid, dashes dropped; school part omitted when
+/// empty), safe as a file/dir name.
 String packFilePrefix(String packUuid, String schoolCode) {
   String clean(String v) => v.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-  final short =
-      clean(packUuid.length < 8 ? packUuid : packUuid.substring(0, 8));
-  return schoolCode.isEmpty ? short : '${clean(schoolCode)}_$short';
+  final id = clean(packUuid.replaceAll('-', ''));
+  return schoolCode.isEmpty ? id : '${clean(schoolCode)}_$id';
 }
 
 enum ExportError { notConfigured, nothingToExport }
@@ -131,8 +131,12 @@ class ResultsExporter {
         .replaceAll(RegExp(r'[-:]'), '')
         .replaceAll('T', '-')
         .replaceAll('Z', '');
-    final name = '${packFilePrefix(packUuid, schoolCode)}_$stamp.alochires';
-    final file = File(p.join(dir.path, name));
+    final base = '${packFilePrefix(packUuid, schoolCode)}_$stamp';
+    // Never overwrite: same-second exports get -2, -3 ...
+    var file = File(p.join(dir.path, '$base.alochires'));
+    for (var n = 2; file.existsSync(); n++) {
+      file = File(p.join(dir.path, '$base-$n.alochires'));
+    }
     await file.writeAsBytes(built.bytes, flush: true);
     // Trusted (monotonic-anchored) time, same clock purgeExpired compares with.
     await PackResultsDb.markExported(packUuid, clock.nowMs, built.maxId);

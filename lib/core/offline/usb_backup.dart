@@ -16,10 +16,41 @@ import 'package:win32/win32.dart';
 import '../../features/offline/safe_file_picker.dart' show defaultExportDir;
 import 'results_exporter.dart';
 
+/// In-memory outcome of the last auto-save per pack (UI only; resets on restart).
+class AutoSaveEntry {
+  final DateTime? lastOkAt;
+  final int lastResultCount;
+
+  /// Set by a failed run, cleared by the next successful one.
+  final DateTime? lastErrorAt;
+  const AutoSaveEntry(this.lastOkAt, this.lastResultCount, this.lastErrorAt);
+  bool get failed => lastErrorAt != null;
+}
+
+class AutoSaveStatus {
+  AutoSaveStatus._();
+  static final ValueNotifier<Map<String, AutoSaveEntry>> all =
+      ValueNotifier(const {});
+
+  static void ok(String packUuid, int count) => all.value = {
+        ...all.value,
+        packUuid: AutoSaveEntry(DateTime.now(), count, null),
+      };
+
+  static void fail(String packUuid) {
+    final prev = all.value[packUuid];
+    all.value = {
+      ...all.value,
+      packUuid: AutoSaveEntry(
+          prev?.lastOkAt, prev?.lastResultCount ?? 0, DateTime.now()),
+    };
+  }
+}
+
 final _autoSaveRuns = <String, Future<void>>{};
 final _autoSaveDirty = <String>{};
 
-/// Fire-and-forget: refreshes `<Downloads>/alochi-offline/<school>_<uuid8>/latest.alochires`.
+/// Fire-and-forget: refreshes `<Downloads>/alochi-offline/<school>_<uuid>/latest.alochires`.
 /// Never throws and never blocks the caller; failures log the exception type only.
 /// Triggers are coalesced per pack: one run in flight plus one dirty flag, so a
 /// burst of N results costs at most 2 builds. The returned future (completes
@@ -33,8 +64,11 @@ Future<void> autoSaveLatest(String packUuid, String schoolCode,
         final base = await (baseDir ?? defaultExportDir)();
         final dir =
             Directory(p.join(base.path, packFilePrefix(packUuid, schoolCode)));
-        await (exporter ?? ResultsExporter()).writeLatest(packUuid, dir);
+        final out =
+            await (exporter ?? ResultsExporter()).writeLatest(packUuid, dir);
+        AutoSaveStatus.ok(packUuid, out.count);
       } catch (e) {
+        AutoSaveStatus.fail(packUuid);
         debugPrint('autoSaveLatest failed: ${e.runtimeType}');
       }
     }

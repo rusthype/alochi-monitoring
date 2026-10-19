@@ -1537,5 +1537,13 @@
   "diagnosticRetakeBody": "Bu o'quvchi barcha fanlarni topshirib bo'lgan. Yana bir urinish boshlansinmi?",
   "diagnosticRetakeConfirm": "Qayta boshlash",
   "testRetakeBody": "Bu o'quvchi bu testni allaqachon topshirgan. Yana bir urinish boshlansinmi?",
-  "rosterDoneBadge": "Topshirgan"
+  "rosterDoneBadge": "Topshirgan",
+  "autoSaveOk": "Zaxira nusxa: {time}, {count} ta natija",
+  "@autoSaveOk": {
+    "placeholders": {
+      "time": {"type": "String"},
+      "count": {"type": "int"}
+    }
+  },
+  "autoSaveFailed": "Zaxira nusxa saqlanmadi — Eksportdan foydalaning"
 }

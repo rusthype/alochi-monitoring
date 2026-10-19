@@ -19,6 +19,7 @@ import '../../core/local_server/shelf_hub.dart';
 import '../../core/offline/offline_keys.dart';
 import '../../core/offline/offline_session.dart';
 import '../../core/offline/results_exporter.dart';
+import '../../core/offline/usb_backup.dart' show AutoSaveStatus;
 import '../../shared/theme/app_theme.dart';
 import 'safe_file_picker.dart';
 
@@ -480,6 +481,15 @@ class _TeacherLanMonitoringScreenState
           Text(l10n.lanResultsRefused(state.refusedResults),
               style: const TextStyle(
                   color: AppColors.err, fontWeight: FontWeight.w700)),
+        ValueListenableBuilder(
+          valueListenable: AutoSaveStatus.all,
+          builder: (_, all, __) {
+            final uuid = OfflinePackSession.current?.pack.packUuid ?? '';
+            if (all[uuid]?.failed != true) return const SizedBox.shrink();
+            return Text(l10n.autoSaveFailed,
+                style: const TextStyle(color: AppColors.err, fontSize: 12));
+          },
+        ),
       ],
     );
   }

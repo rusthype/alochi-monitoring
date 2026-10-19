@@ -157,9 +157,76 @@ void main() {
   });
 
   test('packFilePrefix sanitizes school code and short uuids', () {
-    expect(packFilePrefix('12345678-aaaa', r'a/b\c:*?"'), 'a_b_c_____12345678');
+    expect(packFilePrefix('12345678-aaaa', r'a/b\c:*?"'),
+        'a_b_c_____12345678aaaa');
     expect(packFilePrefix('abc', ''), 'abc');
     expect(packFilePrefix('', '1'), '1_');
+  });
+
+  test('export name carries the full uuid without dashes', () async {
+    await add('a');
+    final out =
+        await exporter().exportPack(pack.packUuid, tmp, schoolCode: '9');
+    expect(p.basename(out.file.path),
+        startsWith('9_${pack.packUuid.replaceAll('-', '')}_'));
+  });
+
+  test('same-second exports with colliding 8-char prefixes both survive',
+      () async {
+    const a = 'abcdefgh-0001-aaaa', b = 'abcdefgh-0002-bbbb';
+    for (final u in [a, b]) {
+      await PackResultsDb.append(
+          packUuid: u,
+          chainKey: Uint8List(32),
+          idempotencyKey: 'k',
+          payloadJson: '{"x":1}',
+          incidents: const [],
+          clockFlags: const []);
+    }
+    final e = exporter(); // frozen clock: identical timestamp
+    final fa = (await e.exportPack(a, tmp)).file;
+    final fb = (await e.exportPack(b, tmp)).file;
+    expect(fa.path, isNot(fb.path));
+    expect(fa.existsSync() && fb.existsSync(), isTrue);
+  });
+
+  test('exportPack never overwrites an existing file', () async {
+    await add('a');
+    final e = exporter();
+    final first = (await e.exportPack(pack.packUuid, tmp)).file;
+    first.writeAsStringSync('keep');
+    final second = (await e.exportPack(pack.packUuid, tmp)).file;
+    final third = (await e.exportPack(pack.packUuid, tmp)).file;
+    expect(first.readAsStringSync(), 'keep');
+    expect(p.basename(second.path), endsWith('-2.alochires'));
+    expect(p.basename(third.path), endsWith('-3.alochires'));
+  });
+
+  group('AutoSaveStatus', () {
+    setUp(() => AutoSaveStatus.all.value = const {});
+
+    test('failure sets error state and never throws', () async {
+      await add('a');
+      await autoSaveLatest(pack.packUuid, '1',
+          exporter: ResultsExporter(
+              keys: const OfflineKeys(signingPem: '', resultsPem: '')),
+          baseDir: () async => tmp);
+      final e = AutoSaveStatus.all.value[pack.packUuid]!;
+      expect(e.failed, isTrue);
+      expect(e.lastOkAt, isNull);
+    });
+
+    test('success records time and count, and clears an earlier error',
+        () async {
+      await add('a');
+      AutoSaveStatus.fail(pack.packUuid);
+      await autoSaveLatest(pack.packUuid, '1',
+          exporter: exporter(), baseDir: () async => tmp);
+      final e = AutoSaveStatus.all.value[pack.packUuid]!;
+      expect(e.failed, isFalse);
+      expect(e.lastResultCount, 1);
+      expect(e.lastOkAt, isNotNull);
+    });
   });
 
   test('a row appended after the snapshot stays unexported', () async {

@@ -2868,4 +2868,13 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get rosterDoneBadge => 'Topshirgan';
+
+  @override
+  String autoSaveOk(String time, int count) {
+    return 'Zaxira nusxa: $time, $count ta natija';
+  }
+
+  @override
+  String get autoSaveFailed =>
+      'Zaxira nusxa saqlanmadi — Eksportdan foydalaning';
 }

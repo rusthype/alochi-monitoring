@@ -6,7 +6,7 @@ import 'package:alochi_monitoring/core/db/offline_queue.dart';
 import 'package:alochi_monitoring/core/db/pack_results_db.dart';
 import 'package:alochi_monitoring/core/offline/offline_keys.dart';
 import 'package:alochi_monitoring/core/offline/usb_backup.dart'
-    show DriveLister;
+    show AutoSaveStatus, DriveLister;
 import 'package:alochi_monitoring/features/offline/offline_control_center_dialog.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -116,6 +116,27 @@ void main() {
   }
 
   Directory drive(String n) => Directory(p.join(tmp.path, n))..createSync();
+
+  testWidgets('auto-save line: warning when failed/never ok, time when ok',
+      (tester) async {
+    AutoSaveStatus.all.value = const {};
+    addTearDown(() => AutoSaveStatus.all.value = const {});
+    await pump(tester, () async => const []);
+    final l10n = l10nOf(tester);
+    expect(
+        find.text(l10n.autoSaveFailed), findsOneWidget); // results, no ok yet
+
+    AutoSaveStatus.ok('pk-one-uuid', 1);
+    await tester.pump();
+    expect(find.text(l10n.autoSaveFailed), findsNothing);
+    expect(find.textContaining('1'), findsWidgets);
+    expect(find.textContaining(l10n.autoSaveOk('', 1).split(':').first),
+        findsOneWidget);
+
+    AutoSaveStatus.fail('pk-one-uuid');
+    await tester.pump();
+    expect(find.text(l10n.autoSaveFailed), findsOneWidget);
+  });
 
   testWidgets('no drive: shows the no-flash message', (tester) async {
     await pump(tester, () async => const []);

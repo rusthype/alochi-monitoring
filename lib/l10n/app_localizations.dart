@@ -5236,6 +5236,18 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Topshirgan'**
   String get rosterDoneBadge;
+
+  /// No description provided for @autoSaveOk.
+  ///
+  /// In uz, this message translates to:
+  /// **'Zaxira nusxa: {time}, {count} ta natija'**
+  String autoSaveOk(String time, int count);
+
+  /// No description provided for @autoSaveFailed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Zaxira nusxa saqlanmadi — Eksportdan foydalaning'**
+  String get autoSaveFailed;
 }
 
 class _AppLocalizationsDelegate

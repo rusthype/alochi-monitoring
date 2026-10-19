@@ -539,6 +539,26 @@ class _OfflineControlCenterDialogState
                   '${l10n.usbSavedCount(s.total)}  ·  '
                   '${l10n.usbUnexportedCount(s.unexported)}',
                   style: const TextStyle(color: AppColors.ink3, fontSize: 12)),
+              ValueListenableBuilder(
+                valueListenable: AutoSaveStatus.all,
+                builder: (_, all, __) {
+                  final e = all[s.packUuid];
+                  if (e != null && !e.failed && e.lastOkAt != null) {
+                    return Text(
+                        l10n.autoSaveOk(DateFormat('HH:mm').format(e.lastOkAt!),
+                            e.lastResultCount),
+                        style: const TextStyle(
+                            color: AppColors.ink3, fontSize: 12));
+                  }
+                  // Failed, or results exist but no auto-save succeeded yet.
+                  if (s.total > 0) {
+                    return Text(l10n.autoSaveFailed,
+                        style: const TextStyle(
+                            color: AppColors.err, fontSize: 12));
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
             ],
           ),
         ),
