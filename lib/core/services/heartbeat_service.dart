@@ -298,7 +298,7 @@ class HeartbeatService with WidgetsBindingObserver {
 
   void finishTest() {
     if (_testSessionId == null) return;
-    unawaited(_ping('finished'));
+    unawaited(_ping('finished', leaving: true));
     _testSessionId = null;
     _schoolCode = '';
     _name = '';
@@ -368,12 +368,16 @@ class HeartbeatService with WidgetsBindingObserver {
     unawaited(_ping('active'));
   }
 
-  Future<Map<String, dynamic>?> _ping(String status) async {
+  /// [leaving]: an explicit leave of the test (finishTest). On a LAN client
+  /// it goes out as a device-level ping (empty test_key), which the hub treats
+  /// as "PC left the attempt"; every other api gets the real test_key.
+  Future<Map<String, dynamic>?> _ping(String status,
+      {bool leaving = false}) async {
     final id = _activeSessionId;
     if (id == null) return null;
     // Snapshot before the first await: finishTest() clears these right after
     // firing its 'finished' ping, and that ping must carry the real key.
-    final testKey = _testKey;
+    final testKey = (leaving && api.isLan) ? '' : _testKey;
     final remaining = remainingSeconds;
     await _resolveDeviceInfoOnce();
     final localIp = await getLocalIpAddress();

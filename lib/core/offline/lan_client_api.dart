@@ -25,6 +25,9 @@ import 'offline_errors.dart';
 import 'offline_package_api.dart';
 
 class LanClientApi extends MonitoringApi {
+  @override
+  bool get isLan => true;
+
   final LanClientSession session;
   LanClientApi(this.session);
 

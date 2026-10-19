@@ -5,6 +5,11 @@ import 'package:alochi_monitoring/core/services/heartbeat_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RecordingApi extends MonitoringApi {
+  _RecordingApi({this.lan = false});
+  final bool lan;
+  @override
+  bool get isLan => lan;
+
   final pings = <Map<String, dynamic>>[];
   @override
   Future<Map<String, dynamic>> sessionPing({
@@ -61,5 +66,31 @@ void main() {
     expect(fin, hasLength(1));
     expect(fin.single['test_key'], 'cw1_key');
     expect(fin.single['session_id'], 'attempt-1');
+  });
+
+  test('LAN api: finishTest sends the device-level idle ping (no test_key)',
+      () async {
+    final saved = api;
+    final fake = _RecordingApi(lan: true);
+    api = fake;
+    addTearDown(() => api = saved);
+
+    final hb = HeartbeatService.instance;
+    await hb.startTest(
+        schoolCode: '56',
+        name: 'Ali',
+        variant: '1',
+        testKey: 'cw1_key',
+        studentCode: 'S1',
+        sessionId: 'attempt-2');
+    fake.pings.clear();
+
+    hb.finishTest();
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+
+    final fin = fake.pings.where((p) => p['status'] == 'finished').toList();
+    expect(fin, hasLength(1));
+    expect(fin.single['test_key'], '');
+    expect(fin.single['session_id'], 'attempt-2');
   });
 }

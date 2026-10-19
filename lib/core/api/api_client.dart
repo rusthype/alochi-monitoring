@@ -26,6 +26,9 @@ class ApiException implements Exception {
 }
 
 class MonitoringApi {
+  /// True for the LAN client (hub-backed) api.
+  bool get isLan => false;
+
   // ponytail: one env var overrides the whole app's backend host; see
   // diagnostic_kiosk_api.dart which reads the same API_BASE_URL.
   static const String _host = String.fromEnvironment(

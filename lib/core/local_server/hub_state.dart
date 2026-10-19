@@ -701,17 +701,10 @@ class HubState extends ChangeNotifier {
 
     var conflict = false;
     if (p.testKey.isNotEmpty) {
-      final leaving = p.status == 'finished';
       if (c.endedSessions.contains(p.sessionId)) {
         // Late ping of an attempt that is already over: nothing to track.
       } else if (p.sessionId != c.sessionId) {
-        // A 'finished' ping never starts an attempt.
-        if (!leaving) conflict = !_claimSession(c, p, now);
-      } else if (leaving) {
-        // The PC left this attempt without a result (a stored result already
-        // ended it, and endedSessions wins above): remember pause/extra time
-        // for a re-claim of the same attempt id.
-        c.endTest(abandon: true);
+        conflict = !_claimSession(c, p, now);
       }
       if (!conflict && c.sessionId == p.sessionId) {
         c.tabSwitchCount = p.tabSwitchCount;

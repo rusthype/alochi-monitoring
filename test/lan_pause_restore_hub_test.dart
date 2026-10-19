@@ -163,23 +163,22 @@ void main() {
       {...inTest(session), 'status': 'finished'};
 
   test(
-      "a 'finished' ping that keeps the test key abandons the attempt; the "
-      'same attempt re-claims pause and extra time', () async {
+      "a lifecycle-style 'finished' ping with the key (minimise) does NOT "
+      'abandon: still in test, still paused, progress kept', () async {
     final t = await join();
-    await ping(t, inTest('attempt-1'));
+    await ping(t, {
+      ...inTest('attempt-1'),
+      'current_question_index': 4,
+      'total_questions': 10
+    });
     final id = hub.state!.views().single.id;
     hub.state!.setLocked(id, true);
-    hub.state!.addExtraTime(id, 120);
 
     await ping(t, finished('attempt-1'));
-    final gone = hub.state!.views().single;
-    expect(gone.inTest, isFalse);
-    expect(gone.locked, isFalse);
-
-    final back = await ping(t, inTest('attempt-1'));
-    expect(back['conflict'], false);
-    expect(back['locked'], true);
-    expect(back['extra_time_seconds'], 120);
+    final v = hub.state!.views().single;
+    expect(v.inTest, isTrue);
+    expect(v.locked, isTrue);
+    expect(v.questionNumber, 5);
   });
 
   test("a 'finished' ping AFTER a stored result does not resurrect it",
