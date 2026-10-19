@@ -592,6 +592,7 @@ class ShelfHub extends ChangeNotifier {
     }
     final focus = q['focus'] == 'true';
     final monitors = _qInt(q, 'monitor_count', 0, 32) ?? 1;
+    final monitorIdx = _qInt(q, 'monitor_index', 0, 31) ?? 0;
     final qIdx = _qInt(q, 'q_idx', 0, 100000);
     final total = _qInt(q, 'total', 0, 100000);
 
@@ -636,6 +637,7 @@ class ShelfHub extends ChangeNotifier {
             jpeg: bytes,
             focus: focus,
             monitorCount: monitors,
+            monitorIndex: monitorIdx,
             questionIndex: qIdx,
             totalQuestions: total));
   }

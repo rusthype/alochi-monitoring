@@ -2667,6 +2667,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get lanEndTestYes => 'Завершить';
 
   @override
+  String lanMonitorN(int n) {
+    return 'Монитор $n';
+  }
+
+  @override
+  String lanMonitorsBadge(int n) {
+    return 'Мониторы: $n';
+  }
+
+  @override
   String get lanNoFrame => 'Изображение экрана пока не получено.';
 
   @override
