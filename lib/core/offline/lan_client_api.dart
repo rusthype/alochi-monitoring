@@ -25,6 +25,9 @@ import 'offline_errors.dart';
 import 'offline_package_api.dart';
 
 class LanClientApi extends MonitoringApi {
+  @override
+  bool get isLan => true;
+
   final LanClientSession session;
   LanClientApi(this.session);
 
@@ -95,6 +98,7 @@ class LanClientApi extends MonitoringApi {
     String? deviceName,
     Map<String, dynamic>? answers,
     int? elapsedSeconds,
+    int? remainingSeconds,
     String? localIp,
     String? machineId,
     String? macAddress,
@@ -114,6 +118,7 @@ class LanClientApi extends MonitoringApi {
         'current_question_index': currentQuestionIndex,
       if (totalQuestions != null) 'total_questions': totalQuestions,
       if (elapsedSeconds != null) 'elapsed_seconds': elapsedSeconds,
+      if (remainingSeconds != null) 'remaining_seconds': remainingSeconds,
       if (deviceName != null && deviceName.isNotEmpty)
         'device_name': deviceName,
       if (capabilities != null && capabilities.isNotEmpty)

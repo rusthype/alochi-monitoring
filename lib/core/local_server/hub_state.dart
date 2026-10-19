@@ -46,6 +46,9 @@ class PingInput {
   final int? questionIndex;
   final int? totalQuestions;
   final int? elapsedSeconds;
+
+  /// The student's own countdown (seconds left), when the client reports it.
+  final int? remainingSeconds;
   final int incidentCount;
   final List<String> capabilities;
 
@@ -60,6 +63,7 @@ class PingInput {
     required this.questionIndex,
     required this.totalQuestions,
     required this.elapsedSeconds,
+    this.remainingSeconds,
     required this.incidentCount,
     required this.capabilities,
   });
@@ -106,6 +110,7 @@ class PingInput {
       questionIndex: _int(j['current_question_index'], 0, 100000),
       totalQuestions: _int(j['total_questions'], 0, 100000),
       elapsedSeconds: _int(j['elapsed_seconds'], 0, 1000000),
+      remainingSeconds: _int(j['remaining_seconds'], 0, 1000000),
       incidentCount: _int(j['incident_count'], 0, 100000) ?? 0,
       capabilities: caps is List
           ? [
@@ -149,6 +154,11 @@ class HubClient {
   int incidentCount = 0;
   int? elapsedReported;
   int elapsedReportedAt = 0;
+
+  /// The client's own countdown at [remainingReportedAt]; wins over the
+  /// pack-duration estimate (they can disagree: extra time, per-test limits).
+  int? remainingReported;
+  int remainingReportedAt = 0;
   int sessionStartedAt = 0;
   List<String> capabilities = const [];
 
@@ -160,6 +170,10 @@ class HubClient {
   /// Attempts that are over. A late 'finished' ping that still carries such an
   /// id must not re-open it (it would look like a live holder for ~30 s).
   final Set<String> endedSessions = {};
+
+  /// Attempts a PC left WITHOUT finishing (pause/extra time kept): the same
+  /// attempt id re-claims them, any other id starts clean.
+  final Map<String, ({bool locked, int extra})> abandoned = {};
 
   // Latest KEYFRAME (memory only).
   Uint8List? frame;
@@ -198,6 +212,7 @@ class HubClient {
   void inheritFrom(HubClient old) {
     terminatedSessions.addAll(old.terminatedSessions);
     endedSessions.addAll(old.endedSessions);
+    abandoned.addAll(old.abandoned);
     sessionId = old.sessionId;
     testKey = old.testKey;
     studentId = old.studentId;
@@ -215,10 +230,21 @@ class HubClient {
 
   /// The test attempt is over (result submitted, idle ping, or taken over):
   /// forget its live state, including the screen frame.
-  void endTest() {
+  ///
+  /// [abandon]: the PC just left (idle ping) with no result. The attempt is not
+  /// over -- its pause/extra time are remembered for a re-claim of the SAME
+  /// attempt id, and the row stops showing a ghost "paused" session.
+  void endTest({bool abandon = false}) {
     if (sessionId.isNotEmpty) {
-      endedSessions.add(sessionId);
-      if (endedSessions.length > 64) endedSessions.remove(endedSessions.first);
+      if (abandon) {
+        if (abandoned.length >= 16) abandoned.remove(abandoned.keys.first);
+        abandoned[sessionId] = (locked: locked, extra: extraTimeSeconds);
+      } else {
+        endedSessions.add(sessionId);
+        if (endedSessions.length > 64) {
+          endedSessions.remove(endedSessions.first);
+        }
+      }
     }
     sessionId = '';
     testKey = '';
@@ -226,6 +252,7 @@ class HubClient {
     questionIndex = null;
     totalQuestions = null;
     elapsedReported = null;
+    remainingReported = null;
     locked = false;
     extraTimeSeconds = 0;
     frame = null;
@@ -688,10 +715,15 @@ class HubState extends ChangeNotifier {
           c.elapsedReported = p.elapsedSeconds;
           c.elapsedReportedAt = now;
         }
+        if (p.remainingSeconds != null) {
+          c.remainingReported = p.remainingSeconds;
+          c.remainingReportedAt = now;
+        }
       }
     } else if (c.inTest) {
-      // Idle (device-level) ping: the test attempt is over.
-      c.endTest();
+      // Idle (device-level) ping: the PC left the test. Result submission
+      // ends the attempt for good (resultStored); leaving does not.
+      c.endTest(abandon: true);
     }
     _changed();
     return _reply(c, p.sessionId, conflict: conflict);
@@ -735,11 +767,13 @@ class HubState extends ChangeNotifier {
     c.sessionStartedAt = now;
     // Pause/extra time belong to ONE attempt; the client resets its baseline
     // at startTest, so the hub must too.
-    c.locked = false;
-    c.extraTimeSeconds = 0;
+    final back = c.abandoned.remove(p.sessionId);
+    c.locked = back?.locked ?? false;
+    c.extraTimeSeconds = back?.extra ?? 0;
     c.questionIndex = null;
     c.totalQuestions = null;
     c.elapsedReported = null;
+    c.remainingReported = null;
     c.frame = null;
     c.frameVersion++;
     return true;
@@ -1021,7 +1055,14 @@ class HubState extends ChangeNotifier {
     int? remaining;
     if (c.inTest) {
       final minutes = _durations[c.testKey];
-      if (minutes != null) {
+      final own = c.remainingReported;
+      if (own != null) {
+        // The student's own countdown; a paused PC does not drain.
+        final drained = c.locked
+            ? 0
+            : max(0, ((now - c.remainingReportedAt) / 1000).floor());
+        remaining = max(0, own - drained);
+      } else if (minutes != null) {
         // `elapsed_seconds` only rides along with answers, so extrapolate from
         // the last report (or the attempt start); paused PCs do not advance.
         final base = c.elapsedReported ?? 0;
