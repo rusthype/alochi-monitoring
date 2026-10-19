@@ -121,6 +121,14 @@ class _TestEngineState extends State<TestEngine>
 
   /// Crash-recovery attempt bookkeeping (attempt_store.dart).
   int? _startedAtMs;
+
+  /// Nonce of this attempt (attempt_store `attempt_id`); null for records
+  /// written before it existed. Carried through every persist, never changed.
+  String? _attemptId;
+
+  /// Set when the student finished (or time/admin ended it). Persisted BEFORE
+  /// onComplete so a crash-replay re-submits the same snapshot, not a new one.
+  bool _completed = false;
   int? _deadlineMs;
   Timer? _saveDebounce;
 
@@ -299,8 +307,17 @@ class _TestEngineState extends State<TestEngine>
         ? ((serverAnswers?['answers'] as Map?)?.length ?? 0)
         : -1;
 
+    // A completed local record always wins: its answers are the snapshot
+    // that was (or is being) submitted and must not be replaced or edited.
+    final localCompleted =
+        localCount >= 0 && localAnswers?['completed'] == true;
+    final savedAttemptId = localAnswers?['attempt_id']?.toString();
+    if (savedAttemptId != null && savedAttemptId.isNotEmpty) {
+      _attemptId = savedAttemptId;
+    }
+
     bool resumed = false;
-    if (serverCount >= 0 && serverCount > localCount) {
+    if (serverCount >= 0 && serverCount > localCount && !localCompleted) {
       final ans = serverAnswers!['answers'];
       if (ans is Map) {
         for (final entry in ans.entries) {
@@ -323,6 +340,7 @@ class _TestEngineState extends State<TestEngine>
       await _persistNow(); // mirror server state into local WAL too
     } else if (localCount >= 0) {
       final ans = localAnswers?['answers'];
+      if (localCompleted) _answers.clear();
       if (ans is Map) {
         for (final entry in ans.entries) {
           final key = entry.key.toString();
@@ -346,12 +364,23 @@ class _TestEngineState extends State<TestEngine>
     }
 
     if (!resumed) {
+      // Fresh attempt: a record seeded by runner_dispatch (deadline still
+      // null) already carries the nonce; otherwise mint one.
+      _attemptId ??= newIdempotencyToken();
       _startedAtMs = nowMs;
       _deadlineMs = nowMs + widget.duration.inMilliseconds;
       await _persistNow();
     }
 
     if (!mounted) return;
+
+    if (localCompleted) {
+      // Crash between "completed" and AttemptStore.clear: replay the same
+      // answers (same attempt_id -> same token) instead of reopening.
+      _completed = true;
+      _finishNow();
+      return;
+    }
 
     final remainingMs = _deadlineMs! - nowMs;
     if (remainingMs <= 0) {
@@ -444,6 +473,8 @@ class _TestEngineState extends State<TestEngine>
       'variant': widget.variant,
       'answers': Map<String, dynamic>.from(_answers),
       'started_at': _startedAtMs,
+      if (_attemptId != null) 'attempt_id': _attemptId,
+      if (_completed) 'completed': true,
       'deadline_epoch_ms': _deadlineMs,
       ..._clock.snapshot(),
       'student_name': _studentName(),
@@ -675,8 +706,17 @@ class _TestEngineState extends State<TestEngine>
     final startedAtMs = _startedAtMs;
     final elapsedSeconds =
         startedAtMs != null ? ((_nowMs - startedAtMs) / 1000).round() : null;
-    widget.onComplete(result,
-        (elapsedSeconds != null && elapsedSeconds > 0) ? elapsedSeconds : null);
+    // Mark the record completed (with the final answers) BEFORE handing the
+    // result to the host, so the host's token (derived from attempt_id) and a
+    // crash-replay both refer to this exact snapshot.
+    _completed = true;
+    _persistNow().whenComplete(() {
+      widget.onComplete(
+          result,
+          (elapsedSeconds != null && elapsedSeconds > 0)
+              ? elapsedSeconds
+              : null);
+    });
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────

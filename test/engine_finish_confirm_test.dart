@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alochi_monitoring/core/db/attempt_store.dart';
+import 'package:alochi_monitoring/core/db/queue_crypto.dart';
 import 'package:alochi_monitoring/core/engine/test_models.dart';
 import 'package:alochi_monitoring/core/engine/test_engine.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
@@ -51,6 +52,17 @@ Widget _wrap(Widget child) => MaterialApp(
     );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  // QueueCrypto caches its AES key future in a static. If the first caller is
+  // a testWidgets body, that future starts inside FakeAsync, its platform
+  // channel replies never arrive once that test ends, and every later test in
+  // the process awaits it forever (this is what hung the expired-deadline
+  // test for 10 minutes). Resolve it once, on the real event loop.
+  setUpAll(() async {
+    await QueueCrypto.encryptPayload('{}');
+  });
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
@@ -106,7 +118,11 @@ void main() {
       matching: find.widgetWithText(ElevatedButton, l10n.finish),
     );
     await tester.tap(dialogFinish);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    // _finishNow persists the completed marker (real IO) before onComplete.
+    await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.pump(const Duration(milliseconds: 100));
     expect(completed, isTrue);
   });
 
@@ -119,15 +135,17 @@ void main() {
     final pastDeadline =
         DateTime.now().millisecondsSinceEpoch - const Duration(minutes: 1).inMilliseconds;
 
-    await AttemptStore.save(testKey, {
-      'variant': 1,
-      'answers': <String, dynamic>{},
-      'started_at': pastDeadline - 60000,
-      'deadline_epoch_ms': pastDeadline,
-      'student_name': 'Ism Familiya',
-      'student_id': studentId,
-      'group_name': '',
-    });
+    // Seed on the real event loop: awaiting SharedPreferences directly in
+    // the testWidgets body (FakeAsync) never resumes without a pump.
+    await tester.runAsync(() => AttemptStore.save(testKey, {
+          'variant': 1,
+          'answers': <String, dynamic>{},
+          'started_at': pastDeadline - 60000,
+          'deadline_epoch_ms': pastDeadline,
+          'student_name': 'Ism Familiya',
+          'student_id': studentId,
+          'group_name': '',
+        }));
 
     final spec = TestSpec.fromJson(_specJson());
     var completed = false;
@@ -145,7 +163,17 @@ void main() {
       onExpiredAutoSubmit: () => expiredNoticeCount++,
     )));
     addTearDown(() => tester.pumpWidget(const SizedBox()));
-    await tester.pumpAndSettle();
+    // _restoreAttempt() reads SharedPreferences/QueueCrypto on the real event
+    // loop, which FakeAsync pumps never reach: give it real time, then pump.
+    // (Bounded pump, not pumpAndSettle: the engine's looping animation keeps
+    // frames scheduled, so pumpAndSettle spins to its 10-minute fake-time cap.)
+    await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.pump(const Duration(milliseconds: 100));
+    // Second hop: _finishNow persists the completed marker before onComplete.
+    await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)));
+    await tester.pump(const Duration(milliseconds: 100));
 
     // Auto-submitted silently as far as onComplete is concerned, but the
     // host screen must have been told exactly once so it can notify the

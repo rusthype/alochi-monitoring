@@ -252,7 +252,8 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
     final payload = _buildPayload(result, elapsedSeconds);
     // One token per completion: an offline retry re-appends with the SAME
     // idempotency key, so it can never create a second chain entry.
-    final token = _completeToken ??= newIdempotencyToken();
+    final token = _completeToken ??= await resolveResultToken(
+        result.testKey, widget.studentId);
 
     // Offline USB pack mode: the pack has no answer key, so the locally
     // computed score is meaningless and is never stored or shown. The answers
@@ -396,6 +397,25 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       onExpiredAutoSubmit: () => _expiredAutoSubmit = true,
     );
   }
+}
+
+/// Idempotency token for one attempt: stable across a crash-replay of the
+/// SAME attempt (same `attempt_id` nonce), different for every new attempt.
+String buildResultToken(String testKey, String studentId, String attemptId) =>
+    'mw-$testKey-$studentId-$attemptId';
+
+/// Token for the attempt currently saved for [testKey]/[studentId]. Records
+/// without an `attempt_id` (written by builds before it existed) or a missing
+/// record fall back to a random token, i.e. the previous behaviour.
+Future<String> resolveResultToken(String testKey, String studentId) async {
+  final saved = await AttemptStore.load(testKey);
+  final attemptId = saved?['attempt_id']?.toString() ?? '';
+  if (saved != null &&
+      attemptId.isNotEmpty &&
+      (saved['student_id']?.toString() ?? '') == studentId) {
+    return buildResultToken(testKey, studentId, attemptId);
+  }
+  return newIdempotencyToken();
 }
 
 // ── Internal aggregator ───────────────────────────────────────────────────────
