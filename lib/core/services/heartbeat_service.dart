@@ -113,6 +113,7 @@ class HeartbeatService with WidgetsBindingObserver {
   // attempt (see startTest/cancelTest/finishTest) since extra_time_seconds
   // is cumulative for the CURRENT subject/test only.
   bool _locked = false;
+  bool _terminatedFired = false;
   int _extraTimeBaseline = 0;
 
   /// Fired when the reconciled admin-lock (pause) state changes.
@@ -141,7 +142,14 @@ class HeartbeatService with WidgetsBindingObserver {
     bool? locked,
     int? extraTimeSeconds,
     List<dynamic>? commands,
+    bool terminated = false,
   }) {
+    // Ping and frame replies both carry it: deliver once per attempt.
+    final cb = onTerminated;
+    if (terminated && cb != null && !_terminatedFired) {
+      _terminatedFired = true;
+      cb();
+    }
     if (locked != null && locked != _locked) {
       _locked = locked;
       onLockChanged?.call(locked);
@@ -171,6 +179,7 @@ class HeartbeatService with WidgetsBindingObserver {
   void _resetProctorState() {
     _locked = false;
     _extraTimeBaseline = 0;
+    _terminatedFired = false;
   }
 
   Future<void> _resolveDeviceInfoOnce() async {
@@ -408,9 +417,6 @@ class HeartbeatService with WidgetsBindingObserver {
       // `terminated` is returned on every ping for a session an admin ended
       // remotely via the panel (not just the one that caused it), so this
       // check runs on every ping call site, not only the 30s heartbeat.
-      if (response['terminated'] == true) {
-        onTerminated?.call();
-      }
       final tok = response['proctor_token'];
       if (tok is String && tok.isNotEmpty) _proctorToken = tok;
       final iv = response['proctor_interval_ms'];
@@ -419,6 +425,7 @@ class HeartbeatService with WidgetsBindingObserver {
         locked: response['locked'] as bool?,
         extraTimeSeconds: response['extra_time_seconds'] as int?,
         commands: response['commands'] as List<dynamic>?,
+        terminated: response['terminated'] == true,
       );
       return response;
     } catch (_) {
