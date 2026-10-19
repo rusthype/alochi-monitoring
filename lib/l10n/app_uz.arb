@@ -1243,6 +1243,14 @@
       }
     }
   },
+  "usbExportBadKeys": "Diqqat: {count} ta natija kalitida xato bor, server faylni qabul qilmaydi. Natijani qayta topshiring.",
+  "@usbExportBadKeys": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "usbExportFailed": "Eksport muvaffaqiyatsiz tugadi.",
   "usbSavedTitle": "Javoblaringiz saqlandi",
   "usbSavedBody": "Natija o'qituvchi tomonidan keyinroq e'lon qilinadi.",

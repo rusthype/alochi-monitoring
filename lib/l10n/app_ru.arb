@@ -1191,6 +1191,14 @@
       }
     }
   },
+  "usbExportBadKeys": "Внимание: у {count} результатов недопустимый ключ, сервер отклонит файл. Пересдайте тест.",
+  "@usbExportBadKeys": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "usbExportFailed": "Не удалось выполнить экспорт.",
   "usbSavedTitle": "Ваши ответы сохранены",
   "usbSavedBody": "Результат объявит учитель позже.",

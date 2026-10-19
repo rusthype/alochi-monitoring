@@ -34,6 +34,7 @@ import '../security/monitored_clock.dart';
 import 'lan_client_api.dart';
 import 'lan_diagnostic_api.dart';
 import 'offline_content_source.dart';
+import '../db/pack_results_db.dart';
 import 'offline_crypto.dart';
 import 'offline_errors.dart';
 import 'offline_media.dart';
@@ -494,17 +495,11 @@ class LanClientSession implements OfflineContentSource {
 
   // ── results ────────────────────────────────────────────────────────────────
 
-  static final RegExp _keyRe = RegExp(r'^[A-Za-z0-9:_.\-]{1,64}$');
-
   @override
   Future<void> recordResult(Map<String, dynamic> payload,
       {String? token}) async {
-    var key = (token == null || token.isEmpty) ? newIdempotencyToken() : token;
-    // The hub accepts only short URL-safe keys; anything else is hashed (still
-    // deterministic, so a retry of the same result keeps the same key).
-    if (!_keyRe.hasMatch(key)) {
-      key = 'h:${OfflineCrypto.sha256Hex(utf8.encode(key)).substring(0, 40)}';
-    }
+    final key = PackResultsDb.safeKey(
+        (token == null || token.isEmpty) ? newIdempotencyToken() : token);
     final envelope = jsonEncode({
       'payload': payload,
       // Proctoring metadata gathered since the last result rides along.

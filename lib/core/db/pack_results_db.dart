@@ -113,6 +113,18 @@ class PackResultsDb {
     );
   }
 
+  /// The backend (offline_pack.py `_parse_entry_meta`) rejects the WHOLE file
+  /// unless `0 < len(idempotency_key) <= 64`; the hub/online API also only
+  /// accept [A-Za-z0-9:_.-]. Mirror of that rule.
+  static final RegExp _keyRe = RegExp(r'^[A-Za-z0-9:_.\-]{1,64}$');
+  static bool isValidKey(String key) => _keyRe.hasMatch(key);
+
+  /// [key] unchanged when valid, else a deterministic `h:<40 hex>` digest, so a
+  /// retry still dedupes and an over-long key can never poison an export.
+  static String safeKey(String key) => isValidKey(key)
+      ? key
+      : 'h:${OfflineCrypto.sha256Hex(utf8.encode(key)).substring(0, 40)}';
+
   /// The exact meta text that goes into a chain link (and the export). Public
   /// so the LAN hub can measure an entry before it stores it.
   static String metaJsonFor(String idempotencyKey, List<dynamic> incidents,
@@ -134,6 +146,7 @@ class PackResultsDb {
     List<dynamic> clockFlags = const [],
     int? nowMs,
   }) async {
+    idempotencyKey = safeKey(idempotencyKey);
     final d = await _db;
     final encrypted = await QueueCrypto.encryptPayload(payloadJson);
     return d.transaction((txn) async {
@@ -218,6 +231,7 @@ class PackResultsDb {
   /// True when [idempotencyKey] is already a link of [packUuid]'s chain (a
   /// repeat [append] with it would be a no-op).
   static Future<bool> hasKey(String packUuid, String idempotencyKey) async {
+    idempotencyKey = safeKey(idempotencyKey);
     final d = await _db;
     final rows = await d.query('pack_results',
         columns: ['id'],

@@ -33,8 +33,14 @@ class _CountingExporter extends ResultsExporter {
   int builds = 0;
   int lastCount = 0;
   @override
-  Future<({Uint8List bytes, int count, String chainTip, int maxId})> build(
-      String packUuid) async {
+  Future<
+      ({
+        Uint8List bytes,
+        int count,
+        String chainTip,
+        int maxId,
+        int invalidKeyCount
+      })> build(String packUuid) async {
     builds++;
     final r = await super.build(packUuid);
     lastCount = r.count;
