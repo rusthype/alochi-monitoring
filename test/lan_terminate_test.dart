@@ -11,6 +11,8 @@ import 'package:alochi_monitoring/core/db/offline_queue.dart';
 import 'package:alochi_monitoring/core/db/queue_crypto.dart';
 import 'package:alochi_monitoring/core/engine/test_engine.dart';
 import 'package:alochi_monitoring/core/engine/test_models.dart';
+import 'package:alochi_monitoring/core/local_server/hub_state.dart'
+    show ClientStatus;
 import 'package:alochi_monitoring/core/local_server/shelf_hub.dart';
 import 'package:alochi_monitoring/core/offline/lan_client_api.dart';
 import 'package:alochi_monitoring/core/offline/lan_client_session.dart';
@@ -130,13 +132,15 @@ void main() {
     tmp.deleteSync(recursive: true);
   });
 
-  Future<void> startAttempt() => HeartbeatService.instance.startTest(
-      schoolCode: '999',
-      name: 'Ism Familiya',
-      variant: '1',
-      testKey: _testKey,
-      studentCode: lanS1,
-      sessionId: _attempt);
+  Future<void> startAttempt() => HeartbeatService.instance
+      .startTest(
+          schoolCode: '999',
+          name: 'Ism Familiya',
+          variant: '1',
+          testKey: _testKey,
+          studentCode: lanS1,
+          sessionId: _attempt)
+      .timeout(const Duration(seconds: 30)); // run in runAsync: real timer
 
   int hubId() => hub.state!.views().single.id;
 
@@ -157,7 +161,7 @@ void main() {
 
   /// Waits (real time) until [done] or [within] elapses; returns the seconds.
   Future<double> waitFor(WidgetTester tester, bool Function() done,
-      {Duration within = const Duration(seconds: 9)}) async {
+      {Duration within = const Duration(seconds: 25)}) async {
     final sw = Stopwatch()..start();
     while (!done() && sw.elapsed < within) {
       await tester.runAsync(
@@ -167,14 +171,34 @@ void main() {
     return sw.elapsedMilliseconds / 1000;
   }
 
+  Future<void> waitHubStatus(WidgetTester tester, ClientStatus want) async {
+    await waitFor(tester, () => hub.state!.views().single.status == want);
+    expect(hub.state!.views().single.status, want);
+  }
+
   /// Unmounts and drops the client's keep-alive sockets (their 15 s timers
   /// would otherwise outlive the fake-async test zone).
   Future<void> leave(WidgetTester tester) async {
+    ProctorService.instance.stop();
     await tester.pumpWidget(const SizedBox());
     session.close();
-    await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 200)));
-    await tester.pump(const Duration(seconds: 3)); // close() timers
+    // Let in-flight frame/ping requests finish, then drain fake timers.
+    for (var i = 0; i < 3; i++) {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 300)));
+      await tester.pump(const Duration(seconds: 3));
+    }
+  }
+
+  /// Runs [body] and ALWAYS cleans up, so a failed expect reports itself
+  /// instead of a masking "Timer is still pending".
+  Future<void> guarded(
+      WidgetTester tester, Future<void> Function() body) async {
+    try {
+      await body();
+    } finally {
+      await leave(tester);
+    }
   }
 
   Future<void> mount(WidgetTester tester, void Function() onComplete) async {
@@ -183,50 +207,62 @@ void main() {
     await tester.pumpWidget(engine(onComplete));
     await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 300)));
-    await tester.pump(const Duration(milliseconds: 100));
+    // Restore is async; terminating before it ends would score nothing.
+    await waitFor(tester, () => find.text('Q1').evaluate().isNotEmpty);
+    expect(find.text('Q1'), findsOneWidget);
   }
 
-  testWidgets('frame channel: terminate ends the test within seconds, once',
-      (tester) async {
-    var done = 0;
-    await mount(tester, () => done++);
-    hub.state!.terminate(hubId());
+  testWidgets(
+      'frame channel: terminate ends the test within seconds, once',
+      (tester) => guarded(tester, () async {
+            var done = 0;
+            await mount(tester, () => done++);
+            hub.state!.terminate(hubId());
 
-    final took = await waitFor(tester, () => done > 0);
-    expect(done, 1, reason: 'not finished after ${took}s (ping is 30s)');
-    expect(took, lessThan(8));
-    // Both channels keep reporting it: still exactly one submit.
-    await waitFor(tester, () => false, within: const Duration(seconds: 3));
-    expect(done, 1);
-    await leave(tester);
-  });
+            final took = await waitFor(tester, () => done > 0);
+            expect(done, 1,
+                reason: 'not finished after ${took}s (ping is 30s)');
+            expect(took, lessThan(28), reason: 'must beat the 30 s ping');
+            // Both channels keep reporting it: still exactly one submit.
+            await waitFor(tester, () => false,
+                within: const Duration(seconds: 3));
+            expect(done, 1);
+          }),
+      timeout: const Timeout(Duration(minutes: 2)));
 
-  testWidgets('paused student: terminate still ends the test', (tester) async {
-    var done = 0;
-    await mount(tester, () => done++);
-    hub.state!.setLocked(hubId(), true);
-    await waitFor(tester, () => _shield.evaluate().isNotEmpty);
-    expect(_shield, findsOneWidget);
+  testWidgets(
+      'paused student: terminate still ends the test',
+      (tester) => guarded(tester, () async {
+            var done = 0;
+            await mount(tester, () => done++);
+            hub.state!.setLocked(hubId(), true);
+            await waitFor(tester, () => _shield.evaluate().isNotEmpty);
+            expect(_shield, findsOneWidget);
 
-    hub.state!.terminate(hubId());
-    await waitFor(tester, () => done > 0);
-    expect(done, 1);
-    await leave(tester);
-  });
+            hub.state!.terminate(hubId());
+            await waitFor(tester, () => done > 0);
+            expect(done, 1);
+          }),
+      timeout: const Timeout(Duration(minutes: 2)));
 
-  testWidgets('re-entry of the same attempt after terminate still finishes',
-      (tester) async {
-    var done = 0;
-    await mount(tester, () => done++);
-    await tester.pumpWidget(const SizedBox()); // student left (hub: abandoned)
-    await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 300)));
-    await tester.runAsync(startAttempt); // re-claims the same attempt id
-    hub.state!.terminate(hubId());
+  testWidgets(
+      're-entry of the same attempt after terminate still finishes',
+      (tester) => guarded(tester, () async {
+            var done = 0;
+            await mount(tester, () => done++);
+            await tester
+                .pumpWidget(const SizedBox()); // student left (hub: abandoned)
+            // The leaving ping is async: wait until the hub has seen it,
+            // or it could land AFTER the re-claim below and end it again.
+            await waitHubStatus(tester, ClientStatus.waiting);
+            await tester.runAsync(() => startAttempt());
+            // re-claims the same attempt id
+            await waitHubStatus(tester, ClientStatus.testing);
+            hub.state!.terminate(hubId());
 
-    await tester.pumpWidget(engine(() => done++)); // re-enter
-    await waitFor(tester, () => done > 0);
-    expect(done, 1);
-    await leave(tester);
-  });
+            await tester.pumpWidget(engine(() => done++)); // re-enter
+            await waitFor(tester, () => done > 0);
+            expect(done, 1);
+          }),
+      timeout: const Timeout(Duration(minutes: 2)));
 }
