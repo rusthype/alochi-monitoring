@@ -1388,6 +1388,22 @@
     }
   },
   "lanEndTestYes": "Yakunlash",
+  "lanMonitorN": "Monitor {n}",
+  "@lanMonitorN": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "lanMonitorsBadge": "Monitorlar: {n}",
+  "@lanMonitorsBadge": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "lanNoFrame": "Ekran tasviri hali kelmadi.",
   "lanSelectClient": "Ro'yxatdan o'quvchini tanlang.",
   "lanConnectTitle": "O'qituvchi kompyuteriga ulanish",

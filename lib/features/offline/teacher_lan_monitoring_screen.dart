@@ -549,6 +549,7 @@ class _TeacherLanMonitoringScreenState
       if (v.remainingSeconds != null)
         l10n.lanRemaining(formatRemaining(v.remainingSeconds!)),
       if (v.tabSwitchCount > 0) l10n.lanTabSwitches(v.tabSwitchCount),
+      if (v.monitorCount > 1) l10n.lanMonitorsBadge(v.monitorCount),
       l10n.lanLastSeen(v.lastSeenAgoMs ~/ 1000),
     ];
     return InkWell(
@@ -649,6 +650,19 @@ class _TeacherLanMonitoringScreenState
                                     const TextStyle(color: AppColors.ink3)))),
               ),
             ),
+            if (v.monitorCount > 1) ...[
+              const SizedBox(height: 10),
+              SegmentedButton<int>(
+                showSelectedIcon: false,
+                segments: [
+                  for (var i = 0; i < v.monitorCount; i++)
+                    ButtonSegment<int>(
+                        value: i, label: Text(l10n.lanMonitorN(i + 1))),
+                ],
+                selected: {v.requestedMonitor},
+                onSelectionChanged: (s) => state.setMonitor(v.id, s.first),
+              ),
+            ],
             const SizedBox(height: 12),
             Wrap(spacing: 8, runSpacing: 8, children: [
               FilledButton.tonalIcon(

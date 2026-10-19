@@ -2678,6 +2678,16 @@ class AppLocalizationsUz extends AppLocalizations {
   String get lanEndTestYes => 'Yakunlash';
 
   @override
+  String lanMonitorN(int n) {
+    return 'Monitor $n';
+  }
+
+  @override
+  String lanMonitorsBadge(int n) {
+    return 'Monitorlar: $n';
+  }
+
+  @override
   String get lanNoFrame => 'Ekran tasviri hali kelmadi.';
 
   @override

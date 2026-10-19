@@ -165,6 +165,8 @@ class LanClientApi extends MonitoringApi {
             'session_id': sessionId,
             'focus': focus.toString(),
             'monitor_count': monitorCount.toString(),
+            if (monitorIndex != null)
+              'monitor_index': monitorIndex.clamp(0, 31).toString(),
             'frame_type': frameType == 'patch' ? 'patch' : 'keyframe',
             if (questionIndex != null) 'q_idx': questionIndex.toString(),
             if (totalQuestions != null) 'total': totalQuestions.toString(),

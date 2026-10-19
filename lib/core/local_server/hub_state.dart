@@ -168,6 +168,11 @@ class HubClient {
   bool frameFocus = true;
   int monitorCount = 1;
 
+  /// Multi-monitor: what the teacher asked for (reset per attempt / rejoin)
+  /// and what the PC last said it is capturing.
+  int requestedMonitorIndex = 0;
+  int reportedMonitorIndex = 0;
+
   int resultsAccepted = 0;
 
   /// Requests being served for this token right now (S-002).
@@ -230,6 +235,7 @@ class HubClient {
     extraTimeSeconds = 0;
     frame = null;
     frameVersion++;
+    requestedMonitorIndex = 0;
   }
 }
 
@@ -252,6 +258,8 @@ class ClientView {
   final int extraTimeSeconds;
   final int resultsAccepted;
   final bool inTest;
+  final int monitorCount;
+  final int requestedMonitor;
 
   const ClientView({
     required this.id,
@@ -272,6 +280,8 @@ class ClientView {
     required this.extraTimeSeconds,
     required this.resultsAccepted,
     required this.inTest,
+    this.monitorCount = 1,
+    this.requestedMonitor = 0,
   });
 }
 
@@ -655,6 +665,9 @@ class HubState extends ChangeNotifier {
       'proctor_interval_ms': _intervalMs(c),
       // 960 = "spotlight" capture profile (single-student close-up).
       'target_width': _watchedId == c.id ? 960 : 640,
+      // Never beyond the monitors the PC reports (one may have been unplugged).
+      'requested_monitor_index':
+          min(c.requestedMonitorIndex, max(c.monitorCount - 1, 0)),
     };
   }
 
@@ -864,6 +877,7 @@ class HubState extends ChangeNotifier {
     required Uint8List jpeg,
     required bool focus,
     required int monitorCount,
+    int monitorIndex = 0,
     int? questionIndex,
     int? totalQuestions,
   }) {
@@ -884,6 +898,7 @@ class HubState extends ChangeNotifier {
     }
     c.frameFocus = focus;
     c.monitorCount = monitorCount;
+    c.reportedMonitorIndex = monitorIndex;
     if (questionIndex != null) c.questionIndex = questionIndex;
     if (totalQuestions != null) c.totalQuestions = totalQuestions;
     _changed();
@@ -954,6 +969,15 @@ class HubState extends ChangeNotifier {
     final c = _byId(id);
     if (c == null || !c.inTest || seconds <= 0) return;
     c.extraTimeSeconds = min(c.extraTimeSeconds + seconds, 4 * 3600);
+    _changed();
+  }
+
+  /// Which monitor of a multi-monitor PC is streamed; the PC switches on its
+  /// next frame/ping reply.
+  void setMonitor(int id, int index) {
+    final c = _byId(id);
+    if (c == null) return;
+    c.requestedMonitorIndex = index.clamp(0, max(c.monitorCount - 1, 0));
     _changed();
   }
 
@@ -1057,6 +1081,9 @@ class HubState extends ChangeNotifier {
       extraTimeSeconds: c.extraTimeSeconds,
       resultsAccepted: c.resultsAccepted,
       inTest: c.inTest,
+      monitorCount: c.monitorCount,
+      requestedMonitor:
+          min(c.requestedMonitorIndex, max(c.monitorCount - 1, 0)),
     );
   }
 

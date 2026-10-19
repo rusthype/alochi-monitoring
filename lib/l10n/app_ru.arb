@@ -1336,6 +1336,8 @@
     }
   },
   "lanEndTestYes": "Завершить",
+  "lanMonitorN": "Монитор {n}",
+  "lanMonitorsBadge": "Мониторы: {n}",
   "lanNoFrame": "Изображение экрана пока не получено.",
   "lanSelectClient": "Выберите ученика в списке.",
   "lanConnectTitle": "Подключение к компьютеру учителя",

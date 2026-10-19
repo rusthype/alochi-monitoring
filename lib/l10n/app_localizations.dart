@@ -4923,6 +4923,18 @@ abstract class AppLocalizations {
   /// **'Yakunlash'**
   String get lanEndTestYes;
 
+  /// No description provided for @lanMonitorN.
+  ///
+  /// In uz, this message translates to:
+  /// **'Monitor {n}'**
+  String lanMonitorN(int n);
+
+  /// No description provided for @lanMonitorsBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Monitorlar: {n}'**
+  String lanMonitorsBadge(int n);
+
   /// No description provided for @lanNoFrame.
   ///
   /// In uz, this message translates to:
