@@ -100,6 +100,16 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
     return 'uz';
   }
 
+  /// Language of one roster student: its `language` ('uz'/'ru') when the pack
+  /// carries it AND has diagnostics in that language ([packLangs]), else the
+  /// pack-wide [_defaultLang] (old packs / one-language packs: unchanged).
+  String _langOf(Map<String, dynamic> student, Set<String> packLangs) {
+    final l = diagnosticStudentLanguage(student, '');
+    return packLangs.contains(l) ? l : _defaultLang();
+  }
+
+  Set<String> get _packLangs => {for (final d in _diags) d.lang};
+
   // attempt_id = "offline|<studentId>|<groupId>|<lang>"
   String _attemptId(String studentId, String groupId, String lang) =>
       'offline|$studentId|$groupId|$lang';
@@ -128,23 +138,45 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
     );
   }
 
+  /// One row per class label. A class's language is the MAJORITY language of
+  /// its students (tie -> 'uz'); it only drives the kiosk chrome locale and the
+  /// pill badge. Each student's own test language comes from [listStudents].
   @override
   Future<(List<Map<String, dynamic>>, bool)> listClasses(
       String schoolId) async {
-    final lang = _defaultLang();
-    final rows = session.groups
-        .map((g) => <String, dynamic>{
-              'class_label': g['name']?.toString() ?? '',
-              'language': lang,
-            })
-        .toList();
+    final fallback = _defaultLang();
+    final packLangs = _packLangs;
+    final groupName = {
+      for (final g in session.groups)
+        g['id']?.toString() ?? '': g['name']?.toString() ?? ''
+    };
+    final counts = <String, Map<String, int>>{
+      for (final name in groupName.values) name: <String, int>{}
+    };
+    for (final s in session.students) {
+      final c = counts[groupName[s['group_id']?.toString() ?? '']];
+      if (c == null) continue;
+      final l = _langOf(s, packLangs);
+      c[l] = (c[l] ?? 0) + 1;
+    }
+    String majority(Map<String, int> c) {
+      if (c.isEmpty) return fallback;
+      final top = c.values.reduce((a, b) => a > b ? a : b);
+      final tied = c.keys.where((k) => c[k] == top).toList();
+      return tied.contains('uz') ? 'uz' : tied.first;
+    }
+
+    final rows = <Map<String, dynamic>>[
+      for (final e in counts.entries)
+        {'class_label': e.key, 'language': majority(e.value)}
+    ];
     return (rows, false);
   }
 
   @override
   Future<(List<Map<String, dynamic>>, bool)> listStudents(
       String schoolId, String classLabel) async {
-    final lang = _defaultLang();
+    final packLangs = _packLangs;
     final groupIds = session.groups
         .where((g) => g['name']?.toString() == classLabel)
         .map((g) => g['id']?.toString() ?? '')
@@ -154,6 +186,7 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
       final gid = s['group_id']?.toString() ?? '';
       if (!groupIds.contains(gid)) continue;
       final sid = s['id']?.toString() ?? '';
+      final lang = _langOf(s, packLangs);
       // Same signal the online roster carries: status + next_subject, here
       // derived from the chain (exported and unexported rows both count).
       final group = _group(gid);

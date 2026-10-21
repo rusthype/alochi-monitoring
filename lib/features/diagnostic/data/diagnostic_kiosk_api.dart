@@ -35,6 +35,17 @@ Map<String, dynamic> parseDiagnosticClassRow(dynamic e) {
   };
 }
 
+/// Test language of one roster student: the row's own `language` when it is
+/// 'uz'/'ru' (case-insensitive), else [fallback] (the class / pack default).
+/// Shared by the online roster screens and the offline-pack adapter so a pack
+/// holding both languages serves each student their own, and an old pack or
+/// backend without the field behaves exactly as before.
+String diagnosticStudentLanguage(
+    Map<String, dynamic> student, String fallback) {
+  final l = (student['language'] ?? '').toString().trim().toLowerCase();
+  return l == 'uz' || l == 'ru' ? l : fallback;
+}
+
 /// Classifies a non-2xx `kiosk/finish/` response for `OfflineQueue.flushLocal`'s
 /// `{synced, permanent}` contract — extracted as a top-level function so the
 /// classification rule is unit-testable without mocking HTTP.

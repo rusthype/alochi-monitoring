@@ -235,13 +235,16 @@ class _DiagnosticStudentSelectScreenState
       setState(() => _studentStatus[attemptId] = StudentPrefetchStatus.loading);
     }
     try {
-      final subjectsCacheKey = '$grade|${widget.language}';
+      // Per-student test language (a mixed uz+ru class); falls back to the
+      // class language when the row carries none.
+      final lang = diagnosticStudentLanguage(student, widget.language);
+      final subjectsCacheKey = '$grade|$lang';
       var subjectsResp = _subjectsByGradeLanguage[subjectsCacheKey];
       if (subjectsResp == null) {
         final availableSubjects = widget.availableSubjectsOverride ??
             diagnosticKioskApi.availableSubjects;
         subjectsResp =
-            await availableSubjects(grade, language: widget.language);
+            await availableSubjects(grade, language: lang);
         _subjectsByGradeLanguage[subjectsCacheKey] = subjectsResp;
       }
       final subjects = (subjectsResp['subjects'] as List?)
@@ -494,7 +497,7 @@ class _DiagnosticStudentSelectScreenState
       'studentName': (s['student_name'] ?? '').toString(),
       'grade': (s['session_grade'] as num?)?.toInt() ?? _gradeFromClassLabel(),
       'schoolCode': widget.schoolCode,
-      'language': widget.language,
+      'language': diagnosticStudentLanguage(s, widget.language),
       // Display-only, for DiagnosticHistoryDb (Task 4).
       'schoolName': widget.schoolName,
       'classLabel': widget.classLabel,
