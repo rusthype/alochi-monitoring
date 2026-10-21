@@ -1503,5 +1503,28 @@
       "count": {"type": "int"}
     }
   },
-  "autoSaveFailed": "Резервная копия не сохранена — используйте Экспорт"
+  "autoSaveFailed": "Резервная копия не сохранена — используйте Экспорт",
+  "addStudentButton": "Добавить ребёнка",
+  "addStudentTitle": "Добавить нового ребёнка",
+  "addStudentSubtitle": "Добавьте ребёнка, которого нет в списке. Результаты попадут в отчёты после подтверждения администратором.",
+  "addStudentLastName": "Фамилия",
+  "addStudentFirstName": "Имя",
+  "addStudentBirthDate": "Дата рождения (необязательно)",
+  "addStudentClearDate": "Очистить",
+  "addStudentParentFio": "ФИО родителя (необязательно)",
+  "addStudentSubmit": "Добавить",
+  "addStudentRequired": "Обязательное поле",
+  "addStudentNameLength": "Введите от 2 до 60 символов",
+  "addStudentNameChars": "Допустимы только буквы, пробел, дефис и апостроф",
+  "addStudentErrInvalidName": "Имя или фамилия указаны неверно. Проверьте и повторите.",
+  "addStudentErrInvalidGroup": "Группа не найдена. Обновите список и повторите.",
+  "addStudentErrPendingLimit": "Достигнут лимит детей, ожидающих подтверждения. Обратитесь к администратору.",
+  "addStudentErrGeneric": "Не удалось добавить ребёнка. Повторите попытку.",
+  "addStudentSimilarTitle": "Это он?",
+  "addStudentSimilarBody": "В школе есть похожие ученики. Если это тот же ребёнок, выберите его.",
+  "addStudentSimilarNone": "Нет, другой ребёнок",
+  "studentPendingBadge": "Ожидает подтверждения",
+  "addStudentQueuedNotice": "Нет интернета. Ребёнок сохранён и будет отправлен, когда связь появится.",
+  "addStudentCandidateOtherClass": "{name} в другом классе ({group}). Выберите его в списке этого класса.",
+  "@addStudentCandidateOtherClass": {"placeholders": {"name": {"type": "String"}, "group": {"type": "String"}}}
 }

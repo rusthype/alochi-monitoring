@@ -2892,4 +2892,80 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get autoSaveFailed =>
       'Zaxira nusxa saqlanmadi — Eksportdan foydalaning';
+
+  @override
+  String get addStudentButton => 'Bola qo\'shish';
+
+  @override
+  String get addStudentTitle => 'Yangi bola qo\'shish';
+
+  @override
+  String get addStudentSubtitle =>
+      'Ro\'yxatda yo\'q bolani qo\'shing. Natijalar admin tasdiqlagandan keyin hisobotlarga o\'tadi.';
+
+  @override
+  String get addStudentLastName => 'Familiya';
+
+  @override
+  String get addStudentFirstName => 'Ism';
+
+  @override
+  String get addStudentBirthDate => 'Tug\'ilgan kun (ixtiyoriy)';
+
+  @override
+  String get addStudentClearDate => 'Tozalash';
+
+  @override
+  String get addStudentParentFio => 'Ota-ona F.I.O. (ixtiyoriy)';
+
+  @override
+  String get addStudentSubmit => 'Qo\'shish';
+
+  @override
+  String get addStudentRequired => 'Majburiy maydon';
+
+  @override
+  String get addStudentNameLength => '2 tadan 60 tagacha belgi kiriting';
+
+  @override
+  String get addStudentNameChars =>
+      'Faqat harf, bo\'shliq, tire va apostrof ruxsat etiladi';
+
+  @override
+  String get addStudentErrInvalidName =>
+      'Ism yoki familiya noto\'g\'ri. Tekshirib, qayta urinib ko\'ring.';
+
+  @override
+  String get addStudentErrInvalidGroup =>
+      'Guruh topilmadi. Ro\'yxatni yangilab, qayta urinib ko\'ring.';
+
+  @override
+  String get addStudentErrPendingLimit =>
+      'Tasdiq kutayotgan bolalar soni chegaraga yetdi. Adminga murojaat qiling.';
+
+  @override
+  String get addStudentErrGeneric =>
+      'Bolani qo\'shib bo\'lmadi. Qayta urinib ko\'ring.';
+
+  @override
+  String get addStudentSimilarTitle => 'Bu shumi?';
+
+  @override
+  String get addStudentSimilarBody =>
+      'Maktabda shunga o\'xshash o\'quvchilar bor. Agar shu bola bo\'lsa, uni tanlang.';
+
+  @override
+  String get addStudentSimilarNone => 'Yo\'q, boshqa bola';
+
+  @override
+  String get studentPendingBadge => 'Tasdiq kutilmoqda';
+
+  @override
+  String get addStudentQueuedNotice =>
+      'Internet yo\'q. Bola saqlandi va aloqa tiklangach yuboriladi.';
+
+  @override
+  String addStudentCandidateOtherClass(String name, String group) {
+    return '$name boshqa sinfda ($group). O\'sha sinf ro\'yxatidan tanlang.';
+  }
 }

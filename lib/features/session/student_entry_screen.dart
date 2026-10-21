@@ -3,7 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/db/local_students_db.dart';
+import '../../core/models/add_student.dart';
+import '../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
 import '../../core/offline/offline_session.dart';
+import '../../core/services/add_student_service.dart';
+import '../../shared/widgets/add_student_dialog.dart';
 import '../../shared/theme/app_theme.dart';
 import 'runner_dispatch.dart';
 import 'test_session.dart';
@@ -13,10 +18,19 @@ class StudentEntryScreen extends StatefulWidget {
   final TestSession session;
   final Map<String, dynamic>? preselectedGroup;
 
+  /// Test-only override of the "Bola qo'shish" server call; defaults to
+  /// [addStudentOrQueue] (server, falling back to the local queue offline).
+  final Future<AddStudentResult> Function({
+    required String groupId,
+    required AddStudentDraft draft,
+    required bool confirmNew,
+  })? addStudentOverride;
+
   const StudentEntryScreen({
     super.key,
     required this.session,
     this.preselectedGroup,
+    this.addStudentOverride,
   });
 
   @override
@@ -24,10 +38,6 @@ class StudentEntryScreen extends StatefulWidget {
 }
 
 class _StudentEntryScreenState extends State<StudentEntryScreen> {
-  final _firstCtrl = TextEditingController();
-  final _lastCtrl = TextEditingController();
-  final _firstFocus = FocusNode();
-  final _lastFocus = FocusNode();
   final _searchCtrl = TextEditingController();
   final _searchFocus = FocusNode();
   String _searchQuery = '';
@@ -48,21 +58,15 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
 
   bool get _canStart {
     if (_launching) return false;
-    if (_selectedStudent != null) return true;
-    if (_selectedGroup != null && (_loadingStudents || _students.isNotEmpty)) {
-      return false;
-    }
-    return _firstCtrl.text.trim().isNotEmpty &&
-        _lastCtrl.text.trim().isNotEmpty;
+    // A roster student (incl. a just-added pending child) is required: the
+    // old anonymous manual first/last-name path (studentId == '') is replaced
+    // by "Bola qo'shish", which gives the child a real/pending id.
+    return _selectedStudent != null;
   }
-
-  void _onTextChanged() => setState(() {});
 
   @override
   void initState() {
     super.initState();
-    _firstCtrl.addListener(_onTextChanged);
-    _lastCtrl.addListener(_onTextChanged);
     _searchCtrl.addListener(() {
       setState(() {
         _searchQuery = _searchCtrl.text.trim().toLowerCase();
@@ -106,7 +110,9 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       _err = null;
     });
     try {
-      final s = await api.fetchStudents(groupId);
+      final fetched = await api.fetchStudents(groupId);
+      // Children added while offline and not yet accepted by the server.
+      final s = await _withLocalStudents(groupId, fetched);
       final done = await OfflinePackSession.current
               ?.finishedStudentIds(widget.session.testKey) ??
           <String>{};
@@ -128,14 +134,86 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     }
   }
 
+  Future<List<Map<String, dynamic>>> _withLocalStudents(
+      String groupId, List<Map<String, dynamic>> fetched) async {
+    // Pack/LAN rosters are fixed (adding a child there is wave 2).
+    if (isOfflineModeOpen) return fetched;
+    final local = await LocalStudentsDb.unsyncedForGroupSafe(groupId);
+    if (local.isEmpty) return fetched;
+    final known = fetched.map((e) => (e['id'] ?? '').toString()).toSet();
+    return [
+      ...fetched,
+      for (final l in local)
+        if (!known.contains(l.tempId)) l.toRosterRow(),
+    ];
+  }
+
+  /// Dialog result -> roster state: a created child is appended and selected;
+  /// an existing candidate ("Bu shumi?" -> yes) is selected without any new
+  /// record (added to the visible list when they belong to another class).
+  Future<void> _addStudent() async {
+    final group = _selectedGroup;
+    final groupId = (group?['id'] ?? '').toString();
+    if (groupId.isEmpty) return;
+    final submit = widget.addStudentOverride ?? _defaultAddStudent;
+    final outcome = await showAddStudentDialog(
+      context,
+      onSubmit: (draft, {required confirmNew}) => submit(
+          groupId: groupId, draft: draft, confirmNew: confirmNew),
+    );
+    if (outcome == null || !mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    switch (outcome) {
+      case AddStudentCreated(:final result):
+        final row = result.toRosterRow();
+        setState(() {
+          _students = [..._students, row];
+          _searchCtrl.clear();
+          _searchQuery = '';
+          _selectedStudent = row;
+          _err = null;
+        });
+        if (result.queuedLocally) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(l10n.addStudentQueuedNotice),
+            duration: const Duration(seconds: 5),
+          ));
+        }
+      case AddStudentUseExisting(:final student):
+        final idx = _students.indexWhere(
+            (e) => (e['id'] ?? '').toString() == student.id);
+        final row = idx >= 0
+            ? _students[idx]
+            : <String, dynamic>{
+                'id': student.id,
+                'name': student.name,
+                'grade': student.grade,
+              };
+        setState(() {
+          if (idx < 0) _students = [..._students, row];
+          _searchCtrl.clear();
+          _searchQuery = '';
+          _selectedStudent = row;
+          _err = null;
+        });
+    }
+  }
+
+  Future<AddStudentResult> _defaultAddStudent({
+    required String groupId,
+    required AddStudentDraft draft,
+    required bool confirmNew,
+  }) =>
+      addStudentOrQueue(
+        groupId: groupId,
+        draft: draft,
+        confirmNew: confirmNew,
+        grade: widget.session.testGrade,
+        language: (_selectedGroup?['language'] ?? '').toString(),
+      );
+
   @override
   void dispose() {
-    _firstCtrl.removeListener(_onTextChanged);
-    _lastCtrl.removeListener(_onTextChanged);
-    _firstCtrl.dispose();
-    _lastCtrl.dispose();
-    _firstFocus.dispose();
-    _lastFocus.dispose();
     _searchCtrl.dispose();
     _searchFocus.dispose();
     super.dispose();
@@ -159,15 +237,10 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
           (_selectedStudent!['student_code'] ?? _selectedStudent!['id'] ?? '')
               .toString();
     } else {
-      final first = _firstCtrl.text.trim();
-      final last = _lastCtrl.text.trim();
-      if (first.isEmpty || last.isEmpty) {
-        setState(() => _err = l10n.enterNameError);
-        return;
-      }
-      firstName = first;
-      lastName = last;
-      studentId = '';
+      // Unreachable via the UI (_canStart needs a selected student); kept as
+      // a guard so a launch can never go out anonymous (studentId == '').
+      setState(() => _err = l10n.enterNameError);
+      return;
     }
 
     int grade;
@@ -401,6 +474,27 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                         ),
                                       ),
                                     ),
+                                  // Offline pack / LAN rosters are fixed
+                                  // (adding a child there is wave 2).
+                                  if (!_loadingStudents && !isOfflineModeOpen)
+                                    Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 12),
+                                      child: Align(
+                                        alignment: Alignment.centerRight,
+                                        child: OutlinedButton.icon(
+                                          key: const Key('addStudentButton'),
+                                          style: OutlinedButton.styleFrom(
+                                              minimumSize: const Size(0, 48)),
+                                          onPressed:
+                                              _launching ? null : _addStudent,
+                                          icon: const Icon(
+                                              Icons.person_add_alt_1_rounded,
+                                              size: 18),
+                                          label: Text(l10n.addStudentButton),
+                                        ),
+                                      ),
+                                    ),
                                 ] else if (_groups.isEmpty) ...[
                                   Text(l10n.selectGrade,
                                       style: const TextStyle(
@@ -538,6 +632,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                         name: name,
                                         avatarLetter: initial,
                                         isSelected: _selectedStudent == student,
+                                        isPending: student['pending'] == true,
                                         isDone: _done.contains(
                                             (student['student_code'] ??
                                                     student['id'] ??
@@ -834,6 +929,9 @@ class _StudentCard extends StatefulWidget {
   final String avatarLetter;
   final bool isSelected;
   final bool isDone;
+
+  /// Added by a proctor, awaiting admin approval ("Tasdiq kutilmoqda").
+  final bool isPending;
   final VoidCallback onTap;
 
   const _StudentCard({
@@ -841,6 +939,7 @@ class _StudentCard extends StatefulWidget {
     required this.avatarLetter,
     required this.isSelected,
     this.isDone = false,
+    this.isPending = false,
     required this.onTap,
   });
 
@@ -957,6 +1056,39 @@ class _StudentCardState extends State<_StudentCard> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (widget.isPending)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Tooltip(
+                        message:
+                            AppLocalizations.of(context)!.studentPendingBadge,
+                        child: Container(
+                          key: const Key('pendingBadge'),
+                          constraints: const BoxConstraints(maxWidth: 150),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondaryMuted,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.hourglass_top_rounded,
+                                size: 12, color: AppColors.secondary),
+                            const SizedBox(width: 4),
+                            Flexible(
+                                child: Text(
+                                AppLocalizations.of(context)!
+                                    .studentPendingBadge,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: AppColors.secondary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600))),
+                          ]),
+                        ),
+                      ),
+                    ),
                   if (widget.isDone)
                     Padding(
                       padding: const EdgeInsets.only(right: 8),

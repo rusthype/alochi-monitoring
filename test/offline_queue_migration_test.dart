@@ -82,7 +82,7 @@ void main() {
   Future<void> expectHealthy({required bool hadLocal}) async {
     await OfflineQueue.openAtPath(path);
     final db = await OfflineQueue.db;
-    expect(await _i(db, 'PRAGMA user_version'), 8);
+    expect(await _i(db, 'PRAGMA user_version'), 9);
     expect(
         await _tables(db),
         containsAll(<String>{
@@ -92,6 +92,7 @@ void main() {
           'pack_results',
           'pack_meta',
           'lan_outbox',
+          'local_students',
         }));
     expect(await db.query('queue', columns: ['payload']), [
       {'payload': 'q1'}
@@ -106,11 +107,11 @@ void main() {
     await db
         .insert('local_queue', {'payload': 'l2', 'created': 3, 'token': 't'});
 
-    // Second open is a no-op: same data, still v8.
+    // Second open is a no-op: same data, still v9.
     await OfflineQueue.openAtPath(path);
     final again = await OfflineQueue.db;
     expect(await _i(again, 'SELECT COUNT(*) FROM queue'), 2);
-    expect(await _i(again, 'PRAGMA user_version'), 8);
+    expect(await _i(again, 'PRAGMA user_version'), 9);
   }
 
   test('real office-1 case: full v6 schema stamped user_version 1', () async {
@@ -136,10 +137,34 @@ void main() {
     await expectHealthy(hadLocal: true);
   });
 
+  test('v8 schema (no local_students) upgrades to v9 keeping rows', () async {
+    await _seed(path, 7, 8); // a real v8 install: v7 tables + lan_outbox
+    var db = await databaseFactoryFfi.openDatabase(path);
+    await db.execute('CREATE TABLE lan_outbox (id INTEGER PRIMARY KEY '
+        'AUTOINCREMENT, pack_uuid TEXT NOT NULL, idempotency_key TEXT NOT '
+        'NULL, envelope TEXT NOT NULL, created INTEGER NOT NULL, attempts '
+        'INTEGER NOT NULL DEFAULT 0, status INTEGER NOT NULL DEFAULT 0, '
+        'reject_reason TEXT)');
+    await db.close();
+    await expectHealthy(hadLocal: true);
+    // The new table is usable and survives a second open.
+    final cur = await OfflineQueue.db;
+    await cur.insert('local_students', {
+      'temp_id': 'new:1',
+      'group_id': 'g',
+      'first_name': 'Ali',
+      'last_name': 'Valiyev',
+      'created': 1,
+    });
+    await OfflineQueue.openAtPath(path);
+    final again = await OfflineQueue.db;
+    expect(await _i(again, 'SELECT COUNT(*) FROM local_students'), 1);
+  });
+
   test('fresh create', () async {
     await OfflineQueue.openAtPath(path);
     final db = await OfflineQueue.db;
-    expect(await _i(db, 'PRAGMA user_version'), 8);
+    expect(await _i(db, 'PRAGMA user_version'), 9);
     expect(await _tables(db), containsAll(<String>{'queue', 'pack_results'}));
   });
 

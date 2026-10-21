@@ -235,6 +235,9 @@ class DiagnosticStudentCard extends StatelessWidget {
   /// (e.g. "Ingliz tili"), resolved by the caller from `next_subject`.
   final String? nextSubjectLabel;
 
+  /// Added by a proctor, awaiting admin approval (`pending: true` row).
+  final bool isPending;
+
   const DiagnosticStudentCard({
     super.key,
     required this.name,
@@ -245,6 +248,7 @@ class DiagnosticStudentCard extends StatelessWidget {
     this.onRetryTap,
     this.attemptStatus,
     this.nextSubjectLabel,
+    this.isPending = false,
   });
 
   @override
@@ -315,6 +319,10 @@ class DiagnosticStudentCard extends StatelessWidget {
                         attemptStatus: attemptStatus!,
                         nextSubjectLabel: nextSubjectLabel,
                       ),
+                    ],
+                    if (isPending) ...[
+                      const SizedBox(width: 6),
+                      const _PendingApprovalBadge(),
                     ],
                   ],
                 ),
@@ -390,6 +398,43 @@ class _StudentStatusBadge extends StatelessWidget {
 /// icon-only status badge next to the student's name (no text in the card
 /// itself — the full label still reaches the operator via [Tooltip], e.g.
 /// on long-press on the kiosk's touch screen).
+/// "Tasdiq kutilmoqda" pill for a child a proctor added that the admin has
+/// not approved yet (they can still take the test).
+class _PendingApprovalBadge extends StatelessWidget {
+  const _PendingApprovalBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final label = AppLocalizations.of(context)!.studentPendingBadge;
+    return Tooltip(
+      message: label,
+      child: Container(
+        key: const Key('pendingBadge'),
+        constraints: const BoxConstraints(maxWidth: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppColors.secondaryMuted,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.hourglass_top_rounded,
+              size: 12, color: AppColors.secondary),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: AppColors.secondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
 class _AttemptStatusBadge extends StatelessWidget {
   final String attemptStatus;
   final String? nextSubjectLabel;

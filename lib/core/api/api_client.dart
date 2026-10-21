@@ -6,8 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
+import '../models/add_student.dart';
 import '../models/test_catalog.dart';
 import '../db/offline_queue.dart';
+import '../db/local_students_db.dart';
 import '../db/diagnostic_history_db.dart';
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart'
     show diagnosticKioskApi;
@@ -435,6 +437,67 @@ class MonitoringApi {
     } catch (e) {
       debugPrint('fetchStudents error: $e');
       rethrow;
+    }
+  }
+
+  /// Proctor adds a child missing from [groupId]'s roster
+  /// (POST monitoring/students/add/). School is derived server-side from the
+  /// group. Idempotent on `draft.clientTempId`, so a retry after a lost
+  /// response returns the same request. Throws [SimilarStudentsException]
+  /// (409, nothing created) unless [confirmNew]; other failures are
+  /// [ApiException] (`code`: invalid_name / invalid_group / pending_limit;
+  /// statusCode 0 = no network, 404/405 = backend without the endpoint).
+  Future<AddStudentResult> addStudent({
+    required String groupId,
+    required AddStudentDraft draft,
+    bool confirmNew = false,
+  }) async {
+    final resp = await _send(() => http.post(
+          Uri.parse('$_base/students/add/'),
+          headers: _headers,
+          body: jsonEncode({
+            'group_id': groupId,
+            ...draft.toJson(confirmNew: confirmNew),
+          }),
+        ));
+    return parseAddStudentResponse(resp, diagnostic: false);
+  }
+
+  /// Replays a queued `_offlineKind: 'add_student'` row. Always sends
+  /// `confirm_new: true`: the proctor already answered "new child" when the
+  /// network was down, and the panel admin sees the server-side duplicate
+  /// suggestion anyway. Same `{synced, permanent}` contract as the other
+  /// replay helpers; only a 400 (bad name/group) is permanent — 404/405 (old
+  /// backend), 429, 5xx, a full pending quota and offline all keep retrying.
+  Future<Map<String, dynamic>> submitQueuedAddStudent(
+      Map<String, dynamic> payload) async {
+    final tempId = (payload['client_temp_id'] ?? '').toString();
+    try {
+      final birth = DateTime.tryParse((payload['birth_date'] ?? '').toString());
+      final result = await addStudent(
+        groupId: (payload['group_id'] ?? '').toString(),
+        confirmNew: true,
+        draft: AddStudentDraft(
+          firstName: (payload['first_name'] ?? '').toString(),
+          lastName: (payload['last_name'] ?? '').toString(),
+          birthDate: birth,
+          parentFio: (payload['parent_fio'] ?? '').toString(),
+          clientTempId: tempId,
+        ),
+      );
+      if (tempId.isNotEmpty) {
+        await LocalStudentsDb.markSynced(tempId, result.id);
+      }
+      return {'synced': true};
+    } on ApiException catch (e) {
+      final permanent = e.statusCode == 400;
+      if (permanent && tempId.isNotEmpty) {
+        await LocalStudentsDb.remove(tempId);
+      }
+      return {'synced': false, 'permanent': permanent};
+    } catch (e) {
+      debugPrint('submitQueuedAddStudent error: $e');
+      return {'synced': false, 'permanent': false};
     }
   }
 
@@ -941,6 +1004,11 @@ class MonitoringApi {
   /// before either payload leaves the device.
   Future<Map<String, dynamic>> _dispatchLocalQueueItem(
       Map<String, dynamic> payload, String token) async {
+    if (payload['_offlineKind'] == 'add_student') {
+      // Queued "Bola qo'shish" (the network was down); flushed in created-ASC
+      // order, i.e. BEFORE any result the child produced meanwhile.
+      return submitQueuedAddStudent(payload);
+    }
     if (payload['_offlineKind'] == 'question_report') {
       final body = Map<String, dynamic>.from(payload)..remove('_offlineKind');
       return submitQuestionReport(body, token);
@@ -975,6 +1043,22 @@ class MonitoringApi {
         }
       }
       return result;
+    }
+    // A result produced for a child that was added offline carries the temp
+    // id (`new:<uuid>` == client_temp_id). Once the queued add has been
+    // accepted, point the result at the real server id; until then (or if the
+    // add was dropped) it goes up as-is = an unknown student, exactly as it
+    // did before this feature.
+    final sid = (payload['student_id'] ?? '').toString();
+    if (isLocalNewStudentId(sid)) {
+      try {
+        final real = await LocalStudentsDb.serverIdFor(sid);
+        if (real != null) {
+          return submitLocalResultFull({...payload, 'student_id': real}, token);
+        }
+      } catch (e) {
+        debugPrint('flush: temp student id lookup failed: $e');
+      }
     }
     return submitLocalResultFull(payload, token);
   }

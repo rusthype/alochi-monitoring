@@ -8,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/models.dart';
 import '../api/api_client.dart';
 import 'db_migrate.dart';
+import 'local_students_db.dart';
 import 'queue_crypto.dart';
 
 class OfflineQueue {
@@ -37,6 +38,10 @@ class OfflineQueue {
     _db = null;
   }
 
+  // Schema v9 adds `local_students` (local_students_db.dart): children a
+  // proctor added while offline + their temp -> server id mapping. Additive
+  // and idempotent like every step before it; nothing else changes.
+  //
   // Schema v8 adds `lan_outbox` (lan_outbox_db.dart): results a LAN client has
   // not yet handed to the teacher's hub. Its own table, so neither the online
   // flush nor purgeStale() can ever see (or drop) those rows.
@@ -49,11 +54,11 @@ class OfflineQueue {
     // One idempotent ensureSchema for create, upgrade AND every open: the
     // stored user_version cannot be trusted (see db_migrate.dart), so the
     // schema is verified against reality instead of replayed by version.
-    return openDatabase(path, version: 8, onOpen: ensureSchema);
+    return openDatabase(path, version: 9, onOpen: ensureSchema);
   }
 
   /// Brings any queue DB (fresh, any older version, or version-drifted) to the
-  /// v8 schema without touching existing rows.
+  /// v9 schema without touching existing rows.
   @visibleForTesting
   static Future<void> ensureSchema(Database db) async {
     await db.execute('''
@@ -92,6 +97,7 @@ class OfflineQueue {
     );
     await createPackTables(db);
     await createLanTables(db);
+    await LocalStudentsDb.createTable(db);
   }
 
   /// v7 tables for offline USB packs. Idempotent (IF NOT EXISTS) so a
@@ -316,6 +322,7 @@ class OfflineQueue {
     // legacy tg_queue: attempts ustuni yo'q — faqat yosh bo'yicha
     removed +=
         await d.delete('tg_queue', where: 'created < ?', whereArgs: [cutoff]);
+    removed += await LocalStudentsDb.purgeStale();
     if (removed > 0) {
       debugPrint(
           'OfflineQueue.purgeStale: $removed eski/o\'lik qator o\'chirildi');

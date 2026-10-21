@@ -2881,4 +2881,80 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get autoSaveFailed =>
       'Резервная копия не сохранена — используйте Экспорт';
+
+  @override
+  String get addStudentButton => 'Добавить ребёнка';
+
+  @override
+  String get addStudentTitle => 'Добавить нового ребёнка';
+
+  @override
+  String get addStudentSubtitle =>
+      'Добавьте ребёнка, которого нет в списке. Результаты попадут в отчёты после подтверждения администратором.';
+
+  @override
+  String get addStudentLastName => 'Фамилия';
+
+  @override
+  String get addStudentFirstName => 'Имя';
+
+  @override
+  String get addStudentBirthDate => 'Дата рождения (необязательно)';
+
+  @override
+  String get addStudentClearDate => 'Очистить';
+
+  @override
+  String get addStudentParentFio => 'ФИО родителя (необязательно)';
+
+  @override
+  String get addStudentSubmit => 'Добавить';
+
+  @override
+  String get addStudentRequired => 'Обязательное поле';
+
+  @override
+  String get addStudentNameLength => 'Введите от 2 до 60 символов';
+
+  @override
+  String get addStudentNameChars =>
+      'Допустимы только буквы, пробел, дефис и апостроф';
+
+  @override
+  String get addStudentErrInvalidName =>
+      'Имя или фамилия указаны неверно. Проверьте и повторите.';
+
+  @override
+  String get addStudentErrInvalidGroup =>
+      'Группа не найдена. Обновите список и повторите.';
+
+  @override
+  String get addStudentErrPendingLimit =>
+      'Достигнут лимит детей, ожидающих подтверждения. Обратитесь к администратору.';
+
+  @override
+  String get addStudentErrGeneric =>
+      'Не удалось добавить ребёнка. Повторите попытку.';
+
+  @override
+  String get addStudentSimilarTitle => 'Это он?';
+
+  @override
+  String get addStudentSimilarBody =>
+      'В школе есть похожие ученики. Если это тот же ребёнок, выберите его.';
+
+  @override
+  String get addStudentSimilarNone => 'Нет, другой ребёнок';
+
+  @override
+  String get studentPendingBadge => 'Ожидает подтверждения';
+
+  @override
+  String get addStudentQueuedNotice =>
+      'Нет интернета. Ребёнок сохранён и будет отправлен, когда связь появится.';
+
+  @override
+  String addStudentCandidateOtherClass(String name, String group) {
+    return '$name в другом классе ($group). Выберите его в списке этого класса.';
+  }
 }

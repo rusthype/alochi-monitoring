@@ -5266,6 +5266,138 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Zaxira nusxa saqlanmadi — Eksportdan foydalaning'**
   String get autoSaveFailed;
+
+  /// No description provided for @addStudentButton.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bola qo\'shish'**
+  String get addStudentButton;
+
+  /// No description provided for @addStudentTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yangi bola qo\'shish'**
+  String get addStudentTitle;
+
+  /// No description provided for @addStudentSubtitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ro\'yxatda yo\'q bolani qo\'shing. Natijalar admin tasdiqlagandan keyin hisobotlarga o\'tadi.'**
+  String get addStudentSubtitle;
+
+  /// No description provided for @addStudentLastName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Familiya'**
+  String get addStudentLastName;
+
+  /// No description provided for @addStudentFirstName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ism'**
+  String get addStudentFirstName;
+
+  /// No description provided for @addStudentBirthDate.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tug\'ilgan kun (ixtiyoriy)'**
+  String get addStudentBirthDate;
+
+  /// No description provided for @addStudentClearDate.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tozalash'**
+  String get addStudentClearDate;
+
+  /// No description provided for @addStudentParentFio.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ota-ona F.I.O. (ixtiyoriy)'**
+  String get addStudentParentFio;
+
+  /// No description provided for @addStudentSubmit.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qo\'shish'**
+  String get addStudentSubmit;
+
+  /// No description provided for @addStudentRequired.
+  ///
+  /// In uz, this message translates to:
+  /// **'Majburiy maydon'**
+  String get addStudentRequired;
+
+  /// No description provided for @addStudentNameLength.
+  ///
+  /// In uz, this message translates to:
+  /// **'2 tadan 60 tagacha belgi kiriting'**
+  String get addStudentNameLength;
+
+  /// No description provided for @addStudentNameChars.
+  ///
+  /// In uz, this message translates to:
+  /// **'Faqat harf, bo\'shliq, tire va apostrof ruxsat etiladi'**
+  String get addStudentNameChars;
+
+  /// No description provided for @addStudentErrInvalidName.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ism yoki familiya noto\'g\'ri. Tekshirib, qayta urinib ko\'ring.'**
+  String get addStudentErrInvalidName;
+
+  /// No description provided for @addStudentErrInvalidGroup.
+  ///
+  /// In uz, this message translates to:
+  /// **'Guruh topilmadi. Ro\'yxatni yangilab, qayta urinib ko\'ring.'**
+  String get addStudentErrInvalidGroup;
+
+  /// No description provided for @addStudentErrPendingLimit.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tasdiq kutayotgan bolalar soni chegaraga yetdi. Adminga murojaat qiling.'**
+  String get addStudentErrPendingLimit;
+
+  /// No description provided for @addStudentErrGeneric.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bolani qo\'shib bo\'lmadi. Qayta urinib ko\'ring.'**
+  String get addStudentErrGeneric;
+
+  /// No description provided for @addStudentSimilarTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu shumi?'**
+  String get addStudentSimilarTitle;
+
+  /// No description provided for @addStudentSimilarBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Maktabda shunga o\'xshash o\'quvchilar bor. Agar shu bola bo\'lsa, uni tanlang.'**
+  String get addStudentSimilarBody;
+
+  /// No description provided for @addStudentSimilarNone.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yo\'q, boshqa bola'**
+  String get addStudentSimilarNone;
+
+  /// No description provided for @studentPendingBadge.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tasdiq kutilmoqda'**
+  String get studentPendingBadge;
+
+  /// No description provided for @addStudentQueuedNotice.
+  ///
+  /// In uz, this message translates to:
+  /// **'Internet yo\'q. Bola saqlandi va aloqa tiklangach yuboriladi.'**
+  String get addStudentQueuedNotice;
+
+  /// No description provided for @addStudentCandidateOtherClass.
+  ///
+  /// In uz, this message translates to:
+  /// **'{name} boshqa sinfda ({group}). O\'sha sinf ro\'yxatidan tanlang.'**
+  String addStudentCandidateOtherClass(String name, String group);
 }
 
 class _AppLocalizationsDelegate

@@ -15,6 +15,8 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
+import '../../../core/models/add_student.dart';
+import '../../../shared/widgets/add_student_dialog.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
 import '../../../core/offline/offline_session.dart';
@@ -91,6 +93,11 @@ class DiagnosticStudentSelectScreen extends StatefulWidget {
   /// diagnostic_test_runner_screen.dart.
   final Stream<List<ConnectivityResult>>? connectivityStreamOverride;
 
+  /// Test-only override of the "Bola qo'shish" server call; defaults to
+  /// [diagnosticKioskApi.addStudent] for this school/class/language.
+  final Future<AddStudentResult> Function(AddStudentDraft draft,
+      {required bool confirmNew})? addStudentOverride;
+
   const DiagnosticStudentSelectScreen({
     super.key,
     required this.schoolId,
@@ -104,6 +111,7 @@ class DiagnosticStudentSelectScreen extends StatefulWidget {
     this.availableSubjectsOverride,
     this.peekSubjectOverride,
     this.connectivityStreamOverride,
+    this.addStudentOverride,
   });
 
   @override
@@ -382,6 +390,79 @@ class _DiagnosticStudentSelectScreenState
     }
   }
 
+  /// Order- and script-insensitive token key so "Aliyev Ali" matches a
+  /// candidate "Ali Aliyev" (and Cyrillic spellings of the same name).
+  static String _nameKey(String raw) {
+    final tokens = cyrillicToLatinUzbek(raw)
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((t) => t.isNotEmpty)
+        .toList()
+      ..sort();
+    return tokens.join(' ');
+  }
+
+  void _selectRow(Map<String, dynamic> row) {
+    setState(() {
+      _selected = row;
+      _searchCtrl.clear();
+      _query = '';
+    });
+    final attemptId = (row['attempt_id'] ?? '').toString();
+    final future = _prefetchSubjectsForStudent(row);
+    if (attemptId.isNotEmpty) _prefetchInFlight[attemptId] = future;
+    unawaited(future);
+  }
+
+  /// "Bola qo'shish": a created child arrives as a pending attempt row and is
+  /// selected like any tapped student; "Bu shumi?" -> yes selects the existing
+  /// roster row (matched by name — the diagnostic roster has attempts, not
+  /// student ids) or, if that child sits in another class, says where.
+  Future<void> _addStudent() async {
+    final outcome = await showAddStudentDialog(
+      context,
+      onSubmit: widget.addStudentOverride ??
+          (draft, {required confirmNew}) => diagnosticKioskApi.addStudent(
+                schoolId: widget.schoolId,
+                classLabel: widget.classLabel,
+                language: widget.language,
+                draft: draft,
+                confirmNew: confirmNew,
+              ),
+    );
+    if (outcome == null || !mounted) return;
+    switch (outcome) {
+      case AddStudentCreated(:final result):
+        final row = result.toDiagnosticRow();
+        final exists = _students.any((s) =>
+            (s['attempt_id'] ?? '').toString() == result.id);
+        if (!exists) setState(() => _students = [..._students, row]);
+        _selectRow(exists
+            ? _students.firstWhere(
+                (s) => (s['attempt_id'] ?? '').toString() == result.id)
+            : row);
+      case AddStudentUseExisting(:final student):
+        final key = _nameKey(student.name);
+        final match = _students.cast<Map<String, dynamic>?>().firstWhere(
+              (s) => _nameKey((s?['student_name'] ?? '').toString()) == key,
+              orElse: () => null,
+            );
+        if (match != null) {
+          _selectRow(match);
+        } else {
+          final l10n = AppLocalizations.of(context)!;
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(l10n.addStudentCandidateOtherClass(
+                student.name,
+                student.groupName.isNotEmpty
+                    ? student.groupName
+                    : l10n.gradeClass(student.grade))),
+            duration: const Duration(seconds: 6),
+          ));
+        }
+    }
+  }
+
   List<Map<String, dynamic>> get _filtered {
     if (_query.isEmpty) return _students;
     final query = cyrillicToLatinUzbek(_query).toLowerCase();
@@ -609,32 +690,53 @@ class _DiagnosticStudentSelectScreenState
                                     ),
                                   ),
                                   const SizedBox(height: 12),
-                                  // Pack/LAN content is already local: nothing to download.
+                                  // Pack/LAN content is already local: nothing to
+                                  // download, and adding a child there is wave 2.
                                   if (!isOfflineModeOpen)
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: OutlinedButton.icon(
-                                      onPressed: _prefetchingAll
-                                          ? null
-                                          : _prefetchAllStudents,
-                                      icon: _prefetchingAll
-                                          ? const SizedBox(
-                                              width: 14,
-                                              height: 14,
-                                              child: CircularProgressIndicator(
-                                                  strokeWidth: 2),
-                                            )
-                                          : const Icon(
-                                              Icons
-                                                  .download_for_offline_outlined,
-                                              size: 16),
-                                      label: Text(_prefetchingAll
-                                          ? l10n.diagnosticDownloadAllProgress(
-                                              _prefetchedCount,
-                                              _filtered.length)
-                                          : l10n.diagnosticDownloadAllOffline),
+                                    Wrap(
+                                      alignment: WrapAlignment.end,
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        OutlinedButton.icon(
+                                          key: const Key('addStudentButton'),
+                                          style: OutlinedButton.styleFrom(
+                                              minimumSize: const Size(0, 44)),
+                                          onPressed:
+                                              _starting ? null : _addStudent,
+                                          icon: const Icon(
+                                              Icons.person_add_alt_1_rounded,
+                                              size: 18),
+                                          label: Text(l10n.addStudentButton),
+                                        ),
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                              minimumSize: const Size(0, 44)),
+                                          onPressed: _prefetchingAll
+                                              ? null
+                                              : _prefetchAllStudents,
+                                          icon: _prefetchingAll
+                                              ? const SizedBox(
+                                                  width: 14,
+                                                  height: 14,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                          strokeWidth: 2),
+                                                )
+                                              : const Icon(
+                                                  Icons
+                                                      .download_for_offline_outlined,
+                                                  size: 16),
+                                          label: Text(_prefetchingAll
+                                              ? l10n
+                                                  .diagnosticDownloadAllProgress(
+                                                      _prefetchedCount,
+                                                      _filtered.length)
+                                              : l10n
+                                                  .diagnosticDownloadAllOffline),
+                                        ),
+                                      ],
                                     ),
-                                  ),
                                   const SizedBox(height: 20),
                                   if (_error == null && _fromCache)
                                     const DiagnosticOfflineBadge(),
@@ -718,6 +820,8 @@ class _DiagnosticStudentSelectScreenState
                                                   _studentHasOnlineOnlySubject[
                                                           attemptId] ??
                                                       false,
+                                              isPending:
+                                                  student['pending'] == true,
                                               attemptStatus:
                                                   student['status'] as String?,
                                               nextSubjectLabel:

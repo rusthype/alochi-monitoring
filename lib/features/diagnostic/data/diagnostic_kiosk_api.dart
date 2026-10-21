@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../../../core/api/api_client.dart' show ApiException;
+import '../../../core/models/add_student.dart';
 import '../../../core/db/diagnostic_kiosk_cache.dart';
 
 /// Parses one row of `GET kiosk/schools/<id>/classes/` — extracted as a
@@ -223,6 +224,32 @@ class DiagnosticKioskApi {
       if (data is! List || data.isEmpty) return [];
       return data.cast<Map<String, dynamic>>();
     });
+  }
+
+  /// Proctor adds a child missing from the class roster
+  /// (POST kiosk/schools/<id>/students/add/). The backend creates a pending
+  /// add-request plus a held `DiagnosticAttempt` in the class's active session
+  /// and returns the attempt, usable like any roster row. Same 409
+  /// `similar_students` / [confirmNew] / idempotent-on-`clientTempId`
+  /// semantics as `MonitoringApi.addStudent`. Online only: a diagnostic
+  /// attempt cannot exist without the server (offline packs: wave 2).
+  Future<AddStudentResult> addStudent({
+    required String schoolId,
+    required String classLabel,
+    required String language,
+    required AddStudentDraft draft,
+    bool confirmNew = false,
+  }) async {
+    final resp = await _send(() => http.post(
+          Uri.parse('$_base/kiosk/schools/$schoolId/students/add/'),
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'class_label': classLabel,
+            'language': language,
+            ...draft.toJson(confirmNew: confirmNew),
+          }),
+        ));
+    return parseAddStudentResponse(resp, diagnostic: true);
   }
 
   /// Delegates into the (fixed) CAT engine's start flow — loosely-typed

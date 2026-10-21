@@ -1569,5 +1569,28 @@
       "count": {"type": "int"}
     }
   },
-  "autoSaveFailed": "Zaxira nusxa saqlanmadi — Eksportdan foydalaning"
+  "autoSaveFailed": "Zaxira nusxa saqlanmadi — Eksportdan foydalaning",
+  "addStudentButton": "Bola qo'shish",
+  "addStudentTitle": "Yangi bola qo'shish",
+  "addStudentSubtitle": "Ro'yxatda yo'q bolani qo'shing. Natijalar admin tasdiqlagandan keyin hisobotlarga o'tadi.",
+  "addStudentLastName": "Familiya",
+  "addStudentFirstName": "Ism",
+  "addStudentBirthDate": "Tug'ilgan kun (ixtiyoriy)",
+  "addStudentClearDate": "Tozalash",
+  "addStudentParentFio": "Ota-ona F.I.O. (ixtiyoriy)",
+  "addStudentSubmit": "Qo'shish",
+  "addStudentRequired": "Majburiy maydon",
+  "addStudentNameLength": "2 tadan 60 tagacha belgi kiriting",
+  "addStudentNameChars": "Faqat harf, bo'shliq, tire va apostrof ruxsat etiladi",
+  "addStudentErrInvalidName": "Ism yoki familiya noto'g'ri. Tekshirib, qayta urinib ko'ring.",
+  "addStudentErrInvalidGroup": "Guruh topilmadi. Ro'yxatni yangilab, qayta urinib ko'ring.",
+  "addStudentErrPendingLimit": "Tasdiq kutayotgan bolalar soni chegaraga yetdi. Adminga murojaat qiling.",
+  "addStudentErrGeneric": "Bolani qo'shib bo'lmadi. Qayta urinib ko'ring.",
+  "addStudentSimilarTitle": "Bu shumi?",
+  "addStudentSimilarBody": "Maktabda shunga o'xshash o'quvchilar bor. Agar shu bola bo'lsa, uni tanlang.",
+  "addStudentSimilarNone": "Yo'q, boshqa bola",
+  "studentPendingBadge": "Tasdiq kutilmoqda",
+  "addStudentQueuedNotice": "Internet yo'q. Bola saqlandi va aloqa tiklangach yuboriladi.",
+  "addStudentCandidateOtherClass": "{name} boshqa sinfda ({group}). O'sha sinf ro'yxatidan tanlang.",
+  "@addStudentCandidateOtherClass": {"placeholders": {"name": {"type": "String"}, "group": {"type": "String"}}}
 }

@@ -72,7 +72,7 @@ void main() {
 
     await OfflineQueue.openAtPath(path);
     final d = await OfflineQueue.db;
-    expect(await d.getVersion(), 8);
+    expect(await d.getVersion(), 9);
 
     final q = await d.query('queue');
     expect(q, hasLength(1));
@@ -100,7 +100,7 @@ void main() {
   test('fresh install creates the current (v8) schema directly', () async {
     await OfflineQueue.openAtPath(p.join(tmp.path, 'fresh.db'));
     final d = await OfflineQueue.db;
-    expect(await d.getVersion(), 8);
+    expect(await d.getVersion(), 9);
     final names =
         (await d.rawQuery("SELECT name FROM sqlite_master WHERE type='table'"))
             .map((r) => r['name'])
