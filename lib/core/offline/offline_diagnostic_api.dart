@@ -25,6 +25,8 @@ import '../api/api_client.dart' show ApiException;
 import 'offline_crypto.dart';
 import 'offline_errors.dart';
 import 'offline_content_source.dart';
+import 'offline_new_student.dart';
+import '../models/add_student.dart';
 
 class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
   final OfflineContentSource session;
@@ -57,8 +59,13 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
     return null;
   }
 
+  /// Pack roster + children added on this computer (never part of the signed
+  /// pack roster, see [OfflineContentSource.localStudents]).
+  List<Map<String, dynamic>> get _roster =>
+      [...session.students, ...session.localStudents];
+
   Map<String, dynamic>? _student(String id, String groupId) {
-    for (final s in session.students) {
+    for (final s in _roster) {
       if (s['id']?.toString() == id && s['group_id']?.toString() == groupId) {
         return s;
       }
@@ -153,7 +160,7 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
     final counts = <String, Map<String, int>>{
       for (final name in groupName.values) name: <String, int>{}
     };
-    for (final s in session.students) {
+    for (final s in _roster) {
       final c = counts[groupName[s['group_id']?.toString() ?? '']];
       if (c == null) continue;
       final l = _langOf(s, packLangs);
@@ -182,7 +189,7 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
         .map((g) => g['id']?.toString() ?? '')
         .toSet();
     final rows = <Map<String, dynamic>>[];
-    for (final s in session.students) {
+    for (final s in _roster) {
       final gid = s['group_id']?.toString() ?? '';
       if (!groupIds.contains(gid)) continue;
       final sid = s['id']?.toString() ?? '';
@@ -213,9 +220,53 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
                 ? 'completed'
                 : 'partial',
         'next_subject': next ?? '',
+        // A child added on this computer: "Tasdiq kutilmoqda" badge.
+        if (s['pending'] == true) 'pending': true,
       });
     }
     return (rows, false);
+  }
+
+  /// "Bola qo'shish" offline: the child joins the open pack's local roster
+  /// (duplicate check across the whole pack, persisted per pack uuid) and is
+  /// returned as an attempt row, `offline|new:<uuid>|<groupId>|<lang>`.
+  @override
+  Future<AddStudentResult> addStudent({
+    required String schoolId,
+    required String classLabel,
+    required String language,
+    required AddStudentDraft draft,
+    bool confirmNew = false,
+  }) async {
+    String groupId = '';
+    for (final g in session.groups) {
+      if (g['name']?.toString() == classLabel) {
+        groupId = g['id']?.toString() ?? '';
+        break;
+      }
+    }
+    if (groupId.isEmpty) {
+      throw const ApiException(400, 'unknown class', code: 'invalid_group');
+    }
+    final added = await session.addLocalStudent(
+        groupId: groupId,
+        draft: draft,
+        confirmNew: confirmNew,
+        language: language);
+    final lang = _langOf(
+        {'language': added.language.isEmpty ? language : added.language},
+        _packLangs);
+    return AddStudentResult(
+      id: _attemptId(added.id, groupId, lang),
+      name: added.name,
+      firstName: added.firstName,
+      lastName: added.lastName,
+      groupId: groupId,
+      grade: added.grade,
+      language: lang,
+      classLabel: classLabel,
+      status: 'not_started',
+    );
   }
 
   // ── test content ───────────────────────────────────────────────────────────
@@ -378,7 +429,7 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
           code: 'unknown_question');
     }
 
-    final payload = <String, dynamic>{
+    final payload = attachNewStudent(<String, dynamic>{
       'name': student['name']?.toString() ?? '',
       'grade': grade ?? finished.grade,
       'variant': finished.variant.toString(),
@@ -402,7 +453,7 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
       if (flaggedQuestionIds != null && flaggedQuestionIds.isNotEmpty)
         'flagged_question_ids': flaggedQuestionIds,
       'detail': {'test_key': finished.key, 'subject': finished.subject},
-    };
+    }, session.localStudents);
     // meta_json.idempotency_key: unique per pack, student, group, subject AND
     // attempt ordinal, so a genuine retake is a new entry rather than being
     // swallowed. (The server keys results on the chain hash, not on this.)

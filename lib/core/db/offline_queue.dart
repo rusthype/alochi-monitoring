@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../api/api_client.dart';
 import 'db_migrate.dart';
 import 'local_students_db.dart';
+import 'pack_local_students_db.dart';
 import 'queue_crypto.dart';
 
 class OfflineQueue {
@@ -98,6 +99,7 @@ class OfflineQueue {
     await createPackTables(db);
     await createLanTables(db);
     await LocalStudentsDb.createTable(db);
+    await PackLocalStudentsDb.createTable(db);
   }
 
   /// v7 tables for offline USB packs. Idempotent (IF NOT EXISTS) so a

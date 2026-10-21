@@ -28,6 +28,7 @@ import '../../features/diagnostic/data/diagnostic_kiosk_api.dart';
 import '../api/api_client.dart';
 import '../db/lan_outbox_db.dart';
 import '../db/test_cache.dart';
+import '../models/add_student.dart';
 import '../local_server/hub_guard.dart' show HubLimits, packFingerprint;
 import '../security/incident_log.dart';
 import '../security/monitored_clock.dart';
@@ -701,6 +702,21 @@ class LanClientSession implements OfflineContentSource {
   List<Map<String, dynamic>> get groups => _groups;
   @override
   List<Map<String, dynamic>> get students => _students;
+
+  // Adding a child on a LAN client is not supported: the hub only accepts
+  // results for its signed roster (HubState.checkResult -> student_invalid).
+  @override
+  List<Map<String, dynamic>> get localStudents => const [];
+
+  @override
+  Future<AddStudentResult> addLocalStudent({
+    required String groupId,
+    required AddStudentDraft draft,
+    bool confirmNew = false,
+    String language = '',
+  }) async =>
+      throw const ApiException(0, 'offline pack mode: operation not available',
+          code: kOfflineUnsupported);
 
   @override
   List<Map<String, dynamic>> testsOfType(String type) =>

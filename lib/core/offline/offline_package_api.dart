@@ -14,6 +14,7 @@
 import 'dart:typed_data';
 
 import '../api/api_client.dart';
+import '../models/add_student.dart';
 import '../models/models.dart';
 import '../models/test_catalog.dart';
 import 'offline_errors.dart';
@@ -128,11 +129,15 @@ class OfflinePackageApi extends MonitoringApi {
         .toList();
   }
 
+  /// The pack roster of [groupId] plus the children a proctor added to it on
+  /// this computer ([includeLocal], flagged `pending`). The LAN hub serves its
+  /// clients with `includeLocal: false`: a pending child exists only here and
+  /// the hub would refuse its results (`student_invalid`).
   @override
-  Future<List<Map<String, dynamic>>> fetchStudents(String groupId) async {
+  Future<List<Map<String, dynamic>>> fetchStudents(String groupId,
+      {bool includeLocal = true}) async {
     final students = session.pack.students;
-    if (students.isEmpty) return [];
-    return students
+    final rows = students
         .where((s) => s['group_id']?.toString() == groupId)
         .map((s) => <String, dynamic>{
               // `id` (UUID) is what the engine sends as payload.student_id.
@@ -145,7 +150,22 @@ class OfflinePackageApi extends MonitoringApi {
               'group_id': s['group_id']?.toString() ?? '',
             })
         .toList();
+    if (includeLocal) {
+      rows.addAll(session.localStudents
+          .where((s) => s['group_id']?.toString() == groupId));
+    }
+    return rows;
   }
+
+  /// "Bola qo'shish" served locally (see [OfflinePackSession.addLocalStudent]).
+  @override
+  Future<AddStudentResult> addStudent({
+    required String groupId,
+    required AddStudentDraft draft,
+    bool confirmNew = false,
+  }) =>
+      session.addLocalStudent(
+          groupId: groupId, draft: draft, confirmNew: confirmNew);
 
   @override
   Future<List<Map<String, dynamic>>> fetchDownloads(String schoolCode) async =>

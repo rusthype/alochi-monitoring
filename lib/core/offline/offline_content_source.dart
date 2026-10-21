@@ -4,12 +4,29 @@
 // lives": the open `.alochipack` itself (USB mode, [OfflinePackSession]) or the
 // teacher's hub (LAN mode, LanClientSession). One narrow interface keeps the
 // two modes from drifting apart.
+import '../models/add_student.dart';
+
 abstract class OfflineContentSource {
   String get packUuid;
   String get schoolId;
   String get schoolCode;
   List<Map<String, dynamic>> get groups;
   List<Map<String, dynamic>> get students;
+
+  /// Children a proctor added on THIS computer ("Bola qo'shish"): roster-shaped
+  /// rows (`id` = `new:<uuid>`, `group_id`, `first_name`, `last_name`,
+  /// `pending: true`, ...). They are never part of [students] (the pack roster
+  /// is fixed/signed). LAN clients have none.
+  List<Map<String, dynamic>> get localStudents;
+
+  /// Adds a child to the open pack (USB mode only); throws
+  /// [SimilarStudentsException] ("Bu shumi?") unless [confirmNew].
+  Future<AddStudentResult> addLocalStudent({
+    required String groupId,
+    required AddStudentDraft draft,
+    bool confirmNew = false,
+    String language = '',
+  });
   List<Map<String, dynamic>> testsOfType(String type);
 
   /// 1-based ordinal that makes the idempotency key of a repeat attempt unique

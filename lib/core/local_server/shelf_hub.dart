@@ -772,7 +772,7 @@ class ShelfHub extends ChangeNotifier {
     if (gid.isEmpty || gid.length > 64) {
       throw const HubHttpError(400, 'bad_request');
     }
-    return _json(200, await _api.fetchStudents(gid));
+    return _json(200, await _api.fetchStudents(gid, includeLocal: false));
   }
 
   Future<Response> _catalog(Request req, HubClient c) async {

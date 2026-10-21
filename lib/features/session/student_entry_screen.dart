@@ -136,7 +136,8 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
 
   Future<List<Map<String, dynamic>>> _withLocalStudents(
       String groupId, List<Map<String, dynamic>> fetched) async {
-    // Pack/LAN rosters are fixed (adding a child there is wave 2).
+    // Pack mode: OfflinePackageApi.fetchStudents already merged the local
+    // children; LAN rosters are fixed.
     if (isOfflineModeOpen) return fetched;
     final local = await LocalStudentsDb.unsyncedForGroupSafe(groupId);
     if (local.isEmpty) return fetched;
@@ -182,6 +183,19 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       case AddStudentUseExisting(:final student):
         final idx = _students.indexWhere(
             (e) => (e['id'] ?? '').toString() == student.id);
+        // Pack mode: a match in another class cannot be tested here (the
+        // result's group must be the child's own pack group) - say where.
+        if (idx < 0 && OfflinePackSession.isActive) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(l10n.addStudentCandidateOtherClass(
+                student.name,
+                student.groupName.isNotEmpty
+                    ? student.groupName
+                    : l10n.gradeClass(student.grade))),
+            duration: const Duration(seconds: 6),
+          ));
+          return;
+        }
         final row = idx >= 0
             ? _students[idx]
             : <String, dynamic>{
@@ -474,9 +488,12 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                         ),
                                       ),
                                     ),
-                                  // Offline pack / LAN rosters are fixed
-                                  // (adding a child there is wave 2).
-                                  if (!_loadingStudents && !isOfflineModeOpen)
+                                  // A LAN client's roster is fixed (the hub only
+                                  // accepts its signed roster); a USB pack can
+                                  // take a local child.
+                                  if (!_loadingStudents &&
+                                      (!isOfflineModeOpen ||
+                                          OfflinePackSession.isActive))
                                     Padding(
                                       padding:
                                           const EdgeInsets.only(bottom: 12),

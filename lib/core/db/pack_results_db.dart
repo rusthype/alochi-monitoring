@@ -27,6 +27,7 @@ import '../offline/export_format.dart';
 import '../offline/offline_crypto.dart';
 import '../security/monitored_clock.dart';
 import 'offline_queue.dart';
+import 'pack_local_students_db.dart';
 import 'queue_crypto.dart';
 
 class PackResultRow {
@@ -360,6 +361,7 @@ class PackResultsDb {
           'SELECT COUNT(*) c FROM pack_results WHERE pack_uuid = ?', [id]);
       if (((left.first['c'] as int?) ?? 0) == 0) {
         await d.delete('pack_meta', where: 'pack_uuid = ?', whereArgs: [id]);
+        await PackLocalStudentsDb.deleteForPack(id);
       }
     }
     return removed;

@@ -251,8 +251,7 @@ class _DiagnosticStudentSelectScreenState
       if (subjectsResp == null) {
         final availableSubjects = widget.availableSubjectsOverride ??
             diagnosticKioskApi.availableSubjects;
-        subjectsResp =
-            await availableSubjects(grade, language: lang);
+        subjectsResp = await availableSubjects(grade, language: lang);
         _subjectsByGradeLanguage[subjectsCacheKey] = subjectsResp;
       }
       final subjects = (subjectsResp['subjects'] as List?)
@@ -434,8 +433,8 @@ class _DiagnosticStudentSelectScreenState
     switch (outcome) {
       case AddStudentCreated(:final result):
         final row = result.toDiagnosticRow();
-        final exists = _students.any((s) =>
-            (s['attempt_id'] ?? '').toString() == result.id);
+        final exists = _students
+            .any((s) => (s['attempt_id'] ?? '').toString() == result.id);
         if (!exists) setState(() => _students = [..._students, row]);
         _selectRow(exists
             ? _students.firstWhere(
@@ -691,8 +690,10 @@ class _DiagnosticStudentSelectScreenState
                                   ),
                                   const SizedBox(height: 12),
                                   // Pack/LAN content is already local: nothing to
-                                  // download, and adding a child there is wave 2.
-                                  if (!isOfflineModeOpen)
+                                  // download. "Bola qo'shish" works in a USB pack
+                                  // (local child) but not on a LAN client.
+                                  if (!isOfflineModeOpen ||
+                                      OfflinePackSession.isActive)
                                     Wrap(
                                       alignment: WrapAlignment.end,
                                       spacing: 8,
@@ -709,32 +710,33 @@ class _DiagnosticStudentSelectScreenState
                                               size: 18),
                                           label: Text(l10n.addStudentButton),
                                         ),
-                                        OutlinedButton.icon(
-                                          style: OutlinedButton.styleFrom(
-                                              minimumSize: const Size(0, 44)),
-                                          onPressed: _prefetchingAll
-                                              ? null
-                                              : _prefetchAllStudents,
-                                          icon: _prefetchingAll
-                                              ? const SizedBox(
-                                                  width: 14,
-                                                  height: 14,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                          strokeWidth: 2),
-                                                )
-                                              : const Icon(
-                                                  Icons
-                                                      .download_for_offline_outlined,
-                                                  size: 16),
-                                          label: Text(_prefetchingAll
-                                              ? l10n
-                                                  .diagnosticDownloadAllProgress(
-                                                      _prefetchedCount,
-                                                      _filtered.length)
-                                              : l10n
-                                                  .diagnosticDownloadAllOffline),
-                                        ),
+                                        if (!isOfflineModeOpen)
+                                          OutlinedButton.icon(
+                                            style: OutlinedButton.styleFrom(
+                                                minimumSize: const Size(0, 44)),
+                                            onPressed: _prefetchingAll
+                                                ? null
+                                                : _prefetchAllStudents,
+                                            icon: _prefetchingAll
+                                                ? const SizedBox(
+                                                    width: 14,
+                                                    height: 14,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                            strokeWidth: 2),
+                                                  )
+                                                : const Icon(
+                                                    Icons
+                                                        .download_for_offline_outlined,
+                                                    size: 16),
+                                            label: Text(_prefetchingAll
+                                                ? l10n
+                                                    .diagnosticDownloadAllProgress(
+                                                        _prefetchedCount,
+                                                        _filtered.length)
+                                                : l10n
+                                                    .diagnosticDownloadAllOffline),
+                                          ),
                                       ],
                                     ),
                                   const SizedBox(height: 20),

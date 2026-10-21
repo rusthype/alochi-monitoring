@@ -17,7 +17,9 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../api/api_client.dart';
+import '../db/pack_local_students_db.dart';
 import '../db/pack_results_db.dart';
+import '../models/add_student.dart';
 import '../db/test_cache.dart';
 import '../security/incident_log.dart';
 import '../local_server/hub_guard.dart' show Mutex;
@@ -27,6 +29,7 @@ import '../../features/diagnostic/data/diagnostic_kiosk_api.dart';
 import 'offline_diagnostic_api.dart';
 import 'offline_content_source.dart';
 import 'offline_media.dart';
+import 'offline_new_student.dart';
 import 'offline_package_api.dart';
 import 'pack_loader.dart';
 import 'usb_backup.dart';
@@ -35,7 +38,14 @@ class OfflinePackSession implements OfflineContentSource {
   final LoadedPack pack;
   final Directory mediaDir;
 
-  OfflinePackSession._(this.pack, this.mediaDir);
+  OfflinePackSession._(this.pack, this.mediaDir,
+      [List<PackLocalStudent> local = const []])
+      : _local = [...local];
+
+  /// Children added on this computer, in add order (also persisted per pack
+  /// uuid in [PackLocalStudentsDb], so a restart brings them back).
+  final List<PackLocalStudent> _local;
+  final Mutex _addLock = Mutex();
 
   /// "Check budget -> append -> account" on this pack's chain is one critical
   /// section for EVERY writer (LAN hub results and the teacher's own).
@@ -109,9 +119,18 @@ class OfflinePackSession implements OfflineContentSource {
           debugPrint('OfflinePackSession: purgeExpired failed (non-fatal): $e');
         }
 
+        // Children added to this pack earlier (before a restart / re-open).
+        // Loaded here, before the swap: a failure is logged, never fatal.
+        var local = const <PackLocalStudent>[];
+        try {
+          local = await PackLocalStudentsDb.forPack(pack.packUuid);
+        } catch (e) {
+          debugPrint('OfflinePackSession: local students not loaded: $e');
+        }
+
         // From here to `notifier.value = session` nothing awaits.
         if (current != null) _restoreOnline();
-        final session = OfflinePackSession._(pack, mediaDir);
+        final session = OfflinePackSession._(pack, mediaDir, local);
         parkedOnlineApi = api;
         _onlineDiagnosticApi = diagnosticKioskApi;
         api = OfflinePackageApi(session);
@@ -160,6 +179,74 @@ class OfflinePackSession implements OfflineContentSource {
   List<Map<String, dynamic>> get groups => pack.groups;
   @override
   List<Map<String, dynamic>> get students => pack.students;
+
+  @override
+  List<Map<String, dynamic>> get localStudents =>
+      [for (final s in _local) s.toRosterRow()];
+
+  /// "Bola qo'shish" in pack mode: no HTTP. The duplicate check runs over the
+  /// pack roster + the children already added here, across ALL groups of the
+  /// pack (parallel classes). The child is persisted (per pack uuid) before it
+  /// is offered, and its results later carry a `new_student` block
+  /// ([recordResult]). Idempotent on `draft.clientTempId`.
+  @override
+  Future<AddStudentResult> addLocalStudent({
+    required String groupId,
+    required AddStudentDraft draft,
+    bool confirmNew = false,
+    String language = '',
+  }) =>
+      _addLock.run(() async {
+        AddStudentResult resultOf(PackLocalStudent s) => AddStudentResult(
+              id: s.tempId,
+              name: s.name,
+              firstName: s.firstName,
+              lastName: s.lastName,
+              groupId: s.groupId,
+              grade: s.grade,
+              language: s.language,
+            );
+        for (final s in _local) {
+          if (s.tempId == draft.clientTempId) return resultOf(s);
+        }
+        Map<String, dynamic>? group;
+        for (final g in pack.groups) {
+          if (g['id']?.toString() == groupId) group = g;
+        }
+        if (group == null) {
+          throw const ApiException(400, 'unknown group', code: 'invalid_group');
+        }
+        final first = normalizeStudentName(draft.firstName);
+        final last = normalizeStudentName(draft.lastName);
+        if (!isLocalNewStudentId(draft.clientTempId) ||
+            validateStudentName(first) != null ||
+            validateStudentName(last) != null) {
+          throw const ApiException(400, 'invalid name', code: 'invalid_name');
+        }
+        if (!confirmNew) {
+          final similar = similarInRoster(
+            roster: [...pack.students, ...localStudents],
+            groups: pack.groups,
+            firstName: first,
+            lastName: last,
+          );
+          if (similar.isNotEmpty) throw SimilarStudentsException(similar);
+        }
+        final kid = PackLocalStudent(
+          tempId: draft.clientTempId,
+          groupId: groupId,
+          firstName: first,
+          lastName: last,
+          birthDate: draft.birthDate,
+          parentFio: draft.parentFio,
+          grade: gradeOfGroup(group),
+          language: language,
+        );
+        // Persist first: if this throws the proctor must not see the child.
+        await PackLocalStudentsDb.add(pack.packUuid, kid);
+        _local.add(kid);
+        return resultOf(kid);
+      });
 
   @override
   Future<int> nextAttemptOrdinal(String keyPrefix) async =>
@@ -220,7 +307,10 @@ class OfflinePackSession implements OfflineContentSource {
     // here must not slip between its check and its write, and must be counted.
     return chainLock.run(() async {
       final uuid = pack.packUuid;
-      final payloadJson = jsonEncode(payload);
+      // A kiosk-local child's result carries the `new_student` block (the
+      // server creates the add-request from it). Every other payload is
+      // serialised exactly as before.
+      final payloadJson = jsonEncode(attachNewStudent(payload, localStudents));
       final incidents = IncidentLog.instance.drain();
       final flags = MonitoredClock.instance.drainFlags();
       try {
