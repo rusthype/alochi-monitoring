@@ -442,8 +442,12 @@ class _DiagnosticStudentSelectScreenState
             : row);
       case AddStudentUseExisting(:final student):
         final key = _nameKey(student.name);
+        // Backend candidates carry the roster `attempt_id`; name is the
+        // fallback for older backends.
         final match = _students.cast<Map<String, dynamic>?>().firstWhere(
-              (s) => _nameKey((s?['student_name'] ?? '').toString()) == key,
+              (s) => student.attemptId.isNotEmpty
+                  ? (s?['attempt_id'] ?? '').toString() == student.attemptId
+                  : _nameKey((s?['student_name'] ?? '').toString()) == key,
               orElse: () => null,
             );
         if (match != null) {

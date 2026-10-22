@@ -20,12 +20,13 @@ import '../db/offline_queue.dart';
 import '../models/add_student.dart';
 
 /// Failures that mean "the add endpoint is not reachable right now": no
-/// network (0), an older backend without the route (404/405), a throttle or a
-/// gateway/server outage. Everything else (400 invalid, 409 limit, ...) is a
-/// real answer the proctor must see.
+/// network (0), an older backend without the route (404/405) or a
+/// gateway/server outage. Everything else (400 invalid, 409 limit, 429
+/// throttled, rejected child, ...) is a real answer the proctor must see.
+/// A 429 is NOT queued interactively (the dialog asks to wait and retry), but
+/// the queued flush ([MonitoringApi.submitQueuedAddStudent]) keeps retrying it.
 bool shouldQueueAddStudent(ApiException e) =>
-    e.statusCode == 0 ||
-    const {404, 405, 429, 502, 503, 504}.contains(e.statusCode);
+    e.statusCode == 0 || const {404, 405, 502, 503, 504}.contains(e.statusCode);
 
 Future<AddStudentResult> addStudentOrQueue({
   required String groupId,

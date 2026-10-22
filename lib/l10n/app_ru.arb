@@ -1526,5 +1526,11 @@
   "studentPendingBadge": "Ожидает подтверждения",
   "addStudentQueuedNotice": "Нет интернета. Ребёнок сохранён и будет отправлен, когда связь появится.",
   "addStudentCandidateOtherClass": "{name} в другом классе ({group}). Выберите его в списке этого класса.",
-  "@addStudentCandidateOtherClass": {"placeholders": {"name": {"type": "String"}, "group": {"type": "String"}}}
+  "@addStudentCandidateOtherClass": {"placeholders": {"name": {"type": "String"}, "group": {"type": "String"}}},
+  "addStudentOtherClassMatch": "В другом классе есть похожий ученик: {name} - {group}; возможно, он перевёлся. Администратор проверит при подтверждении.",
+  "@addStudentOtherClassMatch": {"placeholders": {"name": {"type": "String"}, "group": {"type": "String"}}},
+  "addStudentErrRejected": "Этот ребёнок отклонён администратором. Обратитесь к администратору.",
+  "addStudentErrThrottled": "Слишком много попыток, подождите немного и повторите.",
+  "addStudentErrPendingLimitGroup": "В этом классе достигнут лимит детей, ожидающих подтверждения. Обратитесь к администратору.",
+  "addStudentParentFioChars": "Начните с буквы; только буквы, пробел, дефис, точка, запятая и апостроф (до 120 символов)"
 }

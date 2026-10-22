@@ -71,8 +71,13 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
   DateTime? _birthDate;
   bool _loading = false;
   String? _error;
-  List<SimilarStudent>? _candidates;
+  SimilarStudentsException? _similar;
   bool _autoValidate = false;
+
+  /// Field-level errors from a 400 (`invalid_name` / `invalid_parent_fio`),
+  /// cleared as soon as the proctor edits that field.
+  String? _srvNameError;
+  String? _srvParentError;
 
   @override
   void dispose() {
@@ -96,7 +101,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
   String? _nameValidator(String? v, AppLocalizations l10n) {
     switch (validateStudentName(v ?? '')) {
       case null:
-        return null;
+        return _srvNameError;
       case StudentNameError.required:
         return l10n.addStudentRequired;
       case StudentNameError.length:
@@ -106,19 +111,55 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
     }
   }
 
+  String? _parentValidator(String? v, AppLocalizations l10n) =>
+      isValidParentFio(v ?? '')
+          ? _srvParentError
+          : l10n.addStudentParentFioChars;
+
   String _errorText(Object e, AppLocalizations l10n) {
+    if (e is AddStudentRejectedException) return l10n.addStudentErrRejected;
+    if (e is PendingLimitException) {
+      return e.isGroup
+          ? l10n.addStudentErrPendingLimitGroup
+          : l10n.addStudentErrPendingLimit;
+    }
     if (e is ApiException) {
+      if (e.statusCode == 429) return l10n.addStudentErrThrottled;
       switch (e.code) {
-        case 'invalid_name':
-          return l10n.addStudentErrInvalidName;
         case 'invalid_group':
           return l10n.addStudentErrInvalidGroup;
         case 'pending_limit':
           return l10n.addStudentErrPendingLimit;
+        case 'invalid_client_temp_id':
+          // Never expected (the client always sends new:<uuid>) - log it.
+          debugPrint('AddStudentDialog: invalid_client_temp_id for $_tempId');
+          return l10n.addStudentErrGeneric;
       }
       return e.message;
     }
     return l10n.addStudentErrGeneric;
+  }
+
+  /// 400 field codes -> inline errors on the form (back from "Bu shumi?").
+  bool _showFieldError(Object e, AppLocalizations l10n) {
+    if (e is! ApiException) return false;
+    if (e.code != 'invalid_name' && e.code != 'invalid_parent_fio') {
+      return false;
+    }
+    setState(() {
+      _loading = false;
+      _similar = null;
+      _error = null;
+      _autoValidate = true;
+      if (e.code == 'invalid_name') {
+        _srvNameError = l10n.addStudentErrInvalidName;
+      } else {
+        _srvParentError = l10n.addStudentParentFioChars;
+      }
+    });
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _formKey.currentState?.validate());
+    return true;
   }
 
   Future<void> _submit({bool confirmNew = false}) async {
@@ -131,6 +172,8 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
     setState(() {
       _loading = true;
       _error = null;
+      _srvNameError = null;
+      _srvParentError = null;
     });
     try {
       final result = await widget.onSubmit(_draft, confirmNew: confirmNew);
@@ -138,7 +181,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
       Navigator.of(context).pop(AddStudentCreated(result));
     } on SimilarStudentsException catch (e) {
       if (!mounted) return;
-      if (e.candidates.isEmpty) {
+      if (e.candidates.isEmpty && e.otherClassMatches.isEmpty) {
         // Server asked for confirmation but sent nobody to show: nothing to
         // pick, so proceed as "other child".
         setState(() => _loading = false);
@@ -146,11 +189,12 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
       }
       setState(() {
         _loading = false;
-        _candidates = e.candidates;
+        _similar = e;
       });
     } catch (e) {
       debugPrint('AddStudentDialog submit error: $e');
       if (!mounted) return;
+      if (_showFieldError(e, l10n)) return;
       setState(() {
         _loading = false;
         _error = _errorText(e, l10n);
@@ -175,7 +219,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final candidates = _candidates;
+    final similar = _similar;
     return Dialog(
       backgroundColor: AppColors.surface,
       insetPadding: const EdgeInsets.all(20),
@@ -185,9 +229,9 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: SingleChildScrollView(
-            child: candidates == null
+            child: similar == null
                 ? _buildForm(l10n)
-                : _buildCandidates(l10n, candidates),
+                : _buildCandidates(l10n, similar),
           ),
         ),
       ),
@@ -223,6 +267,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
             textInputAction: TextInputAction.next,
             inputFormatters: [LengthLimitingTextInputFormatter(80)],
             decoration: InputDecoration(labelText: l10n.addStudentLastName),
+            onChanged: (_) => _srvNameError = null,
             validator: (v) => _nameValidator(v, l10n),
             onFieldSubmitted: (_) => _firstFocus.requestFocus(),
           ),
@@ -236,6 +281,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
             textInputAction: TextInputAction.next,
             inputFormatters: [LengthLimitingTextInputFormatter(80)],
             decoration: InputDecoration(labelText: l10n.addStudentFirstName),
+            onChanged: (_) => _srvNameError = null,
             validator: (v) => _nameValidator(v, l10n),
             onFieldSubmitted: (_) => _parentFocus.requestFocus(),
           ),
@@ -281,6 +327,8 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
               LengthLimitingTextInputFormatter(kParentFioMaxLength)
             ],
             decoration: InputDecoration(labelText: l10n.addStudentParentFio),
+            onChanged: (_) => _srvParentError = null,
+            validator: (v) => _parentValidator(v, l10n),
             onFieldSubmitted: (_) => _submit(),
           ),
           if (_error != null) ...[
@@ -323,8 +371,8 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
     );
   }
 
-  Widget _buildCandidates(
-      AppLocalizations l10n, List<SimilarStudent> candidates) {
+  Widget _buildCandidates(AppLocalizations l10n, SimilarStudentsException sim) {
+    final candidates = sim.candidates;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -335,9 +383,11 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
                 fontWeight: FontWeight.w800,
                 color: AppColors.ink1)),
         const SizedBox(height: 6),
-        Text(l10n.addStudentSimilarBody,
-            style: const TextStyle(fontSize: 14, color: AppColors.ink2)),
-        const SizedBox(height: 16),
+        if (candidates.isNotEmpty) ...[
+          Text(l10n.addStudentSimilarBody,
+              style: const TextStyle(fontSize: 14, color: AppColors.ink2)),
+          const SizedBox(height: 16),
+        ],
         for (final c in candidates) ...[
           _CandidateTile(
             candidate: c,
@@ -350,6 +400,14 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
           ),
           const SizedBox(height: 8),
         ],
+        if (sim.otherClassMatches.isNotEmpty)
+          _OtherClassWarning(
+            key: const Key('addStudentOtherClassWarning'),
+            lines: [
+              for (final m in sim.otherClassMatches)
+                l10n.addStudentOtherClassMatch(m.name, m.classLabel),
+            ],
+          ),
         if (_error != null) ...[
           const SizedBox(height: 6),
           _ErrorBanner(text: _error!),
@@ -374,12 +432,48 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
           onPressed: _loading
               ? null
               : () => setState(() {
-                    _candidates = null;
+                    _similar = null;
                     _error = null;
                   }),
           child: Text(l10n.backBtn),
         ),
       ],
+    );
+  }
+}
+
+/// Informational: the same name exists in ANOTHER class (no choice offered).
+class _OtherClassWarning extends StatelessWidget {
+  final List<String> lines;
+  const _OtherClassWarning({super.key, required this.lines});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.warnMuted,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded,
+              color: AppColors.amberDark, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final l in lines)
+                  Text(l,
+                      style:
+                          const TextStyle(color: AppColors.ink1, fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

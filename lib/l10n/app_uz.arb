@@ -1592,5 +1592,11 @@
   "studentPendingBadge": "Tasdiq kutilmoqda",
   "addStudentQueuedNotice": "Internet yo'q. Bola saqlandi va aloqa tiklangach yuboriladi.",
   "addStudentCandidateOtherClass": "{name} boshqa sinfda ({group}). O'sha sinf ro'yxatidan tanlang.",
-  "@addStudentCandidateOtherClass": {"placeholders": {"name": {"type": "String"}, "group": {"type": "String"}}}
+  "@addStudentCandidateOtherClass": {"placeholders": {"name": {"type": "String"}, "group": {"type": "String"}}},
+  "addStudentOtherClassMatch": "Boshqa sinfda o'xshash o'quvchi bor: {name} - {group}; ko'chib kelgan bo'lishi mumkin. Admin tasdiqlashda ko'rib chiqadi.",
+  "@addStudentOtherClassMatch": {"placeholders": {"name": {"type": "String"}, "group": {"type": "String"}}},
+  "addStudentErrRejected": "Bu bola admin tomonidan rad etilgan. Administrator bilan bog'laning.",
+  "addStudentErrThrottled": "Juda ko'p urinish, biroz kutib qayta urinib ko'ring.",
+  "addStudentErrPendingLimitGroup": "Bu sinfda tasdiq kutayotgan bolalar soni chegaraga yetdi. Adminga murojaat qiling.",
+  "addStudentParentFioChars": "Harf bilan boshlang; faqat harf, bo'shliq, tire, nuqta, vergul va apostrof (120 tagacha)"
 }

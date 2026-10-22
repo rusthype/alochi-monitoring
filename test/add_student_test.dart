@@ -216,11 +216,13 @@ void main() {
     });
 
     test('shouldQueueAddStudent: network/old-backend yes, real answers no', () {
-      for (final c in [0, 404, 405, 429, 502, 503, 504]) {
+      for (final c in [0, 404, 405, 502, 503, 504]) {
         expect(shouldQueueAddStudent(ApiException(c, 'x')), isTrue,
             reason: '$c');
       }
-      for (final c in [400, 401, 403, 409, 500]) {
+      // 429 is a throttle answer the proctor sees (retried only by the
+      // queued flush), not an "unreachable" signal.
+      for (final c in [400, 401, 403, 409, 429, 500]) {
         expect(shouldQueueAddStudent(ApiException(c, 'x')), isFalse,
             reason: '$c');
       }

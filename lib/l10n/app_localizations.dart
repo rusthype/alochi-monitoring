@@ -5398,6 +5398,36 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'{name} boshqa sinfda ({group}). O\'sha sinf ro\'yxatidan tanlang.'**
   String addStudentCandidateOtherClass(String name, String group);
+
+  /// No description provided for @addStudentOtherClassMatch.
+  ///
+  /// In uz, this message translates to:
+  /// **'Boshqa sinfda o\'xshash o\'quvchi bor: {name} - {group}; ko\'chib kelgan bo\'lishi mumkin. Admin tasdiqlashda ko\'rib chiqadi.'**
+  String addStudentOtherClassMatch(String name, String group);
+
+  /// No description provided for @addStudentErrRejected.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu bola admin tomonidan rad etilgan. Administrator bilan bog\'laning.'**
+  String get addStudentErrRejected;
+
+  /// No description provided for @addStudentErrThrottled.
+  ///
+  /// In uz, this message translates to:
+  /// **'Juda ko\'p urinish, biroz kutib qayta urinib ko\'ring.'**
+  String get addStudentErrThrottled;
+
+  /// No description provided for @addStudentErrPendingLimitGroup.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu sinfda tasdiq kutayotgan bolalar soni chegaraga yetdi. Adminga murojaat qiling.'**
+  String get addStudentErrPendingLimitGroup;
+
+  /// No description provided for @addStudentParentFioChars.
+  ///
+  /// In uz, this message translates to:
+  /// **'Harf bilan boshlang; faqat harf, bo\'shliq, tire, nuqta, vergul va apostrof (120 tagacha)'**
+  String get addStudentParentFioChars;
 }
 
 class _AppLocalizationsDelegate

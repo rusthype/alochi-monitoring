@@ -2957,4 +2957,25 @@ class AppLocalizationsRu extends AppLocalizations {
   String addStudentCandidateOtherClass(String name, String group) {
     return '$name в другом классе ($group). Выберите его в списке этого класса.';
   }
+
+  @override
+  String addStudentOtherClassMatch(String name, String group) {
+    return 'В другом классе есть похожий ученик: $name - $group; возможно, он перевёлся. Администратор проверит при подтверждении.';
+  }
+
+  @override
+  String get addStudentErrRejected =>
+      'Этот ребёнок отклонён администратором. Обратитесь к администратору.';
+
+  @override
+  String get addStudentErrThrottled =>
+      'Слишком много попыток, подождите немного и повторите.';
+
+  @override
+  String get addStudentErrPendingLimitGroup =>
+      'В этом классе достигнут лимит детей, ожидающих подтверждения. Обратитесь к администратору.';
+
+  @override
+  String get addStudentParentFioChars =>
+      'Начните с буквы; только буквы, пробел, дефис, точка, запятая и апостроф (до 120 символов)';
 }

@@ -2968,4 +2968,25 @@ class AppLocalizationsUz extends AppLocalizations {
   String addStudentCandidateOtherClass(String name, String group) {
     return '$name boshqa sinfda ($group). O\'sha sinf ro\'yxatidan tanlang.';
   }
+
+  @override
+  String addStudentOtherClassMatch(String name, String group) {
+    return 'Boshqa sinfda o\'xshash o\'quvchi bor: $name - $group; ko\'chib kelgan bo\'lishi mumkin. Admin tasdiqlashda ko\'rib chiqadi.';
+  }
+
+  @override
+  String get addStudentErrRejected =>
+      'Bu bola admin tomonidan rad etilgan. Administrator bilan bog\'laning.';
+
+  @override
+  String get addStudentErrThrottled =>
+      'Juda ko\'p urinish, biroz kutib qayta urinib ko\'ring.';
+
+  @override
+  String get addStudentErrPendingLimitGroup =>
+      'Bu sinfda tasdiq kutayotgan bolalar soni chegaraga yetdi. Adminga murojaat qiling.';
+
+  @override
+  String get addStudentParentFioChars =>
+      'Harf bilan boshlang; faqat harf, bo\'shliq, tire, nuqta, vergul va apostrof (120 tagacha)';
 }

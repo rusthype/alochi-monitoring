@@ -94,6 +94,22 @@ class EngineHostScreen extends StatefulWidget {
   State<EngineHostScreen> createState() => _EngineHostScreenState();
 }
 
+/// Group / student identity part of the result payload. `group_id` must be
+/// the group the child was picked (or added) in: the backend only holds the
+/// result of a pending "Bola qo'shish" child when this id belongs to the
+/// request's school and equals the request's own group.
+@visibleForTesting
+Map<String, dynamic> resultIdentityFields({
+  String? group,
+  String? groupId,
+  required String studentId,
+}) =>
+    {
+      'group_name': group ?? '',
+      'group_id': groupId ?? '',
+      'student_id': studentId,
+    };
+
 class _EngineHostScreenState extends State<EngineHostScreen> {
   TestSpec? _spec;
   // Raw parse-failure state — localized lazily in build() since
@@ -210,9 +226,10 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       'vocab': {'cor': 0, 'tot': 0},
       'pct': result.totalPct.round(),
       'school_code': widget.school,
-      'group_name': widget.group ?? '',
-      'group_id': widget.groupId ?? '',
-      'student_id': widget.studentId,
+      ...resultIdentityFields(
+          group: widget.group,
+          groupId: widget.groupId,
+          studentId: widget.studentId),
       'raw_answers': result.rawAnswers,
       if (elapsedSeconds != null && elapsedSeconds > 0)
         'duration_seconds': elapsedSeconds,
@@ -254,8 +271,8 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
     final payload = _buildPayload(result, elapsedSeconds);
     // One token per completion: an offline retry re-appends with the SAME
     // idempotency key, so it can never create a second chain entry.
-    final token = _completeToken ??= await resolveResultToken(
-        result.testKey, widget.studentId);
+    final token = _completeToken ??=
+        await resolveResultToken(result.testKey, widget.studentId);
 
     // Offline USB pack mode: the pack has no answer key, so the locally
     // computed score is meaningless and is never stored or shown. The answers

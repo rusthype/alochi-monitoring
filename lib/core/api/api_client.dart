@@ -467,7 +467,7 @@ class MonitoringApi {
   /// `confirm_new: true`: the proctor already answered "new child" when the
   /// network was down, and the panel admin sees the server-side duplicate
   /// suggestion anyway. Same `{synced, permanent}` contract as the other
-  /// replay helpers; only a 400 (bad name/group) is permanent — 404/405 (old
+  /// replay helpers; only a 400 (bad name/group) or a boss-rejected child is permanent — 404/405 (old
   /// backend), 429, 5xx, a full pending quota and offline all keep retrying.
   Future<Map<String, dynamic>> submitQueuedAddStudent(
       Map<String, dynamic> payload) async {
@@ -490,7 +490,9 @@ class MonitoringApi {
       }
       return {'synced': true};
     } on ApiException catch (e) {
-      final permanent = e.statusCode == 400;
+      // 400 = bad name/group; a rejected child never becomes valid again.
+      final permanent =
+          e.statusCode == 400 || e.code == kAddStudentRejectedCode;
       if (permanent && tempId.isNotEmpty) {
         await LocalStudentsDb.remove(tempId);
       }
