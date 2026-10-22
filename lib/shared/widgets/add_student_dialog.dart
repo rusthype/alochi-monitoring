@@ -78,6 +78,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
   /// cleared as soon as the proctor edits that field.
   String? _srvNameError;
   String? _srvParentError;
+  String? _srvBirthError;
 
   @override
   void dispose() {
@@ -128,6 +129,10 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
       switch (e.code) {
         case 'invalid_group':
           return l10n.addStudentErrInvalidGroup;
+        case 'invalid_class':
+          return l10n.addStudentErrInvalidClass;
+        case 'duplicate_student':
+          return l10n.addStudentErrDuplicate;
         case 'pending_limit':
           return l10n.addStudentErrPendingLimit;
         case 'invalid_client_temp_id':
@@ -143,7 +148,9 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
   /// 400 field codes -> inline errors on the form (back from "Bu shumi?").
   bool _showFieldError(Object e, AppLocalizations l10n) {
     if (e is! ApiException) return false;
-    if (e.code != 'invalid_name' && e.code != 'invalid_parent_fio') {
+    if (e.code != 'invalid_name' &&
+        e.code != 'invalid_parent_fio' &&
+        e.code != 'invalid_birth_date') {
       return false;
     }
     setState(() {
@@ -153,6 +160,8 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
       _autoValidate = true;
       if (e.code == 'invalid_name') {
         _srvNameError = l10n.addStudentErrInvalidName;
+      } else if (e.code == 'invalid_birth_date') {
+        _srvBirthError = l10n.addStudentErrInvalidBirthDate;
       } else {
         _srvParentError = l10n.addStudentParentFioChars;
       }
@@ -174,6 +183,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
       _error = null;
       _srvNameError = null;
       _srvParentError = null;
+      _srvBirthError = null;
     });
     try {
       final result = await widget.onSubmit(_draft, confirmNew: confirmNew);
@@ -210,7 +220,12 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
       firstDate: DateTime(now.year - 25),
       lastDate: now,
     );
-    if (picked != null && mounted) setState(() => _birthDate = picked);
+    if (picked != null && mounted) {
+      setState(() {
+        _birthDate = picked;
+        _srvBirthError = null;
+      });
+    }
   }
 
   static String _fmtDate(DateTime d) =>
@@ -297,6 +312,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
               child: InputDecorator(
                 decoration: InputDecoration(
                   labelText: l10n.addStudentBirthDate,
+                  errorText: _srvBirthError,
                   suffixIcon: _birthDate == null
                       ? const Icon(Icons.calendar_today_rounded, size: 18)
                       : IconButton(
@@ -304,7 +320,10 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
                           icon: const Icon(Icons.close_rounded, size: 18),
                           onPressed: _loading
                               ? null
-                              : () => setState(() => _birthDate = null),
+                              : () => setState(() {
+                                    _birthDate = null;
+                                    _srvBirthError = null;
+                                  }),
                         ),
                 ),
                 child: Text(
@@ -392,8 +411,11 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
           _CandidateTile(
             candidate: c,
             subtitle: [
-              if (c.grade > 0) l10n.gradeClass(c.grade),
-              if (c.groupName.isNotEmpty) c.groupName,
+              // class_label ("4-A") already says the grade: show one or the other.
+              if (c.groupName.isNotEmpty)
+                c.groupName
+              else if (c.grade > 0)
+                l10n.gradeClass(c.grade),
             ].join(' · '),
             enabled: !_loading,
             onTap: () => Navigator.of(context).pop(AddStudentUseExisting(c)),

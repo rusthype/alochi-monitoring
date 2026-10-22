@@ -122,7 +122,7 @@ void main() {
     expect(find.text(l10n.addStudentSimilarTitle), findsOneWidget);
     expect(find.text('Valiyev Ali'), findsOneWidget);
     expect(find.text('Valiyev Alisher'), findsOneWidget);
-    expect(find.text('${l10n.gradeClass(4)} · 4-B'), findsOneWidget);
+    expect(find.text('4-B'), findsOneWidget);
     expect(closed, isFalse);
 
     await tester.tap(find.byKey(const Key('addStudentNotThem')));

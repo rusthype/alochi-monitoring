@@ -1598,5 +1598,8 @@
   "addStudentErrRejected": "Bu bola admin tomonidan rad etilgan. Administrator bilan bog'laning.",
   "addStudentErrThrottled": "Juda ko'p urinish, biroz kutib qayta urinib ko'ring.",
   "addStudentErrPendingLimitGroup": "Bu sinfda tasdiq kutayotgan bolalar soni chegaraga yetdi. Adminga murojaat qiling.",
+  "addStudentErrInvalidClass": "Sinf topilmadi, ortga qaytib sinfni qayta tanlang",
+  "addStudentErrDuplicate": "Bu sinfda shunday ismli o'quvchi allaqachon bor",
+  "addStudentErrInvalidBirthDate": "Tug'ilgan sana noto'g'ri",
   "addStudentParentFioChars": "Harf bilan boshlang; faqat harf, bo'shliq, tire, nuqta, vergul va apostrof (120 tagacha)"
 }

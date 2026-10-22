@@ -235,7 +235,10 @@ class AddStudentResult {
         name: j['student_name']?.toString() ?? '',
         classLabel: j['class_label']?.toString() ?? '',
         language: j['language']?.toString() ?? '',
-        pending: j['pending'] != false,
+        // `request_status: approved` == an existing normal student: plain
+        // (non-pending) roster row.
+        pending:
+            j['request_status'] == 'approved' ? false : j['pending'] != false,
         status: j['status']?.toString() ?? 'not_started',
       );
 
@@ -310,9 +313,17 @@ AddStudentResult parseAddStudentResponse(http.Response resp,
             : 'Xato: ${resp.statusCode}');
     throw ApiException(resp.statusCode, msg, code: data['code']?.toString());
   }
-  // Already rejected by the boss (sticky): monitoring says `status: rejected`,
-  // the diagnostic kiosk row only `pending: false`.
-  if (diagnostic ? data['pending'] == false : data['status'] == 'rejected') {
+  // Already rejected by the boss (sticky): monitoring says `status: rejected`.
+  // Diagnostic: `status` is the roster/attempt state; the add-request state is
+  // `request_status`. Older backends lack it, so `pending: false` is the
+  // fallback heuristic only when `request_status` is absent.
+  final reqStatus = data['request_status']?.toString();
+  final rejected = !diagnostic
+      ? data['status'] == 'rejected'
+      : reqStatus != null
+          ? reqStatus == 'rejected'
+          : data['pending'] == false;
+  if (rejected) {
     throw const AddStudentRejectedException();
   }
   final result = diagnostic

@@ -2987,6 +2987,17 @@ class AppLocalizationsUz extends AppLocalizations {
       'Bu sinfda tasdiq kutayotgan bolalar soni chegaraga yetdi. Adminga murojaat qiling.';
 
   @override
+  String get addStudentErrInvalidClass =>
+      'Sinf topilmadi, ortga qaytib sinfni qayta tanlang';
+
+  @override
+  String get addStudentErrDuplicate =>
+      'Bu sinfda shunday ismli o\'quvchi allaqachon bor';
+
+  @override
+  String get addStudentErrInvalidBirthDate => 'Tug\'ilgan sana noto\'g\'ri';
+
+  @override
   String get addStudentParentFioChars =>
       'Harf bilan boshlang; faqat harf, bo\'shliq, tire, nuqta, vergul va apostrof (120 tagacha)';
 }

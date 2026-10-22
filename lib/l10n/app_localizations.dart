@@ -5423,6 +5423,24 @@ abstract class AppLocalizations {
   /// **'Bu sinfda tasdiq kutayotgan bolalar soni chegaraga yetdi. Adminga murojaat qiling.'**
   String get addStudentErrPendingLimitGroup;
 
+  /// No description provided for @addStudentErrInvalidClass.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sinf topilmadi, ortga qaytib sinfni qayta tanlang'**
+  String get addStudentErrInvalidClass;
+
+  /// No description provided for @addStudentErrDuplicate.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu sinfda shunday ismli o\'quvchi allaqachon bor'**
+  String get addStudentErrDuplicate;
+
+  /// No description provided for @addStudentErrInvalidBirthDate.
+  ///
+  /// In uz, this message translates to:
+  /// **'Tug\'ilgan sana noto\'g\'ri'**
+  String get addStudentErrInvalidBirthDate;
+
   /// No description provided for @addStudentParentFioChars.
   ///
   /// In uz, this message translates to:

@@ -195,6 +195,59 @@ void main() {
           diagnostic: true);
       expect(ok.id, 'a1');
     });
+    Map<String, dynamic> diag(Map<String, dynamic> extra) => {
+          'attempt_id': 'a1',
+          'student_name': 'X Y',
+          'add_request_id': 'r1',
+          ...extra,
+        };
+    test('diagnostic request_status:rejected wins, even with pending:true', () {
+      expect(
+          _thrown(
+              _json(
+                  200,
+                  diag({
+                    'status': 'not_started',
+                    'request_status': 'rejected',
+                    'pending': true
+                  })),
+              diagnostic: true),
+          isA<AddStudentRejectedException>());
+    });
+    test('diagnostic request_status:approved -> normal non-pending row', () {
+      final r = parseAddStudentResponse(
+          _json(
+              200,
+              diag({
+                'status': 'partial',
+                'request_status': 'approved',
+                'pending': false
+              })),
+          diagnostic: true);
+      expect(r.pending, isFalse);
+      final row = r.toDiagnosticRow();
+      expect(row['pending'], isFalse);
+      expect(row['status'], 'partial');
+    });
+    test('diagnostic request_status:pending -> pending row; absent -> old rule',
+        () {
+      final p = parseAddStudentResponse(
+          _json(
+              201,
+              diag({
+                'status': 'not_started',
+                'request_status': 'pending',
+                'pending': true
+              })),
+          diagnostic: true);
+      expect(p.pending, isTrue);
+      expect(p.toDiagnosticRow()['status'], 'not_started');
+      // Older backend (no request_status): pending:false => rejected.
+      expect(
+          _thrown(_json(200, diag({'status': 'not_started', 'pending': false})),
+              diagnostic: true),
+          isA<AddStudentRejectedException>());
+    });
     test('an already-approved replay is NOT treated as rejected (monitoring)',
         () {
       final r = parseAddStudentResponse(
@@ -416,6 +469,47 @@ void main() {
       err = const ApiException(400, 'x', code: 'invalid_name');
       await submit(tester);
       expect(find.text(l10n.addStudentErrInvalidName), findsNWidgets(2));
+    });
+
+    testWidgets('invalid_class / duplicate_student -> friendly banner',
+        (tester) async {
+      Object err = const ApiException(400, 'Xato: 400', code: 'invalid_class');
+      await open(tester, (d, {required confirmNew}) async => throw err);
+      await fill(tester);
+      await submit(tester);
+      expect(find.text(l10n.addStudentErrInvalidClass), findsOneWidget);
+      expect(find.textContaining('Xato:'), findsNothing);
+      err = const ApiException(409, 'Xato: 409', code: 'duplicate_student');
+      await submit(tester);
+      expect(find.text(l10n.addStudentErrDuplicate), findsOneWidget);
+      expect(find.textContaining('Xato:'), findsNothing);
+      expect(closed, isFalse);
+    });
+
+    testWidgets('invalid_birth_date -> inline error on the date field',
+        (tester) async {
+      await open(tester, (d, {required confirmNew}) async {
+        throw const ApiException(400, 'x', code: 'invalid_birth_date');
+      });
+      await fill(tester);
+      await submit(tester);
+      expect(find.text(l10n.addStudentErrInvalidBirthDate), findsOneWidget);
+      expect(find.byKey(const Key('addStudentError')), findsNothing);
+    });
+
+    testWidgets('candidate subtitle: class_label only, else grade',
+        (tester) async {
+      await open(tester, (d, {required confirmNew}) async {
+        throw const SimilarStudentsException([
+          SimilarStudent(id: 'a', name: 'Ali A', grade: 4, groupName: '4-A'),
+          SimilarStudent(id: 'b', name: 'Vali B', grade: 4),
+        ]);
+      });
+      await fill(tester);
+      await submit(tester);
+      expect(find.text('4-A'), findsOneWidget);
+      expect(find.text(l10n.gradeClass(4)), findsOneWidget);
+      expect(find.textContaining(' · '), findsNothing);
     });
 
     testWidgets('invalid_client_temp_id -> generic banner', (tester) async {

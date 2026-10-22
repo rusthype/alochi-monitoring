@@ -2976,6 +2976,17 @@ class AppLocalizationsRu extends AppLocalizations {
       'В этом классе достигнут лимит детей, ожидающих подтверждения. Обратитесь к администратору.';
 
   @override
+  String get addStudentErrInvalidClass =>
+      'Класс не найден, вернитесь назад и выберите класс заново';
+
+  @override
+  String get addStudentErrDuplicate =>
+      'В этом классе уже есть ученик с таким именем';
+
+  @override
+  String get addStudentErrInvalidBirthDate => 'Дата рождения указана неверно';
+
+  @override
   String get addStudentParentFioChars =>
       'Начните с буквы; только буквы, пробел, дефис, точка, запятая и апостроф (до 120 символов)';
 }
