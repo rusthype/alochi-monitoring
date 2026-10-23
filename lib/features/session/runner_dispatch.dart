@@ -1,10 +1,10 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart' show newIdempotencyToken;
 import '../../core/db/attempt_store.dart';
 import '../../core/db/test_cache.dart';
+import '../../core/engine/test_models.dart' show pickVariantNumber;
 import '../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
 import '../../core/services/heartbeat_service.dart';
 import '../../core/services/test_catalog_service.dart';
@@ -180,11 +180,5 @@ int _pickRandomVariant(Map<String, dynamic> cached) {
   final blob = (cached['test_data'] is Map)
       ? Map<String, dynamic>.from(cached['test_data'] as Map)
       : cached;
-  final variants = blob['variants'];
-  if (variants is Map && variants.isNotEmpty) {
-    final keys = variants.keys.map((k) => k.toString()).toList();
-    final pick = keys[Random().nextInt(keys.length)];
-    return int.tryParse(pick) ?? 1;
-  }
-  return 1;
+  return pickVariantNumber(blob['variants']);
 }

@@ -31,6 +31,7 @@ import 'package:intl/intl.dart';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/engine/test_models.dart' show pickVariantNumber;
 import '../../core/models/models.dart';
 import '../../core/services/heartbeat_service.dart';
 import '../../core/session/logout.dart';
@@ -232,12 +233,7 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
     final blob = (data['test_data'] is Map)
         ? Map<String, dynamic>.from(data['test_data'] as Map)
         : data;
-    final variants = blob['variants'];
-    if (variants is Map && variants.isNotEmpty) {
-      final keys = variants.keys.map((k) => k.toString()).toList()..shuffle();
-      return int.tryParse(keys.first) ?? 1;
-    }
-    return 1;
+    return pickVariantNumber(blob['variants']);
   }
 
   /// Mandatory kiosk-security step: this machine is shared between students,

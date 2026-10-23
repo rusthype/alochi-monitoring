@@ -2,6 +2,8 @@
 // Unified test schema Dart models — JSON-driven test engine (Faza 3)
 // No Flutter imports — pure Dart, safe for use in scorer/logic layers too.
 
+import 'dart:math' show Random;
+
 import 'package:flutter/foundation.dart' show debugPrint;
 
 // ── Question types ─────────────────────────────────────────────────────────────
@@ -552,13 +554,50 @@ class TestSpec {
     return null;
   }
 
+  /// Requested key has no variant (hand-written keys like "A", or a resumed
+  /// attempt saved against a different key set): use the numerically-nearest
+  /// numeric key, else the first one, rather than an empty test. A truly
+  /// empty map still yields {}.
+  Map<String, SectionData> _fallbackVariant(String variantKey) {
+    if (variants.isEmpty) return {};
+    final want = int.tryParse(variantKey);
+    final numeric = variants.keys.where((k) => int.tryParse(k) != null);
+    var best = variants.keys.first;
+    if (numeric.isNotEmpty) {
+      best = want == null
+          ? numeric.first
+          : numeric.reduce((a, b) =>
+              (int.parse(a) - want).abs() <= (int.parse(b) - want).abs()
+                  ? a
+                  : b);
+    }
+    debugPrint(
+        '[TestEngine] variant "$variantKey" missing, falling back to "$best"');
+    return variants[best] ?? {};
+  }
+
   /// Convenience: get sections for a specific variant key, in parts order.
   List<SectionData> sectionsForVariant(String variantKey) {
-    final sectionMap = variants[variantKey] ?? {};
+    final sectionMap = variants[variantKey] ?? _fallbackVariant(variantKey);
     // Return in parts order; missing sections are skipped
     return parts
         .map((p) => sectionMap[p])
         .whereType<SectionData>()
         .toList();
   }
+}
+
+/// Picks a random variant NUMBER from a raw `variants` map. Prefers numeric
+/// keys ("1","2"); never returns a number that has no matching key when a
+/// numeric key exists. With only non-numeric keys (e.g. {"A"}) no number can
+/// match, so it returns 1 and [TestSpec.sectionsForVariant] falls back to the
+/// first existing variant.
+int pickVariantNumber(Object? variants) {
+  if (variants is! Map || variants.isEmpty) return 1;
+  final nums = variants.keys
+      .map((k) => int.tryParse(k.toString()))
+      .whereType<int>()
+      .toList();
+  if (nums.isEmpty) return 1;
+  return nums[Random().nextInt(nums.length)];
 }
