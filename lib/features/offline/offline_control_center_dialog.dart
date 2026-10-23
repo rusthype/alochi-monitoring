@@ -28,6 +28,7 @@ import '../../core/offline/pack_loader.dart';
 import '../../core/offline/results_exporter.dart';
 import '../../core/offline/usb_backup.dart';
 import '../../shared/theme/app_theme.dart';
+import 'export_done_notice.dart';
 import 'lan_connect_dialog.dart';
 import 'safe_file_picker.dart';
 
@@ -56,6 +57,7 @@ class _OfflineControlCenterDialogState
   String? _busyLabel;
   String? _message;
   bool _messageIsError = false;
+  ({String headline, List<String> files})? _done;
   List<PackSummary> _summaries = const [];
 
   late final OfflineKeys _keys = OfflineKeys.current;
@@ -84,7 +86,17 @@ class _OfflineControlCenterDialogState
     if (!mounted) return;
     setState(() {
       _message = text;
+      _done = null;
       _messageIsError = error;
+    });
+  }
+
+  void _sayDone(String headline, List<String> files) {
+    if (!mounted) return;
+    if (files.isEmpty) return _say(headline);
+    setState(() {
+      _message = null;
+      _done = (headline: headline, files: files);
     });
   }
 
@@ -136,6 +148,7 @@ class _OfflineControlCenterDialogState
       _busy = true;
       _busyLabel = l10n.usbOpening;
       _message = null;
+      _done = null;
     });
     try {
       // Zip decode + RSA verify + per-file SHA-256 off the UI thread.
@@ -247,26 +260,27 @@ class _OfflineControlCenterDialogState
       _busy = true;
       _busyLabel = null;
       _message = null;
+      _done = null;
     });
     try {
       final dir = await defaultExportDir();
       final exporter = ResultsExporter(keys: _keys);
       var total = 0;
       var badKeys = 0;
-      String lastFile = '';
+      final files = <String>[];
       for (final s in list) {
         final out = await exporter.exportPack(s.packUuid, dir,
             schoolCode: s.schoolCode);
         total += out.count;
         badKeys += out.invalidKeyCount;
-        lastFile = out.file.path;
+        files.add(out.file.path);
       }
       await _refresh();
-      _say(
-          badKeys > 0
-              ? l10n.usbExportBadKeys(badKeys)
-              : l10n.usbExportDone(total, lastFile),
-          error: badKeys > 0);
+      if (badKeys > 0) {
+        _say(l10n.usbExportBadKeys(badKeys), error: true);
+      } else {
+        _sayDone(l10n.usbExportedHeadline(total), files);
+      }
     } on ExportException catch (e) {
       _say(
           e.code == ExportError.notConfigured
@@ -293,6 +307,7 @@ class _OfflineControlCenterDialogState
       _busy = true;
       _busyLabel = null;
       _message = null;
+      _done = null;
     });
     try {
       final dir = await defaultExportDir();
@@ -310,7 +325,7 @@ class _OfflineControlCenterDialogState
       await _refresh();
       switch (r.status) {
         case FlashStatus.ok:
-          _say(l10n.usbFlashDone(r.paths.join(', ')));
+          _sayDone(l10n.usbFlashReady, r.paths);
         case FlashStatus.noDrive:
           _say(l10n.usbFlashNone, error: true);
         case FlashStatus.cancelled:
@@ -453,6 +468,11 @@ class _OfflineControlCenterDialogState
                       Text(_busyLabel!,
                           style: const TextStyle(color: AppColors.ink2)),
                   ]),
+                ],
+                if (_done != null) ...[
+                  const SizedBox(height: 14),
+                  ExportDoneNotice(
+                      headline: _done!.headline, files: _done!.files),
                 ],
                 if (_message != null) ...[
                   const SizedBox(height: 14),

@@ -1236,6 +1236,18 @@
   "usbFlashDone": "Nusxa tayyor, flashkani chiqarishingiz mumkin: {path}",
   "usbFlashFailed": "Flashkaga ko'chirib bo'lmadi. Fayl Yuklashlar papkasida saqlangan.",
   "usbFlashPick": "Flashkani tanlang",
+  "usbExportedHeadline": "{count} ta natija eksport qilindi",
+  "@usbExportedHeadline": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usbFlashReady": "Nusxa tayyor, flashkani chiqarishingiz mumkin",
+  "usbRevealInFolder": "Papkada ko'rsatish",
+  "usbCopyPath": "Nusxalash",
+  "usbPathCopied": "Nusxalandi",
   "@usbFlashDone": {
     "placeholders": {
       "path": {

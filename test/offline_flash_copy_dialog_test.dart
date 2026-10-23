@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:alochi_monitoring/core/db/offline_queue.dart';
 import 'package:alochi_monitoring/core/db/pack_results_db.dart';
 import 'package:alochi_monitoring/core/offline/offline_keys.dart';
+import 'package:alochi_monitoring/core/theme/app_colors.dart';
+import 'package:alochi_monitoring/features/offline/export_done_notice.dart';
 import 'package:alochi_monitoring/core/offline/usb_backup.dart'
     show AutoSaveStatus, DriveLister;
 import 'package:alochi_monitoring/features/offline/offline_control_center_dialog.dart';
@@ -153,7 +155,33 @@ void main() {
     await tapFlash(tester);
     final copied = Directory(p.join(e.path, 'alochi-offline')).listSync();
     expect(copied, hasLength(1));
-    expect(find.textContaining(copied.single.path), findsOneWidget);
+    // Success notice: green widget, headline, file name on its own line.
+    expect(find.text(l10nOf(tester).usbFlashReady), findsOneWidget);
+    expect(find.text(p.basename(copied.single.path)), findsOneWidget);
+    expect(find.byType(ExportDoneNotice), findsOneWidget);
+    expect(find.text(l10nOf(tester).usbCopyPath), findsOneWidget);
+    expect(find.text(l10nOf(tester).usbRevealInFolder), findsOneWidget);
+  });
+
+  testWidgets('per-pack export: green notice with count and file name',
+      (tester) async {
+    await pump(tester, () async => const []);
+    await tester.tap(find.text(l10nOf(tester).usbExportOne));
+    await settle(tester);
+    final l10n = l10nOf(tester);
+    expect(find.text(l10n.usbExportedHeadline(1)), findsOneWidget);
+    final box = tester.widget<Container>(find
+        .descendant(
+            of: find.byType(ExportDoneNotice), matching: find.byType(Container))
+        .first);
+    expect((box.decoration! as BoxDecoration).color, AppColors.successMuted);
+    final files = Directory(p.join(tmp.path, 'alochi-offline'))
+        .listSync()
+        .whereType<File>()
+        .toList();
+    expect(files, hasLength(1));
+    expect(find.text(p.basename(files.single.path)), findsOneWidget);
+    expect(find.text(l10n.usbCopyPath), findsOneWidget);
   });
 
   testWidgets('several drives + several packs: one pick, all packs copied',

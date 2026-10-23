@@ -4635,6 +4635,36 @@ abstract class AppLocalizations {
   /// **'Flashkani tanlang'**
   String get usbFlashPick;
 
+  /// No description provided for @usbExportedHeadline.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} ta natija eksport qilindi'**
+  String usbExportedHeadline(int count);
+
+  /// No description provided for @usbFlashReady.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nusxa tayyor, flashkani chiqarishingiz mumkin'**
+  String get usbFlashReady;
+
+  /// No description provided for @usbRevealInFolder.
+  ///
+  /// In uz, this message translates to:
+  /// **'Papkada ko\'rsatish'**
+  String get usbRevealInFolder;
+
+  /// No description provided for @usbCopyPath.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nusxalash'**
+  String get usbCopyPath;
+
+  /// No description provided for @usbPathCopied.
+  ///
+  /// In uz, this message translates to:
+  /// **'Nusxalandi'**
+  String get usbPathCopied;
+
   /// No description provided for @usbExportBadKeys.
   ///
   /// In uz, this message translates to:

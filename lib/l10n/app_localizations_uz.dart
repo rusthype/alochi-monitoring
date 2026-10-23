@@ -2504,6 +2504,23 @@ class AppLocalizationsUz extends AppLocalizations {
   String get usbFlashPick => 'Flashkani tanlang';
 
   @override
+  String usbExportedHeadline(int count) {
+    return '$count ta natija eksport qilindi';
+  }
+
+  @override
+  String get usbFlashReady => 'Nusxa tayyor, flashkani chiqarishingiz mumkin';
+
+  @override
+  String get usbRevealInFolder => 'Papkada ko\'rsatish';
+
+  @override
+  String get usbCopyPath => 'Nusxalash';
+
+  @override
+  String get usbPathCopied => 'Nusxalandi';
+
+  @override
   String usbExportBadKeys(int count) {
     return 'Diqqat: $count ta natija kalitida xato bor, server faylni qabul qilmaydi. Natijani qayta topshiring.';
   }

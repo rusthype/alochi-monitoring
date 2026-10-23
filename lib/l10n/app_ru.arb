@@ -1184,6 +1184,18 @@
   "usbFlashDone": "Копия готова, флешку можно извлекать: {path}",
   "usbFlashFailed": "Не удалось скопировать на флешку. Файл сохранён в папке «Загрузки».",
   "usbFlashPick": "Выберите флешку",
+  "usbExportedHeadline": "Экспортировано результатов: {count}",
+  "@usbExportedHeadline": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "usbFlashReady": "Копия готова, флешку можно извлекать",
+  "usbRevealInFolder": "Показать в папке",
+  "usbCopyPath": "Копировать путь",
+  "usbPathCopied": "Скопировано",
   "@usbFlashDone": {
     "placeholders": {
       "path": {

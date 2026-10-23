@@ -2492,6 +2492,23 @@ class AppLocalizationsRu extends AppLocalizations {
   String get usbFlashPick => 'Выберите флешку';
 
   @override
+  String usbExportedHeadline(int count) {
+    return 'Экспортировано результатов: $count';
+  }
+
+  @override
+  String get usbFlashReady => 'Копия готова, флешку можно извлекать';
+
+  @override
+  String get usbRevealInFolder => 'Показать в папке';
+
+  @override
+  String get usbCopyPath => 'Копировать путь';
+
+  @override
+  String get usbPathCopied => 'Скопировано';
+
+  @override
   String usbExportBadKeys(int count) {
     return 'Внимание: у $count результатов недопустимый ключ, сервер отклонит файл. Пересдайте тест.';
   }
