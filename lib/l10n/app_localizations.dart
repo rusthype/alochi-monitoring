@@ -1188,13 +1188,13 @@ abstract class AppLocalizations {
   /// No description provided for @finishTestButton.
   ///
   /// In uz, this message translates to:
-  /// **'Testni yakunlash'**
+  /// **'Testni tugatish'**
   String get finishTestButton;
 
   /// No description provided for @nextSubjectButton.
   ///
   /// In uz, this message translates to:
-  /// **'Keyingisi'**
+  /// **'Keyingi testga o\'tish'**
   String get nextSubjectButton;
 
   /// No description provided for @engSectionTransitionTitle.

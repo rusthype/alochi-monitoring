@@ -845,11 +845,11 @@ void main() {
       await tester.tap(find.text('Variant A'));
       await tester.pump();
 
-      // "Testni yakunlash" only replaces "Keyingi" on the last question.
+      // "Testni tugatish" only replaces "Keyingi" on the last question.
       await tester.tap(find.text('02'));
       await tester.pump();
 
-      await tester.tap(find.text('Testni yakunlash'));
+      await tester.tap(find.text('Testni tugatish'));
       await tester.pump();
 
       // Confirmation dialog appears (1 question unanswered).
@@ -900,7 +900,7 @@ void main() {
       await tester.tap(find.text('Variant A'));
       await tester.pump();
 
-      await tester.tap(find.text('Testni yakunlash'));
+      await tester.tap(find.text('Testni tugatish'));
       await tester.pump();
       await tester.pump();
 
@@ -953,7 +953,7 @@ void main() {
       await tester.tap(find.text('Variant A'));
       await tester.pump();
 
-      await tester.tap(find.text('Testni yakunlash'));
+      await tester.tap(find.text('Testni tugatish'));
       await tester.pump();
       await tester.pump();
 
@@ -1123,7 +1123,7 @@ void main() {
       await tester.tap(find.text('Variant A'));
       await tester.pump();
 
-      await tester.tap(find.text('Testni yakunlash'));
+      await tester.tap(find.text('Testni tugatish'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 1600));
       await tester.pump();
@@ -1489,7 +1489,7 @@ void main() {
 
       await tester.tap(find.text('Variant A'));
       await tester.pump();
-      await tester.tap(find.text('Testni yakunlash'));
+      await tester.tap(find.text('Testni tugatish'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       await tester.pump();
@@ -1652,7 +1652,7 @@ void main() {
       expect(find.text('Keyingi'), findsOneWidget);
       // "Testni yakunlash" DOES appear here, but as the early-finish button
       // (Icons.flag_outlined) — not the last-question Finish button.
-      expect(find.text('Testni yakunlash'), findsOneWidget);
+      expect(find.text('Testni tugatish'), findsOneWidget);
       expect(find.byIcon(Icons.flag_outlined), findsOneWidget);
 
       await tester.tap(find.text('02'));
@@ -1663,7 +1663,7 @@ void main() {
       expect(prevButton2.onPressed, isNotNull);
       // Last question: only the Finish button remains, the early-finish
       // button is hidden so there is no duplicate.
-      expect(find.text('Testni yakunlash'), findsOneWidget);
+      expect(find.text('Testni tugatish'), findsOneWidget);
       expect(find.byIcon(Icons.flag_outlined), findsNothing);
       expect(find.text('Keyingi'), findsNothing);
       await unmount(tester);
@@ -2394,7 +2394,7 @@ void main() {
 
       await tester.tap(find.text('Variant A'));
       await tester.pump();
-      await tester.tap(find.text('Testni yakunlash'));
+      await tester.tap(find.text('Testni tugatish'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       await tester.pump();

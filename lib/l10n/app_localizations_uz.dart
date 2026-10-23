@@ -613,10 +613,10 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticScratchpadUndo => 'Bekor qilish';
 
   @override
-  String get finishTestButton => 'Testni yakunlash';
+  String get finishTestButton => 'Testni tugatish';
 
   @override
-  String get nextSubjectButton => 'Keyingisi';
+  String get nextSubjectButton => 'Keyingi testga o\'tish';
 
   @override
   String get engSectionTransitionTitle => 'Ingliz tili bo\'limiga o\'tildi';

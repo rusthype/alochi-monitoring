@@ -79,34 +79,45 @@ class DiagnosticBottomNav extends StatelessWidget {
           const Spacer(),
         ],
         if (isLast)
-          SizedBox(
-            // 220, not 172: still wrapped "Testni yakunlash" onto 2 lines
-            // (found via a real local run) — bold text + icon needs more
-            // room than the shorter "Keyingi"/"Oldingi" labels.
-            width: 220,
-            height: 44,
-            child: ElevatedButton.icon(
-              onPressed: submitting ? null : onFinish,
-              icon: submitting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : Icon(hasNextSubject
-                      ? Icons.arrow_forward_rounded
-                      : Icons.check_rounded),
-              label: Text(
-                  hasNextSubject
-                      ? l10n.nextSubjectButton
-                      : l10n.finishTestButton,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.ok,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+          Flexible(
+            child: ConstrainedBox(
+              // Wider than the 140 "Keyingi" button: the last-question label
+              // is a full sentence ("Перейти к следующему тесту"). Flexible +
+              // FittedBox keep it on one line on narrow docks.
+              constraints: const BoxConstraints(maxWidth: 330),
+              child: SizedBox(
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: submitting ? null : onFinish,
+                  icon: submitting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : Icon(hasNextSubject
+                          ? Icons.skip_next_rounded
+                          : Icons.flag_rounded),
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                        hasNextSubject
+                            ? l10n.nextSubjectButton
+                            : l10n.finishTestButton,
+                        maxLines: 1,
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                  // Green (success) vs the orange brand colour of the plain
+                  // "Next" button, so a child can't confuse "end this test"
+                  // with "next question".
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
               ),
             ),
           )

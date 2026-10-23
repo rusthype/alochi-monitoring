@@ -307,7 +307,7 @@
   "diagnosticScratchpadButton": "Черновик",
   "diagnosticScratchpadUndo": "Отменить",
   "finishTestButton": "Завершить тест",
-  "nextSubjectButton": "Следующий",
+  "nextSubjectButton": "Перейти к следующему тесту",
   "engSectionTransitionTitle": "Переход к английскому языку",
   "engSectionTransitionDesc": "40 минут · Следующие вопросы на английском",
   "imageLoadFailed": "Ошибка загрузки",

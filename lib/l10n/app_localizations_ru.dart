@@ -611,7 +611,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get finishTestButton => 'Завершить тест';
 
   @override
-  String get nextSubjectButton => 'Следующий';
+  String get nextSubjectButton => 'Перейти к следующему тесту';
 
   @override
   String get engSectionTransitionTitle => 'Переход к английскому языку';
