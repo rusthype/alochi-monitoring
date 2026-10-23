@@ -5393,6 +5393,12 @@ abstract class AppLocalizations {
   /// **'Bolani qo\'shib bo\'lmadi. Qayta urinib ko\'ring.'**
   String get addStudentErrGeneric;
 
+  /// No description provided for @addStudentErrUnsupported.
+  ///
+  /// In uz, this message translates to:
+  /// **'Server hali bola qo\'shishni qo\'llamaydi. Administrator yangilanishini kuting.'**
+  String get addStudentErrUnsupported;
+
   /// No description provided for @addStudentSimilarTitle.
   ///
   /// In uz, this message translates to:

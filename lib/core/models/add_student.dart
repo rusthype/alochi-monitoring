@@ -176,6 +176,14 @@ class AddStudentRejectedException extends ApiException {
 
 const String kAddStudentRejectedCode = 'add_student_rejected';
 
+/// The add route itself does not exist on this backend (older deploy): 404
+/// WITHOUT a backend `code` (a Django/nginx "Not found"), or 405/501. A 404
+/// that carries a `code` (invalid_group, unknown school, ...) is a real answer.
+bool isAddEndpointMissing(ApiException e) =>
+    e.statusCode == 405 ||
+    e.statusCode == 501 ||
+    (e.statusCode == 404 && (e.code ?? '').isEmpty);
+
 /// Successful add (online 200/201, or locally queued when the network failed).
 class AddStudentResult {
   /// Monitoring: the student/request id (usable as `student_id`); locally

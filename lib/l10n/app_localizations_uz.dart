@@ -2965,6 +2965,10 @@ class AppLocalizationsUz extends AppLocalizations {
       'Bolani qo\'shib bo\'lmadi. Qayta urinib ko\'ring.';
 
   @override
+  String get addStudentErrUnsupported =>
+      'Server hali bola qo\'shishni qo\'llamaydi. Administrator yangilanishini kuting.';
+
+  @override
   String get addStudentSimilarTitle => 'Bu shumi?';
 
   @override

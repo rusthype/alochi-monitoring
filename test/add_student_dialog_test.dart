@@ -185,13 +185,48 @@ void main() {
     expect(outcome, isA<AddStudentCreated>());
   });
 
-  testWidgets('network error text from the api is shown', (tester) async {
+  testWidgets('network error shows the localized generic text, not raw',
+      (tester) async {
     await open(tester, (d, {required confirmNew}) async {
       throw const ApiException(0, "Internet aloqasi yo'q.");
     });
     await fill(tester);
     await submit(tester);
-    expect(find.text("Internet aloqasi yo'q."), findsOneWidget);
+    expect(find.text(l10n.addStudentErrGeneric), findsOneWidget);
+    expect(find.text("Internet aloqasi yo'q."), findsNothing);
+  });
+
+  testWidgets('404 without code (route missing) -> localized unsupported',
+      (tester) async {
+    await open(tester, (d, {required confirmNew}) async {
+      throw const ApiException(404, 'Not found.');
+    });
+    await fill(tester);
+    await submit(tester);
+    expect(find.text(l10n.addStudentErrUnsupported), findsOneWidget);
+    expect(find.textContaining('Not found'), findsNothing);
+    expect(closed, isFalse);
+  });
+
+  testWidgets('404 WITH a backend code stays specific', (tester) async {
+    await open(tester, (d, {required confirmNew}) async {
+      throw const ApiException(404, 'Not found.', code: 'invalid_group');
+    });
+    await fill(tester);
+    await submit(tester);
+    expect(find.text(l10n.addStudentErrInvalidGroup), findsOneWidget);
+    expect(find.text(l10n.addStudentErrUnsupported), findsNothing);
+  });
+
+  testWidgets('unknown status / unknown code -> localized generic',
+      (tester) async {
+    await open(tester, (d, {required confirmNew}) async {
+      throw const ApiException(400, 'Bad Request', code: 'weird_new_code');
+    });
+    await fill(tester);
+    await submit(tester);
+    expect(find.text(l10n.addStudentErrGeneric), findsOneWidget);
+    expect(find.text('Bad Request'), findsNothing);
   });
 
   testWidgets('cancel closes with null', (tester) async {

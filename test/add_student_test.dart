@@ -228,6 +228,17 @@ void main() {
       }
     });
 
+    test('route-missing 404/405/501 queue; a 404 carrying a code does not', () {
+      for (final c in [404, 405, 501]) {
+        expect(shouldQueueAddStudent(ApiException(c, 'Not found.')), isTrue,
+            reason: '$c');
+      }
+      expect(
+          shouldQueueAddStudent(
+              const ApiException(404, 'x', code: 'invalid_group')),
+          isFalse);
+    });
+
     test('network failure -> queued locally, usable with the temp id',
         () async {
       final api = _FakeApi()..addError = const ApiException(0, "Internet yo'q");

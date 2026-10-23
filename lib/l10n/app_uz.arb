@@ -1591,6 +1591,7 @@
   "addStudentErrInvalidGroup": "Guruh topilmadi. Ro'yxatni yangilab, qayta urinib ko'ring.",
   "addStudentErrPendingLimit": "Tasdiq kutayotgan bolalar soni chegaraga yetdi. Adminga murojaat qiling.",
   "addStudentErrGeneric": "Bolani qo'shib bo'lmadi. Qayta urinib ko'ring.",
+  "addStudentErrUnsupported": "Server hali bola qo'shishni qo'llamaydi. Administrator yangilanishini kuting.",
   "addStudentSimilarTitle": "Bu shumi?",
   "addStudentSimilarBody": "Maktabda shunga o'xshash o'quvchilar bor. Agar shu bola bo'lsa, uni tanlang.",
   "addStudentSimilarNone": "Yo'q, boshqa bola",

@@ -144,6 +144,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
     }
     if (e is ApiException) {
       if (e.statusCode == 429) return l10n.addStudentErrThrottled;
+      if (isAddEndpointMissing(e)) return l10n.addStudentErrUnsupported;
       switch (e.code) {
         case 'invalid_group':
           return l10n.addStudentErrInvalidGroup;
@@ -158,7 +159,9 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
           debugPrint('AddStudentDialog: invalid_client_temp_id for $_tempId');
           return l10n.addStudentErrGeneric;
       }
-      return e.message;
+      // Unmapped status/code (incl. network ApiException(0)): never show the
+      // raw server/exception text.
+      debugPrint('AddStudentDialog unmapped error: ${e.statusCode} ${e.code}');
     }
     return l10n.addStudentErrGeneric;
   }

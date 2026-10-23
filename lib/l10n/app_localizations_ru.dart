@@ -2953,6 +2953,10 @@ class AppLocalizationsRu extends AppLocalizations {
       'Не удалось добавить ребёнка. Повторите попытку.';
 
   @override
+  String get addStudentErrUnsupported =>
+      'Сервер пока не поддерживает добавление ребёнка. Дождитесь обновления администратором.';
+
+  @override
   String get addStudentSimilarTitle => 'Это он?';
 
   @override
