@@ -539,7 +539,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String diagnosticSubjectTransitionMessage(
-      String fromSubject, String toSubject) {
+    String fromSubject,
+    String toSubject,
+  ) {
     return '$fromSubject завершён! Теперь начинается $toSubject';
   }
 
@@ -2788,13 +2790,21 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String lanSeatPartyHolder(
-      String device, String ip, String ago, String status) {
+    String device,
+    String ip,
+    String ago,
+    String status,
+  ) {
     return 'Текущий: $device ($ip) · подключён $ago назад · $status';
   }
 
   @override
   String lanSeatPartyClaimant(
-      String device, String ip, String ago, String status) {
+    String device,
+    String ip,
+    String ago,
+    String status,
+  ) {
     return 'Новый: $device ($ip) · подключён $ago назад · $status';
   }
 
