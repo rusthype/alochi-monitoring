@@ -7,12 +7,14 @@ class LanguageSwitcher extends ConsumerWidget {
   final Color? foregroundColor;
   final Color? iconColor;
   final Color? dropdownColor;
+  final EdgeInsetsGeometry? padding;
 
   const LanguageSwitcher({
     super.key,
     this.foregroundColor,
     this.iconColor,
     this.dropdownColor,
+    this.padding,
   });
 
   @override
@@ -23,6 +25,7 @@ class LanguageSwitcher extends ConsumerWidget {
       child: DropdownButton<String>(
         value: currentLocale.languageCode,
         borderRadius: BorderRadius.circular(14),
+        padding: padding,
         elevation: 8,
         icon: Icon(
           Icons.language_rounded,

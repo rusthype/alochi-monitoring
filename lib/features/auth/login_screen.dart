@@ -15,6 +15,7 @@ import '../../core/offline/offline_session.dart';
 import '../../core/services/heartbeat_service.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/widgets/button_shape.dart';
 import '../../shared/widgets/hover_region.dart';
 import '../../shared/widgets/signal_strength_indicator.dart';
 
@@ -585,20 +586,27 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  // 48 = DropdownButton's own height, so its hover/focus InkWell fills the
+  // capsule exactly. The inner transparent Material keeps the ink above the
+  // capsule fill; clipBehavior trims it to the capsule's rounded border.
   Widget _languageCapsule(_LoginPalette palette) => Container(
-        height: 42,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
+        height: kMinInteractiveDimension,
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: palette.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(kControlRadius),
           border: Border.all(color: palette.border),
           boxShadow: _floatingControlShadow,
         ),
-        child: Center(
-          child: LanguageSwitcher(
-            foregroundColor: palette.ink1,
-            iconColor: palette.ink2,
-            dropdownColor: palette.surface,
+        child: Material(
+          type: MaterialType.transparency,
+          child: Center(
+            child: LanguageSwitcher(
+              foregroundColor: palette.ink1,
+              iconColor: palette.ink2,
+              dropdownColor: palette.surface,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+            ),
           ),
         ),
       );
@@ -625,7 +633,7 @@ class _LoginScreenState extends State<LoginScreen>
               color: hasNew
                   ? (isHovered ? palette.brandMuted : palette.surface)
                   : (isHovered ? palette.hover : palette.surface),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(kControlRadius),
               border: Border.all(color: palette.border),
               boxShadow: _floatingControlShadow,
             ),
@@ -684,7 +692,7 @@ class _LoginScreenState extends State<LoginScreen>
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isHovered ? palette.brandMuted : palette.surface,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(kControlRadius),
               border: Border.all(color: palette.border),
               boxShadow: _floatingControlShadow,
             ),
@@ -972,7 +980,7 @@ class _LoginScreenState extends State<LoginScreen>
                   gradient: const LinearGradient(
                     colors: [Color(0xFFFF8A3D), Color(0xFFFF6B00)],
                   ),
-                  borderRadius: BorderRadius.circular(13),
+                  borderRadius: BorderRadius.circular(kChipRadius),
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFFFF7A1A).withValues(alpha: .22),
@@ -1043,56 +1051,62 @@ class _LoginScreenState extends State<LoginScreen>
       label: label,
       child: Opacity(
         opacity: disabled ? .58 : 1,
-        child: InkWell(
-          key: key,
-          onTap: disabled ? null : onTap,
-          borderRadius: BorderRadius.circular(13),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 5),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 16, color: foreground),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.caption.copyWith(
-                      color: foreground,
-                      fontSize: 11.5,
-                      height: 1.05,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ),
-                if (badge != null) ...[
+        // Transparent Material so the ink paints above the track/indicator
+        // fills, clipped to the same radius as the indicator.
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            key: key,
+            onTap: disabled ? null : onTap,
+            borderRadius: BorderRadius.circular(kChipRadius),
+            hoverColor: active ? Colors.white.withValues(alpha: .10) : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 16, color: foreground),
                   const SizedBox(width: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 1,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5C28E),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
+                  Flexible(
                     child: Text(
-                      badge,
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
                       style: AppTextStyles.caption.copyWith(
-                        color: const Color(0xFF7C3F0A),
-                        fontSize: 8.5,
-                        height: 1.1,
+                        color: foreground,
+                        fontSize: 11.5,
+                        height: 1.05,
                         fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
                       ),
                     ),
                   ),
+                  if (badge != null) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5C28E),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        badge,
+                        style: AppTextStyles.caption.copyWith(
+                          color: const Color(0xFF7C3F0A),
+                          fontSize: 8.5,
+                          height: 1.1,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -1210,7 +1224,8 @@ class _LoginScreenState extends State<LoginScreen>
                         foregroundColor: palette.ink2,
                         side: BorderSide(color: palette.border),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
+                            borderRadius:
+                                BorderRadius.circular(kControlRadius)),
                       ),
                       icon: const Icon(Icons.groups_rounded, size: 18),
                       label: Text(l10n.localGradeEntry,
@@ -1229,7 +1244,8 @@ class _LoginScreenState extends State<LoginScreen>
                         side: const BorderSide(
                             color: AppColors.flame, width: 1.2),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
+                            borderRadius:
+                                BorderRadius.circular(kControlRadius)),
                       ),
                       icon: const Icon(Icons.menu_book_rounded,
                           size: 18, color: AppColors.flame),
@@ -1268,7 +1284,7 @@ class _LoginScreenState extends State<LoginScreen>
                     ? const [Color(0xFFD97735), Color(0xFFC95300)]
                     : const [Color(0xFFFF8A3D), Color(0xFFFF6B00)],
               ),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(kControlRadius),
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFFFF7A1A).withValues(
@@ -1283,7 +1299,7 @@ class _LoginScreenState extends State<LoginScreen>
               color: Colors.transparent,
               child: InkWell(
                 onTap: _loading ? null : _login,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(kControlRadius),
                 child: Center(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 150),
@@ -1378,7 +1394,7 @@ class _LoginScreenState extends State<LoginScreen>
                 backgroundColor: palette.fieldFill,
                 side: const BorderSide(color: AppColors.flame, width: 1.2),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(kControlRadius),
                 ),
               ),
               icon: const Icon(Icons.school_rounded, size: 18),
@@ -1447,7 +1463,7 @@ class _LoginScreenState extends State<LoginScreen>
                 backgroundColor: palette.fieldFill,
                 side: const BorderSide(color: AppColors.flame, width: 1.2),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(kControlRadius),
                 ),
               ),
               icon: const Icon(Icons.school_rounded, size: 18),
@@ -1482,19 +1498,6 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildOfflineActions(_LoginPalette palette) {
     final l10n = AppLocalizations.of(context)!;
-    final chipDecoration = BoxDecoration(
-      color: palette.fieldFill,
-      borderRadius: BorderRadius.circular(13),
-      border: Border.all(color: palette.border),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: .035),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    );
-
     return AnimatedSize(
       duration: const Duration(milliseconds: 180),
       alignment: Alignment.topCenter,
@@ -1503,28 +1506,23 @@ class _LoginScreenState extends State<LoginScreen>
         children: [
           Expanded(
             flex: 3,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 42),
-              decoration: chipDecoration,
-              child: const Center(child: SyncImagesButton()),
+            child: BottomChip(
+              fill: palette.fieldFill,
+              border: palette.border,
+              minHeight: 42,
+              child: const SyncImagesButton(),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             flex: 2,
-            child: Container(
+            child: BottomChip(
+              fill: palette.fieldFill,
+              border: palette.border,
               height: 42,
-              decoration: chipDecoration,
               child: TextButton.icon(
                 onPressed: () => context.push('/history', extra: {}),
-                style: TextButton.styleFrom(
-                  foregroundColor: palette.ink2,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  textStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                style: bottomChipButtonStyle(foreground: palette.ink2),
                 icon: const Icon(Icons.history_rounded, size: 16),
                 label: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -1536,19 +1534,13 @@ class _LoginScreenState extends State<LoginScreen>
           const SizedBox(width: 8),
           Expanded(
             flex: 2,
-            child: Container(
+            child: BottomChip(
+              fill: palette.fieldFill,
+              border: palette.border,
               height: 42,
-              decoration: chipDecoration,
               child: TextButton.icon(
                 onPressed: () => showOfflineControlCenter(context),
-                style: TextButton.styleFrom(
-                  foregroundColor: palette.ink2,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  textStyle: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                style: bottomChipButtonStyle(foreground: palette.ink2),
                 icon: const Icon(Icons.usb_rounded, size: 16),
                 label: FittedBox(
                   fit: BoxFit.scaleDown,
