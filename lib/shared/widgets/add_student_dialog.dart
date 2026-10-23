@@ -15,6 +15,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart' show ApiException;
 import '../../core/models/add_student.dart';
 import '../theme/app_theme.dart';
+import '../utils/form_input_formatters.dart';
 
 typedef AddStudentSubmit = Future<AddStudentResult>
     Function(AddStudentDraft draft, {required bool confirmNew});
@@ -61,6 +62,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
   final _lastCtrl = TextEditingController();
   final _firstCtrl = TextEditingController();
   final _parentCtrl = TextEditingController();
+  final _birthCtrl = TextEditingController();
   final _lastFocus = FocusNode();
   final _firstFocus = FocusNode();
   final _parentFocus = FocusNode();
@@ -68,7 +70,6 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
   /// One per dialog open == one per add attempt (stable across retries).
   final String _tempId = AddStudentDraft.newTempId();
 
-  DateTime? _birthDate;
   bool _loading = false;
   String? _error;
   SimilarStudentsException? _similar;
@@ -85,6 +86,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
     _lastCtrl.dispose();
     _firstCtrl.dispose();
     _parentCtrl.dispose();
+    _birthCtrl.dispose();
     _lastFocus.dispose();
     _firstFocus.dispose();
     _parentFocus.dispose();
@@ -94,7 +96,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
   AddStudentDraft get _draft => AddStudentDraft(
         firstName: normalizeStudentName(_firstCtrl.text),
         lastName: normalizeStudentName(_lastCtrl.text),
-        birthDate: _birthDate,
+        birthDate: checkBirthDate(_birthCtrl.text).date,
         parentFio: normalizeStudentName(_parentCtrl.text),
         clientTempId: _tempId,
       );
@@ -116,6 +118,22 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
       isValidParentFio(v ?? '')
           ? _srvParentError
           : l10n.addStudentParentFioChars;
+
+  String? _birthValidator(String? v, AppLocalizations l10n) {
+    switch (checkBirthDate(v ?? '').error) {
+      case null:
+        return _srvBirthError;
+      case BirthDateError.incomplete:
+        // Don't nag while the date is still being typed; submit catches it.
+        return _autoValidate ? l10n.addStudentBirthDateIncomplete : null;
+      case BirthDateError.invalid:
+        return l10n.addStudentErrInvalidBirthDate;
+      case BirthDateError.future:
+        return l10n.addStudentBirthDateFuture;
+      case BirthDateError.tooOld:
+        return l10n.addStudentBirthDateTooOld;
+    }
+  }
 
   String _errorText(Object e, AppLocalizations l10n) {
     if (e is AddStudentRejectedException) return l10n.addStudentErrRejected;
@@ -214,22 +232,21 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final typed = checkBirthDate(_birthCtrl.text).date;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _birthDate ?? DateTime(now.year - 8),
-      firstDate: DateTime(now.year - 25),
-      lastDate: now,
+      initialDate: typed ?? DateTime(today.year - 10, today.month, today.day),
+      firstDate: kBirthDateMin,
+      lastDate: today,
+      initialEntryMode: DatePickerEntryMode.calendarOnly,
+      initialDatePickerMode: DatePickerMode.year,
     );
     if (picked != null && mounted) {
-      setState(() {
-        _birthDate = picked;
-        _srvBirthError = null;
-      });
+      _srvBirthError = null;
+      _birthCtrl.text = formatBirthDate(picked);
     }
   }
-
-  static String _fmtDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 
   @override
   Widget build(BuildContext context) {
@@ -280,7 +297,10 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
             enabled: !_loading,
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.next,
-            inputFormatters: [LengthLimitingTextInputFormatter(80)],
+            inputFormatters: [
+              const TitleCaseNameFormatter(),
+              LengthLimitingTextInputFormatter(80),
+            ],
             decoration: InputDecoration(labelText: l10n.addStudentLastName),
             onChanged: (_) => _srvNameError = null,
             validator: (v) => _nameValidator(v, l10n),
@@ -294,44 +314,38 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
             enabled: !_loading,
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.next,
-            inputFormatters: [LengthLimitingTextInputFormatter(80)],
+            inputFormatters: [
+              const TitleCaseNameFormatter(),
+              LengthLimitingTextInputFormatter(80),
+            ],
             decoration: InputDecoration(labelText: l10n.addStudentFirstName),
             onChanged: (_) => _srvNameError = null,
             validator: (v) => _nameValidator(v, l10n),
             onFieldSubmitted: (_) => _parentFocus.requestFocus(),
           ),
           const SizedBox(height: 14),
-          // Optional: birth date.
-          Semantics(
-            button: true,
-            label: l10n.addStudentBirthDate,
-            child: InkWell(
-              key: const Key('addStudentBirthDate'),
-              borderRadius: BorderRadius.circular(12),
-              onTap: _loading ? null : _pickDate,
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  labelText: l10n.addStudentBirthDate,
-                  errorText: _srvBirthError,
-                  suffixIcon: _birthDate == null
-                      ? const Icon(Icons.calendar_today_rounded, size: 18)
-                      : IconButton(
-                          tooltip: l10n.addStudentClearDate,
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          onPressed: _loading
-                              ? null
-                              : () => setState(() {
-                                    _birthDate = null;
-                                    _srvBirthError = null;
-                                  }),
-                        ),
-                ),
-                child: Text(
-                  _birthDate == null ? '' : _fmtDate(_birthDate!),
-                  style: const TextStyle(fontSize: 15, color: AppColors.ink1),
-                ),
+          // Optional: birth date, typed as KK.OO.YYYY (calendar is secondary).
+          TextFormField(
+            key: const Key('addStudentBirthDate'),
+            controller: _birthCtrl,
+            enabled: !_loading,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.next,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            inputFormatters: const [BirthDateMaskFormatter()],
+            decoration: InputDecoration(
+              labelText: l10n.addStudentBirthDate,
+              hintText: l10n.addStudentBirthDateHint,
+              suffixIcon: IconButton(
+                key: const Key('addStudentBirthDatePick'),
+                tooltip: l10n.addStudentPickDate,
+                icon: const Icon(Icons.calendar_today_rounded, size: 18),
+                onPressed: _loading ? null : _pickDate,
               ),
             ),
+            onChanged: (_) => _srvBirthError = null,
+            validator: (v) => _birthValidator(v, l10n),
+            onFieldSubmitted: (_) => _parentFocus.requestFocus(),
           ),
           const SizedBox(height: 14),
           // Optional: parent F.I.O.
@@ -343,6 +357,7 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
             textCapitalization: TextCapitalization.words,
             textInputAction: TextInputAction.done,
             inputFormatters: [
+              const TitleCaseNameFormatter(),
               LengthLimitingTextInputFormatter(kParentFioMaxLength)
             ],
             decoration: InputDecoration(labelText: l10n.addStudentParentFio),

@@ -2910,7 +2910,24 @@ class AppLocalizationsUz extends AppLocalizations {
   String get addStudentFirstName => 'Ism';
 
   @override
-  String get addStudentBirthDate => 'Tug\'ilgan kun (ixtiyoriy)';
+  String get addStudentBirthDate => 'Tug\'ilgan sana (ixtiyoriy)';
+
+  @override
+  String get addStudentBirthDateHint => 'KK.OO.YYYY';
+
+  @override
+  String get addStudentBirthDateIncomplete => 'To\'liq kiriting: KK.OO.YYYY';
+
+  @override
+  String get addStudentBirthDateFuture =>
+      'Sana kelajakda bo\'lishi mumkin emas';
+
+  @override
+  String get addStudentBirthDateTooOld =>
+      'Sana 1990-yildan keyin bo\'lishi kerak';
+
+  @override
+  String get addStudentPickDate => 'Kalendardan tanlash';
 
   @override
   String get addStudentClearDate => 'Tozalash';

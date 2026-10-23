@@ -2902,6 +2902,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get addStudentBirthDate => 'Дата рождения (необязательно)';
 
   @override
+  String get addStudentBirthDateHint => 'ДД.ММ.ГГГГ';
+
+  @override
+  String get addStudentBirthDateIncomplete => 'Введите полностью: ДД.ММ.ГГГГ';
+
+  @override
+  String get addStudentBirthDateFuture => 'Дата не может быть в будущем';
+
+  @override
+  String get addStudentBirthDateTooOld =>
+      'Дата должна быть не раньше 1990 года';
+
+  @override
+  String get addStudentPickDate => 'Выбрать в календаре';
+
+  @override
   String get addStudentClearDate => 'Очистить';
 
   @override

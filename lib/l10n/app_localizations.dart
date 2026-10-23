@@ -5300,8 +5300,38 @@ abstract class AppLocalizations {
   /// No description provided for @addStudentBirthDate.
   ///
   /// In uz, this message translates to:
-  /// **'Tug\'ilgan kun (ixtiyoriy)'**
+  /// **'Tug\'ilgan sana (ixtiyoriy)'**
   String get addStudentBirthDate;
+
+  /// No description provided for @addStudentBirthDateHint.
+  ///
+  /// In uz, this message translates to:
+  /// **'KK.OO.YYYY'**
+  String get addStudentBirthDateHint;
+
+  /// No description provided for @addStudentBirthDateIncomplete.
+  ///
+  /// In uz, this message translates to:
+  /// **'To\'liq kiriting: KK.OO.YYYY'**
+  String get addStudentBirthDateIncomplete;
+
+  /// No description provided for @addStudentBirthDateFuture.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sana kelajakda bo\'lishi mumkin emas'**
+  String get addStudentBirthDateFuture;
+
+  /// No description provided for @addStudentBirthDateTooOld.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sana 1990-yildan keyin bo\'lishi kerak'**
+  String get addStudentBirthDateTooOld;
+
+  /// No description provided for @addStudentPickDate.
+  ///
+  /// In uz, this message translates to:
+  /// **'Kalendardan tanlash'**
+  String get addStudentPickDate;
 
   /// No description provided for @addStudentClearDate.
   ///
