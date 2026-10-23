@@ -543,9 +543,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String diagnosticSubjectTransitionMessage(
-    String fromSubject,
-    String toSubject,
-  ) {
+      String fromSubject, String toSubject) {
     return '$fromSubject yakunlandi! Endi $toSubject boshlanadi';
   }
 
@@ -2801,21 +2799,13 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String lanSeatPartyHolder(
-    String device,
-    String ip,
-    String ago,
-    String status,
-  ) {
+      String device, String ip, String ago, String status) {
     return 'Hozirgi: $device ($ip) · $ago oldin ulangan · $status';
   }
 
   @override
   String lanSeatPartyClaimant(
-    String device,
-    String ip,
-    String ago,
-    String status,
-  ) {
+      String device, String ip, String ago, String status) {
     return 'Yangi: $device ($ip) · $ago oldin ulangan · $status';
   }
 
