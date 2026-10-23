@@ -89,6 +89,41 @@ void main() {
     expect(ctaEnabled(tester), isTrue);
   });
 
+  for (final width in [190.0, 340.0]) {
+    testWidgets('pending badge sits below a long name (card width $width)',
+        (tester) async {
+      const longName = 'Valiyevalivalixonovich Muhammadalijonovich';
+      await tester.pumpWidget(MaterialApp(
+        locale: const Locale('uz'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: width,
+              child: DiagnosticStudentCard(
+                name: longName,
+                isSelected: true,
+                onTap: () {},
+                isPending: true,
+                attemptStatus: 'partial',
+                status: StudentPrefetchStatus.ready,
+                hasOnlineOnlySubject: true,
+              ),
+            ),
+          ),
+        ),
+      ));
+      final nameFinder = find.text(longName);
+      expect(tester.widget<Text>(nameFinder).maxLines, 2);
+      final badge = find.byKey(const Key('pendingBadge'));
+      expect(badge, findsOneWidget);
+      expect(tester.getTopLeft(badge).dy,
+          greaterThanOrEqualTo(tester.getBottomLeft(nameFinder).dy));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('"Bu shumi?" -> same-name roster row is selected, no new row',
       (tester) async {
     await tester.pumpWidget(_wrap((draft, {required confirmNew}) async {

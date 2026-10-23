@@ -36,6 +36,15 @@ class _RosterApi extends MonitoringApi {
       ];
 }
 
+const _longName = 'Valiyevalivalixonovich Muhammadalijonovich';
+
+class _LongNameApi extends MonitoringApi {
+  @override
+  Future<List<Map<String, dynamic>>> fetchStudents(String groupId) async => [
+        {'id': 's3', 'name': _longName, 'pending': true},
+      ];
+}
+
 void main() {
   late MonitoringApi saved;
   setUp(() {
@@ -92,6 +101,32 @@ void main() {
     expect(find.text('Pending Kid'), findsOneWidget);
     expect(find.byKey(const Key('pendingBadge')), findsOneWidget);
   });
+
+  for (final width in [420.0, 760.0]) {
+    testWidgets('pending badge sits below a long name (window $width)',
+        (tester) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      api = _LongNameApi();
+      await pump(
+          tester,
+          ({required groupId, required draft, required confirmNew}) async =>
+              throw StateError('unused'));
+
+      final nameFinder = find.text(_longName);
+      expect(nameFinder, findsOneWidget);
+      expect(tester.widget<Text>(nameFinder).maxLines, 2);
+      final badge = find.byKey(const Key('pendingBadge'));
+      expect(badge, findsOneWidget);
+      expect(tester.getTopLeft(badge).dy,
+          greaterThanOrEqualTo(tester.getBottomLeft(nameFinder).dy));
+      // wraps onto 2 lines instead of being ellipsized to 1.
+      expect(tester.getSize(nameFinder).height, greaterThan(28));
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('add: group id + draft reach the api, child appears pending',
       (tester) async {

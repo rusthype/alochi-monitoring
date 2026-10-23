@@ -298,35 +298,36 @@ class DiagnosticStudentCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Flexible(
-                      child: Text(
-                        name,
-                        style: TextStyle(
-                          color: isSelected ? AppColors.brand : AppColors.ink1,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      name,
+                      style: TextStyle(
+                        color: isSelected ? AppColors.brand : AppColors.ink1,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (attemptStatus != null) ...[
-                      const SizedBox(width: 6),
-                      _AttemptStatusBadge(
-                        attemptStatus: attemptStatus!,
-                        nextSubjectLabel: nextSubjectLabel,
-                      ),
-                    ],
                     if (isPending) ...[
-                      const SizedBox(width: 6),
+                      const SizedBox(height: 4),
                       const _PendingApprovalBadge(),
                     ],
                   ],
                 ),
               ),
+              // Icon-only (19px) so it costs the name almost no width; kept
+              // inline to keep non-pending cards compact.
+              if (attemptStatus != null) ...[
+                const SizedBox(width: 6),
+                _AttemptStatusBadge(
+                  attemptStatus: attemptStatus!,
+                  nextSubjectLabel: nextSubjectLabel,
+                ),
+              ],
               if (hasOnlineOnlySubject) ...[
                 const SizedBox(width: 6),
                 Tooltip(

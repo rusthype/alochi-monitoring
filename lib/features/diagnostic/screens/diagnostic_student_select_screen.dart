@@ -8,6 +8,7 @@
 // `parent_phone` is never requested/rendered here (the backend never sends
 // it for this endpoint).
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -792,17 +793,36 @@ class _DiagnosticStudentSelectScreenState
                                       builder: (context, constraints) {
                                         final isNarrow =
                                             constraints.maxWidth < 560;
+                                        final cols = isNarrow ? 1 : 2;
+                                        final ratio = isNarrow ? 8.4 : 4.2;
+                                        final baseHeight =
+                                            (constraints.maxWidth -
+                                                    (cols - 1) * 8) /
+                                                cols /
+                                                ratio;
+                                        final hasPending = filtered
+                                            .any((s) => s['pending'] == true);
+                                        final textScale =
+                                            MediaQuery.textScalerOf(context)
+                                                    .scale(14) /
+                                                14;
                                         return GridView.builder(
                                           shrinkWrap: true,
                                           physics:
                                               const NeverScrollableScrollPhysics(),
                                           gridDelegate:
                                               SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: isNarrow ? 1 : 2,
+                                            crossAxisCount: cols,
                                             mainAxisSpacing: 8,
                                             crossAxisSpacing: 8,
-                                            childAspectRatio:
-                                                isNarrow ? 8.4 : 4.2,
+                                            childAspectRatio: ratio,
+                                            // A pending card carries a badge
+                                            // under a 2-line name: give the
+                                            // grid enough height for it.
+                                            mainAxisExtent: hasPending
+                                                ? math.max(
+                                                    baseHeight, 84 * textScale)
+                                                : null,
                                           ),
                                           itemCount: filtered.length,
                                           itemBuilder: (context, index) {

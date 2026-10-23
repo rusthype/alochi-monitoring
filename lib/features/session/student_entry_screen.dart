@@ -595,8 +595,17 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                     context)
                                 .scale(14) /
                                 14;
+                            // Pending/done cards carry a badge under a
+                            // 2-line name, so they need a taller cell.
+                            final bool hasBadges = filteredStudents.any((s) =>
+                                s['pending'] == true ||
+                                _done.contains((s['student_code'] ??
+                                        s['id'] ??
+                                        '')
+                                    .toString()));
                             final double itemHeight =
-                                56 * textScale.clamp(1.0, 1.6);
+                                (hasBadges ? 88 : 56) *
+                                    textScale.clamp(1.0, 1.6);
                             final double contentWidth =
                                 availableWidth - horizontalPadding * 2;
                             final double itemWidth = crossAxisCount > 0
@@ -1010,7 +1019,8 @@ class _StudentCardState extends State<_StudentCard> {
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: widget.onTap,
-            onSecondaryTapDown: (details) => _showContextMenu(details.globalPosition),
+            onSecondaryTapDown: (details) =>
+                _showContextMenu(details.globalPosition),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,
@@ -1018,13 +1028,15 @@ class _StudentCardState extends State<_StudentCard> {
               decoration: BoxDecoration(
                 color: widget.isSelected
                     ? AppColors.brand.withValues(alpha: 0.05)
-                    : _isHovered 
-                        ? const Color(0xFFF0F0F0) 
-                        : AppColors.pageBg,
+                    : _isHovered
+                    ? const Color(0xFFF0F0F0)
+                    : AppColors.pageBg,
                 border: Border.all(
                   color: widget.isSelected
                       ? AppColors.brand.withValues(alpha: 0.4)
-                      : _isHovered ? AppColors.border.withValues(alpha: 0.8) : AppColors.border,
+                      : _isHovered
+                      ? AppColors.border.withValues(alpha: 0.8)
+                      : AppColors.border,
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -1038,7 +1050,9 @@ class _StudentCardState extends State<_StudentCard> {
                       color: widget.isSelected ? AppColors.brand : Colors.white,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: widget.isSelected ? AppColors.brand : AppColors.border,
+                        color: widget.isSelected
+                            ? AppColors.brand
+                            : AppColors.border,
                       ),
                       boxShadow: widget.isSelected
                           ? [
@@ -1046,7 +1060,7 @@ class _StudentCardState extends State<_StudentCard> {
                                 color: AppColors.brand.withValues(alpha: 0.4),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
-                              )
+                              ),
                             ]
                           : [],
                     ),
@@ -1054,7 +1068,9 @@ class _StudentCardState extends State<_StudentCard> {
                     child: Text(
                       widget.avatarLetter,
                       style: TextStyle(
-                        color: widget.isSelected ? Colors.white : AppColors.ink2,
+                        color: widget.isSelected
+                            ? Colors.white
+                            : AppColors.ink2,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1062,75 +1078,120 @@ class _StudentCardState extends State<_StudentCard> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      widget.name,
-                      style: TextStyle(
-                        color: widget.isSelected ? AppColors.brand : AppColors.ink1,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.name,
+                          style: TextStyle(
+                            color: widget.isSelected
+                                ? AppColors.brand
+                                : AppColors.ink1,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (widget.isPending || widget.isDone) ...[
+                          const SizedBox(height: 4),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              if (widget.isPending)
+                                Tooltip(
+                                  message: AppLocalizations.of(
+                                    context,
+                                  )!.studentPendingBadge,
+                                  child: Container(
+                                    key: const Key('pendingBadge'),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.secondaryMuted,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.hourglass_top_rounded,
+                                          size: 12,
+                                          color: AppColors.secondary,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.studentPendingBadge,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              color: AppColors.secondary,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              if (widget.isDone)
+                                Tooltip(
+                                  message: AppLocalizations.of(
+                                    context,
+                                  )!.rosterDoneBadge,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.brand.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 12,
+                                          color: AppColors.brand,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: Text(
+                                            AppLocalizations.of(
+                                              context,
+                                            )!.rosterDoneBadge,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              color: AppColors.brand,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  if (widget.isPending)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Tooltip(
-                        message:
-                            AppLocalizations.of(context)!.studentPendingBadge,
-                        child: Container(
-                          key: const Key('pendingBadge'),
-                          constraints: const BoxConstraints(maxWidth: 150),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.secondaryMuted,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.hourglass_top_rounded,
-                                size: 12, color: AppColors.secondary),
-                            const SizedBox(width: 4),
-                            Flexible(
-                                child: Text(
-                                AppLocalizations.of(context)!
-                                    .studentPendingBadge,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    color: AppColors.secondary,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600))),
-                          ]),
-                        ),
-                      ),
-                    ),
-                  if (widget.isDone)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Tooltip(
-                        message: AppLocalizations.of(context)!.rosterDoneBadge,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.brand.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.check_circle_rounded,
-                                size: 12, color: AppColors.brand),
-                            const SizedBox(width: 4),
-                            Text(AppLocalizations.of(context)!.rosterDoneBadge,
-                                style: const TextStyle(
-                                    color: AppColors.brand,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600)),
-                          ]),
-                        ),
-                      ),
-                    ),
+                  const SizedBox(width: 8),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     width: 20,
@@ -1139,13 +1200,18 @@ class _StudentCardState extends State<_StudentCard> {
                       color: widget.isSelected ? AppColors.brand : Colors.white,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: widget.isSelected ? AppColors.brand : Colors.grey.shade300,
+                        color: widget.isSelected
+                            ? AppColors.brand
+                            : Colors.grey.shade300,
                       ),
                     ),
                     alignment: Alignment.center,
                     child: widget.isSelected
-                        ? const Icon(Icons.check_rounded,
-                            color: Colors.white, size: 10)
+                        ? const Icon(
+                            Icons.check_rounded,
+                            color: Colors.white,
+                            size: 10,
+                          )
                         : const SizedBox.shrink(),
                   ),
                 ],
