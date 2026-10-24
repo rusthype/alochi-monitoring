@@ -666,6 +666,7 @@ class LanClientSession implements OfflineContentSource {
 
   List<Map<String, dynamic>> _groups = const [];
   List<Map<String, dynamic>> _students = const [];
+  List<Map<String, dynamic>> _doneStudents = const [];
   List<Map<String, dynamic>> _diagTests = const [];
   bool _snapshotLoaded = false;
 
@@ -685,6 +686,7 @@ class LanClientSession implements OfflineContentSource {
         : const [];
     _groups = list(d['groups']);
     _students = list(d['students']);
+    _doneStudents = list(d[kPackDoneStudentsKey]); // old hub: absent => []
     _diagTests = [
       for (final t in list(d['tests']))
         {'type': 'diagnostic', 'key': t['key'], 'data': t['data']}
@@ -702,9 +704,8 @@ class LanClientSession implements OfflineContentSource {
   List<Map<String, dynamic>> get groups => _groups;
   @override
   List<Map<String, dynamic>> get students => _students;
-  // ponytail: the hub snapshot does not relay done_students yet.
   @override
-  List<Map<String, dynamic>> get doneStudents => const [];
+  List<Map<String, dynamic>> get doneStudents => _doneStudents;
 
   // Adding a child on a LAN client is not supported: the hub only accepts
   // results for its signed roster (HubState.checkResult -> student_invalid).

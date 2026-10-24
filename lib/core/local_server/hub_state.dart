@@ -393,6 +393,7 @@ class HubState extends ChangeNotifier {
   final Map<String, String> _groupNames = {};
   final Set<String> _studentGroupPairs = {};
   final Map<String, List<String>> _groupsOfStudent = {};
+  int _doneOnly = 0;
 
   final JoinFailureGate _gate;
   final Map<String, HubClient> _byToken = {};
@@ -436,6 +437,7 @@ class HubState extends ChangeNotifier {
     required this.hubName,
     required Iterable<Map<String, dynamic>> groups,
     required Iterable<Map<String, dynamic>> students,
+    Iterable<Map<String, dynamic>> doneStudents = const [],
     required Iterable<String> allowedTestKeys,
     Map<String, int> testDurationsMinutes = const {},
     TicksFn? ticks,
@@ -463,13 +465,27 @@ class HubState extends ChangeNotifier {
         (_groupsOfStudent[id] ??= []).add(gid);
       }
     }
+    // Already-finished students (pack `done_students`) may be re-taken: their
+    // results must pass checkResult. They are NOT counted in [rosterSize]
+    // (nobody waits for their result, so no budget is reserved for them).
+    for (final s in doneStudents) {
+      final id = s['id']?.toString() ?? '';
+      final gid = s['group_id']?.toString() ?? '';
+      if (id.isEmpty || _studentsById.containsKey(id)) continue;
+      _studentsById[id] = s;
+      _doneOnly++;
+      if (gid.isNotEmpty) {
+        _studentGroupPairs.add('$id|$gid');
+        (_groupsOfStudent[id] ??= []).add(gid);
+      }
+    }
     _code = _newCode();
   }
 
   int _now() => _ticks();
 
   /// Students on the pack's roster (the reserve in ShelfHub counts these).
-  int get rosterSize => _studentsById.length;
+  int get rosterSize => _studentsById.length - _doneOnly;
 
   // ── class code ─────────────────────────────────────────────────────────────
 

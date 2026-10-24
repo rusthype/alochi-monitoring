@@ -37,6 +37,7 @@ import 'package:shelf_router/shelf_router.dart';
 import '../db/pack_results_db.dart';
 import '../offline/asset_test_keys.dart';
 import '../offline/export_format.dart';
+import '../offline/offline_content_source.dart' show kPackDoneStudentsKey;
 import '../offline/offline_package_api.dart';
 import '../offline/offline_session.dart';
 import '../offline/usb_backup.dart';
@@ -179,6 +180,7 @@ class ShelfHub extends ChangeNotifier {
       hubName: hubName,
       groups: pack.groups,
       students: pack.students,
+      doneStudents: pack.doneStudents,
       // The pack's own keys, plus the closed list of built-in runner keys
       // (asset_test_keys.dart). Anything else stays refused.
       allowedTestKeys: [
@@ -801,6 +803,7 @@ class ShelfHub extends ChangeNotifier {
         _diagnosticsJson ??= Uint8List.fromList(utf8.encode(jsonEncode({
       'groups': session.pack.groups,
       'students': session.pack.students,
+      kPackDoneStudentsKey: session.pack.doneStudents,
       'tests': [
         for (final t in session.testsOfType('diagnostic'))
           {'key': t['key'], 'data': t['data']}

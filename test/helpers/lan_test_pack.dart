@@ -57,8 +57,16 @@ Map<String, dynamic> lanTest(String key,
 String lanExtraStudent(int i) =>
     '00000000-0000-4000-8000-${(0x1000 + i).toRadixString(16).padLeft(12, '0')}';
 
-LoadedPack lanTestPack(
-        {String? mediaRef, int extraStudents = 0, int extraTests = 0}) =>
+LoadedPack lanTestPack({
+  String? mediaRef,
+  int extraStudents = 0,
+  int extraTests = 0,
+  // Retake support: a second diagnostic subject, per-student `subjects_done`
+  // (roster id -> subjects) and pack `done_students` rows.
+  bool englishDiag = false,
+  Map<String, List<String>> subjectsDone = const {},
+  List<Map<String, dynamic>> doneStudents = const [],
+}) =>
     LoadedPack(
       manifest: PackManifest(
         formatVersion: 1,
@@ -114,6 +122,25 @@ LoadedPack lanTestPack(
             ]
           },
         },
+        if (englishDiag)
+          {
+            'type': 'diagnostic',
+            'key': 'diag:english:g5:uz:v1',
+            'catalog': {},
+            'data': {
+              'questions': [
+                {
+                  'id': 'english-q1',
+                  'topic': 't',
+                  'level': 1,
+                  'question_text': 'Cat?',
+                  'options': ['kot', 'it', 'ot', 'qush'],
+                  'image': '',
+                  'svg_visual': '',
+                },
+              ]
+            },
+          },
       ],
       groups: [
         {'id': lanG1, 'name': '5-A | Ingliz', 'grade': 5},
@@ -124,13 +151,17 @@ LoadedPack lanTestPack(
           'id': lanS1,
           'code': 'A-0001',
           'name': 'Valiyev Ali',
-          'group_id': lanG1
+          'group_id': lanG1,
+          if (subjectsDone.containsKey(lanS1))
+            'subjects_done': subjectsDone[lanS1],
         },
         {
           'id': lanS2,
           'code': 'A-0002',
           'name': 'Karimova Zilola',
-          'group_id': lanG2
+          'group_id': lanG2,
+          if (subjectsDone.containsKey(lanS2))
+            'subjects_done': subjectsDone[lanS2],
         },
         for (var i = 0; i < extraStudents; i++)
           {
@@ -140,6 +171,7 @@ LoadedPack lanTestPack(
             'group_id': lanG1
           },
       ],
+      doneStudents: doneStudents,
       chainKey: Uint8List.fromList(List.generate(32, (i) => 100 + i)),
     );
 

@@ -20,6 +20,7 @@ import 'package:alochi_monitoring/core/offline/offline_errors.dart';
 import 'package:alochi_monitoring/core/offline/offline_media.dart';
 import 'package:alochi_monitoring/core/offline/offline_package_api.dart';
 import 'package:alochi_monitoring/core/offline/offline_session.dart';
+import 'package:alochi_monitoring/core/offline/pack_loader.dart' show LoadedPack;
 import 'package:alochi_monitoring/core/security/monitored_clock.dart';
 import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_kiosk_api.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -453,8 +454,83 @@ void main() {
       expect(first['answers'], [
         {'q': 'math-q1', 'a': 'B'}
       ]);
+      // Old pack (no subjects_done / done_students): never flagged as a retake.
+      expect(rows.map((r) => jsonDecode(r.payloadJson) as Map),
+          everyElement(isNot(contains('retake'))));
       expect(rows.map((r) => r.idempotencyKey).toSet(), hasLength(2));
       expect(rows.first.idempotencyKey.length, lessThanOrEqualTo(64));
+    });
+  });
+
+  group('diagnostic retake over LAN', () {
+    const doneId = '00000000-0000-4000-8000-0000000000e5';
+
+    Future<void> restartHub(LoadedPack pack) async {
+      await hub.stop();
+      hub.dispose();
+      OfflinePackSession.close();
+      final session = await OfflinePackSession.open(
+          pack, Directory(p.join(tmp.path, 'media2')));
+      hub = ShelfHub(session,
+          bindAddress: InternetAddress.loopbackIPv4,
+          firstPort: 0,
+          lastPort: 0,
+          clock: clock);
+      await hub.start(announce: false);
+    }
+
+    Future<List<Map<String, dynamic>>> chain(int n, LanClientSession s) async {
+      await eventually(() async {
+        await s.flushOutbox();
+        return (await PackResultsDb.rowsForPack(lanPackUuid)).length == n;
+      });
+      return [
+        for (final r in await PackResultsDb.rowsForPack(lanPackUuid))
+          jsonDecode(r.payloadJson) as Map<String, dynamic>
+      ];
+    }
+
+    test('done_students + subjects_done reach the client; retake lands in chain',
+        () async {
+      await restartHub(lanTestPack(
+        englishDiag: true,
+        subjectsDone: {
+          lanS1: ['math']
+        },
+        doneStudents: [
+          {
+            'id': doneId,
+            'name': 'Done Dilnoza',
+            'group_id': lanG1,
+            'subjects_done': ['math', 'english'],
+          }
+        ],
+      ));
+      final s = await connect();
+      final d = LanDiagnosticKioskApi(s);
+      final (rows, _) = await d.listStudents(lanSchool, '5-A | Ingliz');
+      List<Object?> row(Map<String, dynamic> r) =>
+          [r['student_name'], r['status'], r['next_subject']];
+      expect(rows.map(row).toList(), [
+        ['Valiyev Ali', 'partial', 'english'],
+        ['Done Dilnoza', 'completed', ''],
+      ]);
+
+      Future<void> finish(String sid, String q) => d.finishAttempt(
+              attemptId: 'offline|$sid|$lanG1|uz',
+              answers: [
+                {'question_id': q, 'selected': 'A'}
+              ]);
+      await finish(lanS1, 'english-q1'); // not done yet: plain result
+      await finish(lanS1, 'math-q1'); // done online: retake
+      await finish(doneId, 'math-q1'); // done_students row: retake
+      final got = await chain(3, s);
+      Map<String, dynamic> entry(String sid, String key) => got
+          .firstWhere((e) => e['student_id'] == sid && e['test_key'] == key);
+      expect(entry(lanS1, 'diag:english:g5:uz:v1').containsKey('retake'),
+          isFalse);
+      expect(entry(lanS1, 'diag:math:g5:uz:v1')['retake'], isTrue);
+      expect(entry(doneId, 'diag:math:g5:uz:v1')['retake'], isTrue);
     });
   });
 
