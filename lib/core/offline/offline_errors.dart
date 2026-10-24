@@ -10,6 +10,9 @@ import '../api/api_client.dart' show ApiException;
 const String kOfflineUnsupported = 'offline_unsupported';
 const String kOfflineNotFound = 'not_found';
 
+/// Offline pack: the class's grade has no diagnostics in this pack.
+const String kClassWithoutTests = 'class_without_tests';
+
 /// LAN client: the teacher's hub did not answer.
 const String kLanUnreachable = 'lan_unreachable';
 
@@ -31,6 +34,8 @@ String? localizeOfflineError(AppLocalizations l10n, Object error) {
       return l10n.lanErrUnreachable;
     case kLanSessionExpired:
       return l10n.lanErrExpired;
+    case kClassWithoutTests:
+      return l10n.diagnosticClassWithoutTests;
     case kLanBadResponse:
       return l10n.lanErrGeneric;
   }

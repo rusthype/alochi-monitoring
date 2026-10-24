@@ -74,6 +74,7 @@
   "diagnosticFinishedResumeBtn": "Davom ettirish",
   "diagnosticOfflineCached": "Oflayn — saqlangan ma'lumot ko'rsatilmoqda",
   "diagnosticNoSchools": "Maktablar topilmadi",
+  "diagnosticClassWithoutTests": "Bu sinf uchun paketda test yo'q. Panelda shu sinf darajasi uchun yangi paket yarating.",
   "diagnosticNoClasses": "Sinflar topilmadi",
   "diagnosticNoStudents": "O'quvchilar topilmadi",
   "diagnosticSubjectsEmptyTitle": "Diagnostika savollari topilmadi",

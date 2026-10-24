@@ -105,6 +105,15 @@ class _DiagnosticClassSelectScreenState
     });
   }
 
+  void _showNoTests(AppLocalizations l10n) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(l10n.diagnosticClassWithoutTests),
+        duration: const Duration(seconds: 6),
+      ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -199,16 +208,24 @@ class _DiagnosticClassSelectScreenState
                                     final isRu = language.toLowerCase() == 'ru';
                                     final showBadge =
                                         hasMultipleLanguages || isRu;
+                                    // Offline pack without tests for this
+                                    // class's grade: dimmed, never opened.
+                                    final noTests = c['no_tests'] == true;
                                     return Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        DiagnosticPillButton(
-                                          label: classLabel,
-                                          isSelected: false,
-                                          onTap: () => _selectClass(
-                                              classLabel, language,
-                                              hasWebTest: hasWebTest,
-                                              webTestKey: webTestKey),
+                                        Opacity(
+                                          opacity: noTests ? 0.45 : 1,
+                                          child: DiagnosticPillButton(
+                                            label: classLabel,
+                                            isSelected: false,
+                                            onTap: noTests
+                                                ? () => _showNoTests(l10n)
+                                                : () => _selectClass(
+                                                    classLabel, language,
+                                                    hasWebTest: hasWebTest,
+                                                    webTestKey: webTestKey),
+                                          ),
                                         ),
                                         if (showBadge) ...[
                                           const SizedBox(width: 6),

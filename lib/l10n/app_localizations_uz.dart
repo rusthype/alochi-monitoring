@@ -169,6 +169,10 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticNoSchools => 'Maktablar topilmadi';
 
   @override
+  String get diagnosticClassWithoutTests =>
+      'Bu sinf uchun paketda test yo\'q. Panelda shu sinf darajasi uchun yangi paket yarating.';
+
+  @override
   String get diagnosticNoClasses => 'Sinflar topilmadi';
 
   @override

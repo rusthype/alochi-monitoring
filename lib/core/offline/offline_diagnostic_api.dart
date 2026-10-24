@@ -107,13 +107,32 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
     return m == null ? null : int.parse(m.group(1)!);
   }
 
-  /// Diagnostics usable for [grade]/[lang]; falls back to every grade when the
-  /// group's grade is unknown or has no diagnostics of its own.
+  /// Diagnostics usable for [grade]/[lang]. A KNOWN grade only ever gets its
+  /// own diagnostics (empty when the pack has none: a child must never take
+  /// another grade's test, the server rejects it at import); every grade is
+  /// the fallback only when the group's grade is unknown.
   List<_Diag> _matching(int? grade, String lang) {
     final all = _diags.where((d) => d.lang == lang).toList();
     if (grade == null) return all;
-    final exact = all.where((d) => d.grade == grade).toList();
-    return exact.isNotEmpty ? exact : all;
+    return all.where((d) => d.grade == grade).toList();
+  }
+
+  /// False when this pack has no diagnostics at all (any language) for the
+  /// known grade of every group named [classLabel]. Unknown grade => true
+  /// (legacy fallback). Unknown class => true (other checks reject it).
+  bool _classHasTests(String classLabel) {
+    var any = false;
+    for (final g in session.groups) {
+      if (g['name']?.toString() != classLabel) continue;
+      any = true;
+      final grade = _gradeOf(g);
+      if (grade == null
+          ? _diags.isNotEmpty
+          : _diags.any((d) => d.grade == grade)) {
+        return true;
+      }
+    }
+    return !any;
   }
 
   List<String> _subjectsOf(List<_Diag> diags) {
@@ -202,7 +221,11 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
 
     final rows = <Map<String, dynamic>>[
       for (final e in counts.entries)
-        {'class_label': e.key, 'language': majority(e.value)}
+        {
+          'class_label': e.key,
+          'language': majority(e.value),
+          if (!_classHasTests(e.key)) 'no_tests': true,
+        }
     ];
     return (rows, false);
   }
@@ -315,6 +338,10 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
     }
     if (groupId.isEmpty) {
       throw const ApiException(400, 'unknown class', code: 'invalid_group');
+    }
+    if (!_classHasTests(classLabel)) {
+      throw const ApiException(400, 'class has no tests in this pack',
+          code: kClassWithoutTests);
     }
     final added = await session.addLocalStudent(
         groupId: groupId,

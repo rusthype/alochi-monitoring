@@ -74,6 +74,7 @@
   "diagnosticFinishedResumeBtn": "Продолжить",
   "diagnosticOfflineCached": "Офлайн — показаны сохранённые данные",
   "diagnosticNoSchools": "Школы не найдены",
+  "diagnosticClassWithoutTests": "Для этого класса в пакете нет тестов. Создайте в панели новый пакет для уровня этого класса.",
   "diagnosticNoClasses": "Классы не найдены",
   "diagnosticNoStudents": "Учащиеся не найдены",
   "diagnosticSubjectsEmptyTitle": "Вопросы диагностики не найдены",

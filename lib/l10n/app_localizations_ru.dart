@@ -165,6 +165,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticNoSchools => 'Школы не найдены';
 
   @override
+  String get diagnosticClassWithoutTests =>
+      'Для этого класса в пакете нет тестов. Создайте в панели новый пакет для уровня этого класса.';
+
+  @override
   String get diagnosticNoClasses => 'Классы не найдены';
 
   @override

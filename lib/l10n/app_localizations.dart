@@ -386,6 +386,12 @@ abstract class AppLocalizations {
   /// **'Maktablar topilmadi'**
   String get diagnosticNoSchools;
 
+  /// No description provided for @diagnosticClassWithoutTests.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu sinf uchun paketda test yo\'q. Panelda shu sinf darajasi uchun yangi paket yarating.'**
+  String get diagnosticClassWithoutTests;
+
   /// No description provided for @diagnosticNoClasses.
   ///
   /// In uz, this message translates to:

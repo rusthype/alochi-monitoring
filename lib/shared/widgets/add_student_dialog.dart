@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart' show ApiException;
+import '../../core/offline/offline_errors.dart' show kClassWithoutTests;
 import '../../core/models/add_student.dart';
 import '../theme/app_theme.dart';
 import '../utils/form_input_formatters.dart';
@@ -148,6 +149,8 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
       switch (e.code) {
         case 'invalid_group':
           return l10n.addStudentErrInvalidGroup;
+        case kClassWithoutTests:
+          return l10n.diagnosticClassWithoutTests;
         case 'invalid_class':
           return l10n.addStudentErrInvalidClass;
         case 'duplicate_student':
