@@ -42,14 +42,31 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
 
   // ── parsed pack content ────────────────────────────────────────────────────
 
-  Iterable<_Diag> get _diags sync* {
-    for (final t in session.testsOfType('diagnostic')) {
-      final key = t['key']?.toString() ?? '';
-      final m = _diagKey.firstMatch(key);
-      if (m == null) continue;
-      yield _Diag(key, m.group(1)!, int.parse(m.group(2)!), m.group(3)!,
-          int.parse(m.group(4)!), t['data']);
+  // Parsed once per source list: the regex walk over every pack test used to
+  // re-run on EVERY access (hundreds of times per roster load). Keyed on the
+  // IDENTITY of the list the source returns, so a source that swaps its
+  // snapshot (LAN refresh) re-parses, and one that returns a fresh list per
+  // call simply never hits the cache (old behaviour).
+  List<Map<String, dynamic>>? _diagSrc;
+  List<_Diag> _diagList = const [];
+  Set<String> _diagLangs = const {};
+
+  List<_Diag> get _diags {
+    final src = session.testsOfType('diagnostic');
+    if (!identical(src, _diagSrc)) {
+      final out = <_Diag>[];
+      for (final t in src) {
+        final key = t['key']?.toString() ?? '';
+        final m = _diagKey.firstMatch(key);
+        if (m == null) continue;
+        out.add(_Diag(key, m.group(1)!, int.parse(m.group(2)!), m.group(3)!,
+            int.parse(m.group(4)!), t['data']));
+      }
+      _diagList = out;
+      _diagLangs = {for (final d in out) d.lang};
+      _diagSrc = src;
     }
+    return _diagList;
   }
 
   Map<String, dynamic>? _group(String id) {
@@ -101,10 +118,8 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
   }
 
   String _defaultLang() {
-    for (final d in _diags) {
-      return d.lang;
-    }
-    return 'uz';
+    final all = _diags;
+    return all.isEmpty ? 'uz' : all.first.lang;
   }
 
   /// Language of one roster student: its `language` ('uz'/'ru') when the pack
@@ -115,7 +130,10 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
     return packLangs.contains(l) ? l : _defaultLang();
   }
 
-  Set<String> get _packLangs => {for (final d in _diags) d.lang};
+  Set<String> get _packLangs {
+    _diags; // refresh the parse cache
+    return _diagLangs;
+  }
 
   // attempt_id = "offline|<studentId>|<groupId>|<lang>"
   String _attemptId(String studentId, String groupId, String lang) =>
@@ -184,44 +202,82 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
   Future<(List<Map<String, dynamic>>, bool)> listStudents(
       String schoolId, String classLabel) async {
     final packLangs = _packLangs;
-    final groupIds = session.groups
-        .where((g) => g['name']?.toString() == classLabel)
-        .map((g) => g['id']?.toString() ?? '')
-        .toSet();
-    final rows = <Map<String, dynamic>>[];
+    final groups = session.groups;
+    final groupById = <String, Map<String, dynamic>>{};
+    final groupIds = <String>{};
+    for (final g in groups) {
+      final id = g['id']?.toString() ?? '';
+      groupById.putIfAbsent(id, () => g); // first match, like _group()
+      if (g['name']?.toString() == classLabel) groupIds.add(id);
+    }
+    // Subjects only depend on (group, language): once per pair, not per student.
+    final subjectsCache = <String, List<String>>{};
+    List<String> subjectsFor(String gid, String lang) =>
+        subjectsCache.putIfAbsent('$gid|$lang', () {
+          final group = groupById[gid];
+          return _subjectsOf(
+              _matching(group == null ? null : _gradeOf(group), lang));
+        });
+
+    // Pass 1: the class's students and the chain prefixes to look up.
+    final picked = <({
+      Map<String, dynamic> s,
+      String sid,
+      String gid,
+      String lang,
+      List<String> subjects,
+      List<String> keys
+    })>[];
+    final prefixes = <String>{};
     for (final s in _roster) {
       final gid = s['group_id']?.toString() ?? '';
       if (!groupIds.contains(gid)) continue;
       final sid = s['id']?.toString() ?? '';
       final lang = _langOf(s, packLangs);
-      // Same signal the online roster carries: status + next_subject, here
-      // derived from the chain (exported and unexported rows both count).
-      final group = _group(gid);
-      final subjects =
-          _subjectsOf(_matching(group == null ? null : _gradeOf(group), lang));
+      final subjects = subjectsFor(gid, lang);
+      final keys = [
+        for (final sub in subjects) _keyPrefix(session.packUuid, sid, gid, sub)
+      ];
+      prefixes.addAll(keys);
+      picked.add((
+        s: s,
+        sid: sid,
+        gid: gid,
+        lang: lang,
+        subjects: subjects,
+        keys: keys
+      ));
+    }
+    // Same signal the online roster carries: status + next_subject, here
+    // derived from the chain (exported and unexported rows both count) with ONE
+    // lookup for the whole class instead of one awaited query per student x
+    // subject.
+    final attempted = await session.attemptedPrefixes(prefixes);
+
+    final rows = <Map<String, dynamic>>[];
+    for (final e in picked) {
       String? next;
       var done = 0;
-      for (final sub in subjects) {
-        if (await session
-            .hasAttempt(_keyPrefix(session.packUuid, sid, gid, sub))) {
+      for (var i = 0; i < e.subjects.length; i++) {
+        if (attempted.contains(e.keys[i])) {
           done++;
         } else {
-          next ??= sub;
+          next ??= e.subjects[i];
         }
       }
       rows.add(<String, dynamic>{
-        'attempt_id': _attemptId(sid, gid, lang),
-        'student_name': s['name']?.toString() ?? '',
+        'attempt_id': _attemptId(e.sid, e.gid, e.lang),
+        'student_name': e.s['name']?.toString() ?? '',
         'class_label': classLabel,
-        'language': lang,
-        'status': subjects.isEmpty || done == 0
+        'language': e.lang,
+        'status': e.subjects.isEmpty || done == 0
             ? 'not_started'
-            : done == subjects.length
+            : done == e.subjects.length
                 ? 'completed'
                 : 'partial',
         'next_subject': next ?? '',
         // A child added on this computer: "Tasdiq kutilmoqda" badge.
-        if (s['pending'] == true) 'pending': true,
+        if (e.s['pending'] == true) 'pending': true,
       });
     }
     return (rows, false);

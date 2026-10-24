@@ -727,6 +727,10 @@ class LanClientSession implements OfflineContentSource {
   @override
   Future<bool> hasAttempt(String keyPrefix) async => false;
 
+  @override
+  Future<Set<String>> attemptedPrefixes(Iterable<String> keyPrefixes) async =>
+      const <String>{};
+
   static int _lastOrdinal = 0;
 
   /// Unique per submission (the client keeps no chain to count rows in).

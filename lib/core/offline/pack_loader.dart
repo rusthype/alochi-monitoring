@@ -175,6 +175,16 @@ typedef KdfFn = Future<Uint8List> Function(
 Future<Object?> _decodeJsonOffThread(Uint8List plain) =>
     Isolate.run(() => jsonDecode(utf8.decode(plain)));
 
+/// AES-GCM of the pack content is pure Dart (~1 MB/s): a 2.4 MB school pack
+/// froze the UI isolate for ~2 s, so it runs in a worker. The blob is copied
+/// first: it may be a view into the whole zip buffer, and a view would drag
+/// that entire buffer across the isolate boundary.
+Future<Uint8List> _decryptOffThread(
+    Uint8List key, Uint8List aad, Uint8List blob) {
+  final copy = Uint8List.fromList(blob);
+  return Isolate.run(() => OfflineCrypto.decryptBlob(key, aad, copy));
+}
+
 /// Zip decode + RSA verify + per-file SHA-256 of the pack at [path] off the
 /// UI thread. Only the path and the (String-only) [keys] cross the boundary.
 Future<PackArchive> inspectPackFile(String path, OfflineKeys keys) =>
@@ -294,7 +304,7 @@ class PackLoader {
 
     final Uint8List plain;
     try {
-      plain = OfflineCrypto.decryptBlob(
+      plain = await _decryptOffThread(
           key, Uint8List.fromList(utf8.encode(m.packUuid)), archive.contentEnc);
     } on OfflineAuthException {
       throw const PackException(PackError.wrongPin);

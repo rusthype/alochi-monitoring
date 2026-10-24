@@ -377,6 +377,16 @@ class PackResultsDb {
     return (res.first['c'] as int?) ?? 0;
   }
 
+  /// Every idempotency key of [packUuid] (keys only: no payload decrypt).
+  static Future<List<String>> keysForPack(String packUuid) async {
+    final d = await _db;
+    final res = await d.query('pack_results',
+        columns: ['idempotency_key'],
+        where: 'pack_uuid = ?',
+        whereArgs: [packUuid]);
+    return [for (final r in res) r['idempotency_key'] as String];
+  }
+
   static PackResultRow _rowOf(Map<String, Object?> r, String payloadJson) {
     return PackResultRow(
       id: r['id'] as int,

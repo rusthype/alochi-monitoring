@@ -256,6 +256,24 @@ class OfflinePackSession implements OfflineContentSource {
   Future<bool> hasAttempt(String keyPrefix) async =>
       await PackResultsDb.countKeyPrefix(pack.packUuid, keyPrefix) > 0;
 
+  /// One keys-only read of the chain (no payload decrypt), matched in memory:
+  /// same answer as [hasAttempt] per prefix.
+  @override
+  Future<Set<String>> attemptedPrefixes(Iterable<String> keyPrefixes) async {
+    final want = keyPrefixes.toSet();
+    if (want.isEmpty) return const <String>{};
+    final lens = {for (final p in want) p.length};
+    final out = <String>{};
+    for (final key in await PackResultsDb.keysForPack(pack.packUuid)) {
+      for (final n in lens) {
+        if (key.length < n) continue;
+        final head = key.substring(0, n);
+        if (want.contains(head)) out.add(head);
+      }
+    }
+    return out;
+  }
+
   /// Student ids (the payload's `student_id`, = the roster `id`) that already
   /// have a stored result for [testKey]. Monitoring keys are random UUIDs (no
   /// per-student prefix like the diagnostic's), so the done-state is read from
@@ -281,9 +299,17 @@ class OfflinePackSession implements OfflineContentSource {
   @override
   Future<void> prepareMedia(Object? data) async {} // images already on disk
 
+  // The pack's tests never change while it is open: filter once per type, and
+  // hand out the SAME list so callers can cache work on its identity.
+  final Map<String, List<Map<String, dynamic>>> _testsByType = {};
+
   @override
   List<Map<String, dynamic>> testsOfType(String type) =>
-      pack.tests.where((t) => t['type'] == type).toList(growable: false);
+      _testsByType.putIfAbsent(
+          type,
+          () => pack.tests
+              .where((t) => t['type'] == type)
+              .toList(growable: false));
 
   /// Pack kind (the backend rejects mixed packs): only diagnostic tests...
   bool get isDiagnosticOnly =>

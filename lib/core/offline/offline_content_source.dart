@@ -38,6 +38,10 @@ abstract class OfflineContentSource {
   /// "done" marker; a source without a local chain answers false.
   Future<bool> hasAttempt(String keyPrefix);
 
+  /// The subset of [keyPrefixes] for which [hasAttempt] would answer true, in
+  /// ONE lookup (a class roster asks for students x subjects prefixes at once).
+  Future<Set<String>> attemptedPrefixes(Iterable<String> keyPrefixes);
+
   /// Stores one finished result (chain row in USB mode, hub outbox in LAN).
   Future<void> recordResult(Map<String, dynamic> payload, {String? token});
 
