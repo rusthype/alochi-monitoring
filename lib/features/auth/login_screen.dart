@@ -640,14 +640,21 @@ class _LoginScreenState extends State<LoginScreen>
             e.status == CatalogStatus.notDownloaded ||
             e.status == CatalogStatus.updatable)
         .length;
+    // A diagnostic-only USB pack has no monitoring tests: the catalog would
+    // only lead to empty group screens.
+    final blocked = _packTab == 1;
     final hasNew = downloadable > 0;
 
     return Semantics(
       button: true,
+      enabled: !blocked,
       label: l10n.schools,
-      child: HoverRegion(
+      child: Opacity(
+        opacity: blocked ? .58 : 1,
+        child: HoverRegion(
         builder: (context, isHovered) => GestureDetector(
-          onTap: _showCatalogSheet,
+          key: const ValueKey('login-schools-button'),
+          onTap: blocked ? null : _showCatalogSheet,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -678,6 +685,7 @@ class _LoginScreenState extends State<LoginScreen>
               ],
             ),
           ),
+        ),
         ),
       ),
     );

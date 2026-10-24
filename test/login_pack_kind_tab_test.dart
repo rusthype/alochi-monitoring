@@ -27,7 +27,8 @@ class _FakeOnlineApi extends MonitoringApi {
   @override
   Future<bool> pingHealth({
     Duration timeout = const Duration(seconds: 2),
-  }) async => true;
+  }) async =>
+      true;
 }
 
 const _monitoringTab = ValueKey('login-tab-student');
@@ -150,6 +151,24 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const ValueKey('diagnostic-panel')), findsOneWidget);
     expect(enabled(tester, _monitoringTab), isFalse);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('Schools button: blocked by a diagnostic pack, opens without one',
+      (tester) async {
+    // No pack: the catalog sheet opens.
+    await pumpLogin(tester);
+    await tester.tap(find.byKey(const ValueKey('login-schools-button')));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byType(BottomSheet), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+
+    // Diagnostic-only pack: tapping does nothing.
+    await openPack(tester, ['diagnostic']);
+    await pumpLogin(tester);
+    await tester.tap(find.byKey(const ValueKey('login-schools-button')));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byType(BottomSheet), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }
