@@ -285,6 +285,14 @@ class OfflinePackSession implements OfflineContentSource {
   List<Map<String, dynamic>> testsOfType(String type) =>
       pack.tests.where((t) => t['type'] == type).toList(growable: false);
 
+  /// Pack kind (the backend rejects mixed packs): only diagnostic tests...
+  bool get isDiagnosticOnly =>
+      testsOfType('diagnostic').isNotEmpty && testsOfType('test').isEmpty;
+
+  /// ...or only monitoring tests.
+  bool get isMonitoringOnly =>
+      testsOfType('test').isNotEmpty && testsOfType('diagnostic').isEmpty;
+
   Map<String, dynamic>? testByKey(String key) {
     for (final t in pack.tests) {
       if (t['key']?.toString() == key) return t;

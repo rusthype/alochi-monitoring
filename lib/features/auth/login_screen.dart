@@ -220,9 +220,7 @@ class _LoginScreenState extends State<LoginScreen>
   int? get _packTab {
     final s = OfflinePackSession.current;
     if (s == null) return null;
-    final diag = s.testsOfType('diagnostic').isNotEmpty;
-    final mon = s.testsOfType('test').isNotEmpty;
-    return diag == mon ? null : (diag ? 1 : 0);
+    return s.isDiagnosticOnly ? 1 : (s.isMonitoringOnly ? 0 : null);
   }
 
   // Only a pack being opened/closed moves the tab — never a plain rebuild.

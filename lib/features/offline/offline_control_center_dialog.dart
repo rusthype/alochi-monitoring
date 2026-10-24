@@ -39,6 +39,11 @@ Future<void> showOfflineControlCenter(BuildContext context) {
   );
 }
 
+/// Where a freshly opened USB pack starts: the diagnostic kiosk for a
+/// diagnostic-only pack, null = the monitoring roster picker (/group_select).
+String? diagnosticPackRoute(OfflinePackSession s) =>
+    s.isDiagnosticOnly ? '/diagnostic_school_select' : null;
+
 class OfflineControlCenterDialog extends StatefulWidget {
   const OfflineControlCenterDialog(
       {super.key, this.listDrives = listRemovableDrives});
@@ -195,8 +200,15 @@ class _OfflineControlCenterDialogState
     }
   }
 
-  void _startTests(OfflinePackSession session) =>
-      _goToGroups(session.pack.schoolCode, session.pack.schoolId);
+  void _startTests(OfflinePackSession session) {
+    final diagRoute = diagnosticPackRoute(session);
+    if (diagRoute == null) {
+      return _goToGroups(session.pack.schoolCode, session.pack.schoolId);
+    }
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    router.push(diagRoute);
+  }
 
   /// Roster picker for the open pack (USB) or the joined hub (LAN).
   void _goToGroups(String schoolCode, String schoolId) {
