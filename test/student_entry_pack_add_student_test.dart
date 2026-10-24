@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:alochi_monitoring/core/db/offline_queue.dart';
+import 'package:alochi_monitoring/core/db/queue_crypto.dart';
 import 'package:alochi_monitoring/core/offline/offline_session.dart';
 import 'package:alochi_monitoring/core/offline/pack_loader.dart';
 import 'package:alochi_monitoring/features/session/student_entry_screen.dart';
@@ -55,9 +56,12 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory tmp;
 
-  setUpAll(() {
+  setUpAll(() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    // QueueCrypto caches its key future statically; if the first caller is a
+    // widget test (FakeAsync) it never completes for later tests.
+    await QueueCrypto.encryptPayload('warm-up');
   });
 
   setUp(() async {
@@ -121,11 +125,57 @@ void main() {
     expect((await t.runAsync(OfflineQueue.pendingLocalCount)), 0);
   });
 
-  testWidgets('a name matching the PARALLEL class asks "Bu shumi?"', (t) async {
+  testWidgets('a name matching the PARALLEL class is info + transfer claim', (
+    t,
+  ) async {
     await pumpScreen(t);
     await fillAndSubmit(t, 'Rahimov', 'Sardor');
-    // the candidate step is on screen, nothing was created
-    expect(find.text('Rahimov Sardor'), findsWidgets);
+    // the other-class child is NOT a selectable candidate any more: it is an
+    // info line plus the "transferred" claim button; nothing was created yet
+    final dialog = find.byType(Dialog);
+    expect(
+      find.byKey(const Key('addStudentOtherClassWarning')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.textContaining('5-B')),
+      findsWidgets,
+    );
+    expect(find.text("Ha, bu o'sha bola (ko'chib kelgan)"), findsOneWidget);
+    expect(OfflinePackSession.current!.localStudents, isEmpty);
+
+    await t.ensureVisible(find.byKey(const Key('addStudentTransferClaim_0')));
+    await t.tap(find.byKey(const Key('addStudentTransferClaim_0')));
+    for (var i = 0;
+        i < 20 && OfflinePackSession.current!.localStudents.isEmpty;
+        i++) {
+      await real(t, 300);
+    }
+
+    // re-submitted with confirm_new + transfer_claim -> created in 5-A
+    final local = OfflinePackSession.current!.localStudents;
+    expect(local, hasLength(1));
+    expect(local.single['group_id'], _gA);
+    expect(local.single['transfer_claim'], {
+      'name': 'Rahimov Sardor',
+      'class_label': '5-B',
+    });
+  });
+
+  testWidgets('a name matching the SAME class stays a selectable candidate', (
+    t,
+  ) async {
+    await pumpScreen(t);
+    await fillAndSubmit(t, 'Valiyev', 'Ali');
+    expect(
+      find.descendant(
+        of: find.byType(Dialog),
+        matching: find.text('Valiyev Ali'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('addStudentOtherClassWarning')), findsNothing);
+    expect(find.byKey(const Key('addStudentTransferClaim_0')), findsNothing);
     expect(OfflinePackSession.current!.localStudents, isEmpty);
   });
 }
