@@ -77,13 +77,35 @@ class PackSummary {
   final int unexported;
   final DateTime? expiresAt;
 
+  /// 'monitoring' | 'diagnostic', or null for a pack stored before the kind
+  /// was recorded.
+  final String? kind;
+
+  /// Pack manifest `created_at` (the "round" date), when known.
+  final DateTime? createdAt;
+
+  /// Hidden from the results list: archived by the user, or expired, and in
+  /// both cases with nothing left to export.
+  final bool archived;
+
   const PackSummary({
     required this.packUuid,
     required this.schoolCode,
     required this.total,
     required this.unexported,
     required this.expiresAt,
+    this.kind,
+    this.createdAt,
+    this.archived = false,
   });
+}
+
+/// What `pack_meta` remembers about a pack (null fields = unknown).
+class PackMeta {
+  final String schoolCode;
+  final String? kind;
+  final DateTime? createdAt;
+  const PackMeta(this.schoolCode, this.kind, this.createdAt);
 }
 
 class PackResultsDb {
@@ -94,24 +116,64 @@ class PackResultsDb {
 
   static Future<Database> get _db => OfflineQueue.db;
 
-  /// Remembers a pack's expiry so [purgeExpired] knows when to clean up.
+  /// Remembers a pack's expiry so [purgeExpired] knows when to clean up, plus
+  /// its [kind] and [createdAt] (export folder / file name). A re-open updates
+  /// the row in place and keeps the archive flag (REPLACE would drop it).
   static Future<void> registerPack({
     required String packUuid,
     required String schoolCode,
     required DateTime expiresAt,
+    String? kind,
+    DateTime? createdAt,
     int? nowMs,
   }) async {
     final d = await _db;
-    await d.insert(
-      'pack_meta',
-      {
-        'pack_uuid': packUuid,
-        'school_code': schoolCode,
-        'expires_at': expiresAt.toUtc().millisecondsSinceEpoch,
-        'loaded_at': nowMs ?? DateTime.now().millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
+    final fields = <String, Object?>{
+      'school_code': schoolCode,
+      'expires_at': expiresAt.toUtc().millisecondsSinceEpoch,
+      'loaded_at': nowMs ?? DateTime.now().millisecondsSinceEpoch,
+      if (kind != null) 'kind': kind,
+      if (createdAt != null)
+        'created_at': createdAt.toUtc().millisecondsSinceEpoch,
+    };
+    await d.transaction((txn) async {
+      await txn.insert('pack_meta', {'pack_uuid': packUuid, ...fields},
+          conflictAlgorithm: ConflictAlgorithm.ignore);
+      await txn.update('pack_meta', fields,
+          where: 'pack_uuid = ?', whereArgs: [packUuid]);
+    });
+  }
+
+  /// Kind / created date / school remembered for [packUuid], or null when the
+  /// pack was never registered.
+  static Future<PackMeta?> metaOf(String packUuid) async {
+    final d = await _db;
+    final rows = await d.query('pack_meta',
+        columns: ['school_code', 'kind', 'created_at'],
+        where: 'pack_uuid = ?',
+        whereArgs: [packUuid],
+        limit: 1);
+    if (rows.isEmpty) return null;
+    final r = rows.first;
+    final c = r['created_at'] as int?;
+    return PackMeta(
+      (r['school_code'] as String?) ?? '',
+      r['kind'] as String?,
+      c == null ? null : DateTime.fromMillisecondsSinceEpoch(c, isUtc: true),
     );
+  }
+
+  /// Hides a fully exported pack from the list. Rows are kept (so
+  /// [purgeExpired] works as before). Returns false when it refuses: unexported
+  /// rows left, or the pack is unknown. A new result appended later makes the
+  /// pack visible again (see [summaries]).
+  static Future<bool> archivePack(String packUuid, {int? nowMs}) async {
+    if (await unexportedCount(packUuid) > 0) return false;
+    final d = await _db;
+    final n = await d.update(
+        'pack_meta', {'archived_at': nowMs ?? MonitoredClock.instance.nowMs},
+        where: 'pack_uuid = ?', whereArgs: [packUuid]);
+    return n > 0;
   }
 
   /// The backend (offline_pack.py `_parse_entry_meta`) rejects the WHOLE file
@@ -305,33 +367,48 @@ class PackResultsDb {
     );
   }
 
-  /// One entry per pack that has stored results.
-  static Future<List<PackSummary>> summaries() async {
+  /// One entry per pack that has stored results. Archived packs (and expired
+  /// ones with everything exported) are left out unless [includeArchived].
+  static Future<List<PackSummary>> summaries(
+      {bool includeArchived = false, int? nowMs}) async {
     final d = await _db;
+    final now = nowMs ?? MonitoredClock.instance.nowMs;
     final rows = await d.rawQuery('''
       SELECT r.pack_uuid AS pack_uuid,
              COUNT(*) AS total,
              SUM(CASE WHEN r.exported_at IS NULL THEN 1 ELSE 0 END) AS unexported,
              m.school_code AS school_code,
-             m.expires_at AS expires_at
+             m.expires_at AS expires_at,
+             m.kind AS kind,
+             m.created_at AS created_at,
+             m.archived_at AS archived_at
         FROM pack_results r
         LEFT JOIN pack_meta m ON m.pack_uuid = r.pack_uuid
        GROUP BY r.pack_uuid
        ORDER BY MAX(r.id) DESC
     ''');
     if (rows.isEmpty) return [];
-    return rows.map((r) {
+    final out = rows.map((r) {
       final exp = r['expires_at'] as int?;
+      final created = r['created_at'] as int?;
+      final unexported = (r['unexported'] as int?) ?? 0;
       return PackSummary(
         packUuid: r['pack_uuid'] as String,
         schoolCode: (r['school_code'] as String?) ?? '',
         total: (r['total'] as int?) ?? 0,
-        unexported: (r['unexported'] as int?) ?? 0,
+        unexported: unexported,
         expiresAt: exp == null
             ? null
             : DateTime.fromMillisecondsSinceEpoch(exp, isUtc: true),
+        kind: r['kind'] as String?,
+        createdAt: created == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(created, isUtc: true),
+        archived: unexported == 0 &&
+            (r['archived_at'] != null || (exp != null && exp < now)),
       );
-    }).toList();
+    });
+    return (includeArchived ? out : out.where((s) => !s.archived)).toList();
   }
 
   /// Housekeeping. A row is deleted only when ALL of these hold:

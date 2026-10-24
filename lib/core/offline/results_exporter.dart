@@ -36,10 +36,28 @@ import 'offline_keys.dart';
 /// `<school>_<uuid>` (full uuid, dashes dropped; school part omitted when
 /// empty), safe as a file/dir name.
 String packFilePrefix(String packUuid, String schoolCode) {
-  String clean(String v) => v.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-  final id = clean(packUuid.replaceAll('-', ''));
-  return schoolCode.isEmpty ? id : '${clean(schoolCode)}_$id';
+  final id = _clean(packUuid.replaceAll('-', ''));
+  return schoolCode.isEmpty ? id : '${_clean(schoolCode)}_$id';
 }
+
+String _clean(String v) => v.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+
+/// A single path segment that can never be `.`/`..` or empty.
+String _segment(String v, {String fallback = 'unknown'}) {
+  final c = _clean(v);
+  return c.replaceAll('.', '').isEmpty ? fallback : c;
+}
+
+/// First 8 characters of the uuid (dashes dropped).
+String packShortId(String packUuid) {
+  final id = _clean(packUuid.replaceAll('-', ''));
+  return id.length <= 8 ? id : id.substring(0, 8);
+}
+
+/// Folder name for a pack kind; anything not known (old stored packs) is
+/// `unknown`.
+String packKindFolder(String? kind) =>
+    kind == 'monitoring' || kind == 'diagnostic' ? kind! : 'unknown';
 
 enum ExportError { notConfigured, nothingToExport }
 
@@ -144,20 +162,26 @@ class ResultsExporter {
     );
   }
 
-  /// Writes the file into [dir] and stamps the pack's rows as exported.
+  /// Writes the file into `<dir>/<school>/<monitoring|diagnostic|unknown>/
+  /// <YYYY-MM-DD>_<packShort8>.alochires` and stamps the pack's rows as
+  /// exported. The date is the pack's created_at day (one test round = one
+  /// pack), else the export day. Never overwrites: a taken name gets -2, -3 ...
   Future<ExportOutcome> exportPack(String packUuid, Directory dir,
       {String schoolCode = ''}) async {
     final built = await build(packUuid);
-    await dir.create(recursive: true);
-    final stamp = _isoSeconds(clock.nowUtc)
-        .replaceAll(RegExp(r'[-:]'), '')
-        .replaceAll('T', '-')
-        .replaceAll('Z', '');
-    final base = '${packFilePrefix(packUuid, schoolCode)}_$stamp';
-    // Never overwrite: same-second exports get -2, -3 ...
-    var file = File(p.join(dir.path, '$base.alochires'));
+    final meta = await PackResultsDb.metaOf(packUuid);
+    final school =
+        schoolCode.isNotEmpty ? schoolCode : (meta?.schoolCode ?? '');
+    final target = Directory(
+        p.join(dir.path, _segment(school), packKindFolder(meta?.kind)));
+    await target.create(recursive: true);
+    final day = (meta?.createdAt ?? clock.nowUtc).toLocal();
+    String two(int v) => v.toString().padLeft(2, '0');
+    final base = '${day.year.toString().padLeft(4, '0')}-${two(day.month)}-'
+        '${two(day.day)}_${packShortId(packUuid)}';
+    var file = File(p.join(target.path, '$base.alochires'));
     for (var n = 2; file.existsSync(); n++) {
-      file = File(p.join(dir.path, '$base-$n.alochires'));
+      file = File(p.join(target.path, '$base-$n.alochires'));
     }
     await file.writeAsBytes(built.bytes, flush: true);
     // Trusted (monotonic-anchored) time, same clock purgeExpired compares with.

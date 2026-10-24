@@ -1219,6 +1219,9 @@
     }
   },
   "usbExportOne": "Eksport",
+  "usbArchiveOne": "Arxiv",
+  "usbKindMonitoring": "Monitoring",
+  "usbKindDiagnostic": "Diagnostika",
   "usbExportDone": "{count, plural, other{Eksport qilindi: {count} ta natija ({file})}}",
   "@usbExportDone": {
     "placeholders": {

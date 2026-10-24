@@ -72,7 +72,7 @@ void main() {
   }
 
   Future<void> pump(WidgetTester tester, DriveLister drives,
-      {List<String> packs = const ['pk-one-uuid']}) async {
+      {List<String> packs = const ['pk-one-uuid'], bool register = false}) async {
     tester.view.physicalSize = const Size(1000, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -91,6 +91,13 @@ void main() {
     await tester.runAsync(() async {
       await OfflineQueue.openAtPath(p.join(tmp.path, 'q.db'));
       for (final uuid in packs) {
+        if (register) {
+          await PackResultsDb.registerPack(
+              packUuid: uuid,
+              schoolCode: '9',
+              expiresAt: DateTime.now().add(const Duration(days: 30)),
+              kind: 'monitoring');
+        }
         await PackResultsDb.append(
             packUuid: uuid,
             chainKey: Uint8List(32),
@@ -118,6 +125,10 @@ void main() {
   }
 
   Directory drive(String n) => Directory(p.join(tmp.path, n))..createSync();
+
+  // Exports now live in <root>/<school>/<kind>/: list files recursively.
+  List<File> filesUnder(Directory d) =>
+      d.listSync(recursive: true).whereType<File>().toList();
 
   testWidgets('auto-save line: nothing unknown, warning on fail, ok after',
       (tester) async {
@@ -153,8 +164,11 @@ void main() {
     final e = drive('E');
     await pump(tester, () async => [e.path]);
     await tapFlash(tester);
-    final copied = Directory(p.join(e.path, 'alochi-offline')).listSync();
+    final copied = filesUnder(Directory(p.join(e.path, 'alochi-offline')));
     expect(copied, hasLength(1));
+    // Mirrors the Downloads layout: <school>/<kind>/<file> (no pack_meta here).
+    expect(p.relative(copied.single.path, from: p.join(e.path, 'alochi-offline')),
+        startsWith(p.join('unknown', 'unknown')));
     // Success notice: green widget, headline, file name on its own line.
     expect(find.text(l10nOf(tester).usbFlashReady), findsOneWidget);
     expect(find.text(p.basename(copied.single.path)), findsOneWidget);
@@ -166,6 +180,7 @@ void main() {
   testWidgets('per-pack export: green notice with count and file name',
       (tester) async {
     await pump(tester, () async => const []);
+    await tester.ensureVisible(find.text(l10nOf(tester).usbExportOne));
     await tester.tap(find.text(l10nOf(tester).usbExportOne));
     await settle(tester);
     final l10n = l10nOf(tester);
@@ -175,10 +190,7 @@ void main() {
             of: find.byType(ExportDoneNotice), matching: find.byType(Container))
         .first);
     expect((box.decoration! as BoxDecoration).color, AppColors.successMuted);
-    final files = Directory(p.join(tmp.path, 'alochi-offline'))
-        .listSync()
-        .whereType<File>()
-        .toList();
+    final files = filesUnder(Directory(p.join(tmp.path, 'alochi-offline')));
     expect(files, hasLength(1));
     expect(find.text(p.basename(files.single.path)), findsOneWidget);
     expect(find.text(l10n.usbCopyPath), findsOneWidget);
@@ -198,8 +210,7 @@ void main() {
     await settle(tester);
     expect(lists, 1);
     expect(find.text(l10nOf(tester).usbFlashPick), findsNothing);
-    expect(
-        Directory(p.join(f.path, 'alochi-offline')).listSync(), hasLength(2));
+    expect(filesUnder(Directory(p.join(f.path, 'alochi-offline'))), hasLength(2));
     expect(Directory(p.join(e.path, 'alochi-offline')).existsSync(), isFalse);
   });
 
@@ -209,5 +220,44 @@ void main() {
     await pump(tester, () async => [bad.path]);
     await tapFlash(tester);
     expect(find.text(l10nOf(tester).usbFlashFailed), findsOneWidget);
+  });
+
+  testWidgets(
+      'archive: disabled with unexported rows; archived pack is hidden and '
+      'skipped by export-all', (tester) async {
+    await pump(tester, () async => const [],
+        packs: ['pk-one-uuid', 'pack-two-uuid'], register: true);
+    final l10n = l10nOf(tester);
+    final archive = find.widgetWithText(TextButton, l10n.usbArchiveOne);
+    expect(archive, findsNWidgets(2));
+    for (final b in tester.widgetList<TextButton>(archive)) {
+      expect(b.onPressed, isNull); // nothing exported yet
+    }
+
+    // Export the first listed pack only, then archive it.
+    final exportOne = find.widgetWithText(TextButton, l10n.usbExportOne).first;
+    await tester.ensureVisible(exportOne);
+    await tester.tap(exportOne);
+    await settle(tester);
+    final enabled = tester
+        .widgetList<TextButton>(archive)
+        .where((b) => b.onPressed != null)
+        .length;
+    expect(enabled, 1);
+    await tester.ensureVisible(archive.first);
+    await tester.tap(archive.first);
+    await settle(tester);
+    // The exported pack was archived (whichever row held it): one row left.
+    expect(find.widgetWithText(TextButton, l10n.usbArchiveOne), findsOneWidget);
+    expect(find.widgetWithText(TextButton, l10n.usbExportOne), findsOneWidget);
+    expect(await tester.runAsync(() => PackResultsDb.summaries()), hasLength(1));
+
+    // Export-all only touches the remaining, non-archived pack.
+    final before = filesUnder(Directory(p.join(tmp.path, 'alochi-offline')));
+    await tester.ensureVisible(find.text(l10n.usbExportResults));
+    await tester.tap(find.text(l10n.usbExportResults));
+    await settle(tester);
+    final after = filesUnder(Directory(p.join(tmp.path, 'alochi-offline')));
+    expect(after.length, before.length + 1);
   });
 }

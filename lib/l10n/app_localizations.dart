@@ -4593,6 +4593,24 @@ abstract class AppLocalizations {
   /// **'Eksport'**
   String get usbExportOne;
 
+  /// No description provided for @usbArchiveOne.
+  ///
+  /// In uz, this message translates to:
+  /// **'Arxiv'**
+  String get usbArchiveOne;
+
+  /// No description provided for @usbKindMonitoring.
+  ///
+  /// In uz, this message translates to:
+  /// **'Monitoring'**
+  String get usbKindMonitoring;
+
+  /// No description provided for @usbKindDiagnostic.
+  ///
+  /// In uz, this message translates to:
+  /// **'Diagnostika'**
+  String get usbKindDiagnostic;
+
   /// No description provided for @usbExportDone.
   ///
   /// In uz, this message translates to:

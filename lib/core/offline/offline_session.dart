@@ -98,6 +98,15 @@ class OfflinePackSession implements OfflineContentSource {
 
   static final Mutex _openLock = Mutex();
 
+  /// 'diagnostic' / 'monitoring' for a single-kind pack, else null (mixed or
+  /// empty: exported under `unknown`).
+  static String? packKindOf(List<Map<String, dynamic>> tests) {
+    final diag = tests.any((t) => t['type'] == 'diagnostic');
+    final mon = tests.any((t) => t['type'] == 'test');
+    if (diag == mon) return null;
+    return diag ? 'diagnostic' : 'monitoring';
+  }
+
   /// Switches the app into pack mode for [pack] (already unlocked; its images
   /// are already extracted into [mediaDir]).
   ///
@@ -112,6 +121,8 @@ class OfflinePackSession implements OfflineContentSource {
           packUuid: pack.packUuid,
           schoolCode: pack.schoolCode,
           expiresAt: pack.manifest.expiresAt,
+          kind: packKindOf(pack.tests),
+          createdAt: pack.manifest.createdAt,
         );
         try {
           await PackResultsDb.purgeExpired();

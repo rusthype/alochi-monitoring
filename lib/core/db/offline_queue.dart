@@ -130,6 +130,12 @@ class OfflineQueue {
         loaded_at    INTEGER NOT NULL
       )
     ''');
+    // Additive (no version bump needed: ensureSchema runs on every open).
+    // kind: 'monitoring' | 'diagnostic' (NULL = packs stored before this);
+    // created_at: pack manifest created_at (ms); archived_at: local archive flag.
+    await addColumnIfMissing(db, 'pack_meta', 'kind', 'TEXT');
+    await addColumnIfMissing(db, 'pack_meta', 'created_at', 'INTEGER');
+    await addColumnIfMissing(db, 'pack_meta', 'archived_at', 'INTEGER');
   }
 
   /// v8 table for the LAN client outbox. Idempotent like [createPackTables].

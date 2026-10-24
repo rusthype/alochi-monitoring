@@ -259,11 +259,26 @@ class _OfflineControlCenterDialogState
 
   // ── export ─────────────────────────────────────────────────────────────────
 
-  /// Exports [targets] (or, when null, every pack with at least one saved
-  /// result, exported before or not) into `<Downloads>/alochi-offline`.
+  /// Packs "export all" / "copy to flash" work on: results stored, not archived.
+  List<PackSummary> get _exportable =>
+      _summaries.where((s) => s.total > 0 && !s.archived).toList();
+
+  /// Hides a fully exported pack from the list (rows are kept).
+  Future<void> _archive(PackSummary s) async {
+    try {
+      await PackResultsDb.archivePack(s.packUuid);
+    } catch (e) {
+      debugPrint('OfflineControlCenter: archive failed: ${e.runtimeType}');
+    }
+    await _refresh();
+  }
+
+  /// Exports [targets] (or, when null, every non-archived pack with at least
+  /// one saved result, exported before or not) into
+  /// `<Downloads>/alochi-offline/<school>/<kind>/`.
   Future<void> _export({List<PackSummary>? targets}) async {
     final l10n = AppLocalizations.of(context)!;
-    final list = targets ?? _summaries.where((s) => s.total > 0).toList();
+    final list = targets ?? _exportable;
     if (list.isEmpty) {
       _say(l10n.usbExportNothing);
       return;
@@ -310,7 +325,7 @@ class _OfflineControlCenterDialogState
   /// Fresh export of every pack with results, then copy onto a removable drive.
   Future<void> _copyToFlash() async {
     final l10n = AppLocalizations.of(context)!;
-    final list = _summaries.where((s) => s.total > 0).toList();
+    final list = _exportable;
     if (list.isEmpty) {
       _say(l10n.usbExportNothing);
       return;
@@ -573,6 +588,12 @@ class _OfflineControlCenterDialogState
             children: [
               Text(l10n.usbPackRow(s.schoolCode, s.packUuid.substring(0, 8)),
                   style: const TextStyle(color: AppColors.ink1)),
+              if (s.kind != null)
+                Text(
+                    s.kind == 'diagnostic'
+                        ? l10n.usbKindDiagnostic
+                        : l10n.usbKindMonitoring,
+                    style: const TextStyle(color: AppColors.ink3, fontSize: 12)),
               Text(
                   '${l10n.usbSavedCount(s.total)}  ·  '
                   '${l10n.usbUnexportedCount(s.unexported)}',
@@ -605,6 +626,11 @@ class _OfflineControlCenterDialogState
           onPressed:
               (_busy || !_configured) ? null : () => _export(targets: [s]),
           child: Text(l10n.usbExportOne),
+        ),
+        TextButton(
+          // Only a fully exported pack can be archived.
+          onPressed: (_busy || s.unexported > 0) ? null : () => _archive(s),
+          child: Text(l10n.usbArchiveOne),
         ),
       ]),
     );

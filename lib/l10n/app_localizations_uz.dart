@@ -2473,6 +2473,15 @@ class AppLocalizationsUz extends AppLocalizations {
   String get usbExportOne => 'Eksport';
 
   @override
+  String get usbArchiveOne => 'Arxiv';
+
+  @override
+  String get usbKindMonitoring => 'Monitoring';
+
+  @override
+  String get usbKindDiagnostic => 'Diagnostika';
+
+  @override
   String usbExportDone(int count, String file) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

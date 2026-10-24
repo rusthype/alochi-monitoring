@@ -2458,6 +2458,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get usbExportOne => 'Экспорт';
 
   @override
+  String get usbArchiveOne => 'Архив';
+
+  @override
+  String get usbKindMonitoring => 'Мониторинг';
+
+  @override
+  String get usbKindDiagnostic => 'Диагностика';
+
+  @override
   String usbExportDone(int count, String file) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

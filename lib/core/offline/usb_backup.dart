@@ -116,13 +116,24 @@ class FlashCopyException implements Exception {
   String toString() => 'FlashCopyException($reason)';
 }
 
+/// `<school>/<kind>/<file>` for an export made under `.../alochi-offline/`, so
+/// the flash drive mirrors the Downloads layout; just the file name otherwise.
+String _relUnderExportRoot(File src) {
+  final parts = p.split(src.path);
+  final i = parts.lastIndexOf('alochi-offline');
+  return (i < 0 || i >= parts.length - 1)
+      ? p.basename(src.path)
+      : p.joinAll(parts.sublist(i + 1));
+}
+
 /// Copies [src] into `<drive>alochi-offline/` (temp name, then rename) and
 /// verifies length + sha256 of the copy. Returns the destination file.
 Future<File> copyToFlash(File src, String drive,
     {Future<void> Function(File src, File dst)? copier}) async {
   final dir = Directory(p.join(drive, 'alochi-offline'));
   await dir.create(recursive: true);
-  final dest = File(p.join(dir.path, p.basename(src.path)));
+  final dest = File(p.join(dir.path, _relUnderExportRoot(src)));
+  await dest.parent.create(recursive: true);
   final tmp = File('${dest.path}.part');
   await (copier ?? (a, b) => a.copy(b.path))(src, tmp);
   // Flush to the device before verifying, so a pulled stick cannot hold a

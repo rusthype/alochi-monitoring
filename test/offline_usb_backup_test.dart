@@ -169,12 +169,14 @@ void main() {
     expect(packFilePrefix('', '1'), '1_');
   });
 
-  test('export name carries the full uuid without dashes', () async {
+  test('export name is <date>_<first 8 of uuid> under <school>/<kind>',
+      () async {
     await add('a');
     final out =
         await exporter().exportPack(pack.packUuid, tmp, schoolCode: '9');
     expect(p.basename(out.file.path),
-        startsWith('9_${pack.packUuid.replaceAll('-', '')}_'));
+        endsWith('_${pack.packUuid.replaceAll('-', '').substring(0, 8)}.alochires'));
+    expect(p.dirname(out.file.path), p.join(tmp.path, '9', 'unknown'));
   });
 
   test('same-second exports with colliding 8-char prefixes both survive',
