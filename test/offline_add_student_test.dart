@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:alochi_monitoring/core/api/api_client.dart';
 import 'package:alochi_monitoring/core/db/diagnostic_answer_store.dart';
 import 'package:alochi_monitoring/core/db/offline_queue.dart';
+import 'package:alochi_monitoring/core/db/pack_local_students_db.dart';
 import 'package:alochi_monitoring/core/db/pack_results_db.dart';
 import 'package:alochi_monitoring/core/models/add_student.dart';
 import 'package:alochi_monitoring/core/offline/export_format.dart';
@@ -138,19 +139,28 @@ void main() {
           pack ?? _pack(), Directory(p.join(tmp.path, 'media')));
 
   group('duplicate check', () {
-    test('a name in a PARALLEL class asks "Bu shumi?" (any word order)',
+    test('a name in a PARALLEL class is an other-class match (any word order)',
         () async {
       await open();
-      // 5-B's "Rahimov Sardor" typed into 5-A, first/last swapped.
+      // 5-B's "Rahimov Sardor" typed into 5-A, first/last swapped: info only
+      // (not selectable), carries the class label the claim is sent with.
       await expectLater(
         api.addStudent(groupId: _gA, draft: _draft('Rahimov', 'Sardor')),
-        throwsA(isA<SimilarStudentsException>().having(
-            (e) => e.candidates.single,
-            'candidate',
-            isA<SimilarStudent>()
-                .having((c) => c.id, 'id', 's3')
-                .having((c) => c.groupName, 'group', '5-B')
-                .having((c) => c.grade, 'grade', 5))),
+        throwsA(isA<SimilarStudentsException>()
+            .having((e) => e.candidates, 'same-class candidates', isEmpty)
+            .having(
+                (e) => e.otherClassMatches.single,
+                'other-class match',
+                isA<OtherClassMatch>()
+                    .having((m) => m.name, 'name', 'Rahimov Sardor')
+                    .having((m) => m.classLabel, 'class', '5-B'))),
+      );
+      // same class stays a selectable candidate
+      await expectLater(
+        api.addStudent(groupId: _gB, draft: _draft('Rahimov', 'Sardor')),
+        throwsA(isA<SimilarStudentsException>()
+            .having((e) => e.candidates.single.id, 'id', 's3')
+            .having((e) => e.otherClassMatches, 'other', isEmpty)),
       );
       // Cyrillic spelling of a roster name is the same child.
       await expectLater(
@@ -171,8 +181,10 @@ void main() {
 
       await expectLater(
         api.addStudent(groupId: _gB, draft: _draft('Sardor', 'Rahimov')),
-        throwsA(isA<SimilarStudentsException>().having(
-            (e) => e.candidates.map((c) => c.id).toSet(), 'ids', {'s3', r.id})),
+        throwsA(isA<SimilarStudentsException>()
+            .having((e) => e.candidates.map((c) => c.id), 'same class', ['s3'])
+            .having((e) => e.otherClassMatches.map((m) => m.classLabel),
+                'other class (the local child)', ['5-A'])),
       );
     });
 
@@ -416,6 +428,46 @@ void main() {
       final row = after.singleWhere((x) => x['attempt_id'] == r.id);
       expect(row['status'], 'partial');
       expect(row['next_subject'], 'english');
+    });
+
+    test('transfer claim rides the new_student block (and is persisted)',
+        () async {
+      final k = await openDiag();
+      final d = _draft('Sardor', 'Rahimov').withTransferClaim(
+          const TransferClaim(name: 'Rahimov Sardor', classLabel: '5-B'));
+      final r = await k.addStudent(
+          schoolId: _school,
+          classLabel: '5-A',
+          language: 'uz',
+          draft: d,
+          confirmNew: true);
+      expect(
+          (await PackLocalStudentsDb.forPack(_packUuid))
+              .single
+              .transferClaim
+              ?.classLabel,
+          '5-B');
+      await k.finishAttempt(attemptId: r.id, answers: [
+        {'question_id': 'math-uz-q1', 'selected': 'B'},
+      ]);
+      final payload = (await _chain(_packUuid)).single;
+      expect((payload['new_student'] as Map)['transfer_claim'],
+          {'name': 'Rahimov Sardor', 'class_label': '5-B'});
+    });
+
+    test('a claim without confirmNew is dropped; no claim -> no key',
+        () async {
+      final k = await openDiag();
+      final d = _draft('Nodira', 'Yusupova').withTransferClaim(
+          const TransferClaim(name: 'Rahimov Sardor', classLabel: '5-B'));
+      final r = await k.addStudent(
+          schoolId: _school, classLabel: '5-A', language: 'uz', draft: d);
+      await k.finishAttempt(attemptId: r.id, answers: [
+        {'question_id': 'math-uz-q1', 'selected': 'B'},
+      ]);
+      final payload = (await _chain(_packUuid)).single;
+      expect((payload['new_student'] as Map).containsKey('transfer_claim'),
+          false);
     });
 
     test('REGRESSION: a pack student diagnostic entry has no new_student',

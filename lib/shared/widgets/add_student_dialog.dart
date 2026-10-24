@@ -192,7 +192,8 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
     return true;
   }
 
-  Future<void> _submit({bool confirmNew = false}) async {
+  Future<void> _submit(
+      {bool confirmNew = false, OtherClassMatch? transferFrom}) async {
     if (_loading) return;
     final l10n = AppLocalizations.of(context)!;
     if (!confirmNew) {
@@ -207,7 +208,10 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
       _srvBirthError = null;
     });
     try {
-      final result = await widget.onSubmit(_draft, confirmNew: confirmNew);
+      final draft = transferFrom == null
+          ? _draft
+          : _draft.withTransferClaim(TransferClaim.fromMatch(transferFrom));
+      final result = await widget.onSubmit(draft, confirmNew: confirmNew);
       if (!mounted) return;
       Navigator.of(context).pop(AddStudentCreated(result));
     } on SimilarStudentsException catch (e) {
@@ -448,6 +452,24 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
                 l10n.addStudentOtherClassMatch(m.name, m.classLabel),
             ],
           ),
+        for (var i = 0; i < sim.otherClassMatches.length; i++) ...[
+          const SizedBox(height: 8),
+          OutlinedButton(
+            key: Key('addStudentTransferClaim_$i'),
+            style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48)),
+            onPressed: _loading
+                ? null
+                : () => _submit(
+                    confirmNew: true, transferFrom: sim.otherClassMatches[i]),
+            child: Text(
+              sim.otherClassMatches.length > 1
+                  ? '${l10n.addStudentTransferYes} - ${sim.otherClassMatches[i].classLabel}'
+                  : l10n.addStudentTransferYes,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
         if (_error != null) ...[
           const SizedBox(height: 6),
           _ErrorBanner(text: _error!),

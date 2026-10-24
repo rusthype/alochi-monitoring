@@ -80,13 +80,28 @@ class AddStudentDraft {
   final String parentFio;
   final String clientTempId;
 
+  /// "Ha, bu o'sha bola (ko'chib kelgan)": the other-class match the proctor
+  /// said this child is. Advisory only - sent with `confirm_new: true`; the
+  /// server re-verifies it, an old backend ignores it.
+  final TransferClaim? transferClaim;
+
   const AddStudentDraft({
     required this.firstName,
     required this.lastName,
     required this.clientTempId,
     this.birthDate,
     this.parentFio = '',
+    this.transferClaim,
   });
+
+  AddStudentDraft withTransferClaim(TransferClaim claim) => AddStudentDraft(
+        firstName: firstName,
+        lastName: lastName,
+        clientTempId: clientTempId,
+        birthDate: birthDate,
+        parentFio: parentFio,
+        transferClaim: claim,
+      );
 
   static String newTempId() => '$kNewStudentIdPrefix${const Uuid().v4()}';
 
@@ -99,7 +114,31 @@ class AddStudentDraft {
         if (parentFio.isNotEmpty) 'parent_fio': parentFio,
         'client_temp_id': clientTempId,
         if (confirmNew) 'confirm_new': true,
+        if (confirmNew && transferClaim != null)
+          'transfer_claim': transferClaim!.toJson(),
       };
+}
+
+/// The `{name, class_label}` of an [OtherClassMatch] a proctor claimed as the
+/// same (transferred) child. Never an id: the server re-derives its matches.
+class TransferClaim {
+  final String name;
+  final String classLabel;
+  const TransferClaim({required this.name, required this.classLabel});
+
+  factory TransferClaim.fromMatch(OtherClassMatch m) =>
+      TransferClaim(name: m.name, classLabel: m.classLabel);
+
+  /// Null unless [j] carries a non-empty name (queue / pack blobs).
+  static TransferClaim? tryParse(Object? j) {
+    if (j is! Map) return null;
+    final name = j['name']?.toString() ?? '';
+    if (name.isEmpty) return null;
+    return TransferClaim(
+        name: name, classLabel: j['class_label']?.toString() ?? '');
+  }
+
+  Map<String, dynamic> toJson() => {'name': name, 'class_label': classLabel};
 }
 
 /// One "Bu shumi?" candidate (`similar_students` 409).

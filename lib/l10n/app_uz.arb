@@ -1607,6 +1607,7 @@
   "addStudentSimilarTitle": "Bu shumi?",
   "addStudentSimilarBody": "Maktabda shunga o'xshash o'quvchilar bor. Agar shu bola bo'lsa, uni tanlang.",
   "addStudentSimilarNone": "Yo'q, boshqa bola",
+  "addStudentTransferYes": "Ha, bu o'sha bola (ko'chib kelgan)",
   "studentPendingBadge": "Tasdiq kutilmoqda",
   "addStudentQueuedNotice": "Internet yo'q. Bola saqlandi va aloqa tiklangach yuboriladi.",
   "addStudentCandidateOtherClass": "{name} boshqa sinfda ({group}). O'sha sinf ro'yxatidan tanlang.",

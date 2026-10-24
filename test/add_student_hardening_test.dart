@@ -384,6 +384,60 @@ void main() {
       expect(outcome, isA<AddStudentCreated>());
     });
 
+    testWidgets(
+        'transfer button only for other-class matches; sends transfer_claim '
+        'with confirm_new', (tester) async {
+      final seen = <(bool, TransferClaim?)>[];
+      await open(tester, (d, {required confirmNew}) async {
+        seen.add((confirmNew, d.transferClaim));
+        if (!confirmNew) {
+          throw const SimilarStudentsException([
+            SimilarStudent(id: 'r1', name: 'Valiyev Ali', grade: 4)
+          ], otherClassMatches: [
+            OtherClassMatch(name: 'Valiyev Ali', classLabel: '4-B')
+          ]);
+        }
+        return const AddStudentResult(id: 'srv', name: 'Valiyev Ali');
+      });
+      await fill(tester);
+      await submit(tester);
+
+      // one button for the single other-class match, none for the candidate
+      expect(find.byKey(const Key('addStudentTransferClaim_0')), findsOneWidget);
+      expect(find.byKey(const Key('addStudentTransferClaim_1')), findsNothing);
+      expect(find.text(l10n.addStudentTransferYes), findsOneWidget);
+
+      await tester.ensureVisible(find.byKey(const Key('addStudentTransferClaim_0')));
+      await tester.tap(find.byKey(const Key('addStudentTransferClaim_0')));
+      await tester.pumpAndSettle();
+      expect(seen.length, 2);
+      expect(seen[0], (false, null));
+      expect(seen[1].$1, isTrue);
+      expect(seen[1].$2?.name, 'Valiyev Ali');
+      expect(seen[1].$2?.classLabel, '4-B');
+      expect(outcome, isA<AddStudentCreated>());
+    });
+
+    testWidgets('no other-class match -> no transfer button; "boshqa bola" '
+        'sends no claim', (tester) async {
+      final seen = <TransferClaim?>[];
+      await open(tester, (d, {required confirmNew}) async {
+        seen.add(d.transferClaim);
+        if (!confirmNew) {
+          throw const SimilarStudentsException([
+            SimilarStudent(id: 'r1', name: 'Valiyev Ali', grade: 4)
+          ]);
+        }
+        return const AddStudentResult(id: 'srv', name: 'Valiyev Ali');
+      });
+      await fill(tester);
+      await submit(tester);
+      expect(find.text(l10n.addStudentTransferYes), findsNothing);
+      await tester.tap(find.byKey(const Key('addStudentNotThem')));
+      await tester.pumpAndSettle();
+      expect(seen, [null, null]);
+    });
+
     testWidgets('candidates + other classes render together', (tester) async {
       await open(tester, (d, {required confirmNew}) async {
         throw const SimilarStudentsException([

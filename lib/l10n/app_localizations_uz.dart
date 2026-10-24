@@ -2996,6 +2996,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get addStudentSimilarNone => 'Yo\'q, boshqa bola';
 
   @override
+  String get addStudentTransferYes => 'Ha, bu o\'sha bola (ko\'chib kelgan)';
+
+  @override
   String get studentPendingBadge => 'Tasdiq kutilmoqda';
 
   @override

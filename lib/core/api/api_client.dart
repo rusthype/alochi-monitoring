@@ -483,6 +483,7 @@ class MonitoringApi {
           birthDate: birth,
           parentFio: (payload['parent_fio'] ?? '').toString(),
           clientTempId: tempId,
+          transferClaim: TransferClaim.tryParse(payload['transfer_claim']),
         ),
       );
       if (tempId.isNotEmpty) {

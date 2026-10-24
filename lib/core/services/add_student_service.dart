@@ -70,6 +70,8 @@ Future<AddStudentResult> queueAddStudentLocally({
       'birth_date': draft.birthDate!.toIso8601String().substring(0, 10),
     if (draft.parentFio.isNotEmpty) 'parent_fio': draft.parentFio,
     'client_temp_id': draft.clientTempId,
+    if (draft.transferClaim != null)
+      'transfer_claim': draft.transferClaim!.toJson(),
   }, draft.clientTempId);
   await LocalStudentsDb.add(LocalStudent(
     tempId: draft.clientTempId,

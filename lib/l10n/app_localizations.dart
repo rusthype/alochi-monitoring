@@ -5447,6 +5447,12 @@ abstract class AppLocalizations {
   /// **'Yo\'q, boshqa bola'**
   String get addStudentSimilarNone;
 
+  /// No description provided for @addStudentTransferYes.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ha, bu o\'sha bola (ko\'chib kelgan)'**
+  String get addStudentTransferYes;
+
   /// No description provided for @studentPendingBadge.
   ///
   /// In uz, this message translates to:

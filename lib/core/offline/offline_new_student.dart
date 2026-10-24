@@ -86,6 +86,7 @@ Map<String, dynamic> attachNewStudent(
         if ((r['parent_fio']?.toString() ?? '').isNotEmpty)
           'parent_fio': r['parent_fio'].toString(),
         'group_id': r['group_id']?.toString() ?? '',
+        if (r['transfer_claim'] is Map) 'transfer_claim': r['transfer_claim'],
       },
     };
   }

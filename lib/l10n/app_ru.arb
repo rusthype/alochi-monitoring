@@ -1541,6 +1541,7 @@
   "addStudentSimilarTitle": "Это он?",
   "addStudentSimilarBody": "В школе есть похожие ученики. Если это тот же ребёнок, выберите его.",
   "addStudentSimilarNone": "Нет, другой ребёнок",
+  "addStudentTransferYes": "Да, это он (перевёлся)",
   "studentPendingBadge": "Ожидает подтверждения",
   "addStudentQueuedNotice": "Нет интернета. Ребёнок сохранён и будет отправлен, когда связь появится.",
   "addStudentCandidateOtherClass": "{name} в другом классе ({group}). Выберите его в списке этого класса.",

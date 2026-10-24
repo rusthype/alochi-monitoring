@@ -20,6 +20,7 @@ http.Response _json(int status, Object body) =>
 
 class _FakeApi extends MonitoringApi {
   final List<Object> addCalls = [];
+  final List<TransferClaim?> claims = [];
   final List<Map<String, dynamic>> submitted = [];
   Object? addError;
   String serverId = 'srv-1';
@@ -31,6 +32,7 @@ class _FakeApi extends MonitoringApi {
     bool confirmNew = false,
   }) async {
     addCalls.add((groupId, draft.clientTempId, confirmNew));
+    claims.add(draft.transferClaim);
     final err = addError;
     if (err != null) throw err;
     return AddStudentResult(
@@ -105,6 +107,16 @@ void main() {
       expect(min.containsKey('birth_date'), isFalse);
       expect(min.containsKey('parent_fio'), isFalse);
       expect(min.containsKey('confirm_new'), isFalse);
+    });
+    test('transfer_claim is sent only with confirm_new and only when set', () {
+      const claim = TransferClaim(name: 'Valiyev Ali', classLabel: '4-B');
+      final d = _draft().withTransferClaim(claim);
+      expect(d.toJson(confirmNew: true)['transfer_claim'],
+          {'name': 'Valiyev Ali', 'class_label': '4-B'});
+      expect(d.toJson().containsKey('transfer_claim'), isFalse);
+      expect(_draft().toJson(confirmNew: true).containsKey('transfer_claim'),
+          isFalse);
+      expect(d.clientTempId, _draft().clientTempId); // same idempotent attempt
     });
     test('newTempId is new:<uuid>, unique', () {
       final a = AddStudentDraft.newTempId();
@@ -337,6 +349,22 @@ void main() {
       // Accepted -> the server roster returns it; no longer a local-only row.
       expect(await LocalStudentsDb.unsyncedForGroup('g1'), isEmpty);
       expect(await OfflineQueue.pendingLocalCount(), 0);
+    });
+
+    test('flush: a queued add replays its transfer_claim', () async {
+      final api = _FakeApi()..addError = const ApiException(0, 'offline');
+      await addStudentOrQueue(
+          groupId: 'g1',
+          draft: _draft().withTransferClaim(
+              const TransferClaim(name: 'Valiyev Ali', classLabel: '4-B')),
+          confirmNew: true,
+          apiOverride: api);
+      expect((await OfflineQueue.peekLocalQueue()).single['transfer_claim'],
+          {'name': 'Valiyev Ali', 'class_label': '4-B'});
+      api.addError = null;
+      api.claims.clear();
+      await api.flushOfflineQueue();
+      expect(api.claims.single?.classLabel, '4-B');
     });
 
     test('flush: add still failing keeps the row; result goes with temp id',

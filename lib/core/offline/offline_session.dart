@@ -226,13 +226,26 @@ class OfflinePackSession implements OfflineContentSource {
           throw const ApiException(400, 'invalid name', code: 'invalid_name');
         }
         if (!confirmNew) {
-          final similar = similarInRoster(
-            roster: [...pack.students, ...localStudents],
-            groups: pack.groups,
-            firstName: first,
-            lastName: last,
-          );
-          if (similar.isNotEmpty) throw SimilarStudentsException(similar);
+          // Same class: selectable. Parallel class: info only + the "transfer"
+          // claim (same split as the online 409 `other_class_matches`).
+          final roster = [...pack.students, ...localStudents];
+          bool inClass(Map<String, dynamic> s) =>
+              s['group_id']?.toString() == groupId;
+          List<SimilarStudent> find(bool Function(Map<String, dynamic>) f) =>
+              similarInRoster(
+                roster: roster.where(f).toList(),
+                groups: pack.groups,
+                firstName: first,
+                lastName: last,
+              );
+          final similar = find(inClass);
+          final other = [
+            for (final c in find((s) => !inClass(s)))
+              OtherClassMatch(name: c.name, classLabel: c.groupName),
+          ];
+          if (similar.isNotEmpty || other.isNotEmpty) {
+            throw SimilarStudentsException(similar, otherClassMatches: other);
+          }
         }
         final kid = PackLocalStudent(
           tempId: draft.clientTempId,
@@ -243,6 +256,7 @@ class OfflinePackSession implements OfflineContentSource {
           parentFio: draft.parentFio,
           grade: gradeOfGroup(group),
           language: language,
+          transferClaim: confirmNew ? draft.transferClaim : null,
         );
         // Persist first: if this throws the proctor must not see the child.
         await PackLocalStudentsDb.add(pack.packUuid, kid);

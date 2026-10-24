@@ -14,6 +14,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import '../models/add_student.dart' show TransferClaim;
 import 'offline_queue.dart';
 import 'queue_crypto.dart';
 
@@ -30,6 +31,10 @@ class PackLocalStudent {
   /// 'uz' / 'ru' / '' (diagnostic test language; local only, not in the chain).
   final String language;
 
+  /// The other-class match the proctor claimed this child is (advisory; the
+  /// server re-verifies it at import). Lives in the encrypted blob + chain.
+  final TransferClaim? transferClaim;
+
   const PackLocalStudent({
     required this.tempId,
     required this.groupId,
@@ -39,6 +44,7 @@ class PackLocalStudent {
     this.parentFio = '',
     this.grade = 0,
     this.language = '',
+    this.transferClaim,
   });
 
   String get name => '$lastName $firstName'.trim();
@@ -55,6 +61,7 @@ class PackLocalStudent {
         if (birthDate != null) 'birth_date': _date(birthDate),
         if (parentFio.isNotEmpty) 'parent_fio': parentFio,
         'group_id': groupId,
+        if (transferClaim != null) 'transfer_claim': transferClaim!.toJson(),
       };
 
   /// Roster-shaped row (monitoring `fetchStudents` / the shared
@@ -70,6 +77,7 @@ class PackLocalStudent {
         'group_id': groupId,
         'grade': grade,
         if (language.isNotEmpty) 'language': language,
+        if (transferClaim != null) 'transfer_claim': transferClaim!.toJson(),
         'pending': true,
         'local_pending': true,
       };
@@ -81,6 +89,7 @@ class PackLocalStudent {
         'parent_fio': parentFio,
         'grade': grade,
         'language': language,
+        if (transferClaim != null) 'transfer_claim': transferClaim!.toJson(),
       });
 
   static PackLocalStudent? _fromRow(
@@ -97,6 +106,7 @@ class PackLocalStudent {
         parentFio: m['parent_fio']?.toString() ?? '',
         grade: (m['grade'] as num?)?.toInt() ?? 0,
         language: m['language']?.toString() ?? '',
+        transferClaim: TransferClaim.tryParse(m['transfer_claim']),
       );
     } catch (e) {
       debugPrint('PackLocalStudent: unreadable row $tempId: $e');

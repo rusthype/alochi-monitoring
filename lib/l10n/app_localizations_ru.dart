@@ -2984,6 +2984,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get addStudentSimilarNone => 'Нет, другой ребёнок';
 
   @override
+  String get addStudentTransferYes => 'Да, это он (перевёлся)';
+
+  @override
   String get studentPendingBadge => 'Ожидает подтверждения';
 
   @override
