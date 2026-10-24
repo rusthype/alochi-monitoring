@@ -214,6 +214,25 @@ class _LoginScreenState extends State<LoginScreen>
   String? _error;
   int _selectedTab = 0;
 
+  /// Tab dictated by the open USB pack: 1 = diagnostic-only pack, 0 =
+  /// monitoring-only pack, null = no pack (or a mixed/empty one: user's
+  /// choice stays free).
+  int? get _packTab {
+    final s = OfflinePackSession.current;
+    if (s == null) return null;
+    final diag = s.testsOfType('diagnostic').isNotEmpty;
+    final mon = s.testsOfType('test').isNotEmpty;
+    return diag == mon ? null : (diag ? 1 : 0);
+  }
+
+  // Only a pack being opened/closed moves the tab — never a plain rebuild.
+  void _onPackChanged() {
+    final t = _packTab;
+    if (t != null && mounted && t != _selectedTab) {
+      setState(() => _selectedTab = t);
+    }
+  }
+
   late final AnimationController _entranceController;
   late final Animation<double> _entranceOpacity;
   late final Animation<double> _entranceScale;
@@ -252,6 +271,8 @@ class _LoginScreenState extends State<LoginScreen>
       duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
     _entranceController.forward();
+    _selectedTab = _packTab ?? _selectedTab;
+    OfflinePackSession.notifier.addListener(_onPackChanged);
 
     // All startup I/O is deliberately fire-and-forget. The complete login
     // card is already in the first frame; credentials, ping, catalog and
@@ -314,6 +335,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   void dispose() {
+    OfflinePackSession.notifier.removeListener(_onPackChanged);
     UpdateService.instance.stopPeriodicRecheck();
     _userCtrl.dispose();
     _passCtrl.dispose();
@@ -957,6 +979,7 @@ class _LoginScreenState extends State<LoginScreen>
 
   Widget _buildSegmentedControl(_LoginPalette palette) {
     final l10n = AppLocalizations.of(context)!;
+    final packTab = _packTab;
     return Container(
       height: 54,
       padding: const EdgeInsets.all(3),
@@ -1002,6 +1025,7 @@ class _LoginScreenState extends State<LoginScreen>
                   label: l10n.studentLoginButton,
                   active: _selectedTab == 0,
                   palette: palette,
+                  disabled: packTab == 1,
                   onTap: () => setState(() => _selectedTab = 0),
                 ),
               ),
@@ -1012,6 +1036,7 @@ class _LoginScreenState extends State<LoginScreen>
                   label: l10n.diagnosticTabLabel,
                   active: _selectedTab == 1,
                   palette: palette,
+                  disabled: packTab == 0,
                   onTap: () => setState(() => _selectedTab = 1),
                 ),
               ),
