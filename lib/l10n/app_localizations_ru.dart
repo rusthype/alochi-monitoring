@@ -2878,7 +2878,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get diagnosticRetakeBody =>
-      'Этот ученик уже сдал все предметы. Начать ещё одну попытку?';
+      'Этот ученик уже сдал все предметы. Результат пересдачи будет отправлен администратору на подтверждение и не заменит первый результат автоматически. Продолжить?';
 
   @override
   String get diagnosticRetakeConfirm => 'Начать заново';

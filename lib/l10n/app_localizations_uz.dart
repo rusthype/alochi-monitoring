@@ -2889,7 +2889,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get diagnosticRetakeBody =>
-      'Bu o\'quvchi barcha fanlarni topshirib bo\'lgan. Yana bir urinish boshlansinmi?';
+      'Bu o\'quvchi barcha fanlarni topshirib bo\'lgan. Qayta topshirish natijasi administrator tasdig\'iga yuboriladi va birinchi natijani avtomatik almashtirmaydi. Davom etilsinmi?';
 
   @override
   String get diagnosticRetakeConfirm => 'Qayta boshlash';

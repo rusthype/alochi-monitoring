@@ -64,6 +64,7 @@ void main() {
     expect(pack.tests, content['tests']);
     expect(pack.groups, content['groups']);
     expect(pack.students, content['students']);
+    expect(pack.doneStudents, isEmpty); // old pack: no done_students key
     expect(pack.chainKey.length, 32);
 
     final mediaName = (expected['media_member'] as String).split('/').last;

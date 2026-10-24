@@ -702,6 +702,9 @@ class LanClientSession implements OfflineContentSource {
   List<Map<String, dynamic>> get groups => _groups;
   @override
   List<Map<String, dynamic>> get students => _students;
+  // ponytail: the hub snapshot does not relay done_students yet.
+  @override
+  List<Map<String, dynamic>> get doneStudents => const [];
 
   // Adding a child on a LAN client is not supported: the hub only accepts
   // results for its signed roster (HubState.checkResult -> student_invalid).

@@ -223,6 +223,7 @@ void main() {
       await tester.pumpAndSettle();
       // dialog asks first; cancel -> no attempt
       expect(find.text(l10n.diagnosticRetakeTitle), findsOneWidget);
+      expect(find.text(l10n.diagnosticRetakeBody), findsOneWidget);
       await tester.tap(find.text(l10n.cancel));
       await tester.pumpAndSettle();
       expect(pushed, isEmpty);

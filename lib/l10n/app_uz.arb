@@ -1570,7 +1570,7 @@
   "lanSeatCollapse": "Yig'ish",
   "diagnosticOnlineRequiredTooltip": "Onlayn kerak",
   "diagnosticRetakeTitle": "O'quvchi allaqachon topshirgan",
-  "diagnosticRetakeBody": "Bu o'quvchi barcha fanlarni topshirib bo'lgan. Yana bir urinish boshlansinmi?",
+  "diagnosticRetakeBody": "Bu o'quvchi barcha fanlarni topshirib bo'lgan. Qayta topshirish natijasi administrator tasdig'iga yuboriladi va birinchi natijani avtomatik almashtirmaydi. Davom etilsinmi?",
   "diagnosticRetakeConfirm": "Qayta boshlash",
   "testRetakeBody": "Bu o'quvchi bu testni allaqachon topshirgan. Yana bir urinish boshlansinmi?",
   "rosterDoneBadge": "Topshirgan",

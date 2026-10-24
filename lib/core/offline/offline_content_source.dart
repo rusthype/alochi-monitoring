@@ -6,12 +6,27 @@
 // two modes from drifting apart.
 import '../models/add_student.dart';
 
+// Retake contract (pack roster + chain entry). The only place these JSON field
+// names live, so a backend rename is a one-line change.
+/// Top-level pack content list: students already finished before the pack.
+const String kPackDoneStudentsKey = 'done_students';
+
+/// Per student: subjects already done on the server (`["math", ...]`).
+const String kStudentSubjectsDoneKey = 'subjects_done';
+
+/// Chain-entry boolean: this result re-takes an already-done subject.
+const String kChainRetakeKey = 'retake';
+
 abstract class OfflineContentSource {
   String get packUuid;
   String get schoolId;
   String get schoolCode;
   List<Map<String, dynamic>> get groups;
   List<Map<String, dynamic>> get students;
+
+  /// Students who had already finished (every subject) when the pack was made:
+  /// roster-shaped rows with `subjects_done`. Empty for old packs / LAN.
+  List<Map<String, dynamic>> get doneStudents;
 
   /// Children a proctor added on THIS computer ("Bola qo'shish"): roster-shaped
   /// rows (`id` = `new:<uuid>`, `group_id`, `first_name`, `last_name`,

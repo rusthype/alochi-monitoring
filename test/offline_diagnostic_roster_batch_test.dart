@@ -13,7 +13,9 @@ import 'package:alochi_monitoring/core/offline/offline_content_source.dart';
 import 'package:alochi_monitoring/core/offline/offline_crypto.dart';
 import 'package:alochi_monitoring/core/offline/offline_diagnostic_api.dart';
 import 'package:alochi_monitoring/core/offline/offline_session.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:alochi_monitoring/core/offline/pack_loader.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -30,6 +32,7 @@ class _Spy implements OfflineContentSource {
   int batchCalls = 0;
   List<Map<String, dynamic>>? diagOverride;
   List<Map<String, dynamic>> local = const [];
+  final List<Map<String, dynamic>> recorded = [];
 
   @override
   String get packUuid => s.packUuid;
@@ -41,6 +44,8 @@ class _Spy implements OfflineContentSource {
   List<Map<String, dynamic>> get groups => s.groups;
   @override
   List<Map<String, dynamic>> get students => s.students;
+  @override
+  List<Map<String, dynamic>> get doneStudents => s.doneStudents;
   @override
   List<Map<String, dynamic>> get localStudents => local;
   @override
@@ -70,8 +75,10 @@ class _Spy implements OfflineContentSource {
   }
 
   @override
-  Future<void> recordResult(Map<String, dynamic> payload, {String? token}) =>
-      s.recordResult(payload, token: token);
+  Future<void> recordResult(Map<String, dynamic> payload, {String? token}) {
+    recorded.add(payload);
+    return s.recordResult(payload, token: token);
+  }
   @override
   Future<void> prepareMedia(Object? data) async {}
 }
@@ -236,5 +243,157 @@ void main() {
     expect((await k.availableSubjects(5))['subjects'], ['math']);
     spy.diagOverride = [_diag('math', 5, 'uz'), _diag('english', 5, 'uz')];
     expect((await k.availableSubjects(5))['subjects'], ['math', 'english']);
+  });
+
+  group('retake: subjects_done / done_students / retake flag', () {
+    final key = Uint8List.fromList(List.generate(32, (i) => 100 + i));
+
+    Future<_Spy> open({
+      List<Map<String, dynamic>> students = const [],
+      List<Map<String, dynamic>> done = const [],
+    }) async {
+      final pack = LoadedPack(
+        manifest: PackManifest(
+          formatVersion: 1,
+          packUuid: _packUuid,
+          schoolId: _school,
+          schoolCode: '999',
+          createdAt: DateTime.utc(2026, 1, 1),
+          expiresAt: DateTime.utc(2099, 1, 1),
+          kdfIter: 1,
+          kdfSalt: Uint8List(16),
+          files: const {},
+        ),
+        tests: [_diag('math', 5, 'uz'), _diag('english', 5, 'uz')],
+        groups: [
+          {'id': 'gA', 'name': '5-A', 'grade': 5},
+        ],
+        students: students,
+        doneStudents: done,
+        chainKey: key,
+      );
+      final session = await OfflinePackSession.open(
+          pack, Directory(p.join(tmp.path, 'media')));
+      return _Spy(session);
+    }
+
+    List<Object?> row(Map<String, dynamic> r) =>
+        [r['student_name'], r['status'], r['next_subject']];
+
+    Future<void> finish(OfflineDiagnosticKioskApi k, String sid, String sub) =>
+        k.finishAttempt(attemptId: 'offline|$sid|gA|uz', answers: [
+          {'question_id': '$sub-5-uz-q1', 'selected': 'A'}
+        ]);
+
+    test('status comes from subjects_done UNION the local chain', () async {
+      final spy = await open(students: [
+        {'id': 's1', 'name': 'Fresh', 'group_id': 'gA'},
+        {
+          'id': 's2',
+          'name': 'MathOnline',
+          'group_id': 'gA',
+          'subjects_done': ['math']
+        },
+        {
+          'id': 's3',
+          'name': 'EngOnlineMathChain',
+          'group_id': 'gA',
+          'subjects_done': ['english']
+        },
+        {
+          'id': 's4',
+          'name': 'EmptyDone',
+          'group_id': 'gA',
+          'subjects_done': []
+        },
+      ], done: [
+        {
+          'id': 'd1',
+          'name': 'AllOnline',
+          'group_id': 'gA',
+          'subjects_done': ['math', 'english']
+        },
+        {
+          'id': 'd2',
+          'name': 'DoneMathOnly',
+          'group_id': 'gA',
+          'subjects_done': ['math']
+        },
+      ]);
+      await PackResultsDb.append(
+          packUuid: _packUuid,
+          chainKey: key,
+          idempotencyKey: '${_prefix('s3', 'gA', 'math')}1',
+          payloadJson: '{}');
+      final k = OfflineDiagnosticKioskApi(spy);
+      final (rows, _) = await k.listStudents(_school, '5-A');
+      expect(rows.map(row).toList(), [
+        ['Fresh', 'not_started', 'math'],
+        ['MathOnline', 'partial', 'english'],
+        ['EngOnlineMathChain', 'completed', ''],
+        ['EmptyDone', 'not_started', 'math'],
+        ['AllOnline', 'completed', ''],
+        ['DoneMathOnly', 'partial', 'english'],
+      ]);
+      expect(spy.batchCalls, 1); // still ONE chain lookup
+    });
+
+    test('retake:true only when the subject was already done', () async {
+      final spy = await open(students: [
+        {'id': 's1', 'name': 'Fresh', 'group_id': 'gA'},
+        {
+          'id': 's2',
+          'name': 'MathOnline',
+          'group_id': 'gA',
+          'subjects_done': ['math']
+        },
+      ], done: [
+        {
+          'id': 'd1',
+          'name': 'AllOnline',
+          'group_id': 'gA',
+          'subjects_done': ['math', 'english']
+        },
+      ]);
+      final k = OfflineDiagnosticKioskApi(spy);
+
+      await finish(k, 's1', 'math'); // first time
+      expect(spy.recorded.last.containsKey('retake'), isFalse);
+      await finish(k, 's1', 'math'); // already in the local chain
+      expect(spy.recorded.last['retake'], isTrue);
+
+      await finish(k, 's2', 'english'); // not done yet
+      expect(spy.recorded.last.containsKey('retake'), isFalse);
+      await finish(k, 's2', 'math'); // done online (subjects_done)
+      expect(spy.recorded.last['retake'], isTrue);
+
+      await finish(k, 'd1', 'english'); // done_students row
+      expect(spy.recorded.last['retake'], isTrue);
+      expect(spy.recorded.last['student_id'], 'd1');
+    });
+
+    test('old pack without the new fields: no retake key, same statuses',
+        () async {
+      final spy = await open(students: [
+        {'id': 's1', 'name': 'Old', 'group_id': 'gA'},
+      ]);
+      final k = OfflineDiagnosticKioskApi(spy);
+      expect(spy.doneStudents, isEmpty);
+      final (rows, _) = await k.listStudents(_school, '5-A');
+      expect(rows.map(row).toList(), [
+        ['Old', 'not_started', 'math']
+      ]);
+      await finish(k, 's1', 'math');
+      expect(spy.recorded.single.containsKey('retake'), isFalse);
+    });
+
+    test('retake dialog text says the result goes to admin confirmation', () {
+      final uz = lookupAppLocalizations(const Locale('uz'));
+      final ru = lookupAppLocalizations(const Locale('ru'));
+      expect(uz.diagnosticRetakeBody, contains('administrator'));
+      expect(uz.diagnosticRetakeBody, contains('avtomatik almashtirmaydi'));
+      expect(ru.diagnosticRetakeBody, contains('администратор'));
+      expect(ru.diagnosticRetakeBody, contains('не заменит'));
+    });
   });
 }

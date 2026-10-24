@@ -179,6 +179,8 @@ class OfflinePackSession implements OfflineContentSource {
   List<Map<String, dynamic>> get groups => pack.groups;
   @override
   List<Map<String, dynamic>> get students => pack.students;
+  @override
+  List<Map<String, dynamic>> get doneStudents => pack.doneStudents;
 
   @override
   List<Map<String, dynamic>> get localStudents =>

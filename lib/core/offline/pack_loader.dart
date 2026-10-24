@@ -17,6 +17,7 @@ import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 import 'package:pointycastle/export.dart' show RSAPublicKey;
 
+import 'offline_content_source.dart' show kPackDoneStudentsKey;
 import 'offline_crypto.dart';
 import 'offline_keys.dart';
 
@@ -149,6 +150,9 @@ class LoadedPack {
   final List<Map<String, dynamic>> groups;
   final List<Map<String, dynamic>> students;
 
+  /// Already-finished students (`done_students`); absent in old packs.
+  final List<Map<String, dynamic>> doneStudents;
+
   /// HMAC-SHA256(PBKDF2 key, "alochires-chain-v1") — derives the result chain.
   final Uint8List chainKey;
 
@@ -157,6 +161,7 @@ class LoadedPack {
     required this.tests,
     required this.groups,
     required this.students,
+    this.doneStudents = const [],
     required this.chainKey,
   });
 
@@ -339,6 +344,7 @@ class PackLoader {
       tests: list('tests'),
       groups: list('groups'),
       students: list('students'),
+      doneStudents: list(kPackDoneStudentsKey),
       chainKey: OfflineCrypto.chainKeyOf(key),
     );
   }

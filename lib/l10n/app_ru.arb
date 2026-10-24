@@ -1504,7 +1504,7 @@
   "lanSeatCollapse": "Свернуть",
   "diagnosticOnlineRequiredTooltip": "Требуется интернет",
   "diagnosticRetakeTitle": "Ученик уже сдал",
-  "diagnosticRetakeBody": "Этот ученик уже сдал все предметы. Начать ещё одну попытку?",
+  "diagnosticRetakeBody": "Этот ученик уже сдал все предметы. Результат пересдачи будет отправлен администратору на подтверждение и не заменит первый результат автоматически. Продолжить?",
   "diagnosticRetakeConfirm": "Начать заново",
   "testRetakeBody": "Этот ученик уже сдал этот тест. Начать ещё одну попытку?",
   "rosterDoneBadge": "Сдал",

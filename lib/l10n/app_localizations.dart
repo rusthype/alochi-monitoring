@@ -5264,7 +5264,7 @@ abstract class AppLocalizations {
   /// No description provided for @diagnosticRetakeBody.
   ///
   /// In uz, this message translates to:
-  /// **'Bu o\'quvchi barcha fanlarni topshirib bo\'lgan. Yana bir urinish boshlansinmi?'**
+  /// **'Bu o\'quvchi barcha fanlarni topshirib bo\'lgan. Qayta topshirish natijasi administrator tasdig\'iga yuboriladi va birinchi natijani avtomatik almashtirmaydi. Davom etilsinmi?'**
   String get diagnosticRetakeBody;
 
   /// No description provided for @diagnosticRetakeConfirm.

@@ -77,9 +77,18 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
   }
 
   /// Pack roster + children added on this computer (never part of the signed
-  /// pack roster, see [OfflineContentSource.localStudents]).
+  /// pack roster, see [OfflineContentSource.localStudents]) + the students
+  /// already finished when the pack was made (shown as completed, startable
+  /// only through the retake dialog).
   List<Map<String, dynamic>> get _roster =>
-      [...session.students, ...session.localStudents];
+      [...session.students, ...session.localStudents, ...session.doneStudents];
+
+  /// Subjects a roster row already did on the server (`subjects_done`); absent
+  /// (old pack / old backend) => none.
+  Set<String> _serverDone(Map<String, dynamic> student) {
+    final v = student[kStudentSubjectsDoneKey];
+    return v is List ? {for (final e in v) e.toString()} : const <String>{};
+  }
 
   Map<String, dynamic>? _student(String id, String groupId) {
     for (final s in _roster) {
@@ -226,7 +235,8 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
       String gid,
       String lang,
       List<String> subjects,
-      List<String> keys
+      List<String> keys,
+      Set<String> serverDone
     })>[];
     final prefixes = <String>{};
     for (final s in _roster) {
@@ -245,13 +255,14 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
         gid: gid,
         lang: lang,
         subjects: subjects,
-        keys: keys
+        keys: keys,
+        serverDone: _serverDone(s)
       ));
     }
     // Same signal the online roster carries: status + next_subject, here
-    // derived from the chain (exported and unexported rows both count) with ONE
-    // lookup for the whole class instead of one awaited query per student x
-    // subject.
+    // derived from the server's `subjects_done` UNION the chain (exported and
+    // unexported rows both count) with ONE lookup for the whole class instead
+    // of one awaited query per student x subject.
     final attempted = await session.attemptedPrefixes(prefixes);
 
     final rows = <Map<String, dynamic>>[];
@@ -259,7 +270,8 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
       String? next;
       var done = 0;
       for (var i = 0; i < e.subjects.length; i++) {
-        if (attempted.contains(e.keys[i])) {
+        if (attempted.contains(e.keys[i]) ||
+            e.serverDone.contains(e.subjects[i])) {
           done++;
         } else {
           next ??= e.subjects[i];
@@ -485,6 +497,15 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
           code: 'unknown_question');
     }
 
+    // meta_json.idempotency_key: unique per pack, student, group, subject AND
+    // attempt ordinal, so a genuine retake is a new entry rather than being
+    // swallowed. (The server keys results on the chain hash, not on this.)
+    final seed =
+        _keyPrefix(session.packUuid, a.studentId, a.groupId, finished.subject);
+    // Already done on the server or in the local chain: the backend then holds
+    // this result as a conflict for admin review instead of dropping it.
+    final retake = _serverDone(student).contains(finished.subject) ||
+        await session.hasAttempt(seed);
     final payload = attachNewStudent(<String, dynamic>{
       'name': student['name']?.toString() ?? '',
       'grade': grade ?? finished.grade,
@@ -499,6 +520,7 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
       'group_id': a.groupId,
       'student_id': a.studentId,
       'test_key': finished.key,
+      if (retake) kChainRetakeKey: true,
       'answers': [
         for (final e in answers)
           {
@@ -510,11 +532,6 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
         'flagged_question_ids': flaggedQuestionIds,
       'detail': {'test_key': finished.key, 'subject': finished.subject},
     }, session.localStudents);
-    // meta_json.idempotency_key: unique per pack, student, group, subject AND
-    // attempt ordinal, so a genuine retake is a new entry rather than being
-    // swallowed. (The server keys results on the chain hash, not on this.)
-    final seed =
-        _keyPrefix(session.packUuid, a.studentId, a.groupId, finished.subject);
     final attemptNo = await session.nextAttemptOrdinal(seed);
     await session.recordResult(payload, token: '$seed$attemptNo');
     // The runner autosaved these into DiagnosticAnswerStore (unsynced); the
