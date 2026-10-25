@@ -33,7 +33,9 @@ void main() {
     expect(find.text('Экспортировано результатов: 5'), findsOneWidget);
     expect(find.text(_name), findsOneWidget);
     expect(find.text('Копировать путь'), findsOneWidget);
-    expect(find.text('/Users/max/Downloads/alochi-offline'), findsOneWidget);
+    // Folder name and its parent on separate lines.
+    expect(find.text('alochi-offline'), findsOneWidget);
+    expect(find.text('/Users/max/Downloads'), findsOneWidget);
   });
 
   testWidgets('reveal button hidden when the file no longer exists',
@@ -49,7 +51,8 @@ void main() {
         '$_name';
     await tester.pumpWidget(_host(220, [long, long]));
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('…'), findsOneWidget); // folder middle-ellipsis
+    expect(find.textContaining('…'), findsNothing); // never truncated
+    expect(find.text('deep-folder'), findsWidgets);
   });
 
   testWidgets('copy puts the full path on the clipboard and confirms',

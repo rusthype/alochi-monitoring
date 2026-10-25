@@ -87,14 +87,16 @@ void main() {
       await reg(diagUuid, 'diagnostic', createdAt: created);
       await add(monUuid, 'a');
       await add(diagUuid, 'a');
-      final mon = (await exporter().exportPack(monUuid, tmp, schoolCode: '999'))
-          .file;
+      final mon =
+          (await exporter().exportPack(monUuid, tmp, schoolCode: '999')).file;
       final diag =
           (await exporter().exportPack(diagUuid, tmp, schoolCode: '999')).file;
-      expect(mon.path,
+      expect(
+          mon.path,
           p.join(tmp.path, '999-maktab_monitoring_${_ymd(created)}',
               '${_ymd(created)}_aaaaaaaa.alochires'));
-      expect(diag.path,
+      expect(
+          diag.path,
           p.join(tmp.path, '999-maktab_diagnostika_${_ymd(created)}',
               '${_ymd(created)}_bbbbbbbb.alochires'));
       expect(mon.existsSync() && diag.existsSync(), isTrue);
@@ -170,7 +172,8 @@ void main() {
       await reg(monUuid, null); // registered before kind/created_at existed
       await add(monUuid, 'a');
       final f = (await exporter().exportPack(monUuid, tmp)).file;
-      expect(f.path,
+      expect(
+          f.path,
           p.join(tmp.path, '999-maktab_unknown_${_ymd(exportAt)}',
               '${_ymd(exportAt)}_aaaaaaaa.alochires'));
     });
@@ -182,12 +185,52 @@ void main() {
           startsWith('maktab_unknown_${_ymd(exportAt)}'));
     });
 
+    test('inferPackKind: unambiguous only, never throws', () {
+      const diag = '{"test_key":"d1","answers":[{"q":"1","a":"x"}]}';
+      const mon = '{"raw_answers":{"1":"a"},"detail":{}}';
+      const pkg = '{"test_key":"package:5:v1","answers":{"1":"a"}}';
+      expect(inferPackKind([diag, diag]), 'diagnostic');
+      expect(inferPackKind([mon, pkg]), 'monitoring');
+      expect(inferPackKind([diag, mon]), isNull);
+      expect(inferPackKind(const []), isNull);
+      expect(inferPackKind(['not json', '[]', '{"k":"a"}']), isNull);
+    });
+
+    test('old pack without kind: new export infers kind from rows', () async {
+      await reg(diagUuid, null, createdAt: created);
+      await PackResultsDb.append(
+          packUuid: diagUuid,
+          chainKey: Uint8List(32),
+          idempotencyKey: 'a',
+          payloadJson: '{"test_key":"d1","answers":[{"q":"1","a":"x"}]}');
+      final f = (await exporter().exportPack(diagUuid, tmp)).file;
+      expect(p.basename(p.dirname(f.path)),
+          '999-maktab_diagnostika_${_ymd(created)}');
+    });
+
+    test('pack already marked in an unknown folder keeps returning there',
+        () async {
+      await reg(diagUuid, null, createdAt: created);
+      final old = Directory(p.join(tmp.path, '999-maktab_unknown_x'))
+        ..createSync();
+      File(p.join(old.path, '.pack-bbbbbbbb222242228222000000000002'))
+          .writeAsBytesSync(const []);
+      await PackResultsDb.append(
+          packUuid: diagUuid,
+          chainKey: Uint8List(32),
+          idempotencyKey: 'a',
+          payloadJson: '{"test_key":"d1","answers":[{"q":"1","a":"x"}]}');
+      final f = (await exporter().exportPack(diagUuid, tmp)).file;
+      expect(p.dirname(f.path), old.path);
+    });
+
     test('packKindOf: single-kind packs only', () {
       Map<String, dynamic> t(String type) => {'type': type};
-      expect(OfflinePackSession.packKindOf([t('test'), t('test')]),
-          'monitoring');
+      expect(
+          OfflinePackSession.packKindOf([t('test'), t('test')]), 'monitoring');
       expect(OfflinePackSession.packKindOf([t('diagnostic')]), 'diagnostic');
-      expect(OfflinePackSession.packKindOf([t('test'), t('diagnostic')]), isNull);
+      expect(
+          OfflinePackSession.packKindOf([t('test'), t('diagnostic')]), isNull);
       expect(OfflinePackSession.packKindOf(const []), isNull);
     });
   });
@@ -230,8 +273,7 @@ void main() {
       expect(s.archived, isFalse);
     });
 
-    test('expired and fully exported packs are hidden automatically',
-        () async {
+    test('expired and fully exported packs are hidden automatically', () async {
       await PackResultsDb.registerPack(
           packUuid: monUuid, schoolCode: '999', expiresAt: expires);
       await add(monUuid, 'a');

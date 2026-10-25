@@ -1,7 +1,7 @@
 // lib/features/offline/export_done_notice.dart
 //
 // Success notice shown in the offline dialog after an export / USB copy:
-// headline, exported file name(s), the folder (middle-ellipsized) and two
+// headline, exported file name(s), the folder name and its parent (drive/root) on separate lines and two
 // actions — reveal in the file manager, copy the path.
 import 'dart:async';
 import 'dart:io';
@@ -109,14 +109,10 @@ class _ExportDoneNoticeState extends State<ExportDoneNotice> {
           for (final f in widget.files)
             SelectableText(p.basename(f), style: mono),
           const SizedBox(height: 4),
-          Tooltip(
-            message: folder,
-            child: Text(middleEllipsis(folder),
-                maxLines: 1,
-                overflow: TextOverflow.clip,
-                softWrap: false,
-                style: const TextStyle(color: AppColors.ink2, fontSize: 12)),
-          ),
+          // Folder name and drive/root on separate lines, never truncated.
+          SelectableText(p.basename(folder), style: mono),
+          SelectableText(p.dirname(folder),
+              style: const TextStyle(color: AppColors.ink2, fontSize: 12)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 4, children: [
             if (canReveal)

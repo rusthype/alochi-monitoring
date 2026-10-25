@@ -71,6 +71,47 @@ String packKindFolder(String? kind) => kind == 'monitoring'
         ? 'diagnostika'
         : 'unknown';
 
+/// Kind of an old stored pack (no `kind` in its meta) from its result
+/// payloads: `diagnostic` when every recognisable row is a diagnostic result
+/// (`answers` = list of `{q, a}`), `monitoring` when every recognisable row is
+/// an engine/package result (`raw_answers`, or a `package:` test_key). Rows
+/// that match neither are ignored; no rows, or a mix, give null (-> unknown).
+/// Pure and never throws.
+String? inferPackKind(Iterable<String> payloadJsons) {
+  var diag = false, mon = false;
+  for (final raw in payloadJsons) {
+    try {
+      final d = jsonDecode(raw);
+      if (d is! Map) continue;
+      final answers = d['answers'];
+      final key = d['test_key']?.toString() ?? '';
+      if (d.containsKey('raw_answers') || key.startsWith('package:')) {
+        mon = true;
+      } else if (answers is List &&
+          answers.isNotEmpty &&
+          answers.first is Map &&
+          (answers.first as Map).containsKey('q')) {
+        diag = true;
+      }
+    } catch (_) {}
+  }
+  if (diag == mon) return null;
+  return diag ? 'diagnostic' : 'monitoring';
+}
+
+/// [meta] kind when known, else inferred from the stored rows (null on any
+/// failure -- the folder then stays `unknown`).
+Future<String?> resolvePackKind(String packUuid, String? metaKind) async {
+  if (metaKind == 'monitoring' || metaKind == 'diagnostic') return metaKind;
+  try {
+    final rows = await PackResultsDb.rowsForPack(packUuid);
+    return inferPackKind(rows.map((r) => r.payloadJson));
+  } catch (e) {
+    debugPrint('resolvePackKind: $e');
+    return null;
+  }
+}
+
 /// The pack's own export folder under [base]:
 /// `<maktab>_<tur>_<YYYY-MM-DD>` (date = pack created_at, so a pack never
 /// moves). A second pack of the same school/kind/day gets `-2`, `-3`; the
@@ -81,9 +122,21 @@ Future<Directory> packExportDir(Directory base, String packUuid,
   final meta = await PackResultsDb.metaOf(packUuid);
   final school = schoolCode.isNotEmpty ? schoolCode : (meta?.schoolCode ?? '');
   final day = (meta?.createdAt ?? now ?? DateTime.now().toUtc()).toLocal();
-  final name = '${schoolFolderName(school)}_${packKindFolder(meta?.kind)}'
-      '_${_ymd(day)}';
   final markerName = '.pack-${_clean(packUuid.replaceAll('-', ''))}';
+  // A pack that already owns a folder (marker) returns there whatever kind we
+  // would infer now: old `..._unknown_...` folders are never orphaned.
+  try {
+    if (base.existsSync()) {
+      for (final e in base.listSync(followLinks: false)) {
+        if (e is Directory && File(p.join(e.path, markerName)).existsSync()) {
+          return e;
+        }
+      }
+    }
+  } catch (_) {}
+  final kind = await resolvePackKind(packUuid, meta?.kind);
+  final name =
+      '${schoolFolderName(school)}_${packKindFolder(kind)}_${_ymd(day)}';
   for (var n = 1;; n++) {
     final dir = Directory(p.join(base.path, n == 1 ? name : '$name-$n'));
     final marker = File(p.join(dir.path, markerName));
@@ -146,8 +199,7 @@ class ResultsExporter {
         String chainTip,
         int maxId,
         int invalidKeyCount
-      })> build(
-      String packUuid) async {
+      })> build(String packUuid) async {
     final resultsKey = _resultsKeyOrThrow();
     final rows = await PackResultsDb.rowsForPack(packUuid);
     if (rows.isEmpty) throw const ExportException(ExportError.nothingToExport);
@@ -221,7 +273,7 @@ class ResultsExporter {
     // Trusted (monotonic-anchored) time, same clock purgeExpired compares with.
     await PackResultsDb.markExported(packUuid, clock.nowMs, built.maxId);
     return ExportOutcome(file, built.count, built.chainTip,
-          invalidKeyCount: built.invalidKeyCount);
+        invalidKeyCount: built.invalidKeyCount);
   }
 
   static final Map<String, Mutex> _latestLocks = {};
