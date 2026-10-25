@@ -1,4 +1,4 @@
-// Export layout per round (<school>/<monitoring|diagnostic>/<date>_<id8>) and
+// Export layout per round (<maktab>_<tur>_<date>/<date>_<id8>) and
 // the local archive flag on pack_meta.
 import 'dart:io';
 import 'dart:typed_data';
@@ -92,9 +92,11 @@ void main() {
       final diag =
           (await exporter().exportPack(diagUuid, tmp, schoolCode: '999')).file;
       expect(mon.path,
-          p.join(tmp.path, '999', 'monitoring', '${_ymd(created)}_aaaaaaaa.alochires'));
+          p.join(tmp.path, '999-maktab_monitoring_${_ymd(created)}',
+              '${_ymd(created)}_aaaaaaaa.alochires'));
       expect(diag.path,
-          p.join(tmp.path, '999', 'diagnostic', '${_ymd(created)}_bbbbbbbb.alochires'));
+          p.join(tmp.path, '999-maktab_diagnostika_${_ymd(created)}',
+              '${_ymd(created)}_bbbbbbbb.alochires'));
       expect(mon.existsSync() && diag.existsSync(), isTrue);
     });
 
@@ -107,8 +109,48 @@ void main() {
       await add(round2, 'a');
       final a = (await exporter().exportPack(monUuid, tmp)).file;
       final b = (await exporter().exportPack(round2, tmp)).file;
-      expect(p.dirname(a.path), p.dirname(b.path));
+      // Different created_at day = different folder, same parent.
+      expect(p.dirname(a.path), isNot(p.dirname(b.path)));
+      expect(p.dirname(p.dirname(a.path)), p.dirname(p.dirname(b.path)));
       expect(p.basename(a.path), isNot(p.basename(b.path)));
+    });
+
+    test('same school/kind/day: second pack gets -2, each pack is stable',
+        () async {
+      const other = 'cccccccc-3333-4333-8333-000000000003';
+      await reg(monUuid, 'monitoring', createdAt: created);
+      await reg(other, 'monitoring', createdAt: created);
+      await add(monUuid, 'a');
+      await add(other, 'a');
+      final a1 = (await exporter().exportPack(monUuid, tmp)).file;
+      final b1 = (await exporter().exportPack(other, tmp)).file;
+      final a2 = (await exporter().exportPack(monUuid, tmp)).file;
+      final base = '999-maktab_monitoring_${_ymd(created)}';
+      expect(p.basename(p.dirname(a1.path)), base);
+      expect(p.basename(p.dirname(b1.path)), '$base-2');
+      expect(p.dirname(a2.path), p.dirname(a1.path));
+      // latest.alochires lands in the same per-pack folder.
+      final dir = await packExportDir(tmp, other);
+      expect(p.basename(dir.path), '$base-2');
+    });
+
+    test('old layouts are left alone', () async {
+      final old1 = File(p.join(tmp.path, '999', 'monitoring', 'x.alochires'))
+        ..createSync(recursive: true);
+      final old2 = File(p.join(tmp.path, '999_abc', 'latest.alochires'))
+        ..createSync(recursive: true);
+      await reg(monUuid, 'monitoring', createdAt: created);
+      await add(monUuid, 'a');
+      await exporter().exportPack(monUuid, tmp);
+      expect(old1.existsSync() && old2.existsSync(), isTrue);
+    });
+
+    test('school folder name is a safe slug', () {
+      expect(schoolFolderName('88'), '88-maktab');
+      expect(schoolFolderName(''), 'maktab');
+      expect(schoolFolderName(' Ixtisos  maktab/1 '), 'Ixtisos-maktab1');
+      expect(schoolFolderName('Мактаб №5'), 'Мактаб-5');
+      expect(schoolFolderName('..'), 'maktab');
     });
 
     test('a taken name gets -2, -3 and is never overwritten', () async {
@@ -129,14 +171,15 @@ void main() {
       await add(monUuid, 'a');
       final f = (await exporter().exportPack(monUuid, tmp)).file;
       expect(f.path,
-          p.join(tmp.path, '999', 'unknown', '${_ymd(exportAt)}_aaaaaaaa.alochires'));
+          p.join(tmp.path, '999-maktab_unknown_${_ymd(exportAt)}',
+              '${_ymd(exportAt)}_aaaaaaaa.alochires'));
     });
 
     test('pack never registered: unknown school and kind', () async {
       await add(monUuid, 'a');
       final f = (await exporter().exportPack(monUuid, tmp)).file;
-      expect(p.relative(f.path, from: tmp.path).split(p.separator).take(2),
-          ['unknown', 'unknown']);
+      expect(p.basename(p.dirname(f.path)),
+          startsWith('maktab_unknown_${_ymd(exportAt)}'));
     });
 
     test('packKindOf: single-kind packs only', () {

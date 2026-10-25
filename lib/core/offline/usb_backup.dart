@@ -50,7 +50,7 @@ class AutoSaveStatus {
 final _autoSaveRuns = <String, Future<void>>{};
 final _autoSaveDirty = <String>{};
 
-/// Fire-and-forget: refreshes `<Downloads>/alochi-offline/<school>_<uuid>/latest.alochires`.
+/// Fire-and-forget: refreshes `<Downloads>/alochi-offline/<maktab>_<tur>_<date>/latest.alochires`.
 /// Never throws and never blocks the caller; failures log the exception type only.
 /// Triggers are coalesced per pack: one run in flight plus one dirty flag, so a
 /// burst of N results costs at most 2 builds. The returned future (completes
@@ -63,7 +63,7 @@ Future<void> autoSaveLatest(String packUuid, String schoolCode,
       try {
         final base = await (baseDir ?? defaultExportDir)();
         final dir =
-            Directory(p.join(base.path, packFilePrefix(packUuid, schoolCode)));
+            await packExportDir(base, packUuid, schoolCode: schoolCode);
         final out =
             await (exporter ?? ResultsExporter()).writeLatest(packUuid, dir);
         AutoSaveStatus.ok(packUuid, out.count);
@@ -116,7 +116,7 @@ class FlashCopyException implements Exception {
   String toString() => 'FlashCopyException($reason)';
 }
 
-/// `<school>/<kind>/<file>` for an export made under `.../alochi-offline/`, so
+/// `<folder>/<file>` (new `<maktab>_<tur>_<date>/<file>`, old `<school>/<kind>/<file>`) for an export made under `.../alochi-offline/`, so
 /// the flash drive mirrors the Downloads layout; just the file name otherwise.
 String _relUnderExportRoot(File src) {
   final parts = p.split(src.path);

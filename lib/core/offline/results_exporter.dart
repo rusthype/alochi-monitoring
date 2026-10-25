@@ -33,19 +33,28 @@ import 'export_format.dart';
 import 'offline_crypto.dart';
 import 'offline_keys.dart';
 
-/// `<school>_<uuid>` (full uuid, dashes dropped; school part omitted when
-/// empty), safe as a file/dir name.
-String packFilePrefix(String packUuid, String schoolCode) {
-  final id = _clean(packUuid.replaceAll('-', ''));
-  return schoolCode.isEmpty ? id : '${_clean(schoolCode)}_$id';
-}
-
 String _clean(String v) => v.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
 
-/// A single path segment that can never be `.`/`..` or empty.
-String _segment(String v, {String fallback = 'unknown'}) {
-  final c = _clean(v);
-  return c.replaceAll('.', '').isEmpty ? fallback : c;
+/// File-system-safe slug: whitespace becomes `-`, anything but letters (any
+/// script, so uz/ru stay), digits, `-` and `_` is dropped.
+String _slug(String v) => v
+    .trim()
+    .replaceAll(RegExp(r'\s+'), '-')
+    .replaceAll(RegExp(r'[^\p{L}\p{N}_-]', unicode: true), '')
+    .replaceAll(RegExp(r'-{2,}'), '-')
+    .replaceAll(RegExp(r'^[-_]+|[-_]+$'), '');
+
+/// `88-maktab` for a numeric school code; the slugged code otherwise; `maktab`
+/// when empty. (Packs carry only `school_code`, no school name.)
+String schoolFolderName(String schoolCode) {
+  final s = _slug(schoolCode);
+  if (s.isEmpty) return 'maktab';
+  return RegExp(r'^\d+$').hasMatch(s) ? '$s-maktab' : s;
+}
+
+String _ymd(DateTime d) {
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${d.year.toString().padLeft(4, '0')}-${two(d.month)}-${two(d.day)}';
 }
 
 /// First 8 characters of the uuid (dashes dropped).
@@ -54,10 +63,40 @@ String packShortId(String packUuid) {
   return id.length <= 8 ? id : id.substring(0, 8);
 }
 
-/// Folder name for a pack kind; anything not known (old stored packs) is
+/// Name part for a pack kind; anything not known (old stored packs) is
 /// `unknown`.
-String packKindFolder(String? kind) =>
-    kind == 'monitoring' || kind == 'diagnostic' ? kind! : 'unknown';
+String packKindFolder(String? kind) => kind == 'monitoring'
+    ? 'monitoring'
+    : kind == 'diagnostic'
+        ? 'diagnostika'
+        : 'unknown';
+
+/// The pack's own export folder under [base]:
+/// `<maktab>_<tur>_<YYYY-MM-DD>` (date = pack created_at, so a pack never
+/// moves). A second pack of the same school/kind/day gets `-2`, `-3`; the
+/// owner is remembered by an empty `.pack-<uuid>` marker so a pack always
+/// returns to its own folder. Old folders are never touched.
+Future<Directory> packExportDir(Directory base, String packUuid,
+    {String schoolCode = '', DateTime? now}) async {
+  final meta = await PackResultsDb.metaOf(packUuid);
+  final school = schoolCode.isNotEmpty ? schoolCode : (meta?.schoolCode ?? '');
+  final day = (meta?.createdAt ?? now ?? DateTime.now().toUtc()).toLocal();
+  final name = '${schoolFolderName(school)}_${packKindFolder(meta?.kind)}'
+      '_${_ymd(day)}';
+  final markerName = '.pack-${_clean(packUuid.replaceAll('-', ''))}';
+  for (var n = 1;; n++) {
+    final dir = Directory(p.join(base.path, n == 1 ? name : '$name-$n'));
+    final marker = File(p.join(dir.path, markerName));
+    if (marker.existsSync()) return dir;
+    if (!dir.existsSync()) {
+      // Sync from the check to the marker: no other pack can interleave.
+      dir.createSync(recursive: true);
+      marker.writeAsBytesSync(const [], flush: true);
+      return dir;
+    }
+    // Exists, owned by another pack (or pre-marker): try the next suffix.
+  }
+}
 
 enum ExportError { notConfigured, nothingToExport }
 
@@ -162,23 +201,18 @@ class ResultsExporter {
     );
   }
 
-  /// Writes the file into `<dir>/<school>/<monitoring|diagnostic|unknown>/
-  /// <YYYY-MM-DD>_<packShort8>.alochires` and stamps the pack's rows as
+  /// Writes the file into the pack's folder (see [packExportDir]) as
+  /// `<YYYY-MM-DD>_<packShort8>.alochires` and stamps the pack's rows as
   /// exported. The date is the pack's created_at day (one test round = one
   /// pack), else the export day. Never overwrites: a taken name gets -2, -3 ...
   Future<ExportOutcome> exportPack(String packUuid, Directory dir,
       {String schoolCode = ''}) async {
     final built = await build(packUuid);
     final meta = await PackResultsDb.metaOf(packUuid);
-    final school =
-        schoolCode.isNotEmpty ? schoolCode : (meta?.schoolCode ?? '');
-    final target = Directory(
-        p.join(dir.path, _segment(school), packKindFolder(meta?.kind)));
-    await target.create(recursive: true);
+    final target = await packExportDir(dir, packUuid,
+        schoolCode: schoolCode, now: clock.nowUtc);
     final day = (meta?.createdAt ?? clock.nowUtc).toLocal();
-    String two(int v) => v.toString().padLeft(2, '0');
-    final base = '${day.year.toString().padLeft(4, '0')}-${two(day.month)}-'
-        '${two(day.day)}_${packShortId(packUuid)}';
+    final base = '${_ymd(day)}_${packShortId(packUuid)}';
     var file = File(p.join(target.path, '$base.alochires'));
     for (var n = 2; file.existsSync(); n++) {
       file = File(p.join(target.path, '$base-$n.alochires'));

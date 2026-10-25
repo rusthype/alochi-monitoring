@@ -126,11 +126,12 @@ void main() {
           exporter: ResultsExporter(
               keys: const OfflineKeys(signingPem: '', resultsPem: '')),
           baseDir: () async => tmp);
+      // Failed build: no backup file anywhere.
       expect(
-          Directory(p.join(tmp.path, packFilePrefix(pack.packUuid, '1')))
-              .existsSync(),
-          isFalse);
-      expect(File(p.join(tmp.path, 'latest.alochires')).existsSync(), isFalse);
+          tmp
+              .listSync(recursive: true)
+              .where((e) => p.basename(e.path) == 'latest.alochires'),
+          isEmpty);
     });
 
     test('autoSaveLatest coalesces a burst into few builds', () async {
@@ -145,7 +146,8 @@ void main() {
       ]);
       expect(e.builds, lessThanOrEqualTo(2));
       final f = File(p.join(
-          tmp.path, packFilePrefix(pack.packUuid, '1'), 'latest.alochires'));
+          (await packExportDir(tmp, pack.packUuid, schoolCode: '1')).path,
+          'latest.alochires'));
       expect(f.existsSync(), isTrue);
       expect(e.lastCount, 20);
     });
@@ -162,21 +164,15 @@ void main() {
     });
   });
 
-  test('packFilePrefix sanitizes school code and short uuids', () {
-    expect(packFilePrefix('12345678-aaaa', r'a/b\c:*?"'),
-        'a_b_c_____12345678aaaa');
-    expect(packFilePrefix('abc', ''), 'abc');
-    expect(packFilePrefix('', '1'), '1_');
-  });
 
-  test('export name is <date>_<first 8 of uuid> under <school>/<kind>',
+  test('export name is <date>_<first 8 of uuid> in <maktab>_<tur>_<date>',
       () async {
     await add('a');
     final out =
         await exporter().exportPack(pack.packUuid, tmp, schoolCode: '9');
     expect(p.basename(out.file.path),
         endsWith('_${pack.packUuid.replaceAll('-', '').substring(0, 8)}.alochires'));
-    expect(p.dirname(out.file.path), p.join(tmp.path, '9', 'unknown'));
+    expect(p.dirname(out.file.path), startsWith(p.join(tmp.path, '9-maktab_unknown_')));
   });
 
   test('same-second exports with colliding 8-char prefixes both survive',

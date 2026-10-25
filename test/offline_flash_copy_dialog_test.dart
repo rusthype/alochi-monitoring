@@ -126,9 +126,12 @@ void main() {
 
   Directory drive(String n) => Directory(p.join(tmp.path, n))..createSync();
 
-  // Exports now live in <root>/<school>/<kind>/: list files recursively.
-  List<File> filesUnder(Directory d) =>
-      d.listSync(recursive: true).whereType<File>().toList();
+  // Exports live in <root>/<maktab>_<tur>_<date>/ (+ a .pack marker).
+  List<File> filesUnder(Directory d) => d
+      .listSync(recursive: true)
+      .whereType<File>()
+      .where((f) => f.path.endsWith('.alochires'))
+      .toList();
 
   testWidgets('auto-save line: nothing unknown, warning on fail, ok after',
       (tester) async {
@@ -166,9 +169,9 @@ void main() {
     await tapFlash(tester);
     final copied = filesUnder(Directory(p.join(e.path, 'alochi-offline')));
     expect(copied, hasLength(1));
-    // Mirrors the Downloads layout: <school>/<kind>/<file> (no pack_meta here).
+    // Mirrors the Downloads layout: <maktab>_<tur>_<date>/<file> (no pack_meta here).
     expect(p.relative(copied.single.path, from: p.join(e.path, 'alochi-offline')),
-        startsWith(p.join('unknown', 'unknown')));
+        startsWith('maktab_unknown_'));
     // Success notice: green widget, headline, file name on its own line.
     expect(find.text(l10nOf(tester).usbFlashReady), findsOneWidget);
     expect(find.text(p.basename(copied.single.path)), findsOneWidget);

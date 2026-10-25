@@ -275,7 +275,7 @@ class _OfflineControlCenterDialogState
 
   /// Exports [targets] (or, when null, every non-archived pack with at least
   /// one saved result, exported before or not) into
-  /// `<Downloads>/alochi-offline/<school>/<kind>/`.
+  /// `<Downloads>/alochi-offline/<maktab>_<tur>_<date>/`.
   Future<void> _export({List<PackSummary>? targets}) async {
     final l10n = AppLocalizations.of(context)!;
     final list = targets ?? _exportable;
