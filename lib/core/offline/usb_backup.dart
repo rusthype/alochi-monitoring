@@ -29,8 +29,9 @@ class AutoSaveEntry {
 
 class AutoSaveStatus {
   AutoSaveStatus._();
-  static final ValueNotifier<Map<String, AutoSaveEntry>> all =
-      ValueNotifier(const {});
+  static final ValueNotifier<Map<String, AutoSaveEntry>> all = ValueNotifier(
+    const {},
+  );
 
   static void ok(String packUuid, int count) => all.value = {
         ...all.value,
@@ -42,7 +43,10 @@ class AutoSaveStatus {
     all.value = {
       ...all.value,
       packUuid: AutoSaveEntry(
-          prev?.lastOkAt, prev?.lastResultCount ?? 0, DateTime.now()),
+        prev?.lastOkAt,
+        prev?.lastResultCount ?? 0,
+        DateTime.now(),
+      ),
     };
   }
 }
@@ -55,17 +59,22 @@ final _autoSaveDirty = <String>{};
 /// Triggers are coalesced per pack: one run in flight plus one dirty flag, so a
 /// burst of N results costs at most 2 builds. The returned future (completes
 /// once the pack is clean) is for tests; callers ignore it.
-Future<void> autoSaveLatest(String packUuid, String schoolCode,
-    {ResultsExporter? exporter, Future<Directory> Function()? baseDir}) {
+Future<void> autoSaveLatest(
+  String packUuid,
+  String schoolCode, {
+  ResultsExporter? exporter,
+  Future<Directory> Function()? baseDir,
+}) {
   _autoSaveDirty.add(packUuid);
   return _autoSaveRuns[packUuid] ??= () async {
     while (_autoSaveDirty.remove(packUuid)) {
       try {
         final base = await (baseDir ?? defaultExportDir)();
-        final dir =
-            await packExportDir(base, packUuid, schoolCode: schoolCode);
-        final out =
-            await (exporter ?? ResultsExporter()).writeLatest(packUuid, dir);
+        final dir = await packExportDir(base, packUuid, schoolCode: schoolCode);
+        final out = await (exporter ?? ResultsExporter()).writeLatest(
+          packUuid,
+          dir,
+        );
         AutoSaveStatus.ok(packUuid, out.count);
       } catch (e) {
         AutoSaveStatus.fail(packUuid);
@@ -79,25 +88,109 @@ Future<void> autoSaveLatest(String packUuid, String schoolCode,
 
 typedef DriveLister = Future<List<String>> Function();
 
-/// Removable drive roots such as `E:\`. Empty off Windows.
+/// Mounted volumes under [root] (`/Volumes` on macOS), minus hidden entries
+/// and the boot volume (a symlink resolving to `/`). Sorted by path.
+@visibleForTesting
+List<String> listMacVolumes([String root = '/Volumes']) {
+  final dir = Directory(root);
+  if (!dir.existsSync()) return const [];
+  final out = <String>[];
+  for (final e in dir.listSync(followLinks: false)) {
+    if (p.basename(e.path).startsWith('.')) continue;
+    try {
+      if (!FileSystemEntity.isDirectorySync(e.path)) continue;
+      if (e.resolveSymbolicLinksSync() == '/') continue;
+    } on FileSystemException {
+      continue; // unreadable/dangling entry: not a usable stick
+    }
+    out.add(e.path);
+  }
+  return out..sort();
+}
+
+/// Removable drive roots such as `E:\` (Windows) or `/Volumes/FLASH` (macOS).
+/// Empty elsewhere.
 Future<List<String>> listRemovableDrives() async {
+  if (Platform.isMacOS) return listMacVolumes();
   if (!Platform.isWindows) return const [];
   final mask = GetLogicalDrives();
+  final roots = <String>[
+    for (var i = 2; i < 26; i++) // A:/B: are floppy letters
+      if (mask & (1 << i) != 0) '${String.fromCharCode(65 + i)}:\\',
+  ];
+  return selectFlashDrives(
+    roots,
+    driveType: (r) => _withPtr(r, GetDriveType),
+    hasMedia: (r) => _withPtr(r, (ptr) => _hasMedia(ptr)),
+    isUsbBus: _isUsbBus,
+    systemDrive: Platform.environment['SystemDrive'] ?? 'C:',
+  );
+}
+
+/// Filter for [listRemovableDrives] (pure, so it is unit-testable off Windows).
+/// DRIVE_REMOVABLE with media is always accepted. Many USB sticks/SSDs report
+/// DRIVE_FIXED, so those count too when [isUsbBus] says USB, never the system
+/// drive, and only with media. A throwing probe skips that drive.
+@visibleForTesting
+List<String> selectFlashDrives(
+  List<String> roots, {
+  required int Function(String root) driveType,
+  required bool Function(String root) hasMedia,
+  required bool Function(String root) isUsbBus,
+  required String systemDrive,
+}) {
+  final sys = systemDrive.substring(0, 1).toUpperCase();
   final out = <String>[];
-  for (var i = 0; i < 26; i++) {
-    if (mask & (1 << i) == 0) continue;
-    final root = '${String.fromCharCode(65 + i)}:\\';
-    final ptr = root.toNativeUtf16();
+  for (final root in roots) {
     try {
-      // A:/B: are floppy letters; an empty card reader has no media.
-      if (i > 1 && GetDriveType(ptr) == DRIVE_REMOVABLE && _hasMedia(ptr)) {
-        out.add(root);
-      }
-    } finally {
-      calloc.free(ptr);
+      final type = driveType(root);
+      final ok = type == DRIVE_REMOVABLE ||
+          (type == DRIVE_FIXED &&
+              root.substring(0, 1).toUpperCase() != sys &&
+              isUsbBus(root));
+      if (ok && hasMedia(root)) out.add(root);
+    } catch (e) {
+      debugPrint('drive probe failed: ${e.runtimeType}');
     }
   }
   return out;
+}
+
+T _withPtr<T>(String s, T Function(Pointer<Utf16>) f) {
+  final ptr = s.toNativeUtf16();
+  try {
+    return f(ptr);
+  } finally {
+    calloc.free(ptr);
+  }
+}
+
+const _busTypeUsb = 7; // STORAGE_BUS_TYPE.BusTypeUsb
+
+/// IOCTL_STORAGE_QUERY_PROPERTY(StorageDeviceProperty) on `\\.\X:`; reads
+/// STORAGE_DEVICE_DESCRIPTOR.BusType. Access 0 = query only (no admin needed).
+/// Any failure returns false (drive skipped).
+bool _isUsbBus(String root) {
+  final h = _withPtr(
+    '\\\\.\\${root.substring(0, 2)}',
+    (path) => CreateFile(path, 0, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+        OPEN_EXISTING, 0, 0),
+  );
+  if (h == INVALID_HANDLE_VALUE) return false;
+  final query = calloc<Uint8>(12); // PropertyId=0, QueryType=0, 1 spare byte
+  final out = calloc<Uint32>(256); // 1024 bytes
+  final got = calloc<Uint32>();
+  try {
+    final ok = DeviceIoControl(
+        h, IOCTL_STORAGE_QUERY_PROPERTY, query, 12, out, 1024, got, nullptr);
+    if (ok == 0 || got.value < 32) return false;
+    return out[7] == _busTypeUsb; // byte offset 28 (little-endian host)
+  } finally {
+    CloseHandle(h);
+    calloc.free(query);
+    calloc.free(out);
+    calloc.free(got);
+  }
 }
 
 bool _hasMedia(Pointer<Utf16> root) {
@@ -128,8 +221,11 @@ String _relUnderExportRoot(File src) {
 
 /// Copies [src] into `<drive>alochi-offline/` (temp name, then rename) and
 /// verifies length + sha256 of the copy. Returns the destination file.
-Future<File> copyToFlash(File src, String drive,
-    {Future<void> Function(File src, File dst)? copier}) async {
+Future<File> copyToFlash(
+  File src,
+  String drive, {
+  Future<void> Function(File src, File dst)? copier,
+}) async {
   final dir = Directory(p.join(drive, 'alochi-offline'));
   await dir.create(recursive: true);
   final dest = File(p.join(dir.path, _relUnderExportRoot(src)));
