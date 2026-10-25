@@ -81,16 +81,22 @@ class DiagnosticTopBar extends StatelessWidget {
                 ],
               ),
             ),
+            // Guaranteed gap so a long title never touches the back button.
+            const SizedBox(width: 12),
             Flexible(
-              child: Text(
-                title.toUpperCase(),
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.ink1,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  letterSpacing: 1,
+              child: Tooltip(
+                message: title,
+                child: Text(
+                  title.toUpperCase(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.ink1,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    letterSpacing: 1,
+                  ),
                 ),
               ),
             ),
@@ -185,13 +191,18 @@ class DiagnosticPillButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.ink1,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  fontSize: 14,
-                  letterSpacing: 0.3,
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 3,
+                  softWrap: true,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : AppColors.ink1,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: 14,
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ),
               if (isSelected) ...[
