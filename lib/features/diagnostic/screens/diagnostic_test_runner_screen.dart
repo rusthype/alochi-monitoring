@@ -78,9 +78,9 @@ int? diagnosticRestoredRemainingSeconds(
   }
   final deadlineMs = (saved['deadline_epoch_ms'] as num?)?.toInt();
   if (deadlineMs == null) return null;
-  return DateTime.fromMillisecondsSinceEpoch(deadlineMs)
-      .difference(now ?? DateTime.now())
-      .inSeconds;
+  return DateTime.fromMillisecondsSinceEpoch(
+    deadlineMs,
+  ).difference(now ?? DateTime.now()).inSeconds;
 }
 
 /// Pending "subject A finished, subject B starting" state — shown as a brief
@@ -91,28 +91,30 @@ class _SubjectTransition {
   const _SubjectTransition({required this.from, required this.to});
 }
 
-typedef DiagnosticAvailableSubjectsFn = Future<Map<String, dynamic>> Function(
-  int grade, {
-  String language,
-});
-typedef DiagnosticStartAttemptFn = Future<Map<String, dynamic>> Function({
-  required String attemptId,
-  required String subject,
-});
-typedef DiagnosticSubmitAnswerFn = Future<Map<String, dynamic>> Function({
-  required String attemptId,
-  required String questionId,
-  required String selected,
-});
-typedef DiagnosticFinishAttemptFn = Future<Map<String, dynamic>> Function({
-  required String attemptId,
-  required List<Map<String, dynamic>> answers,
-  List<String>? flaggedQuestionIds,
-});
-typedef DiagnosticPingElapsedFn = Future<Map<String, dynamic>> Function({
-  required String attemptId,
-  required int elapsedSeconds,
-});
+typedef DiagnosticAvailableSubjectsFn =
+    Future<Map<String, dynamic>> Function(int grade, {String language});
+typedef DiagnosticStartAttemptFn =
+    Future<Map<String, dynamic>> Function({
+      required String attemptId,
+      required String subject,
+    });
+typedef DiagnosticSubmitAnswerFn =
+    Future<Map<String, dynamic>> Function({
+      required String attemptId,
+      required String questionId,
+      required String selected,
+    });
+typedef DiagnosticFinishAttemptFn =
+    Future<Map<String, dynamic>> Function({
+      required String attemptId,
+      required List<Map<String, dynamic>> answers,
+      List<String>? flaggedQuestionIds,
+    });
+typedef DiagnosticPingElapsedFn =
+    Future<Map<String, dynamic>> Function({
+      required String attemptId,
+      required int elapsedSeconds,
+    });
 
 class DiagnosticTestRunnerScreen extends StatefulWidget {
   final String attemptId;
@@ -177,7 +179,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
   /// test_cache_db's sqflite_common_ffi workaround, not usable here since
   /// OfflineQueue picks its own factory). Defaults to the real call.
   final Future<void> Function(Map<String, dynamic> payload, String token)?
-      enqueueLocalOverride;
+  enqueueLocalOverride;
 
   /// Test-only override for [_flushPendingFinish] — the real one drives
   /// [SyncService] + [OfflineQueue] (platform sqflite, hangs under plain
@@ -432,10 +434,13 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       'deadline_epoch_ms': _totalDurationSeconds == null
           ? null
           : DateTime.now()
-              .add(Duration(
-                  seconds:
-                      _totalDurationSeconds! - _stopwatch.elapsed.inSeconds))
-              .millisecondsSinceEpoch,
+                .add(
+                  Duration(
+                    seconds:
+                        _totalDurationSeconds! - _stopwatch.elapsed.inSeconds,
+                  ),
+                )
+                .millisecondsSinceEpoch,
     });
   }
 
@@ -453,7 +458,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
     if (questions == null || questions.isEmpty) return false;
-    final allSubjects = (saved['all_subjects'] as List?)
+    final allSubjects =
+        (saved['all_subjects'] as List?)
             ?.map((e) => e.toString())
             .where((e) => e.isNotEmpty)
             .toList() ??
@@ -475,8 +481,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     // would collide the two subjects' answers onto the same indexes.
     final answers = <int, String>{};
     try {
-      for (final row in await DiagnosticAnswerStore.loadAll(widget.attemptId,
-          subject: currentSubject)) {
+      for (final row in await DiagnosticAnswerStore.loadAll(
+        widget.attemptId,
+        subject: currentSubject,
+      )) {
         final pos = (row['question_index'] as num?)?.toInt();
         final selected = row['selected_option'] as String?;
         if (pos != null && selected != null) answers[pos] = selected;
@@ -487,16 +495,19 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // clearAttempt catchError call sites above).
       debugPrint('DiagnosticAnswerStore.loadAll error: $e');
     }
-    final position =
-        ((saved['position'] as num?)?.toInt() ?? 1).clamp(1, questions.length);
+    final position = ((saved['position'] as num?)?.toInt() ?? 1).clamp(
+      1,
+      questions.length,
+    );
     if (!mounted) return false;
     setState(() {
       _allSubjects = allSubjects;
       _subjectsCompleted
         ..clear()
         ..addAll(
-            (saved['subjects_completed'] as List?)?.map((e) => e.toString()) ??
-                const <String>[]);
+          (saved['subjects_completed'] as List?)?.map((e) => e.toString()) ??
+              const <String>[],
+        );
       _currentSubject = currentSubject;
       _generation = (saved['attempts_used'] as num?)?.toInt();
       _isFixedVariant = true;
@@ -519,8 +530,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// `saved_answers` (`{question_id: selected_option}`) — local rows win —
   /// and returns the resulting position->option map for [subject]. No-op
   /// (empty map, store untouched) when the response carries none.
-  Future<Map<int, String>> _seedSavedAnswers(Map<String, dynamic> resp,
-      String subject, List<Map<String, dynamic>> questions) async {
+  Future<Map<int, String>> _seedSavedAnswers(
+    Map<String, dynamic> resp,
+    String subject,
+    List<Map<String, dynamic>> questions,
+  ) async {
     final raw = resp['saved_answers'];
     final result = <int, String>{};
     if (raw is! Map || raw.isEmpty) return result;
@@ -532,8 +546,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         orderedQuestionIds: questions.map(_questionId).toList(),
         generation: _generation,
       );
-      for (final row in await DiagnosticAnswerStore.loadAll(widget.attemptId,
-          subject: subject)) {
+      for (final row in await DiagnosticAnswerStore.loadAll(
+        widget.attemptId,
+        subject: subject,
+      )) {
         final pos = (row['question_index'] as num?)?.toInt();
         final selected = row['selected_option'] as String?;
         if (pos != null && selected != null) result[pos] = selected;
@@ -577,7 +593,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     Map<String, dynamic> resp;
     try {
       resp = await _startAttemptCall(
-          attemptId: widget.attemptId, subject: subject);
+        attemptId: widget.attemptId,
+        subject: subject,
+      );
     } catch (e) {
       debugPrint('Diagnostic generation check skipped: $e');
       return;
@@ -616,9 +634,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       ..start();
     _totalDurationSeconds = remainingSeconds;
     setState(
-        () => _remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0);
-    _timer =
-        Timer.periodic(const Duration(seconds: 1), _syncRemainingFromStopwatch);
+      () => _remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0,
+    );
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+      _syncRemainingFromStopwatch,
+    );
     _armElapsedPingTimer();
   }
 
@@ -739,8 +760,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     unawaited(_saveProgressIfFixed());
     if (mounted) setState(() => _paused = false);
     _timer?.cancel();
-    _timer =
-        Timer.periodic(const Duration(seconds: 1), _syncRemainingFromStopwatch);
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+      _syncRemainingFromStopwatch,
+    );
     _syncRemainingFromStopwatch(_timer);
   }
 
@@ -772,15 +795,17 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     final override = widget.finishAttemptOverride;
     if (override != null) {
       return override(
-          attemptId: attemptId,
-          answers: answers,
-          flaggedQuestionIds: flaggedQuestionIds);
-    }
-    return diagnosticKioskApi.finishAttempt(
         attemptId: attemptId,
         answers: answers,
         flaggedQuestionIds: flaggedQuestionIds,
-        generation: _generation);
+      );
+    }
+    return diagnosticKioskApi.finishAttempt(
+      attemptId: attemptId,
+      answers: answers,
+      flaggedQuestionIds: flaggedQuestionIds,
+      generation: _generation,
+    );
   }
 
   DiagnosticPingElapsedFn get _pingElapsedCall =>
@@ -804,8 +829,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       ProctorService.instance.stop();
       HeartbeatService.instance.finishTest();
       if (mounted) {
-        context.pushReplacement('/diagnostic_finished',
-            extra: _finishedExtra());
+        context.pushReplacement(
+          '/diagnostic_finished',
+          extra: _finishedExtra(),
+        );
       }
     };
     try {
@@ -824,14 +851,16 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       _proctorInitTimeout = Timer(const Duration(seconds: 3), () {
         if (!completer.isCompleted) completer.complete();
       });
-      unawaited(startTestFuture.then(
-        (_) {
-          if (!completer.isCompleted) completer.complete();
-        },
-        onError: (_) {
-          if (!completer.isCompleted) completer.complete();
-        },
-      ));
+      unawaited(
+        startTestFuture.then(
+          (_) {
+            if (!completer.isCompleted) completer.complete();
+          },
+          onError: (_) {
+            if (!completer.isCompleted) completer.complete();
+          },
+        ),
+      );
       await completer.future;
     } finally {
       _proctorInitTimeout?.cancel();
@@ -909,10 +938,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// manual Retry button was previously available.
   void _armBootstrapAutoRetry() {
     _bootstrapRetrySub?.cancel();
-    final stream = widget.connectivityStreamOverride ??
+    final stream =
+        widget.connectivityStreamOverride ??
         Connectivity().onConnectivityChanged;
     _bootstrapRetrySub = stream.listen((results) {
-      final online = results.isNotEmpty &&
+      final online =
+          results.isNotEmpty &&
           results.any((r) => r != ConnectivityResult.none);
       if (online) {
         _bootstrapRetrySub?.cancel();
@@ -932,7 +963,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     // Best-effort — a failure here must never block navigating to the
     // finished screen. Unsynced answers are preserved for SyncService.
     unawaited(
-        cleanSessionHandoff(attemptKey: _diagKey, attemptId: widget.attemptId));
+      cleanSessionHandoff(attemptKey: _diagKey, attemptId: widget.attemptId),
+    );
     if (!mounted) return;
     context.pushReplacement('/diagnostic_finished', extra: _finishedExtra());
   }
@@ -942,16 +974,16 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// roster instead of the kiosk root. Shared by both `pushReplacement` call
   /// sites (proctoring termination + normal finish) so they can't drift.
   Map<String, dynamic> _finishedExtra() => {
-        'studentName': widget.studentName,
-        'subjectsCompleted': _subjectsCompleted,
-        'schoolId': widget.schoolId,
-        'schoolName': widget.schoolName,
-        'schoolCode': widget.schoolCode,
-        'classLabel': widget.classLabel,
-        'language': widget.language,
-        'hasWebTest': widget.hasWebTest,
-        'webTestKey': widget.webTestKey,
-      };
+    'studentName': widget.studentName,
+    'subjectsCompleted': _subjectsCompleted,
+    'schoolId': widget.schoolId,
+    'schoolName': widget.schoolName,
+    'schoolCode': widget.schoolCode,
+    'classLabel': widget.classLabel,
+    'language': widget.language,
+    'hasWebTest': widget.hasWebTest,
+    'webTestKey': widget.webTestKey,
+  };
 
   /// Marks [subject] completed and either starts the next incomplete
   /// subject in `_allSubjects` or ends the whole attempt via `_finishTest`
@@ -995,9 +1027,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       return;
     }
     try {
-      final subjectsResp =
-          await _availableSubjects(widget.grade, language: widget.language);
-      final subjects = (subjectsResp['subjects'] as List?)
+      final subjectsResp = await _availableSubjects(
+        widget.grade,
+        language: widget.language,
+      );
+      final subjects =
+          (subjectsResp['subjects'] as List?)
               ?.map((e) => e.toString())
               .where((e) => e.isNotEmpty)
               .toList() ??
@@ -1034,8 +1069,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       if (fallbackSubjects != null &&
           fallbackSubjects.isNotEmpty &&
           _peekedFallbackPackages.containsKey(fallbackSubjects.first)) {
-        debugPrint('Diagnostic bootstrap: live availableSubjects failed ($e), '
-            'starting from prefetched subject list/package instead');
+        debugPrint(
+          'Diagnostic bootstrap: live availableSubjects failed ($e), '
+          'starting from prefetched subject list/package instead',
+        );
         _allSubjects = fallbackSubjects;
         await _startSubject(fallbackSubjects.first, skipLiveCallForPeek: true);
         return;
@@ -1049,10 +1086,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     }
   }
 
-  Future<void> _startSubject(String subject,
-      {bool skipLiveCallForPeek = false}) async {
-    _retryAction =
-        () => _startSubject(subject, skipLiveCallForPeek: skipLiveCallForPeek);
+  Future<void> _startSubject(
+    String subject, {
+    bool skipLiveCallForPeek = false,
+  }) async {
+    _retryAction = () =>
+        _startSubject(subject, skipLiveCallForPeek: skipLiveCallForPeek);
     setState(() {
       _loading = true;
       _error = null;
@@ -1098,7 +1137,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           if (_finishQueued) {
             if (!await _flushPendingFinish()) {
               throw const ApiException(
-                  0, 'Oldingi fan natijasi hali yuborilmadi.');
+                0,
+                'Oldingi fan natijasi hali yuborilmadi.',
+              );
             }
             _finishQueued = false;
           }
@@ -1171,8 +1212,13 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       });
       _startCountdownIfNeeded(resp);
       final q = _question;
-      HeartbeatService.instance.updateProgress(_position, _total, [],
-          q != null ? _questionText(q) : null, _selectedOption);
+      HeartbeatService.instance.updateProgress(
+        _position,
+        _total,
+        [],
+        q != null ? _questionText(q) : null,
+        _selectedOption,
+      );
       // Fixed-variant: whole batch known upfront — prefetch every question's
       // image now so the student never waits on a lazy load mid-test. CAT:
       // only the one question just rendered is known.
@@ -1193,8 +1239,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // advance, instead of stranding the student on a "Server xatosi" that
       // a plain retry can never clear (the request never changes).
       final message = e is ApiException ? e.message : '';
-      final isAlreadyCompleted =
-          message.contains('$subject allaqachon yakunlangan');
+      final isAlreadyCompleted = message.contains(
+        '$subject allaqachon yakunlangan',
+      );
       if (isAlreadyCompleted) {
         await _completeSubjectAndAdvance(subject);
         return;
@@ -1236,7 +1283,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   Future<Map<String, dynamic>> _startAttemptFlushingOnce(String subject) async {
     try {
       return await _startAttemptCall(
-          attemptId: widget.attemptId, subject: subject);
+        attemptId: widget.attemptId,
+        subject: subject,
+      );
     } catch (e) {
       if (!_isEarlierSubjectIncomplete(e)) rethrow;
       if (!await _flushPendingFinish()) rethrow;
@@ -1261,9 +1310,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         await Future<void>.delayed(const Duration(seconds: 2));
       }
       final queued = await OfflineQueue.peekLocalQueue();
-      return !queued.any((p) =>
-          p['_offlineKind'] == 'diagnostic_finish' &&
-          p['attempt_id']?.toString() == widget.attemptId);
+      return !queued.any(
+        (p) =>
+            p['_offlineKind'] == 'diagnostic_finish' &&
+            p['attempt_id']?.toString() == widget.attemptId,
+      );
     } catch (e) {
       debugPrint('Diagnostic flush-pending-finish error: $e');
       return false;
@@ -1326,8 +1377,13 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           _total = (resp['total_questions'] as num?)?.toInt() ?? _total;
           _isFixedVariant = resp['is_fixed_variant'] == true;
         });
-        HeartbeatService.instance.updateProgress(_position, _total, [],
-            next != null ? _questionText(next) : null, _selectedOption);
+        HeartbeatService.instance.updateProgress(
+          _position,
+          _total,
+          [],
+          next != null ? _questionText(next) : null,
+          _selectedOption,
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -1399,18 +1455,25 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     // split). A local SQLite failure (e.g. a locked disk on some real
     // device) must never crash/interrupt the exam flow — same best-effort
     // tolerance as AttemptStore.save's own try/catch.
-    unawaited(DiagnosticAnswerStore.saveAnswer(
-      attemptId: widget.attemptId,
-      subject: _currentSubject,
-      questionIndex: _position,
-      questionId: questionId,
-      selectedOption: key,
-      generation: _generation,
-    ).catchError((e) {
-      debugPrint('DiagnosticAnswerStore.saveAnswer error: $e');
-    }));
-    HeartbeatService.instance
-        .updateProgress(_position, _total, [], _questionText(q), key);
+    unawaited(
+      DiagnosticAnswerStore.saveAnswer(
+        attemptId: widget.attemptId,
+        subject: _currentSubject,
+        questionIndex: _position,
+        questionId: questionId,
+        selectedOption: key,
+        generation: _generation,
+      ).catchError((e) {
+        debugPrint('DiagnosticAnswerStore.saveAnswer error: $e');
+      }),
+    );
+    HeartbeatService.instance.updateProgress(
+      _position,
+      _total,
+      [],
+      _questionText(q),
+      key,
+    );
     // Live telemetry: reuses the existing proctor heartbeat channel +
     // HeartbeatService's existing reportAnswers() (already used by
     // TestEngine).
@@ -1438,10 +1501,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   }
 
   void _toggleFlag(String questionId) => setState(() {
-        if (!_flaggedQuestionIds.remove(questionId)) {
-          _flaggedQuestionIds.add(questionId);
-        }
-      });
+    if (!_flaggedQuestionIds.remove(questionId)) {
+      _flaggedQuestionIds.add(questionId);
+    }
+  });
 
   void _toggleFlagByKeyboard() {
     final q = _question;
@@ -1468,7 +1531,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// self-heal retry in `_confirmAndFinishPackage` can rebuild the payload
   /// against a freshly-refetched package without duplicating this logic.
   List<Map<String, dynamic>> _buildFinishAnswers(
-      List<Map<String, dynamic>> questions) {
+    List<Map<String, dynamic>> questions,
+  ) {
     final answers = <Map<String, dynamic>>[];
     _answers.forEach((position, selected) {
       final idx = position - 1;
@@ -1490,7 +1554,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// DiagnosticExportService treats a missing question_id as "can't score
   /// this one" rather than throwing.
   Map<String, dynamic> _buildOfflineAnswerKey(
-      String subject, List<Map<String, dynamic>> questions) {
+    String subject,
+    List<Map<String, dynamic>> questions,
+  ) {
     final answers = <String, String>{};
     for (final q in questions) {
       final qid = _questionId(q);
@@ -1516,8 +1582,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(l10n.earlyFinishConfirmTitle,
-            style: const TextStyle(fontWeight: FontWeight.w800)),
+        title: Text(
+          l10n.earlyFinishConfirmTitle,
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
         content: Text(l10n.earlyFinishConfirmBody),
         actions: [
           TextButton(
@@ -1527,8 +1595,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.brand,
-                minimumSize: const Size(100, 40)),
+              backgroundColor: AppColors.brand,
+              minimumSize: const Size(100, 40),
+            ),
             child: Text(l10n.earlyFinishConfirmButton),
           ),
         ],
@@ -1549,10 +1618,13 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       final ok = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(l10n.finishConfirmTitle,
-              style: const TextStyle(fontWeight: FontWeight.w800)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            l10n.finishConfirmTitle,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
           content: Text(l10n.unansweredWarning(unanswered)),
           actions: [
             TextButton(
@@ -1562,8 +1634,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.brand,
-                  minimumSize: const Size(100, 40)),
+                backgroundColor: AppColors.brand,
+                minimumSize: const Size(100, 40),
+              ),
               child: Text(l10n.finishTest),
             ),
           ],
@@ -1576,12 +1649,16 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       final ok = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(l10n.finishConfirmTitle,
-              style: const TextStyle(fontWeight: FontWeight.w800)),
-          content:
-              Text(l10n.flaggedQuestionsReminder(_flaggedQuestionIds.length)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            l10n.finishConfirmTitle,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+          content: Text(
+            l10n.flaggedQuestionsReminder(_flaggedQuestionIds.length),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -1590,8 +1667,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.brand,
-                  minimumSize: const Size(100, 40)),
+                backgroundColor: AppColors.brand,
+                minimumSize: const Size(100, 40),
+              ),
               child: Text(l10n.finishTest),
             ),
           ],
@@ -1624,9 +1702,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     Map<String, dynamic> resp;
     try {
       resp = await _finishAttemptCall(
-          attemptId: widget.attemptId,
-          answers: answers,
-          flaggedQuestionIds: _flaggedQuestionIds.toList());
+        attemptId: widget.attemptId,
+        answers: answers,
+        flaggedQuestionIds: _flaggedQuestionIds.toList(),
+      );
     } catch (e) {
       // Network failure (not a definitive rejection the server sent back) —
       // queue the finish payload for later sync via the same generic
@@ -1662,8 +1741,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           'answers': answers,
           'flagged_question_ids': _flaggedQuestionIds.toList(),
           if (_generation != null) 'generation': _generation,
-          '_offline_answer_key':
-              _buildOfflineAnswerKey(_currentSubject, _questions),
+          '_offline_answer_key': _buildOfflineAnswerKey(
+            _currentSubject,
+            _questions,
+          ),
         }, newIdempotencyToken());
         _finishQueued = true;
         unawaited(_upsertHistoryRow(status: 'pending'));
@@ -1773,11 +1854,13 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     }
     _timer?.cancel();
     _subjectsCompleted.add(_currentSubject);
-    unawaited(_upsertHistoryRow(
-      status: 'sent',
-      mathScore: (resp['score_math'] as num?)?.toInt(),
-      englishScore: (resp['score_english'] as num?)?.toInt(),
-    ));
+    unawaited(
+      _upsertHistoryRow(
+        status: 'sent',
+        mathScore: (resp['score_math'] as num?)?.toInt(),
+        englishScore: (resp['score_english'] as num?)?.toInt(),
+      ),
+    );
     final nextSubject = (resp['next_subject'] ?? '').toString();
     if (nextSubject.isNotEmpty) {
       // Same offline-resilience warm-up as the answer-submit path above
@@ -1978,8 +2061,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
               _zoomIn,
           const SingleActivator(LogicalKeyboardKey.minus, control: true):
               _zoomOut,
-          const SingleActivator(LogicalKeyboardKey.numpadSubtract,
-              control: true): _zoomOut,
+          const SingleActivator(
+            LogicalKeyboardKey.numpadSubtract,
+            control: true,
+          ): _zoomOut,
         },
         child: Focus(
           autofocus: true,
@@ -1989,12 +2074,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                 transition != null
                     ? _buildTransitionView(l10n, transition)
                     : _loading
-                        ? const Center(child: CircularProgressIndicator())
-                        : (_error != null || _subjectsEmpty)
-                            ? _buildErrorView(l10n)
-                            : q == null
-                                ? Center(child: Text(l10n.diagnosticNoStudents))
-                                : _buildQuestionView(l10n, q),
+                    ? const Center(child: CircularProgressIndicator())
+                    : (_error != null || _subjectsEmpty)
+                    ? _buildErrorView(l10n)
+                    : q == null
+                    ? Center(child: Text(l10n.diagnosticNoStudents))
+                    : _buildQuestionView(l10n, q),
                 // ── Admin-lock pause overlay ─────────────────────────────
                 if (_paused) _buildPauseOverlay(l10n),
               ],
@@ -2013,27 +2098,35 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       child: Container(
         color: Colors.black.withValues(alpha: .92),
         child: Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.pause_circle_filled_rounded,
-                color: Colors.white, size: 56),
-            const SizedBox(height: 16),
-            Text(
-              l10n.testLockedByAdmin,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.pause_circle_filled_rounded,
                 color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
+                size: 56,
               ),
-            ),
-          ]),
+              const SizedBox(height: 16),
+              Text(
+                l10n.testLockedByAdmin,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildTransitionView(
-      AppLocalizations l10n, _SubjectTransition transition) {
+    AppLocalizations l10n,
+    _SubjectTransition transition,
+  ) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -2053,6 +2146,23 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     );
   }
 
+  /// Shared geometry for the error card's two actions so they stay identical
+  /// regardless of the global Elevated/Outlined theme (which differ).
+  @visibleForTesting
+  static ButtonStyle errorActionStyle() => ButtonStyle(
+    fixedSize: const WidgetStatePropertyAll(Size.fromHeight(48)),
+    minimumSize: const WidgetStatePropertyAll(Size(0, 48)),
+    padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 16)),
+    iconSize: const WidgetStatePropertyAll(18),
+    elevation: const WidgetStatePropertyAll(0),
+    textStyle: const WidgetStatePropertyAll(
+      TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+    ),
+    shape: WidgetStatePropertyAll(
+      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+  );
+
   Widget _buildErrorView(AppLocalizations l10n) {
     // _subjectsEmpty is an expected, calm "not configured yet" state — its
     // own dedicated copy in a neutral/amber info card. Any other _error is a
@@ -2062,11 +2172,13 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     final title = _subjectsEmpty
         ? l10n.diagnosticSubjectsEmptyTitle
         : (_error ?? l10n.diagnosticSubjectsEmptyTitle);
-    final subtitle =
-        _subjectsEmpty ? l10n.diagnosticSubjectsEmptySubtitle : null;
+    final subtitle = _subjectsEmpty
+        ? l10n.diagnosticSubjectsEmptySubtitle
+        : null;
     final badgeColor = _subjectsEmpty ? AppColors.amber : AppColors.error;
-    final badgeIcon =
-        _subjectsEmpty ? Icons.info_outline_rounded : Icons.warning_rounded;
+    final badgeIcon = _subjectsEmpty
+        ? Icons.info_outline_rounded
+        : Icons.warning_rounded;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
@@ -2101,9 +2213,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                 title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    color: _subjectsEmpty ? AppColors.ink1 : AppColors.error),
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  color: _subjectsEmpty ? AppColors.ink1 : AppColors.error,
+                ),
               ),
               if (subtitle != null) ...[
                 const SizedBox(height: 8),
@@ -2119,15 +2232,19 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                      label: Text(l10n.diagnosticGoBack,
-                          style: const TextStyle(fontWeight: FontWeight.w700)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.ink2,
-                        side: const BorderSide(color: AppColors.border),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      label: Text(
+                        l10n.diagnosticGoBack,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: errorActionStyle().copyWith(
+                        foregroundColor: const WidgetStatePropertyAll(
+                          AppColors.ink2,
+                        ),
+                        side: const WidgetStatePropertyAll(
+                          BorderSide(color: AppColors.border),
+                        ),
                       ),
                     ),
                   ),
@@ -2135,15 +2252,19 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () => _retryAction(),
-                      icon: const Icon(Icons.refresh_rounded, size: 18),
-                      label: Text(l10n.retry,
-                          style: const TextStyle(fontWeight: FontWeight.w700)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.brand,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: Text(
+                        l10n.retry,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: errorActionStyle().copyWith(
+                        backgroundColor: const WidgetStatePropertyAll(
+                          AppColors.brand,
+                        ),
+                        foregroundColor: const WidgetStatePropertyAll(
+                          Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -2193,8 +2314,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                       // disambiguating info (patronymic) the backend sends
                       // — format it just for display here.
                       studentName: toDisplayScript(
-                          formatStudentDisplayName(widget.studentName),
-                          Localizations.localeOf(context)),
+                        formatStudentDisplayName(widget.studentName),
+                        Localizations.localeOf(context),
+                      ),
                       language: widget.language,
                       remainingSeconds: _remainingSeconds,
                       isFixedVariant: _isFixedVariantAttempt,
@@ -2204,15 +2326,19 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                       const SizedBox(height: 12),
                       DiagnosticQuestionDots(
                         total: _total,
-                        currentIndex: (_position - 1)
-                            .clamp(0, _total == 0 ? 0 : _total - 1),
-                        answeredIndexes:
-                            _answers.keys.map((p) => p - 1).toSet(),
+                        currentIndex: (_position - 1).clamp(
+                          0,
+                          _total == 0 ? 0 : _total - 1,
+                        ),
+                        answeredIndexes: _answers.keys
+                            .map((p) => p - 1)
+                            .toSet(),
                         flaggedIndexes: {
                           for (var i = 0; i < _questions.length; i++)
-                            if (_flaggedQuestionIds
-                                .contains(_questionId(_questions[i])))
-                              i
+                            if (_flaggedQuestionIds.contains(
+                              _questionId(_questions[i]),
+                            ))
+                              i,
                         },
                         onSelectIndex: _jumpTo,
                       ),
@@ -2240,8 +2366,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                         // scale from MediaQuery.textScalerOf(context)
                         // internally, so this override is the smallest way
                         // to apply it without a new constructor param.
-                        data: MediaQuery.of(context).copyWith(
-                            textScaler: TextScaler.linear(_zoomScale)),
+                        data: MediaQuery.of(
+                          context,
+                        ).copyWith(textScaler: TextScaler.linear(_zoomScale)),
                         child: DiagnosticOptionsGrid(
                           options: options,
                           selectedOption: _selectedOption,
@@ -2250,30 +2377,33 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                         ),
                       )
                     else
-                      ...options.map((opt) => DiagnosticOptionCard(
-                            label: opt.key,
-                            text: opt.text,
-                            selected: _selectedOption == opt.key,
-                            onTap: _submitting || _selectedOption != null
-                                ? () {}
-                                : () {
-                                    setState(() => _selectedOption = opt.key);
-                                    // CAT never populates _answers (each
-                                    // pick is submitted immediately, unlike
-                                    // the fixed-variant grid's offline-sync
-                                    // map above), so only the live
-                                    // proctor/spotlight "selected option"
-                                    // needs updating here — reportAnswers()
-                                    // would just resend a stale/empty map.
-                                    HeartbeatService.instance.updateProgress(
-                                        _position,
-                                        _total,
-                                        [],
-                                        _questionText(q),
-                                        opt.key);
-                                    _submit();
-                                  },
-                          )),
+                      ...options.map(
+                        (opt) => DiagnosticOptionCard(
+                          label: opt.key,
+                          text: opt.text,
+                          selected: _selectedOption == opt.key,
+                          onTap: _submitting || _selectedOption != null
+                              ? () {}
+                              : () {
+                                  setState(() => _selectedOption = opt.key);
+                                  // CAT never populates _answers (each
+                                  // pick is submitted immediately, unlike
+                                  // the fixed-variant grid's offline-sync
+                                  // map above), so only the live
+                                  // proctor/spotlight "selected option"
+                                  // needs updating here — reportAnswers()
+                                  // would just resend a stale/empty map.
+                                  HeartbeatService.instance.updateProgress(
+                                    _position,
+                                    _total,
+                                    [],
+                                    _questionText(q),
+                                    opt.key,
+                                  );
+                                  _submit();
+                                },
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -2318,8 +2448,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                 constraints: const BoxConstraints(maxWidth: _kDockMaxWidth),
                 child: Container(
                   margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(20),
@@ -2332,8 +2464,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                     ],
                   ),
                   child: DiagnosticBottomNav(
-                    onPrevious:
-                        _position <= 1 ? null : () => _jumpTo(_position - 2),
+                    onPrevious: _position <= 1
+                        ? null
+                        : () => _jumpTo(_position - 2),
                     onNext: () => _jumpTo(_position),
                     onFinish: _isFixedVariant
                         ? _confirmAndFinishPackage
