@@ -37,6 +37,7 @@
 // failure signal (SnackBar with a retry action) instead of only a
 // silently-opened browser tab.
 
+import '../diagnostics/error_log.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -515,6 +516,7 @@ open -a "/Applications/alochi_monitoring.app"
   /// getApplicationSupportDirectory, cross-platform). Never throws — a
   /// logging failure must not mask the original error.
   Future<void> _logUpdateFailure(String stage, Object error) async {
+    ErrorLog.record(error, 'update:$stage');
     try {
       final dir = await getApplicationSupportDirectory();
       final logFile = File('${dir.path}/AlochiMonitoringUpdate.log');

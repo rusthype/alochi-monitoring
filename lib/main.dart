@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'core/diagnostics/device_report_sender.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -141,6 +142,7 @@ void main(List<String> args) {
         unawaited(HeartbeatService.instance.start());
         ConnectivityService.instance.start();
         unawaited(CrashReporterService.uploadPending());
+        DeviceReportSender.instance.start();
 
         if (Platform.isWindows) {
           // Startup window: Maximized with normal titlebar/taskbar visible.

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../diagnostics/error_log.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../models/add_student.dart';
@@ -104,14 +105,18 @@ class MonitoringApi {
   Future<http.Response> _send(Future<http.Response> Function() req) async {
     try {
       return await req().timeout(_timeout);
-    } on TimeoutException {
+    } on TimeoutException catch (e) {
+      ErrorLog.record(e, 'api');
       throw const ApiException(
           0, "Server javob bermayapti. Internetingizni tekshiring.");
-    } on SocketException {
+    } on SocketException catch (e) {
+      ErrorLog.record(e, 'api');
       throw const ApiException(0, "Internet aloqasi yo'q.");
-    } on HttpException {
+    } on HttpException catch (e) {
+      ErrorLog.record(e, 'api');
       throw const ApiException(0, "Tarmoq xatosi. Qayta urinib ko'ring.");
-    } on http.ClientException {
+    } on http.ClientException catch (e) {
+      ErrorLog.record(e, 'api');
       throw const ApiException(0, "Tarmoq xatosi. Qayta urinib ko'ring.");
     }
   }
