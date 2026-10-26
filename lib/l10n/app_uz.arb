@@ -1624,5 +1624,18 @@
   "addStudentErrInvalidClass": "Sinf topilmadi, ortga qaytib sinfni qayta tanlang",
   "addStudentErrDuplicate": "Bu sinfda shunday ismli o'quvchi allaqachon bor",
   "addStudentErrInvalidBirthDate": "Tug'ilgan sana noto'g'ri",
-  "addStudentParentFioChars": "Harf bilan boshlang; faqat harf, bo'shliq, tire, nuqta, vergul va apostrof (120 tagacha)"
+  "addStudentParentFioChars": "Harf bilan boshlang; faqat harf, bo'shliq, tire, nuqta, vergul va apostrof (120 tagacha)",
+  "diagnosticSchoolSearchHint": "Maktab raqami yoki nomi bo'yicha qidirish",
+  "diagnosticSchoolAll": "Hammasi",
+  "diagnosticSchoolOther": "Boshqa",
+  "diagnosticSchoolLastChosen": "Oxirgi tanlangan",
+  "diagnosticSchoolNoMatches": "Hech narsa topilmadi",
+  "diagnosticSchoolNumberName": "{number}-maktab",
+  "@diagnosticSchoolNumberName": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  }
 }

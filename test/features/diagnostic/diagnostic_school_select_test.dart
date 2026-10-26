@@ -1,0 +1,163 @@
+import 'package:alochi_monitoring/core/locale/locale_provider.dart';
+import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_school_list.dart';
+import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_school_select_screen.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+Map<String, dynamic> row(String id, String name, Object? n,
+        {String? city, String? abbr}) =>
+    {
+      'school_id': id,
+      'school_name': name,
+      'school_number': n,
+      'kiosk_pin': '',
+      if (city != null) 'city_name': city,
+      if (abbr != null) 'abbreviation': abbr,
+    };
+
+String numLabel(int n) => '$n-maktab';
+
+void main() {
+  group('pure helpers', () {
+    test('sorts numerically, null last, then by name', () {
+      final out = sortSchools([
+        row('a', 'Zeta', null),
+        row('b', 'X', 100),
+        row('c', 'Y', 9),
+        row('d', 'Alpha', null),
+        row('e', 'W', 26),
+      ].map(DiagnosticSchool.fromMap));
+      expect(out.map((s) => s.id).toList(), ['c', 'e', 'b', 'd', 'a']);
+    });
+
+    test('string school_number (offline row) parses', () {
+      expect(DiagnosticSchool.fromMap(row('a', '26', '26')).number, 26);
+    });
+
+    test('strips boilerplate, falls back to full name when empty', () {
+      expect(stripSchoolBoilerplate("Toshkent umumiy o'rta ta'lim maktabi"),
+          'Toshkent');
+      expect(
+          stripSchoolBoilerplate(
+              'Тошкент умумий ўрта таълим мактаби ҚА хузуридаги ихтисослаштирилган мактаб-интернат'),
+          'Toshkent');
+      expect(stripSchoolBoilerplate("Umumiy o'rta ta'lim maktabi"),
+          "Umumiy o'rta ta'lim maktabi");
+    });
+
+    test('short name: abbreviation > number template > stripped name', () {
+      const uz = Locale('uz');
+      expect(
+          shortSchoolName(
+              DiagnosticSchool.fromMap(row('a', 'N', 5, abbr: 'IM')),
+              uz,
+              numLabel),
+          'IM');
+      expect(
+          shortSchoolName(
+              DiagnosticSchool.fromMap(row('a', 'N', 5)), uz, numLabel),
+          '5-maktab');
+      expect(
+          shortSchoolName(
+              DiagnosticSchool.fromMap(
+                  row('a', "Chilonzor umumiy o'rta ta'lim maktabi", null)),
+              uz,
+              numLabel),
+          'Chilonzor');
+    });
+
+    test('search matches number and name in Cyrillic and Latin', () {
+      final s = DiagnosticSchool.fromMap(row('a', 'Тошкент мактаби', 26));
+      expect(schoolMatchesQuery(s, '26'), isTrue);
+      expect(schoolMatchesQuery(s, 'toshkent'), isTrue);
+      expect(schoolMatchesQuery(s, 'Тошкент'), isTrue);
+      expect(schoolMatchesQuery(s, 'samarqand'), isFalse);
+      final lat = DiagnosticSchool.fromMap(row('b', 'Toshkent maktabi', 3));
+      expect(schoolMatchesQuery(lat, 'тошкент'), isTrue);
+    });
+  });
+
+  group('screen', () {
+    Future<void> pump(WidgetTester t, List<Map<String, dynamic>> rows,
+        {Map<String, Object> prefs = const {}}) async {
+      SharedPreferences.setMockInitialValues(prefs);
+      final sp = await SharedPreferences.getInstance();
+      t.view.physicalSize = const Size(1280, 720);
+      t.view.devicePixelRatio = 1;
+      addTearDown(t.view.reset);
+      await t.pumpWidget(ProviderScope(
+        overrides: [sharedPreferencesProvider.overrideWithValue(sp)],
+        child: MaterialApp(
+          locale: const Locale('uz'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: DiagnosticSchoolSelectScreen(
+              loadSchools: () async => (rows, false)),
+        ),
+      ));
+      await t.pumpAndSettle();
+    }
+
+    testWidgets('two cities -> Hammasi + 2 chips, filter works', (t) async {
+      await pump(t, [
+        row('1', 'A', 1, city: 'Toshkent'),
+        row('2', 'B', 2, city: 'Samarqand'),
+        row('3', 'C', 3),
+      ]);
+      expect(find.text('Hammasi'), findsOneWidget);
+      // Chip + group header for each city.
+      expect(find.text('Toshkent'), findsNWidgets(3)); // chip, header, subtitle
+      expect(find.text('Boshqa'), findsOneWidget);
+      expect(find.text('3-maktab'), findsOneWidget);
+      await t.tap(find.text('Samarqand').first);
+      await t.pumpAndSettle();
+      expect(find.text('2-maktab'), findsOneWidget);
+      expect(find.text('1-maktab'), findsNothing);
+      expect(find.text('3-maktab'), findsNothing);
+    });
+
+    testWidgets('single city -> no chips', (t) async {
+      await pump(t, [
+        row('1', 'A', 1, city: 'Toshkent'),
+        row('2', 'B', 2, city: 'Toshkent'),
+      ]);
+      expect(find.text('Hammasi'), findsNothing);
+      expect(find.text('1-maktab'), findsOneWidget);
+    });
+
+    testWidgets('old response without new fields renders; search filters',
+        (t) async {
+      await pump(t, [row('1', 'Alpha', 7), row('2', 'Beta', 12)]);
+      expect(find.text('7-maktab'), findsOneWidget);
+      expect(find.text('Hammasi'), findsNothing);
+      await t.enterText(find.byType(TextField), '12');
+      await t.pumpAndSettle();
+      expect(find.text('12-maktab'), findsOneWidget);
+      expect(find.text('7-maktab'), findsNothing);
+      await t.enterText(find.byType(TextField), 'zzz');
+      await t.pumpAndSettle();
+      expect(find.text('Hech narsa topilmadi'), findsOneWidget);
+    });
+
+    testWidgets('last chosen school is pinned first with marker', (t) async {
+      await pump(t, [row('1', 'A', 1), row('2', 'B', 2), row('3', 'C', 3)],
+          prefs: {'last_diag_school_id': '3'});
+      expect(find.text('Oxirgi tanlangan'), findsOneWidget);
+      final y3 = t.getTopLeft(find.text('3-maktab')).dy;
+      final y1 = t.getTopLeft(find.text('1-maktab')).dy;
+      expect(y3, lessThan(y1));
+      expect(find.text('3-maktab'), findsOneWidget); // not duplicated
+    });
+
+    testWidgets('40+ schools at 1280x720 do not overflow', (t) async {
+      await pump(t, [
+        for (var i = 1; i <= 45; i++)
+          row('$i', 'Maktab $i', i, city: i.isEven ? 'Toshkent' : 'Buxoro'),
+      ]);
+      expect(t.takeException(), isNull);
+    });
+  });
+}

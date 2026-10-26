@@ -1558,5 +1558,18 @@
   "addStudentErrInvalidClass": "Класс не найден, вернитесь назад и выберите класс заново",
   "addStudentErrDuplicate": "В этом классе уже есть ученик с таким именем",
   "addStudentErrInvalidBirthDate": "Дата рождения указана неверно",
-  "addStudentParentFioChars": "Начните с буквы; только буквы, пробел, дефис, точка, запятая и апостроф (до 120 символов)"
+  "addStudentParentFioChars": "Начните с буквы; только буквы, пробел, дефис, точка, запятая и апостроф (до 120 символов)",
+  "diagnosticSchoolSearchHint": "Поиск по номеру или названию школы",
+  "diagnosticSchoolAll": "Все",
+  "diagnosticSchoolOther": "Другое",
+  "diagnosticSchoolLastChosen": "Последний выбор",
+  "diagnosticSchoolNoMatches": "Ничего не найдено",
+  "diagnosticSchoolNumberName": "Школа №{number}",
+  "@diagnosticSchoolNumberName": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  }
 }

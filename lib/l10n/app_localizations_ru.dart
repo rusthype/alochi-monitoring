@@ -543,7 +543,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String diagnosticSubjectTransitionMessage(
-      String fromSubject, String toSubject) {
+    String fromSubject,
+    String toSubject,
+  ) {
     return '$fromSubject завершён! Теперь начинается $toSubject';
   }
 
@@ -2818,13 +2820,21 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String lanSeatPartyHolder(
-      String device, String ip, String ago, String status) {
+    String device,
+    String ip,
+    String ago,
+    String status,
+  ) {
     return 'Текущий: $device ($ip) · подключён $ago назад · $status';
   }
 
   @override
   String lanSeatPartyClaimant(
-      String device, String ip, String ago, String status) {
+    String device,
+    String ip,
+    String ago,
+    String status,
+  ) {
     return 'Новый: $device ($ip) · подключён $ago назад · $status';
   }
 
@@ -3042,4 +3052,24 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get addStudentParentFioChars =>
       'Начните с буквы; только буквы, пробел, дефис, точка, запятая и апостроф (до 120 символов)';
+
+  @override
+  String get diagnosticSchoolSearchHint => 'Поиск по номеру или названию школы';
+
+  @override
+  String get diagnosticSchoolAll => 'Все';
+
+  @override
+  String get diagnosticSchoolOther => 'Другое';
+
+  @override
+  String get diagnosticSchoolLastChosen => 'Последний выбор';
+
+  @override
+  String get diagnosticSchoolNoMatches => 'Ничего не найдено';
+
+  @override
+  String diagnosticSchoolNumberName(int number) {
+    return 'Школа №$number';
+  }
 }
