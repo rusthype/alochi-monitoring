@@ -159,5 +159,42 @@ void main() {
       ]);
       expect(t.takeException(), isNull);
     });
+
+    testWidgets('offline single row: badge+template name, no search/headers',
+        (t) async {
+      await pump(t, [
+        {
+          'school_id': 'x',
+          'school_name': '26',
+          'school_number': '26',
+          'kiosk_pin': '',
+        },
+      ]);
+      expect(find.text('26-maktab'), findsOneWidget);
+      expect(find.text('26'), findsWidgets); // number badge
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Boshqa'), findsNothing);
+      expect(find.text('Hammasi'), findsNothing);
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('single online school with city: no chips/header/search',
+        (t) async {
+      await pump(t, [row('1', 'A', 5, city: 'Toshkent')]);
+      expect(find.text('5-maktab'), findsOneWidget);
+      expect(find.text('Toshkent'), findsOneWidget); // subtitle only
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Hammasi'), findsNothing);
+    });
+
+    testWidgets('40 schools without any city: flat list, no headers',
+        (t) async {
+      await pump(t, [for (var i = 1; i <= 40; i++) row('$i', 'M$i', i)]);
+      expect(find.text('Boshqa'), findsNothing);
+      expect(find.text('Hammasi'), findsNothing);
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.text('1-maktab'), findsOneWidget);
+      expect(t.takeException(), isNull);
+    });
   });
 }

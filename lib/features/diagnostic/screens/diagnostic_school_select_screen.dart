@@ -167,22 +167,25 @@ class _DiagnosticSchoolSelectScreenState
 
     Widget wrap(List<Widget> kids) =>
         Wrap(spacing: 12, runSpacing: 12, children: kids);
+    // One school (e.g. offline USB mode): nothing to search or filter.
+    final showSearch = _schools.length > 1;
     return [
-      TextField(
-        onChanged: (v) => setState(() => _query = v),
-        style: const TextStyle(fontSize: 18),
-        decoration: InputDecoration(
-          hintText: l10n.diagnosticSchoolSearchHint,
-          prefixIcon: const Icon(Icons.search_rounded),
-          filled: true,
-          fillColor: AppColors.surface,
-          contentPadding: const EdgeInsets.symmetric(vertical: 18),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: AppColors.border),
+      if (showSearch)
+        TextField(
+          onChanged: (v) => setState(() => _query = v),
+          style: const TextStyle(fontSize: 18),
+          decoration: InputDecoration(
+            hintText: l10n.diagnosticSchoolSearchHint,
+            prefixIcon: const Icon(Icons.search_rounded),
+            filled: true,
+            fillColor: AppColors.surface,
+            contentPadding: const EdgeInsets.symmetric(vertical: 18),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
           ),
         ),
-      ),
       if (showChips) ...[
         const SizedBox(height: 12),
         SingleChildScrollView(
@@ -203,7 +206,7 @@ class _DiagnosticSchoolSelectScreenState
           ),
         ),
       ],
-      const SizedBox(height: 20),
+      if (showSearch) const SizedBox(height: 20),
       if (shown.isEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 40),
