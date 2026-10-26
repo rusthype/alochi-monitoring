@@ -7,6 +7,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('normalizeOsVersion', () {
+    expect(normalizeOsVersion('Version 26.5.2 (Build 25F84)'), '26.5.2');
+    expect(normalizeOsVersion('"Windows 10 Pro" 10.0 (Build 19045)'),
+        '10.0.19045');
+    expect(normalizeOsVersion('  weird os  '), 'weird os');
+    expect(normalizeOsVersion('x' * 50), 'x' * 40);
+  });
+
   test('classify: macOS updater signature error', () {
     expect(classifyError(Exception('Code signature validation failed: bad')),
         kErrUpdateSignature);

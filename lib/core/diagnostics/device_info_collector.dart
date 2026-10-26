@@ -97,7 +97,7 @@ class DeviceInfoCollector {
 
     return DeviceInfo(
       os: Platform.operatingSystem,
-      osVersion: Platform.operatingSystemVersion,
+      osVersion: normalizeOsVersion(Platform.operatingSystemVersion),
       cpu: cpu,
       ramMb: ramMb,
       screenW: w,
@@ -105,4 +105,16 @@ class DeviceInfoCollector {
       appVersion: version,
     );
   }
+}
+
+/// "Version 26.5.2 (Build 25F84)" -> "26.5.2";
+/// '"Windows 10 Pro" 10.0 (Build 19045)' -> "10.0.19045".
+String normalizeOsVersion(String raw) {
+  final v = RegExp(r'\d+(\.\d+)+').firstMatch(raw)?.group(0);
+  if (v == null) {
+    final t = raw.trim();
+    return t.length > 40 ? t.substring(0, 40) : t;
+  }
+  final build = RegExp(r'\(Build (\d+)\)').firstMatch(raw)?.group(1);
+  return build == null ? v : '$v.$build';
 }
