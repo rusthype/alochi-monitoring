@@ -1,5 +1,6 @@
 // lib/features/local_test/local_test_screen.dart
 // Offline test screen — server kerak emas, Telegram ga yuboradi
+import 'package:alochi_monitoring/core/diagnostics/active_test_gate.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -34,7 +35,7 @@ class LocalTestScreen extends StatefulWidget {
 }
 
 class _LocalTestScreenState extends State<LocalTestScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, ActiveTestGateHold {
   int _cur = 0;
   final Map<int, String> _answers = {};
   Timer? _timer;

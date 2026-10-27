@@ -1,4 +1,5 @@
 // lib/features/test/test_screen.dart
+import 'package:alochi_monitoring/core/diagnostics/active_test_gate.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
@@ -24,7 +25,8 @@ class TestScreen extends StatefulWidget {
   State<TestScreen> createState() => _TestScreenState();
 }
 
-class _TestScreenState extends State<TestScreen> with TickerProviderStateMixin {
+class _TestScreenState extends State<TestScreen>
+    with TickerProviderStateMixin, ActiveTestGateHold {
   int _current = 0;
   final Map<int, String> _answers = {};
   bool _submitting = false;

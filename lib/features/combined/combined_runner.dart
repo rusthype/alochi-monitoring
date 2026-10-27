@@ -1,5 +1,6 @@
 // lib/features/combined/combined_runner.dart
 // Combined Monitoring Test runner: Math (30 MCQ) + English Unit 1 (49 Qs) = 79 total
+import 'package:alochi_monitoring/core/diagnostics/active_test_gate.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -97,7 +98,7 @@ class CombinedRunner extends StatefulWidget {
 }
 
 class _CombinedRunnerState extends State<CombinedRunner>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, ActiveTestGateHold {
   int _sectionIdx = 0;
 
   // Math answers — index of selected option per question (null = unanswered)
