@@ -1,7 +1,7 @@
 // lib/features/diagnostic/screens/diagnostic_class_select_screen.dart
 //
 // Diagnostic kiosk flow — step 2: pick the class within the chosen school.
-// Same step-indicator/pill-grid pattern as diagnostic_school_select_screen.
+// Same step-indicator/card-grid pattern as diagnostic_school_select_screen.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +10,7 @@ import '../../../core/api/api_client.dart' show ApiException;
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../providers/diagnostic_locale_provider.dart';
+import '../widgets/diagnostic_class_grid.dart';
 import '../widgets/diagnostic_widgets.dart';
 
 /// Natural sort comparator: '1-A' < '2-A' < '9-A' < '10-A' < '11-B', not ASCII order.
@@ -39,8 +40,13 @@ class DiagnosticClassSelectScreen extends ConsumerStatefulWidget {
   final String schoolName;
   final String schoolCode;
 
+  /// Test seam; defaults to the live kiosk API.
+  final Future<(List<Map<String, dynamic>>, bool)> Function(String schoolId)?
+      loadClasses;
+
   const DiagnosticClassSelectScreen({
     super.key,
+    this.loadClasses,
     required this.schoolId,
     required this.schoolName,
     this.schoolCode = '',
@@ -71,7 +77,8 @@ class _DiagnosticClassSelectScreenState
     });
     try {
       final (classes, fromCache) =
-          await diagnosticKioskApi.listClasses(widget.schoolId);
+          await (widget.loadClasses ?? diagnosticKioskApi.listClasses)(
+              widget.schoolId);
       if (!mounted) return;
       classes.sort((a, b) => compareClassLabels(
           (a['class_label'] ?? '').toString(),
@@ -117,11 +124,6 @@ class _DiagnosticClassSelectScreenState
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final hasMultipleLanguages = _classes
-            .map((c) => (c['language'] ?? 'uz').toString().toLowerCase())
-            .toSet()
-            .length >
-        1;
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -135,7 +137,7 @@ class _DiagnosticClassSelectScreenState
                           top: 90, bottom: 40, left: 16, right: 16),
                       child: Center(
                         child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 768),
+                          constraints: const BoxConstraints(maxWidth: 1280),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -182,6 +184,7 @@ class _DiagnosticClassSelectScreenState
                                     ],
                                   ),
                                 ),
+                                const SizedBox(height: 24),
                               ] else if (_classes.isEmpty)
                                 Padding(
                                   padding:
@@ -193,53 +196,15 @@ class _DiagnosticClassSelectScreenState
                                   ),
                                 )
                               else
-                                Wrap(
-                                  spacing: 12,
-                                  runSpacing: 12,
-                                  children: _classes.map((c) {
-                                    final classLabel =
-                                        (c['class_label'] ?? '').toString();
-                                    final language =
-                                        (c['language'] ?? 'uz').toString();
-                                    final hasWebTest =
-                                        c['has_web_test'] == true;
-                                    final webTestKey =
-                                        (c['web_test_key'] ?? '').toString();
-                                    final isRu = language.toLowerCase() == 'ru';
-                                    final showBadge =
-                                        hasMultipleLanguages || isRu;
-                                    // Offline pack without tests for this
-                                    // class's grade: dimmed, never opened.
-                                    final noTests = c['no_tests'] == true;
-                                    return Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Opacity(
-                                          opacity: noTests ? 0.45 : 1,
-                                          child: DiagnosticPillButton(
-                                            label: classLabel,
-                                            isSelected: false,
-                                            onTap: noTests
-                                                ? () => _showNoTests(l10n)
-                                                : () => _selectClass(
-                                                    classLabel, language,
-                                                    hasWebTest: hasWebTest,
-                                                    webTestKey: webTestKey),
-                                          ),
-                                        ),
-                                        if (showBadge) ...[
-                                          const SizedBox(width: 6),
-                                          DiagnosticLanguageBadge(
-                                              language: language),
-                                        ],
-                                        if (hasWebTest) ...[
-                                          const SizedBox(width: 6),
-                                          const Icon(Icons.public_rounded,
-                                              size: 16, color: AppColors.brand),
-                                        ],
-                                      ],
-                                    );
-                                  }).toList(),
+                                DiagnosticClassGrid(
+                                  classes: _classes,
+                                  onNoTests: () => _showNoTests(l10n),
+                                  onSelect: (label, language,
+                                          {required hasWebTest,
+                                          required webTestKey}) =>
+                                      _selectClass(label, language,
+                                          hasWebTest: hasWebTest,
+                                          webTestKey: webTestKey),
                                 ),
                             ],
                           ),

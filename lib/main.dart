@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'core/diagnostics/device_command_client.dart';
 import 'core/diagnostics/device_report_sender.dart';
 import 'dart:async';
 
@@ -143,6 +144,7 @@ void main(List<String> args) {
         ConnectivityService.instance.start();
         unawaited(CrashReporterService.uploadPending());
         DeviceReportSender.instance.start();
+        DeviceCommandClient.instance.start();
 
         if (Platform.isWindows) {
           // Startup window: Maximized with normal titlebar/taskbar visible.

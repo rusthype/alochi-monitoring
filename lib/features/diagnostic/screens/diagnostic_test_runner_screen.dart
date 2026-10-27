@@ -11,6 +11,7 @@
 // flat option_a..option_d keys (already per-attempt shuffled) plus optional
 // image_url/svg_visual, and POST cat/answer/ requires `selected` to be
 // exactly "A"|"B"|"C"|"D".
+import 'package:alochi_monitoring/core/diagnostics/active_test_gate.dart';
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -222,7 +223,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
 }
 
 class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, ActiveTestGateHold {
   bool _loading = true;
   bool _submitting = false;
   String? _error;

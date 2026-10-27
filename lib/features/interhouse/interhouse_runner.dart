@@ -1,5 +1,6 @@
 // lib/features/interhouse/interhouse_runner.dart
 // Section-based test runner for Interhouse Grade 2
+import 'package:alochi_monitoring/core/diagnostics/active_test_gate.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -44,7 +45,7 @@ class InterhouseRunner extends StatefulWidget {
 }
 
 class _InterhouseRunnerState extends State<InterhouseRunner>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, ActiveTestGateHold {
   int _sectionIdx = 0;
   Timer? _timer;
   late int _secs;

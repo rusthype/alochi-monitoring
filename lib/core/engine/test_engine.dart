@@ -5,6 +5,7 @@
 // Does NOT touch offline_queue / sync_service / pdf_service — those are
 // wired by entry screens in Faza 4.
 
+import 'package:alochi_monitoring/core/diagnostics/active_test_gate.dart';
 import 'dart:async';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
@@ -87,7 +88,7 @@ class _ToastEntry {
 }
 
 class _TestEngineState extends State<TestEngine>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver, ActiveTestGateHold {
   // ── State ──────────────────────────────────────────────────────────────────
 
   int _sectionIdx = 0;
