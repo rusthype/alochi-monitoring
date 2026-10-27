@@ -29,7 +29,7 @@ class DiagnosticSchool {
       m,
       s('school_id'),
       s('school_name'),
-      int.tryParse(s('school_number')),
+      int.tryParse(s('school_number')) ?? deriveSchoolNumber(s('school_name')),
       s('city_name'),
       s('abbreviation'),
     );
@@ -37,6 +37,28 @@ class DiagnosticSchool {
 }
 
 const _uz = Locale('uz');
+
+// "16-sonli", "5-сонли", "7-maktab", "3-школа" ...
+final _numBeforeWord = RegExp(
+  r'(?<!\d)(\d{1,3})(?!\d)\s*-\s*(?:son|сон|maktab|мактаб|школ|shkola|й(?![а-я])|я(?![а-я])|y(?![a-z])|ya(?![a-z]))',
+);
+// "88 maktab", "Maktab 56", "Школа №56"
+final _numNextToSchool = RegExp(
+  r'(?:(?<!\d)(\d{1,3})(?!\d)\s*(?:maktab|мактаб|школ|shkola))|(?:(?:maktab|мактаб|школа|shkola)\s*[№#]?\s*(?<!\d)(\d{1,3})(?!\d))',
+);
+
+/// School number parsed from [name] when the API sends none; null when not
+/// confidently found (only 1-3 digit numbers are accepted).
+int? deriveSchoolNumber(String name) {
+  final lower = name.toLowerCase();
+  for (final text in [lower, normalizeSchoolText(name)]) {
+    final m = _numBeforeWord.firstMatch(text);
+    if (m != null) return int.tryParse(m.group(1)!);
+    final n = _numNextToSchool.firstMatch(text);
+    if (n != null) return int.tryParse(n.group(1) ?? n.group(2) ?? '');
+  }
+  return null;
+}
 
 /// Lowercase Latin form with unified apostrophes, so Cyrillic and Latin
 /// input/data compare equal.
