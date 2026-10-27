@@ -18,6 +18,7 @@ import 'package:intl/intl.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/services/test_catalog_service.dart';
+import '../../core/services/toast_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/new_badge.dart';
 import 'student_entry_screen.dart';
@@ -168,12 +169,18 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
     final groupId = (_selectedGroup?['id'] ?? '').toString();
     setState(() => _downloadingKeys.add(entry.testKey));
     try {
-      await testCatalogService.download(
+      // Awaits the JSON AND every question image; the spinner stays until
+      // both are on disk. false = failed (network) -> error toast, tap again.
+      final ok = await testCatalogService.download(
         entry.testKey,
         groupId: groupId.isEmpty ? null : groupId,
         schoolCode: widget.schoolCode,
         schoolId: widget.schoolId,
       );
+      if (!ok && mounted) {
+        ToastService.showError(
+            context, AppLocalizations.of(context)!.downloadError);
+      }
     } catch (e) {
       debugPrint('GroupSelectScreen: download(${entry.testKey}) error: $e');
     }

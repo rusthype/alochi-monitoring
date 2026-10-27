@@ -4,7 +4,8 @@ import 'package:http/http.dart' as http;
 
 /// Alochi rasmlar uchun custom cache manager.
 /// - 30 kunlik cache (rasmlar o'zgarmaydi)
-/// - Maksimum 500 ta rasm
+/// - Maksimum 2000 ta rasm (yuklab olingan testlar rasmlari semestr davomida
+///   chiqib ketmasligi uchun; avval 500 edi)
 class AlochiImageCacheManager extends CacheManager with ImageCacheManager {
   static const key = 'alochiImageCache';
 
@@ -17,7 +18,7 @@ class AlochiImageCacheManager extends CacheManager with ImageCacheManager {
           Config(
             key,
             stalePeriod: const Duration(days: 30),
-            maxNrOfCacheObjects: 500,
+            maxNrOfCacheObjects: 2000,
             repo: JsonCacheInfoRepository(databaseName: key),
             fileService: HttpFileService(
               httpClient: _createHttpClient(),

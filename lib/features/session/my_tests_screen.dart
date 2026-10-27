@@ -34,6 +34,7 @@ import '../../core/api/api_client.dart';
 import '../../core/engine/test_models.dart' show pickVariantNumber;
 import '../../core/models/models.dart';
 import '../../core/services/heartbeat_service.dart';
+import '../../core/services/test_catalog_service.dart' show testCatalogService;
 import '../../core/session/logout.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/theme/student_palette.dart';
@@ -266,6 +267,11 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
     Map<String, dynamic>? data;
     try {
       data = await api.fetchTest(test.testKey, authToken: widget.session.token);
+      // Question images must be on disk before the test opens (no in-test
+      // spinners, works offline afterwards); card spinner stays meanwhile.
+      if (data != null && !await testCatalogService.ensureImagesCached(data)) {
+        data = null;
+      }
     } finally {
       if (mounted) setState(() => _startingKeys.remove(test.testKey));
     }
