@@ -1,6 +1,7 @@
 import 'package:alochi_monitoring/core/locale/locale_provider.dart';
 import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_school_list.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_school_select_screen.dart';
+import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_widgets.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -214,6 +215,10 @@ void main() {
       final y1 = t.getTopLeft(find.text('1-maktab')).dy;
       expect(y3, lessThan(y1));
       expect(find.text('3-maktab'), findsOneWidget); // not duplicated
+      final pills = t
+          .widgetList<DiagnosticPillButton>(find.byType(DiagnosticPillButton))
+          .toList();
+      expect(pills.where((p) => p.accent).map((p) => p.label), ['3-maktab']);
     });
 
     testWidgets('40+ schools at 1280x720 do not overflow', (t) async {
@@ -224,7 +229,7 @@ void main() {
       expect(t.takeException(), isNull);
     });
 
-    testWidgets('offline single row: badge+template name, no search/headers',
+    testWidgets('offline single row: pill+template name, no search/headers',
         (t) async {
       await pump(t, [
         {
@@ -235,7 +240,7 @@ void main() {
         },
       ]);
       expect(find.text('26-maktab'), findsOneWidget);
-      expect(find.text('26'), findsWidgets); // number badge
+      expect(find.byType(DiagnosticPillButton), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
       expect(find.text('Boshqa'), findsNothing);
       expect(find.text('Hammasi'), findsNothing);
@@ -246,7 +251,7 @@ void main() {
         (t) async {
       await pump(t, [row('1', 'A', 5, city: 'Toshkent')]);
       expect(find.text('5-maktab'), findsOneWidget);
-      expect(find.text('Toshkent'), findsOneWidget); // subtitle only
+      expect(find.text('Toshkent'), findsNothing); // city is not in the pill
       expect(find.byType(TextField), findsNothing);
       expect(find.text('Hammasi'), findsNothing);
     });

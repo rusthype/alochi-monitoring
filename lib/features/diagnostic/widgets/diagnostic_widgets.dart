@@ -149,11 +149,15 @@ class DiagnosticPillButton extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
+
+  /// Highlight without filling (e.g. the school the proctor chose last).
+  final bool accent;
   const DiagnosticPillButton({
     super.key,
     required this.label,
     required this.isSelected,
     required this.onTap,
+    this.accent = false,
   });
 
   @override
@@ -171,7 +175,8 @@ class DiagnosticPillButton extends StatelessWidget {
             color: isSelected ? AppColors.brand : AppColors.surface,
             borderRadius: BorderRadius.circular(100),
             border: Border.all(
-              color: isSelected ? AppColors.brand : AppColors.border,
+              color: isSelected || accent ? AppColors.brand : AppColors.border,
+              width: accent && !isSelected ? 2 : 1,
             ),
             boxShadow: [
               if (isSelected)
