@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -46,6 +48,47 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
   /// re-rendering the same stuck error widget.
   int _retryNonce = 0;
 
+  /// Disk-cache hits seen so far, shared across instances: a question image
+  /// that was already downloaded (test prefetch) renders on the very first
+  /// frame — no placeholder spinner flash while the async cache lookup runs.
+  static final Map<String, File> _knownFiles = {};
+
+  /// Cache lookup for the current url has finished (hit or miss).
+  bool _cacheChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _lookupCache();
+  }
+
+  @override
+  void didUpdateWidget(AppNetworkImage old) {
+    super.didUpdateWidget(old);
+    if (old.url != widget.url) {
+      _cacheChecked = false;
+      _lookupCache();
+    }
+  }
+
+  Future<void> _lookupCache() async {
+    final fixed = MonitoringApi.fixImageUrl(widget.url);
+    if (fixed.isEmpty || OfflineMedia.fileFor(widget.url) != null) return;
+    if (_knownFiles.containsKey(fixed)) {
+      _cacheChecked = true;
+      return;
+    }
+    try {
+      final info = await AlochiImageCacheManager().getFileFromCache(fixed);
+      if (info != null) _knownFiles[fixed] = info.file;
+    } catch (_) {
+      // Fall through to CachedNetworkImage, which has its own handling.
+    }
+    if (mounted && fixed == MonitoringApi.fixImageUrl(widget.url)) {
+      setState(() => _cacheChecked = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Offline USB pack image: a file on disk, not a URL.
@@ -73,6 +116,12 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
             height: widget.height ?? 80,
             width: widget.width,
           );
+    }
+
+    final cachedFile = _knownFiles[fixedUrl];
+    if (cachedFile == null && !_cacheChecked) {
+      // Cache lookup still running: reserve the slot, no spinner.
+      return SizedBox(height: widget.height ?? 80, width: widget.width);
     }
 
     Widget img = CachedNetworkImage(
@@ -117,6 +166,29 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
             ),
           ),
     );
+
+    // Disk-cache hit: render the file directly (first frame, no spinner).
+    if (cachedFile != null) {
+      img = Image.file(
+        cachedFile,
+        key: ValueKey('$fixedUrl#file'),
+        height: widget.height,
+        width: widget.width,
+        fit: widget.fit,
+        alignment: widget.alignment,
+        filterQuality: FilterQuality.medium,
+        errorBuilder: (_, __, ___) {
+          // Corrupt/missing file: drop it and fall back to the network
+          // path (re-download + normal error/retry handling).
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            _knownFiles.remove(fixedUrl);
+            await AlochiImageCacheManager().removeFile(fixedUrl);
+            if (mounted) setState(() => _retryNonce++);
+          });
+          return SizedBox(height: widget.height ?? 80, width: widget.width);
+        },
+      );
+    }
 
     if (widget.borderRadius != null) {
       img = ClipRRect(borderRadius: widget.borderRadius!, child: img);

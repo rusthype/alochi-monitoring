@@ -1,6 +1,10 @@
 // lib/core/services/test_catalog_service.dart
+import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api_client.dart';
 import '../cache/image_cache_manager.dart';
 import '../db/test_cache.dart';
@@ -107,12 +111,30 @@ class CatalogEntry {
 /// Backend test katalogini boshqaradi: yuklash, kesh solishtirish, offline.
 class TestCatalogService {
   final MonitoringApi Function() _apiOf;
+  final BaseCacheManager? _cacheOverride;
+  final Duration _retryDelay;
 
-  TestCatalogService(MonitoringApi api) : _apiOf = (() => api);
+  /// `cacheManager` / `retryDelay` are injectable for tests only; production
+  /// uses the shared [AlochiImageCacheManager] (the SAME cache the renderer
+  /// [AppNetworkImage] reads from).
+  TestCatalogService(MonitoringApi api,
+      {BaseCacheManager? cacheManager,
+      Duration retryDelay = const Duration(milliseconds: 400)})
+      : _apiOf = (() => api),
+        _cacheOverride = cacheManager,
+        _retryDelay = retryDelay;
 
   /// Resolves the API on every call — the global `api` can be swapped for an
   /// offline-pack implementation at runtime.
-  TestCatalogService.dynamic(this._apiOf);
+  TestCatalogService.dynamic(this._apiOf,
+      {BaseCacheManager? cacheManager,
+      Duration retryDelay = const Duration(milliseconds: 400)})
+      : _cacheOverride = cacheManager,
+        _retryDelay = retryDelay;
+
+  // Lazy: the global singleton is built at import time, before any plugin
+  // (path_provider) is available; the cache manager touches it on creation.
+  BaseCacheManager get _cache => _cacheOverride ?? AlochiImageCacheManager();
 
   MonitoringApi get _api => _apiOf();
 
@@ -277,10 +299,17 @@ class TestCatalogService {
     return entries;
   }
 
-  /// Testni backend'dan yuklab keshga saqlaydi va rasmlarni prefetch qiladi.
+  /// Testni backend'dan yuklab keshga saqlaydi va barcha rasmlarini
+  /// DISK keshga to'liq yuklaydi (kutiladi — test faqat hammasi tayyor
+  /// bo'lgach ochiladi).
   ///
-  /// Bittasi xato bo'lsa ham davom etadi (best-effort).
-  /// Muvaffaqiyatli kesh'ga yozilsa — true, aks holda false qaytaradi.
+  /// Muvaffaqiyatli bo'lsa true. Test JSON'i yuklanmasa YOKI biror rasm
+  /// tarmoq xatosi tufayli (qayta urinishlardan keyin) yuklanmasa false —
+  /// chaqiruvchi xatoni ko'rsatadi va foydalanuvchi qayta urinadi (JSON keshda
+  /// qoladi, qayta urinishda faqat yetishmagan rasmlar yuklanadi). Alohida
+  /// rasm HTTP 404/410 bo'lsa (fayl serverda yo'q) — o'tkazib yuboriladi.
+  ///
+  /// `onProgress(done, total)` — rasmlar yuklanishi davomida chaqiriladi.
   ///
   /// `groupId` — tanlangan guruh ma'lum bo'lganda (yangi maktab→guruh→test
   /// oqimi, GroupSelectScreen) uzatiladi, detail fetch'ga qo'shiladi
@@ -293,7 +322,10 @@ class TestCatalogService {
   /// `schoolId` — qarang [refresh] izohi: berilsa `schoolCode`dan ustunlik
   /// oladi, kolliziyasiz maktab aniqlash uchun.
   Future<bool> download(String testKey,
-      {String? groupId, String? schoolCode, String? schoolId}) async {
+      {String? groupId,
+      String? schoolCode,
+      String? schoolId,
+      void Function(int done, int total)? onProgress}) async {
     try {
       final data = await _api.fetchTest(testKey,
           groupId: groupId, schoolCode: schoolCode, schoolId: schoolId);
@@ -309,30 +341,129 @@ class TestCatalogService {
 
       await TestCache.upsert(testKey, title, grade, version, jsonStr);
 
-      // Rasmlarni prefetch — best-effort, xato bo'lsa davom etamiz
-      _prefetchImages(data);
-
-      return true;
+      return await ensureImagesCached(data, onProgress: onProgress);
     } catch (e) {
       debugPrint('TestCatalogService.download($testKey) error: $e');
       return false;
     }
   }
 
-  /// test_data ichidagi barcha http bilan boshlanadigan rasm url'larni
-  /// AlochiImageCacheManager orqali prefetch qiladi.
-  void _prefetchImages(Map<String, dynamic> data) {
-    final urls = _collectImageUrls(data);
-    if (urls.isEmpty) return;
-    final cacheManager = AlochiImageCacheManager();
+  /// [data] (test JSON) ichidagi barcha rasmlar disk keshda bo'lishini
+  /// ta'minlaydi. Keshda bor rasmlar uchun tarmoqqa umuman chiqilmaydi.
+  /// Yetishmaganlari cheklangan parallellikda yuklanadi (har biri uchun 2 ta
+  /// qayta urinish). 404/410 — o'tkazib yuboriladi; boshqa xato — false.
+  /// Oflayn bo'lib, avval 404 bo'lgani ma'lum rasm yetishmasa — bloklanmaydi.
+  Future<bool> ensureImagesCached(dynamic data,
+      {void Function(int done, int total)? onProgress}) async {
+    final urls = _imageUrls(data);
+    if (urls.isEmpty) return true;
+
+    final missing = <String>[];
     for (final url in urls) {
-      if (url.isEmpty) continue;
-      cacheManager.downloadFile(url).then((_) {
-        // muvaffaqiyatli kesh'landi
-      }).catchError((Object e) {
-        debugPrint('Image prefetch failed for $url: $e');
-      });
+      if (!await _isCached(url)) missing.add(url);
     }
+    if (missing.isEmpty) return true;
+
+    final total = urls.length;
+    var done = total - missing.length;
+    onProgress?.call(done, total);
+
+    var failed = false;
+    var next = 0;
+    Future<void> worker() async {
+      while (!failed && next < missing.length) {
+        final url = missing[next++];
+        if (!await _downloadOne(url)) {
+          failed = true;
+          return;
+        }
+        done++;
+        onProgress?.call(done, total);
+      }
+    }
+
+    await Future.wait(List.generate(
+        math.min(_imageConcurrency, missing.length), (_) => worker()));
+    return !failed;
+  }
+
+  static const _imageConcurrency = 4;
+  static const _imageRetries = 2;
+  static const _missingPrefsKey = 'known_missing_image_urls';
+
+  /// 404/410 bo'lgani ma'lum rasm url'lari (xotira + SharedPreferences).
+  /// Oflayn rejimda bunday rasm testni bloklamasligi uchun kerak: keshda hech
+  /// qachon bo'lmaydi, lekin "tarmoq yo'q" bilan "serverda yo'q" farqlanadi.
+  static final Set<String> _knownMissing = {};
+  static bool _missingLoaded = false;
+
+  static Future<void> _loadMissing() async {
+    if (_missingLoaded) return;
+    _missingLoaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _knownMissing.addAll(prefs.getStringList(_missingPrefsKey) ?? const []);
+    } catch (e) {
+      debugPrint('TestCatalogService: known-missing load failed: $e');
+    }
+  }
+
+  static Future<void> _saveMissing() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = _knownMissing.toList();
+      await prefs.setStringList(_missingPrefsKey,
+          list.length > 500 ? list.sublist(list.length - 500) : list);
+    } catch (e) {
+      debugPrint('TestCatalogService: known-missing save failed: $e');
+    }
+  }
+
+  @visibleForTesting
+  static void resetKnownMissingForTest() {
+    _knownMissing.clear();
+    _missingLoaded = false;
+  }
+
+  List<String> _imageUrls(dynamic data) =>
+      _collectImageUrls(data).where((u) => u.isNotEmpty).toSet().toList();
+
+  Future<bool> _isCached(String url) async {
+    try {
+      return await _cache.getFileFromCache(url) != null;
+    } catch (e) {
+      debugPrint('Image cache lookup failed for $url: $e');
+      return false;
+    }
+  }
+
+  /// true = rasm keshda yoki o'tkazib yuborildi; false = tarmoq xatosi.
+  Future<bool> _downloadOne(String url) async {
+    await _loadMissing();
+    // Avval 404 bo'lgan rasm uchun qayta urinish shart emas (bitta urinish).
+    final retries = _knownMissing.contains(url) ? 0 : _imageRetries;
+    for (var attempt = 0; attempt <= retries; attempt++) {
+      try {
+        await _cache.downloadFile(url);
+        if (_knownMissing.remove(url)) await _saveMissing();
+        return true;
+      } on HttpExceptionWithStatus catch (e) {
+        if (e.statusCode == 404 || e.statusCode == 410) {
+          debugPrint('Image missing on server (${e.statusCode}), skipped: $url');
+          if (_knownMissing.add(url)) await _saveMissing();
+          return true;
+        }
+        debugPrint('Image download HTTP ${e.statusCode} for $url '
+            '(attempt ${attempt + 1})');
+      } catch (e) {
+        debugPrint('Image download failed for $url (attempt ${attempt + 1}): $e');
+      }
+      if (attempt < retries) {
+        await Future<void>.delayed(_retryDelay * (attempt + 1));
+      }
+    }
+    // Tarmoq xatosi. Avval 404 bo'lgani ma'lum rasm bo'lsa bloklamaymiz.
+    return _knownMissing.contains(url);
   }
 
   /// Rekursiv tarzda JSON ichidan barcha http/https boshlanadigan string'larni yig'adi.
