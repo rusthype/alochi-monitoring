@@ -200,24 +200,19 @@ class TestCatalogService {
       if (cachedRows.isEmpty) {
         throw fetchError ?? Exception('catalog fetch failed');
       }
-      final offline = <CatalogEntry>[];
-      for (final row in cachedRows) {
+      return cachedRows.map((row) {
         final key = row['test_key']?.toString() ?? '';
         final title = row['title']?.toString() ?? '';
         final grade = int.tryParse(row['grade']?.toString() ?? '') ?? 0;
         final version = int.tryParse(row['version']?.toString() ?? '') ?? 0;
-        offline.add(CatalogEntry(
+        return CatalogEntry(
           testKey: key,
           title: title,
           grade: grade,
           version: version,
-          // "Downloaded" = JSON AND every image on disk.
-          status: await _isCachedComplete(key, version)
-              ? CatalogStatus.cachedOnly
-              : CatalogStatus.notDownloaded,
-        ));
-      }
-      return offline;
+          status: CatalogStatus.cachedOnly,
+        );
+      }).toList();
     }
 
     // Online: backend katalogi bilan keshni solishtir
@@ -249,12 +244,8 @@ class TestCatalogService {
         status = CatalogStatus.notDownloaded;
       } else if (version > cachedVer) {
         status = CatalogStatus.updatable;
-      } else if (await _isCachedComplete(key, cachedVer)) {
-        status = CatalogStatus.cached;
       } else {
-        // JSON is cached but images are missing (e.g. downloaded by an older
-        // build, or evicted): not usable offline -> shown as not downloaded.
-        status = CatalogStatus.notDownloaded;
+        status = CatalogStatus.cached;
       }
 
       final rawButtons = item['school_buttons'];
@@ -309,17 +300,11 @@ class TestCatalogService {
     return entries;
   }
 
-  /// Testni backend'dan yuklab keshga saqlaydi va barcha rasmlarini
-  /// DISK keshga to'liq yuklaydi (kutiladi — test faqat hammasi tayyor
-  /// bo'lgach ochiladi).
+  /// Testni backend'dan yuklab keshga (JSON) saqlaydi. Rasmlar bu yerda
+  /// YUKLANMAYDI: ular o'quvchi tanlanganda faqat uning varianti uchun
+  /// [ensureVariantImages] orqali yuklanadi.
   ///
-  /// Muvaffaqiyatli bo'lsa true. Test JSON'i yuklanmasa YOKI biror rasm
-  /// tarmoq xatosi tufayli (qayta urinishlardan keyin) yuklanmasa false —
-  /// chaqiruvchi xatoni ko'rsatadi va foydalanuvchi qayta urinadi (JSON keshda
-  /// qoladi, qayta urinishda faqat yetishmagan rasmlar yuklanadi). Alohida
-  /// rasm HTTP 404/410 bo'lsa (fayl serverda yo'q) — o'tkazib yuboriladi.
-  ///
-  /// `onProgress(done, total)` — rasmlar yuklanishi davomida chaqiriladi.
+  /// Muvaffaqiyatli kesh'ga yozilsa — true, aks holda false qaytaradi.
   ///
   /// `groupId` — tanlangan guruh ma'lum bo'lganda (yangi maktab→guruh→test
   /// oqimi, GroupSelectScreen) uzatiladi, detail fetch'ga qo'shiladi
@@ -332,12 +317,7 @@ class TestCatalogService {
   /// `schoolId` — qarang [refresh] izohi: berilsa `schoolCode`dan ustunlik
   /// oladi, kolliziyasiz maktab aniqlash uchun.
   Future<bool> download(String testKey,
-      {String? groupId,
-      String? schoolCode,
-      String? schoolId,
-      void Function(int done, int total)? onProgress}) async {
-    _activeDownloads++;
-    var versionChanged = false;
+      {String? groupId, String? schoolCode, String? schoolId}) async {
     try {
       final data = await _api.fetchTest(testKey,
           groupId: groupId, schoolCode: schoolCode, schoolId: schoolId);
@@ -352,53 +332,20 @@ class TestCatalogService {
       final jsonStr = jsonEncode(data);
 
       final prev = await TestCache.versionOf(testKey);
-      versionChanged = prev != null && prev != version;
       await TestCache.upsert(testKey, title, grade, version, jsonStr);
-      _urlMemo['$testKey@$version'] = _imageUrls(data);
+      // Yangi versiya: eski versiyaning rasmlari endi hech qayerda
+      // ishlatilmasligi mumkin — best-effort tozalash.
+      if (prev != null && prev != version) unawaited(gcStore());
 
-      return await ensureImagesCached(data, onProgress: onProgress);
+      return true;
     } catch (e) {
       debugPrint('TestCatalogService.download($testKey) error: $e');
       return false;
-    } finally {
-      _activeDownloads--;
-      if (versionChanged) unawaited(gcStore());
     }
   }
 
   /// Hozir ishlayotgan yuklashlar soni — GC ular paytida ishlamaydi.
   int _activeDownloads = 0;
-
-  /// `testKey@version` -> rasm url'lari (JSON'ni har katalog yangilanishida
-  /// qayta decode qilmaslik uchun).
-  final Map<String, List<String>> _urlMemo = {};
-
-  /// Test "yuklangan" deb hisoblanishi uchun: JSON keshda VA barcha rasmlar
-  /// diskda (404/410 deb ma'lum bo'lganlar hisobga olinadi).
-  Future<bool> _isCachedComplete(String testKey, int version) async {
-    try {
-      var urls = _urlMemo['$testKey@$version'];
-      if (urls == null) {
-        final data = await TestCache.get(testKey);
-        if (data == null) return false;
-        urls = _imageUrls(data);
-        _urlMemo['$testKey@$version'] = urls;
-      }
-      return await _allPresent(urls);
-    } catch (e) {
-      debugPrint('TestCatalogService: completeness check($testKey) error: $e');
-      return false;
-    }
-  }
-
-  /// Keshlangan test JSON + barcha rasmlar tayyormi (tarmoqsiz tekshiruv).
-  Future<bool> isTestReady(String testKey) async {
-    final data = await TestCache.get(testKey);
-    return data != null && await imagesComplete(data);
-  }
-
-  /// [data] ichidagi barcha rasmlar diskda bormi (tarmoqsiz)?
-  Future<bool> imagesComplete(dynamic data) => _allPresent(_imageUrls(data));
 
   Future<bool> _allPresent(List<String> urls) async {
     await _loadMissing();
@@ -431,44 +378,85 @@ class TestCatalogService {
     }
   }
 
-  /// [data] (test JSON) ichidagi barcha rasmlarni doimiy rasm do'koniga
-  /// yuklaydi. Do'konda bor rasmlar uchun tarmoqqa umuman chiqilmaydi.
-  /// Yetishmaganlari cheklangan parallellikda yuklanadi (har biri uchun 2 ta
-  /// qayta urinish). 404/410 — o'tkazib yuboriladi; boshqa xato — false.
-  /// Oflayn bo'lib, avval 404 bo'lgani ma'lum rasm yetishmasa — bloklanmaydi.
-  Future<bool> ensureImagesCached(dynamic data,
-      {void Function(int done, int total)? onProgress}) async {
-    final urls = _imageUrls(data);
-    if (urls.isEmpty) return true;
-    await _store.init();
+  /// Test JSON'ning (ixtiyoriy `test_data` o'rami bilan) asosiy bloki.
+  Map<String, dynamic> _blob(Map<String, dynamic> cached) =>
+      cached['test_data'] is Map
+          ? Map<String, dynamic>.from(cached['test_data'] as Map)
+          : cached;
 
-    final missing = [
-      for (final u in urls)
-        if (_store.cachedFile(u) == null) u,
-    ];
-    if (missing.isEmpty) return true;
-
-    final total = urls.length;
-    var done = total - missing.length;
-    onProgress?.call(done, total);
-
-    var failed = false;
-    var next = 0;
-    Future<void> worker() async {
-      while (!failed && next < missing.length) {
-        final url = missing[next++];
-        if (!await _downloadOne(url)) {
-          failed = true;
-          return;
-        }
-        done++;
-        onProgress?.call(done, total);
-      }
+  /// [variant] ga tegishli rasm url'lari + umumiy (variantlardan tashqari)
+  /// url'lar. Boshqa variantlarning rasmlari KIRMAYDI.
+  List<String> variantImageUrls(Map<String, dynamic> cached, int variant) {
+    final blob = _blob(cached);
+    final variants = blob['variants'];
+    final shared = <String, dynamic>{
+      for (final e in cached.entries)
+        if (e.key != 'test_data' && e.key != 'variants') e.key: e.value,
+      for (final e in blob.entries)
+        if (e.key != 'variants') e.key: e.value,
+    };
+    final urls = <String>{..._imageUrls(shared)};
+    if (variants is Map) {
+      final mine = variants[variant.toString()];
+      if (mine != null) urls.addAll(_imageUrls(mine));
     }
+    return urls.toList();
+  }
 
-    await Future.wait(List.generate(
-        math.min(_imageConcurrency, missing.length), (_) => worker()));
-    return !failed;
+  /// [variant] ning barcha rasmlari diskda bormi (tarmoqsiz)? 404/410 deb
+  /// ma'lum rasmlar hisobga olinadi.
+  Future<bool> variantImagesComplete(
+          Map<String, dynamic> cached, int variant) =>
+      _allPresent(variantImageUrls(cached, variant));
+
+  /// Faqat [variant] (+ umumiy) rasmlarini doimiy do'konga yuklaydi.
+  /// Do'konda bor rasmlar uchun tarmoqqa umuman chiqilmaydi. Yetishmaganlari
+  /// cheklangan parallellikda yuklanadi (har biri uchun 2 ta qayta urinish).
+  /// 404/410 — o'tkazib yuboriladi; boshqa xato — false (chaqiruvchi xatoni
+  /// ko'rsatadi, qayta urinish mumkin). Oflayn bo'lib, avval 404 bo'lgani
+  /// ma'lum rasm yetishmasa — bloklanmaydi.
+  Future<bool> ensureVariantImages(Map<String, dynamic> cached, int variant,
+          {void Function(int done, int total)? onProgress}) =>
+      ensureUrls(variantImageUrls(cached, variant), onProgress: onProgress);
+
+  /// Berilgan (fixImageUrl'dan o'tgan) url'lar ro'yxatini do'konga yuklaydi.
+  Future<bool> ensureUrls(List<String> urls,
+      {void Function(int done, int total)? onProgress}) async {
+    if (urls.isEmpty) return true;
+    _activeDownloads++;
+    try {
+      await _store.init();
+
+      final missing = [
+        for (final u in urls)
+          if (_store.cachedFile(u) == null) u,
+      ];
+      if (missing.isEmpty) return true;
+
+      final total = urls.length;
+      var done = total - missing.length;
+      onProgress?.call(done, total);
+
+      var failed = false;
+      var next = 0;
+      Future<void> worker() async {
+        while (!failed && next < missing.length) {
+          final url = missing[next++];
+          if (!await _downloadOne(url)) {
+            failed = true;
+            return;
+          }
+          done++;
+          onProgress?.call(done, total);
+        }
+      }
+
+      await Future.wait(List.generate(
+          math.min(_imageConcurrency, missing.length), (_) => worker()));
+      return !failed;
+    } finally {
+      _activeDownloads--;
+    }
   }
 
   static const _imageConcurrency = 4;

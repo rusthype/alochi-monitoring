@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/db/test_cache.dart';
 import '../../core/offline/offline_session.dart';
+import '../../core/services/test_catalog_service.dart';
+import '../../core/services/toast_service.dart';
 import '../../shared/theme/app_theme.dart';
 import 'runner_dispatch.dart';
 import 'test_session.dart';
@@ -34,6 +37,17 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
   int? _grade;
   String? _err;
   bool _launching = false;
+
+  // Variant-image preparation: when a student is selected, ONLY that
+  // student's variant images are downloaded into the persistent store, so
+  // "Start" enters with zero downloading.
+  int _prepToken = 0; // bumped on every (re)start/cancel -> stale results ignored
+  bool _preparing = false;
+  String? _prepProgress; // "done/total" while downloading, else null
+  String? _preparedFor; // studentId whose variant images are ready
+  int? _preparedVariant; // the variant that was prepared (and will be launched)
+  // Variant drawn per student so re-selecting a student never re-draws.
+  final Map<String, int> _drawnVariant = {};
   List<Map<String, dynamic>> _groups = [];
   Map<String, dynamic>? _selectedGroup;
   bool _loadingGroups = true;
@@ -47,7 +61,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       _selectedGroup != null && (_loadingStudents || _students.isNotEmpty);
 
   bool get _canStart {
-    if (_launching) return false;
+    if (_launching || _preparing) return false;
     if (_selectedStudent != null) return true;
     if (_selectedGroup != null && (_loadingStudents || _students.isNotEmpty)) {
       return false;
@@ -99,6 +113,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
   Future<void> _loadStudents() async {
     final groupId = (_selectedGroup?['id'] ?? '').toString();
     if (groupId.isEmpty) return;
+    _cancelPrepare();
     setState(() {
       _loadingStudents = true;
       _students = [];
@@ -139,6 +154,67 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     _searchCtrl.dispose();
     _searchFocus.dispose();
     super.dispose();
+  }
+
+  void _cancelPrepare() {
+    _prepToken++;
+    _preparing = false;
+    _prepProgress = null;
+    _preparedFor = null;
+    _preparedVariant = null;
+  }
+
+  /// Downloads ONLY [studentId]'s variant images (plus shared ones) into the
+  /// persistent store. Already-stored images cost nothing (no network).
+  /// Returns true when ready; on failure shows the error toast and returns
+  /// false (the student re-taps / presses Start to retry). Results of a
+  /// superseded prepare (another student tapped meanwhile) are ignored.
+  Future<bool> _prepareFor(String studentId) async {
+    if (_preparedFor == studentId && !_preparing) return true;
+    final token = ++_prepToken;
+    setState(() {
+      _preparing = true;
+      _prepProgress = null;
+      _preparedFor = null;
+      _preparedVariant = null;
+    });
+    var ok = false;
+    int? variant;
+    try {
+      final cached = await TestCache.get(widget.session.testKey);
+      if (cached == null) {
+        // Pack/LAN mode: launchRunner loads the test itself; nothing to fetch.
+        ok = true;
+      } else {
+        variant = await previewAttemptVariant(cached,
+            testKey: widget.session.testKey,
+            studentId: studentId,
+            drawn: _drawnVariant[studentId]);
+        _drawnVariant[studentId] = variant;
+        ok = await testCatalogService.ensureVariantImages(cached, variant,
+            onProgress: (done, total) {
+          if (mounted && token == _prepToken) {
+            setState(() => _prepProgress = '$done/$total');
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('StudentEntryScreen: prepare($studentId) error: $e');
+    }
+    if (!mounted || token != _prepToken) return false;
+    setState(() {
+      _preparing = false;
+      _prepProgress = null;
+      if (ok) {
+        _preparedFor = studentId;
+        _preparedVariant = variant;
+      }
+    });
+    if (!ok) {
+      ToastService.showError(
+          context, AppLocalizations.of(context)!.downloadError);
+    }
+    return ok;
   }
 
   Future<void> _startTest() async {
@@ -197,6 +273,13 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       _err = null;
       _launching = true;
     });
+    // Normally already prepared when the student was tapped; manual-name
+    // entry (no roster) prepares here, with progress on the start button.
+    if (_preparedFor != studentId && !await _prepareFor(studentId)) {
+      if (mounted) setState(() => _launching = false);
+      return;
+    }
+    if (!mounted) return;
     await launchRunner(
       context,
       session: widget.session,
@@ -206,6 +289,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       groupName: groupName,
       groupId: groupId,
       studentId: studentId,
+      preparedVariant: _preparedVariant,
     );
     if (!mounted) return;
     
@@ -333,6 +417,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                         label: name,
                                         child: GestureDetector(
                                           onTap: () {
+                                            _cancelPrepare();
                                             setState(() {
                                               _selectedGroup = g;
                                               _selectedStudent = null;
@@ -543,8 +628,14 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                                     student['id'] ??
                                                     '')
                                                 .toString()),
-                                        onTap: () => setState(
-                                            () => _selectedStudent = student),
+                                        onTap: () {
+                                          setState(
+                                              () => _selectedStudent = student);
+                                          _prepareFor((student['student_code'] ??
+                                                  student['id'] ??
+                                                  '')
+                                              .toString());
+                                        },
                                       );
                                     },
                                     childCount: filteredStudents.length,
@@ -750,7 +841,9 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                 Padding(
                                   padding: const EdgeInsets.only(left: 16),
                                   child: Text(
-                                    l10n.startTest,
+                                    _prepProgress != null
+                                        ? '${l10n.downloading} $_prepProgress'
+                                        : l10n.startTest,
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
@@ -767,7 +860,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                         : Colors.grey.shade400,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: _launching
+                                  child: (_launching || _preparing)
                                       ? const Padding(
                                           padding: EdgeInsets.all(12),
                                           child: CircularProgressIndicator(
