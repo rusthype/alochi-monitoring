@@ -16,7 +16,6 @@ import '../../../core/utils/student_name_formatter.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../data/diagnostic_school_list.dart';
-import '../widgets/diagnostic_school_card.dart';
 import '../widgets/diagnostic_widgets.dart';
 
 /// SharedPreferences key of the last school the proctor picked.
@@ -122,20 +121,35 @@ class _DiagnosticSchoolSelectScreenState
     AppLocalizations l10n,
     Locale locale, {
     bool pinned = false,
-    bool showCity = true,
   }) {
-    return DiagnosticSchoolCard(
-      number: s.number,
-      title: shortSchoolName(
+    final pill = DiagnosticPillButton(
+      label: shortSchoolName(
         s,
         locale,
         (n) => l10n.diagnosticSchoolNumberName(n),
       ),
-      subtitle: !showCity || s.cityName.isEmpty
-          ? null
-          : toDisplayScript(s.cityName, locale),
-      marker: pinned ? l10n.diagnosticSchoolLastChosen : null,
+      isSelected: false,
+      accent: pinned,
       onTap: () => _selectSchool(s.raw),
+    );
+    if (!pinned) return pill;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
+          child: Text(
+            l10n.diagnosticSchoolLastChosen,
+            style: const TextStyle(
+              color: AppColors.brand,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        pill,
+      ],
     );
   }
 
@@ -240,7 +254,7 @@ class _DiagnosticSchoolSelectScreenState
           ),
         wrap([
           for (final s in groups[k]!)
-            _card(s, l10n, locale, showCity: !headers),
+            _card(s, l10n, locale),
         ]),
         const SizedBox(height: 20),
       ],
