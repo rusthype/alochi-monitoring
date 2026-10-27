@@ -21,29 +21,22 @@
 // Duration default: 60 seconds per answerable question, clamped to [60s, 90min].
 
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:go_router/go_router.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/attempt_store.dart';
-import '../../shared/utils/svg_aspect.dart';
 import '../../core/db/history_db.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/engine/test_engine.dart';
 import '../../core/engine/test_models.dart';
 import '../../core/engine/test_scorer.dart';
-import '../../core/services/heartbeat_service.dart';
 import '../../core/services/html_service.dart';
-import '../../core/services/pdf_service.dart';
 import '../../core/sync/sync_service.dart';
 import '../../core/offline/lan_client_session.dart';
 import '../../core/offline/offline_crypto.dart';
 import '../../core/offline/offline_session.dart';
+import '../diagnostic/screens/diagnostic_finished_screen.dart';
 import '../offline/offline_saved_screen.dart';
 import '../../shared/widgets/exit_error_scaffold.dart';
 import '../../shared/theme/app_theme.dart';
@@ -103,7 +96,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   Object? _parseException;
 
   // Set by _handleComplete once the test is scored. When non-null, build()
-  // renders _EngineResultScreen IN-PLACE instead of the running TestEngine.
+  // renders EngineResultScreen IN-PLACE instead of the running TestEngine.
   //
   // Deliberately NOT done via Navigator.pushReplacement(...) — this widget
   // (EngineHostScreen) is itself the builder for the GoRouter route
@@ -133,7 +126,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
 
   // Set by TestEngine.onExpiredAutoSubmit when a relaunch found the
   // deadline already passed and auto-submitted without the student seeing
-  // it happen. _EngineResultScreen shows a one-time notice for this.
+  // it happen. EngineResultScreen shows a one-time notice for this.
   bool _expiredAutoSubmit = false;
 
   @override
@@ -372,7 +365,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       );
     }
     if (_completedResult != null) {
-      return _EngineResultScreen(
+      return EngineResultScreen(
         firstName: widget.firstName,
         lastName: widget.lastName,
         school: widget.school,
@@ -519,14 +512,16 @@ _Agg _sumSections(List<SectionScore> sections) {
 // ── Error scaffold ────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _EngineResultScreen
+// EngineResultScreen
 //
-// Simple result display: score ring + per-section table + PDF button.
-// Does NOT modify or extend the existing ResultScreen (which requires
-// TestResult/StudentSession/TestPackage — the old schema).
+// Post-finish screen: the student sees the neutral thank-you screen (no score).
+// Keeps the silent side effects of the old result display — AI summary fetch +
+// HTML report upload for the parent/teacher Telegram report, and the one-time
+// "auto-submitted" notice. Independent of ResultScreen (old TestResult schema).
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _EngineResultScreen extends StatefulWidget {
+@visibleForTesting
+class EngineResultScreen extends StatefulWidget {
   final String firstName;
   final String lastName;
   final String school;
@@ -548,7 +543,8 @@ class _EngineResultScreen extends StatefulWidget {
   /// countdown or a confirm dialog, so this screen shows a one-time notice.
   final bool expiredAutoSubmit;
 
-  const _EngineResultScreen({
+  const EngineResultScreen({
+    super.key,
     required this.firstName,
     required this.lastName,
     required this.school,
@@ -562,30 +558,18 @@ class _EngineResultScreen extends StatefulWidget {
   });
 
   @override
-  State<_EngineResultScreen> createState() => _EngineResultScreenState();
+  State<EngineResultScreen> createState() => _EngineResultScreenState();
 }
 
-class _EngineResultScreenState extends State<_EngineResultScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _fadeCtrl;
-  late final Animation<double> _fade;
-
-  bool _pdfGenerating = false;
-  String? _pdfPath;
-
-  // AI summary (TZ §10.4) — null until loaded; stays null if offline/unavailable
-  // (in which case the card is not shown at all).
+class _EngineResultScreenState extends State<EngineResultScreen> {
+  // AI summary (TZ §10.4) — null until loaded; stays null if offline/unavailable.
+  // Never shown to the student any more; it only feeds the HTML report that
+  // _autoUploadPdfForBot uploads for the parent/teacher Telegram report.
   Map<String, dynamic>? _aiSummary;
-  bool _aiLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _fadeCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 350),
-    )..forward();
-    _fade = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
     _loadAiSummary().then((_) => _autoUploadPdfForBot());
 
     if (widget.expiredAutoSubmit) {
@@ -602,6 +586,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     }
   }
 
+
   /// Generates the HTML report and uploads it silently so the
   /// parent/teacher Telegram report forwards this exact file. Best-effort —
   /// any failure (offline, upload error) is swallowed.
@@ -616,7 +601,7 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
       htmlStr = await _buildHtmlString();
     } catch (e) {
       debugPrint(
-          '_EngineResultScreen._autoUploadPdfForBot: HTML generate xato: $e');
+          'EngineResultScreen._autoUploadPdfForBot: HTML generate xato: $e');
       return;
     }
 
@@ -632,27 +617,26 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         // ok==false → 404 (result hali serverda yo'q) — keyingi urinish
       } catch (e) {
         debugPrint(
-            '_EngineResultScreen._autoUploadPdfForBot attempt $i error: $e');
+            'EngineResultScreen._autoUploadPdfForBot attempt $i error: $e');
         return; // tarmoq xatosi — qayta urinish ma'nosiz
       }
       if (i < delays.length) {
         debugPrint(
-            '_EngineResultScreen._autoUploadPdfForBot: 404, ${delays[i].inSeconds}s kutilmoqda...');
+            'EngineResultScreen._autoUploadPdfForBot: 404, ${delays[i].inSeconds}s kutilmoqda...');
         await Future<void>.delayed(delays[i]);
       }
     }
     debugPrint(
-        '_EngineResultScreen._autoUploadPdfForBot: barcha urinishlar tugadi, server fallback ishlaydi.');
+        'EngineResultScreen._autoUploadPdfForBot: barcha urinishlar tugadi, server fallback ishlaydi.');
   }
 
   /// Fetches the AI analysis (TZ §10.4) for the per-topic breakdown.
   /// Silent on failure — `api.fetchAiSummary` returns null offline / when the
-  /// AI service is unavailable, and the card simply stays hidden.
+  /// AI service is unavailable. Used only by the bot-upload HTML report.
   Future<void> _loadAiSummary() async {
     final topics = widget.result.topicScores;
-    if (topics.isEmpty) return; // nothing to analyze — card stays hidden
+    if (topics.isEmpty) return; // nothing to analyze
 
-    setState(() => _aiLoading = true);
     try {
       final payload = topics
           .map((t) => <String, dynamic>{
@@ -669,39 +653,12 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
         studentFirstName: widget.firstName,
       );
       if (!mounted) return;
-      setState(() {
-        _aiSummary = data;
-        _aiLoading = false;
-      });
+      _aiSummary = data;
     } catch (e) {
-      debugPrint('_EngineResultScreen._loadAiSummary error: $e');
-      if (mounted) setState(() => _aiLoading = false);
+      debugPrint('EngineResultScreen._loadAiSummary error: $e');
     }
   }
 
-  @override
-  void dispose() {
-    _fadeCtrl.dispose();
-    super.dispose();
-  }
-
-  // ── Helpers ──────────────────────────────────────────────────────────────────
-
-  int _secPct(SectionScore s) =>
-      s.total > 0 ? (s.correct / s.total * 100).round() : 0;
-
-  Color _secColor(int pct) {
-    if (pct >= 80) return AppColors.success;
-    if (pct >= 55) return AppColors.secondary;
-    return AppColors.brightRed;
-  }
-
-  String _gradeLabel(BuildContext context, int pct) {
-    if (pct >= 90) return AppLocalizations.of(context)!.gradeExcellent;
-    if (pct >= 75) return AppLocalizations.of(context)!.gradeGood;
-    if (pct >= 55) return AppLocalizations.of(context)!.gradeSatisfactory;
-    return AppLocalizations.of(context)!.gradeNeedsPractice;
-  }
 
   /// Shared section/topic/unit computation for the HTML bot-upload report
   /// and the PDF user-facing download — keeps both in sync.
@@ -774,1263 +731,18 @@ class _EngineResultScreenState extends State<_EngineResultScreen>
     );
   }
 
-  Future<void> _generatePdf() async {
-    if (_pdfGenerating) return;
-    setState(() => _pdfGenerating = true);
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    try {
-      final s = _buildReportSections();
-      final pdfBytes = await PdfService.generateResultPdf(
-        firstName: widget.firstName,
-        lastName: widget.lastName,
-        group: widget.group ?? '',
-        grade: widget.grade,
-        variant: widget.variant,
-        mathOk: s.math.correct,
-        mathTotal: s.math.total,
-        engOk: s.eng.correct,
-        engTotal: s.eng.total,
-        pct: widget.result.totalPct.round(),
-        mathTopics: s.mathTopics,
-        engTopics: s.engTopics,
-        topicScores: s.topicScores,
-        unitScores: s.unitScores,
-        aiSummary: _aiSummary,
-        l10n: l10n,
-      );
-
-      String? path;
-      if (!Platform.isIOS && !Platform.isAndroid) {
-        try {
-          Directory? dir;
-          if (Platform.isMacOS) {
-            final home = Platform.environment['HOME'];
-            if (home != null) {
-              final parts = home.split('/');
-              if (parts.length >= 3 && parts[1] == 'Users') {
-                dir = Directory('/Users/${parts[2]}/Downloads');
-              }
-            }
-          }
-          dir ??= await getDownloadsDirectory();
-
-          if (dir != null) {
-            final testPath =
-                '${dir.path}/natija_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-            await File(testPath).writeAsBytes(pdfBytes);
-            path = testPath;
-          }
-        } catch (_) {}
-      }
-
-      if (path == null) {
-        final fallbackDir = await getApplicationSupportDirectory();
-        path =
-            '${fallbackDir.path}/natija_${widget.firstName}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-        await File(path).writeAsBytes(pdfBytes);
-      }
-
-      if (mounted) setState(() => _pdfPath = path);
-      final openResult = await OpenFilex.open(path);
-      if (openResult.type != ResultType.done) {
-        debugPrint(
-          '_EngineResultScreen._generatePdf open failed: '
-          '${openResult.type} — ${openResult.message}',
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(l10n.reportSavedButOpenFailedMsg),
-              backgroundColor: AppColors.err,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('_EngineResultScreen._generatePdf error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.reportGenerationError),
-            backgroundColor: AppColors.err,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _pdfGenerating = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final result = widget.result;
-    final pct = result.totalPct.round();
-    final correct = result.totalCorrect;
-    final wrong = result.totalQuestions - result.totalCorrect;
-    final heroColor = _secColor(pct);
-    final gradeLabel = _gradeLabel(context, pct);
-    final studentName = '${widget.firstName} ${widget.lastName}';
-    final subLine =
-        '${widget.group?.isNotEmpty == true ? widget.group! : widget.school} · Variant ${widget.variant}';
-    final (mathBucket, engBucket) =
-        _resolveMathEngBuckets(result, widget.subject);
-    final showMathEngRow = mathBucket.total > 0 && engBucket.total > 0;
-
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Text(AppLocalizations.of(context)!.resultTitle,
-            style: AppTextStyles.titleMedium),
-        actions: [
-          TextButton.icon(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-            label: Text(AppLocalizations.of(context)!.nextStudent),
-          ),
-          TextButton.icon(
-            onPressed: () {
-              // context.go() replaces the whole go_router stack instead of
-              // popping — the pending push().then(finishTest) continuation
-              // in runner_dispatch.dart's launchRunner() never resolves, so
-              // the heartbeat never learns the test ended. Call finishTest()
-              // explicitly here as well.
-              HeartbeatService.instance.finishTest();
-              context.go('/');
-            },
-            icon: const Icon(Icons.home_rounded, size: 18),
-            label: Text(AppLocalizations.of(context)!.homePage),
-          ),
-        ],
-      ),
-      body: FadeTransition(
-        opacity: _fade,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── 1. Header ─────────────────────────────────────────────────
-              _ReportCard(
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: const BoxDecoration(
-                        color: AppColors.secondaryMuted,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.person_rounded,
-                          size: 22, color: AppColors.secondary),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(studentName, style: AppTextStyles.titleMedium),
-                          const SizedBox(height: 2),
-                          Text(subLine, style: AppTextStyles.bodyMedium),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── 2. Score hero ─────────────────────────────────────────────
-              _ReportCard(
-                child: Column(
-                  children: [
-                    SizedBox(
-                      width: 110,
-                      height: 110,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox.expand(
-                            child: CircularProgressIndicator(
-                              value: result.totalPct / 100,
-                              strokeWidth: 9,
-                              backgroundColor: AppColors.gray100,
-                              color: heroColor,
-                              strokeCap: StrokeCap.round,
-                            ),
-                          ),
-                          Text(
-                            '$pct%',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                              color: heroColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      gradeLabel,
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: heroColor,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _StatChip(
-                          icon: Icons.check_circle_rounded,
-                          label: AppLocalizations.of(context)!
-                              .correctAnswersWithCount(correct.toString()),
-                          color: AppColors.success,
-                        ),
-                        const SizedBox(width: 8),
-                        _StatChip(
-                          icon: Icons.cancel_rounded,
-                          label: AppLocalizations.of(context)!
-                              .wrongAnswersWithCount(wrong.toString()),
-                          color: AppColors.brightRed,
-                        ),
-                      ],
-                    ),
-                    if (result.shields != null ||
-                        result.levelLabel != null) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        alignment: WrapAlignment.center,
-                        children: [
-                          if (result.shields != null)
-                            _BadgeChip(
-                              icon: Icons.shield_rounded,
-                              label: AppLocalizations.of(context)!
-                                  .shieldsCount(result.shields.toString()),
-                              color: AppColors.primary,
-                            ),
-                          if (result.levelLabel != null)
-                            _BadgeChip(
-                              icon: Icons.military_tech_rounded,
-                              label: result.levelLabel!,
-                              color: AppColors.success,
-                            ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              // ── 2b. Math/English subtotal ────────────────────────────────
-              if (showMathEngRow) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: _MathEngScoreCard(
-                        title: AppLocalizations.of(context)!.mathSubjectFull,
-                        ok: mathBucket.correct,
-                        total: mathBucket.total,
-                        color: AppColors.math,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _MathEngScoreCard(
-                        title: AppLocalizations.of(context)!.englishSubjectFull,
-                        ok: engBucket.correct,
-                        total: engBucket.total,
-                        color: AppColors.eng,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-
-              // ── 3. Bo'limlar bo'yicha ─────────────────────────────────────
-              _ReportCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SectionHead(
-                      icon: Icons.bar_chart_rounded,
-                      label: AppLocalizations.of(context)!.sectionsByTitle,
-                    ),
-                    const SizedBox(height: 8),
-                    if (result.sectionScores.isEmpty)
-                      Text(AppLocalizations.of(context)!.noDataAvailable,
-                          style: AppTextStyles.bodyMedium)
-                    else
-                      ...result.sectionScores.map(
-                        (s) => _SectionRowV2(
-                          section: s,
-                          pct: _secPct(s),
-                          color: _secColor(_secPct(s)),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-              _TzAnalysis(result: widget.result),
-
-              // ── AI summary (TZ §10.4) — hidden when offline/unavailable ────
-              if (_aiLoading || _aiSummary != null) ...[
-                const SizedBox(height: 16),
-                _AiSummaryCard(loading: _aiLoading, data: _aiSummary),
-              ],
-
-              const SizedBox(height: 16),
-
-              // ── 7. PDF action ─────────────────────────────────────────────
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.secondary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed: _pdfGenerating ? null : _generatePdf,
-                icon: _pdfGenerating
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.picture_as_pdf_rounded, size: 20),
-                label: Text(
-                  _pdfPath != null
-                      ? AppLocalizations.of(context)!.reopenPdf
-                      : AppLocalizations.of(context)!.pdfReportButton,
-                ),
-              ),
-
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Badge chip ────────────────────────────────────────────────────────────────
-
-class _BadgeChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _BadgeChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: .25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── AI summary card (TZ §10.4) ──────────────────────────────────────────────────
-
-class _AiSummaryCard extends StatelessWidget {
-  final bool loading;
-  final Map<String, dynamic>? data;
-  const _AiSummaryCard({required this.loading, this.data});
-
-  static List<String> _strList(dynamic raw) {
-    if (raw is! List) return const [];
-    return raw
-        .map((e) => e?.toString().trim() ?? '')
-        .where((s) => s.isNotEmpty)
-        .toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final summary = data?['summary']?.toString().trim() ?? '';
-    final strengths = _strList(data?['strengths']);
-    final weaknesses = _strList(data?['weaknesses']);
-    final recs = _strList(data?['recommendations']);
-    final focus = _strList(data?['focus_14day']);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Icon(Icons.auto_awesome_rounded,
-                size: 18, color: AppColors.primary),
-            const SizedBox(width: 8),
-            Text(AppLocalizations.of(context)!.aiAnalysisTitle,
-                style: AppTextStyles.labelLarge),
-          ]),
-          const SizedBox(height: 12),
-          if (loading)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(children: [
-                const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(AppLocalizations.of(context)!.analysisPreparing,
-                      style: AppTextStyles.bodyMedium),
-                ),
-              ]),
-            )
-          else ...[
-            if (summary.isNotEmpty)
-              Text(summary,
-                  style: AppTextStyles.bodyLarge.copyWith(height: 1.4)),
-            if (strengths.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _block(AppLocalizations.of(context)!.strongSidesTitle, strengths,
-                  Icons.check_circle_rounded, AppColors.ok),
-            ],
-            if (weaknesses.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _block(AppLocalizations.of(context)!.weakSidesTitle, weaknesses,
-                  Icons.error_rounded, AppColors.err),
-            ],
-            if (recs.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _block(AppLocalizations.of(context)!.recommendationsTitle, recs,
-                  Icons.lightbulb_rounded, AppColors.amberDark),
-            ],
-            if (focus.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              _block(AppLocalizations.of(context)!.focus14DaysTitle, focus,
-                  Icons.calendar_today_rounded, AppColors.primary),
-            ],
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _block(String title, List<String> items, IconData icon, Color color) =>
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title,
-            style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: color)),
-        const SizedBox(height: 6),
-        ...items.map((t) => Padding(
-              padding: const EdgeInsets.only(bottom: 5),
-              child:
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Icon(icon, size: 14, color: color),
-                ),
-                const SizedBox(width: 8),
-                Expanded(child: Text(t, style: AppTextStyles.bodyMedium)),
-              ]),
-            )),
-      ]);
-}
-
-// ── TZ per-§ analysis: accordion + strong/weak + 14-day plan (TZ §10) ───────────
-
-class _TzAnalysis extends StatelessWidget {
-  final ScoredResult result;
-  const _TzAnalysis({required this.result});
-
-  Color _c(double pct) {
-    if (pct >= 80) return AppColors.ok;
-    if (pct >= 55) return AppColors.amberDark;
-    return AppColors.err;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final qrs = result.questionResults;
-    if (qrs.isEmpty) return const SizedBox.shrink();
-
-    // Regression (2026-07-21): this accordion used to group by the raw
-    // `r.section` name, so Math World questions (section == "Questions",
-    // no topic/category) collapsed into one undifferentiated "Questions"
-    // row here even though result.topicScores (used below for the
-    // strong/weak chips and the 14-day plan) already groups them correctly
-    // by BOB via TestScorer._buildDetail. Mirror that same key formula so
-    // this accordion's groups — and their titles — match topicScores
-    // exactly instead of re-deriving a different, coarser grouping.
-    final Map<String, List<QuestionResult>> bySection = {};
-    for (final r in qrs) {
-      final key = (r.bob != null && r.bobTitle != null)
-          ? '${r.bob}-BOB — ${r.bobTitle}'
-          : (r.topic ?? r.category ?? r.section);
-      (bySection[key] ??= []).add(r);
-    }
-    final strong = result.topicScores.where((t) => t.pct >= 80).toList();
-    final weak = result.topicScores.where((t) => t.pct < 55).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Mavzu bo'yicha tahlil (accordion) — TZ §10.1
-        Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-              child: Row(children: [
-                const Icon(Icons.checklist_rounded,
-                    size: 18, color: AppColors.primary),
-                const SizedBox(width: 8),
-                Text(AppLocalizations.of(context)!.subjectAnalysisByTopic,
-                    style: AppTextStyles.labelLarge),
-              ]),
-            ),
-            const Divider(height: 1),
-            ...bySection.entries.map((e) {
-              final correct = e.value.where((r) => r.correct).length;
-              final total = e.value.length;
-              final pct = total > 0 ? correct * 100.0 / total : 0.0;
-              return Theme(
-                data: Theme.of(context)
-                    .copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  tilePadding: const EdgeInsets.symmetric(horizontal: 16),
-                  title: Text(e.key,
-                      style: AppTextStyles.bodyLarge
-                          .copyWith(fontWeight: FontWeight.w700)),
-                  trailing: Text('$correct/$total — ${pct.round()}%',
-                      style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontWeight: FontWeight.w800,
-                          color: _c(pct))),
-                  childrenPadding: const EdgeInsets.only(bottom: 8),
-                  children: [
-                    ..._paragraphRows(context, e.value),
-                    ...e.value.map(_qRow),
-                  ],
-                ),
-              );
-            }),
-          ]),
-        ),
-
-        // Unitlar bo'yicha tahlil
-        if (result.unitScores.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Container(
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                child: Row(children: [
-                  const Icon(Icons.layers_rounded,
-                      size: 18, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Text(AppLocalizations.of(context)!.subjectAnalysisByUnit,
-                      style: AppTextStyles.labelLarge),
-                ]),
-              ),
-              const Divider(height: 1),
-              ...result.unitScores.map((u) {
-                return Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(u.topic,
-                            style: AppTextStyles.bodyLarge
-                                .copyWith(fontWeight: FontWeight.w700)),
-                      ),
-                      Text('${u.correct}/${u.total} — ${u.pct.round()}%',
-                          style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontWeight: FontWeight.w800,
-                              color: _c(u.pct))),
-                    ],
-                  ),
-                );
-              }),
-            ]),
-          ),
-        ],
-
-        // Kuchli / zaif — TZ §10.2
-        if (strong.isNotEmpty || weak.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(AppLocalizations.of(context)!.strongAndWeakSides,
-                  style: AppTextStyles.labelLarge),
-              const SizedBox(height: 10),
-              if (strong.isNotEmpty) ...[
-                _chipRow(AppLocalizations.of(context)!.strongLabel,
-                    strong.map((t) => t.topic).toList(), AppColors.ok),
-                const SizedBox(height: 8),
-              ],
-              if (weak.isNotEmpty)
-                _chipRow(AppLocalizations.of(context)!.needsReinforcement,
-                    weak.map((t) => t.topic).toList(), AppColors.err),
-            ]),
-          ),
-        ],
-
-        // 14 kunlik reja — TZ §10.3
-        if (weak.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          _plan14(context, weak),
-        ],
-      ],
-    );
-  }
-
-  /// Inner paragraph-level mini-breakdown shown at the top of a BOB's
-  /// expanded accordion body — one row per distinct `par`/`par_name` found
-  /// among that BOB's questions (Math World only; older test_data/other
-  /// subjects carry no `par`, so this returns an empty list and the
-  /// accordion looks exactly like before).
-  List<Widget> _paragraphRows(BuildContext context, List<QuestionResult> rows) {
-    final Map<String, List<QuestionResult>> byPar = {};
-    for (final r in rows) {
-      if (r.par == null || r.parName == null) continue;
-      final key = '§${r.par} — ${r.parName}';
-      (byPar[key] ??= []).add(r);
-    }
-    if (byPar.isEmpty) return const [];
-
-    final entries = byPar.entries.toList()
-      ..sort((a, b) {
-        final matchA = RegExp(r'\d+').firstMatch(a.key);
-        final matchB = RegExp(r'\d+').firstMatch(b.key);
-        final numA = matchA != null ? int.parse(matchA.group(0)!) : 0;
-        final numB = matchB != null ? int.parse(matchB.group(0)!) : 0;
-        return numA.compareTo(numB);
-      });
-
-    return [
-      Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.bg,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(AppLocalizations.of(context)!.subjectAnalysisByParagraph,
-                style: AppTextStyles.labelMedium),
-            const SizedBox(height: 6),
-            ...entries.map((e) {
-              final correct = e.value.where((r) => r.correct).length;
-              final total = e.value.length;
-              final pct = total > 0 ? correct * 100.0 / total : 0.0;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(e.key, style: AppTextStyles.bodyMedium),
-                    ),
-                    const SizedBox(width: 8),
-                    Text('$correct/$total — ${pct.round()}%',
-                        style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: _c(pct))),
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    ];
-  }
-
-  Widget _qRow(QuestionResult r) {
-    // Generate some color based on the topic string
-    final String topic = r.par != null
-        ? '§${r.par}'
-        : (r.topic ??
-            r.category ??
-            (r.section == 'Questions' ? 'Matematika' : r.section));
-    final int hash = topic.hashCode;
-
-    // Choose a color palette similar to the HTML tags (t-h, t-a, t-s, etc)
-    final colors = [
-      (const Color(0xFF1B5E20), const Color(0xFFE8F5E9)), // green
-      (const Color(0xFF4A148C), const Color(0xFFEDE7F6)), // purple
-      (const Color(0xFFE65100), const Color(0xFFFFF3E0)), // orange
-      (const Color(0xFF0D47A1), const Color(0xFFE3F2FD)), // blue
-      (const Color(0xFF880E4F), const Color(0xFFFCE4EC)), // pink
-      (const Color(0xFF006064), const Color(0xFFE0F7FA)), // cyan
-      (const Color(0xFFBF360C), const Color(0xFFFBE9E7)), // deep orange
-    ];
-    final colorPair = colors[hash.abs() % colors.length];
-
-    final questionText = r.questionText;
-    final opts = r.question.opts;
-    final correctAnsIndex = r.question.ans;
-    final userAns = r.userAnswer;
-    int? userAnsIndex;
-    if (userAns is int) {
-      userAnsIndex = userAns;
-    } else if (userAns is String) {
-      userAnsIndex = int.tryParse(userAns);
-      userAnsIndex ??= opts.indexWhere((o) => o == userAns);
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8, left: 16, right: 16),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: AppColors.bg,
-              borderRadius: BorderRadius.circular(7),
-            ),
-            alignment: Alignment.center,
-            child: Text('${r.index + 1}',
-                style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink2)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: colorPair.$2,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(topic,
-                      style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          color: colorPair.$1)),
-                ),
-                const SizedBox(height: 4),
-                Text(questionText,
-                    style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        height: 1.5)),
-                if (r.question.svg != null && r.question.svg!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  SvgPicture.string(r.question.svg!, height: 80, width: () {
-                    final ratio = svgAspectRatio(r.question.svg!);
-                    return ratio == null ? null : 80 * ratio;
-                  }(), fit: BoxFit.contain),
-                ],
-                if (opts.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Column(
-                    children: opts.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final optText = entry.value;
-                      final isCorrectOpt = idx == correctAnsIndex;
-                      final isSelectedOpt = idx == userAnsIndex;
-
-                      if (!isCorrectOpt && !isSelectedOpt) {
-                        return const SizedBox.shrink();
-                      }
-
-                      Color borderColor = AppColors.border;
-                      Color bgColor = AppColors.surface;
-                      Color textColor = AppColors.ink1;
-                      Color labelBg = AppColors.bg;
-                      Color labelColor = AppColors.ink2;
-
-                      if (isCorrectOpt) {
-                        borderColor = AppColors.ok;
-                        bgColor = AppColors.emeraldMuted;
-                        textColor = AppColors.ok;
-                        labelBg = AppColors.ok;
-                        labelColor = Colors.white;
-                      } else if (isSelectedOpt && !isCorrectOpt) {
-                        borderColor = AppColors.err;
-                        bgColor = AppColors.errorMuted;
-                        textColor = AppColors.err;
-                        labelBg = AppColors.err;
-                        labelColor = Colors.white;
-                      }
-
-                      final label = String.fromCharCode(65 + idx); // A, B, C, D
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 5),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: bgColor,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: borderColor, width: 1.5),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 20,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: labelBg,
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(label,
-                                  style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: labelColor)),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(optText,
-                                  style: TextStyle(
-                                      fontFamily: 'Inter',
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: textColor)),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _chipRow(String label, List<String> items, Color color) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: color)),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: items
-                .map((t) => Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(
-                          color: color.withValues(alpha: .08),
-                          borderRadius: BorderRadius.circular(20),
-                          border:
-                              Border.all(color: color.withValues(alpha: .25))),
-                      child: Text(t,
-                          style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 11,
-                              color: color,
-                              fontWeight: FontWeight.w600)),
-                    ))
-                .toList(),
-          ),
-        ],
-      );
-
-  Widget _plan14(BuildContext context, List<TopicScore> weak) {
-    final f1 = weak.isNotEmpty
-        ? weak[0].topic
-        : AppLocalizations.of(context)!.weakTopicFallback;
-    final f2 = weak.length > 1 ? weak[1].topic : f1;
-    final rows = <(String, String)>[
-      (
-        AppLocalizations.of(context)!.days1to3,
-        AppLocalizations.of(context)!.weakestTopicPlan(f1)
-      ),
-      (
-        AppLocalizations.of(context)!.days4to7,
-        AppLocalizations.of(context)!.secondTopicPlan(f2)
-      ),
-      (
-        AppLocalizations.of(context)!.days8to11,
-        AppLocalizations.of(context)!.mixedExercisesPlan
-      ),
-      (
-        AppLocalizations.of(context)!.days12to14,
-        AppLocalizations.of(context)!.controlTestPlan
-      ),
-    ];
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          const Icon(Icons.calendar_month_rounded,
-              size: 18, color: AppColors.primary),
-          const SizedBox(width: 8),
-          Text(AppLocalizations.of(context)!.plan14DaysTitle,
-              style: AppTextStyles.labelLarge),
-        ]),
-        const SizedBox(height: 12),
-        ...rows.map((r) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child:
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Container(
-                  width: 68,
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: .1),
-                      borderRadius: BorderRadius.circular(8)),
-                  child: Text(r.$1,
-                      style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary)),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Text(r.$2, style: AppTextStyles.bodyMedium)),
-              ]),
-            )),
-      ]),
-    );
-  }
-}
-
-// ── Report card ────────────────────────────────────────────────────────────────
-
-class _ReportCard extends StatelessWidget {
-  final Widget child;
-  const _ReportCard({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: child,
-    );
-  }
-}
-
-// ── Math/English score card ─────────────────────────────────────────────────
-//
-// Compact subject-subtotal tile shown above the per-section breakdown.
-// Mirrors _ScoreCard in local_result_screen.dart (that class is private to
-// its own file, so this is a local equivalent rather than a shared import).
-
-class _MathEngScoreCard extends StatelessWidget {
-  final String title;
-  final int ok;
-  final int total;
-  final Color color;
-
-  const _MathEngScoreCard({
-    required this.title,
-    required this.ok,
-    required this.total,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = total > 0 ? ok * 100 ~/ total : 0;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.ink3,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '$ok',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w900,
-                  color: color,
-                  height: 1,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  '/ $total',
-                  style: const TextStyle(fontSize: 13, color: AppColors.ink3),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Stack(
-              children: [
-                Container(
-                  height: 6,
-                  width: double.infinity,
-                  color: color.withValues(alpha: .1),
-                ),
-                FractionallySizedBox(
-                  widthFactor: pct / 100,
-                  child: Container(height: 6, color: color),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '$pct%',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Section head ──────────────────────────────────────────────────────────────
-
-class _SectionHead extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _SectionHead({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AppColors.secondary),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: AppTextStyles.caption.copyWith(
-            color: AppColors.ink3,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.8,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Section row v2 ────────────────────────────────────────────────────────────
-
-class _SectionRowV2 extends StatelessWidget {
-  final SectionScore section;
-  final int pct;
-  final Color color;
-
-  const _SectionRowV2({
-    required this.section,
-    required this.pct,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child:
-                    Text(section.displayName, style: AppTextStyles.labelLarge),
-              ),
-              Text(
-                '${section.correct}/${section.total}',
-                style: AppTextStyles.bodyMedium,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '$pct%',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: section.total > 0 ? section.correct / section.total : 0,
-              backgroundColor: AppColors.gray100,
-              color: color,
-              minHeight: 6,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Stat chip ─────────────────────────────────────────────────────────────────
-
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _StatChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .10),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: .25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
-        ],
-      ),
+    // The student never sees their score here — same thank-you screen the
+    // diagnostic flow uses. "Keyingi talaba" semantics are unchanged: a plain
+    // pop of the single GoRouter-managed '/engine_host' Page (see the
+    // _completedResult doc comment in _EngineHostScreenState).
+    return DiagnosticFinishedScreen(
+      studentName: '${widget.firstName} ${widget.lastName}',
+      title: l10n.testFinishedTitle,
+      returnLabel: l10n.nextStudent,
+      onReturn: () => Navigator.of(context).pop(),
     );
   }
 }

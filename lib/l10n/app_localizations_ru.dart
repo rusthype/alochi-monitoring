@@ -107,6 +107,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get diagnosticFinishedTitle => 'Диагностика завершена';
 
   @override
+  String get testFinishedTitle => 'Тест завершён';
+
+  @override
   String get diagnosticFinishedSubtitle =>
       'Спасибо! Результаты будут переданы учителю.';
 

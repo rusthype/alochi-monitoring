@@ -218,4 +218,50 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('onReturn replaces navigation for the button tap', (tester) async {
+    var calls = 0;
+    await tester.pumpWidget(
+        _wrap(DiagnosticFinishedScreen(onReturn: () => calls++)));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    await tester.tap(find.byType(ElevatedButton));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(calls, 1);
+    expect(find.text('HOME'), findsNothing);
+    // the button cancelled the countdown: no second call from the timer
+    await tester.pump(const Duration(seconds: 20));
+    expect(calls, 1);
+  });
+
+  testWidgets('onReturn is also what the 15s auto-return calls',
+      (tester) async {
+    var calls = 0;
+    await tester.pumpWidget(
+        _wrap(DiagnosticFinishedScreen(onReturn: () => calls++)));
+    await tester.pump();
+
+    for (var i = 0; i < 14; i++) {
+      await tester.pump(const Duration(seconds: 1));
+    }
+    expect(calls, 0);
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(calls, 1);
+    expect(find.text('HOME'), findsNothing);
+  });
+
+  testWidgets('title and returnLabel overrides replace diagnostic wording',
+      (tester) async {
+    await tester.pumpWidget(_wrap(const DiagnosticFinishedScreen(
+        title: 'Test yakunlandi', returnLabel: 'Keyingi talaba')));
+    await tester.pump();
+
+    expect(find.text('Test yakunlandi'), findsOneWidget);
+    expect(find.text('Keyingi talaba'), findsOneWidget);
+    expect(find.text('Diagnostika yakunlandi'), findsNothing);
+    expect(find.text('Bosh sahifaga qaytish'), findsNothing);
+    await tester.pump(const Duration(seconds: 15));
+  });
 }
