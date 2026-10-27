@@ -290,6 +290,12 @@ abstract class AppLocalizations {
   /// **'Diagnostika yakunlandi'**
   String get diagnosticFinishedTitle;
 
+  /// No description provided for @testFinishedTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Test yakunlandi'**
+  String get testFinishedTitle;
+
   /// No description provided for @diagnosticFinishedSubtitle.
   ///
   /// In uz, this message translates to:

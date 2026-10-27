@@ -42,6 +42,7 @@
     }
   },
   "diagnosticFinishedTitle": "Diagnostika yakunlandi",
+  "testFinishedTitle": "Test yakunlandi",
   "diagnosticFinishedSubtitle": "Rahmat! Natijalar o'qituvchiga yuboriladi.",
   "diagnosticFinishedInfoNote": "Natijalar maktab ma'muriyati va o'qituvchilar uchun tayyorlanmoqda.",
   "backToKioskBtn": "Bosh sahifaga qaytish",

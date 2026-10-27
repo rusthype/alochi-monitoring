@@ -110,6 +110,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get diagnosticFinishedTitle => 'Diagnostika yakunlandi';
 
   @override
+  String get testFinishedTitle => 'Test yakunlandi';
+
+  @override
   String get diagnosticFinishedSubtitle =>
       'Rahmat! Natijalar o\'qituvchiga yuboriladi.';
 

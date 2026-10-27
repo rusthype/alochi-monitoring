@@ -26,6 +26,9 @@ class DiagnosticFinishedScreen extends StatefulWidget {
     this.language = '',
     this.hasWebTest = false,
     this.webTestKey = '',
+    this.onReturn,
+    this.title,
+    this.returnLabel,
   });
 
   final String? studentName;
@@ -46,6 +49,19 @@ class DiagnosticFinishedScreen extends StatefulWidget {
   final String language;
   final bool hasWebTest;
   final String webTestKey;
+
+  /// When provided, BOTH the return button and the 15s auto-return call this
+  /// instead of navigating to the class roster / kiosk root. Used by the
+  /// monitoring (non-diagnostic) flows, which return to the student entry
+  /// screen their own way. Defaults to null -> unchanged diagnostic behavior.
+  final VoidCallback? onReturn;
+
+  /// Overrides the no-name fallback headline ("Diagnostika yakunlandi") so
+  /// non-diagnostic callers don't say "Diagnostika". Null -> diagnostic text.
+  final String? title;
+
+  /// Overrides the return button label. Null -> "Bosh sahifaga qaytish".
+  final String? returnLabel;
 
   @override
   State<DiagnosticFinishedScreen> createState() =>
@@ -107,6 +123,10 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
   /// exactly as before (e.g. some other, currently-untraced code path that
   /// still constructs this screen with no school/class info).
   void _returnToClassOrHome() {
+    if (widget.onReturn != null) {
+      widget.onReturn!();
+      return;
+    }
     if (widget.schoolId.isNotEmpty && widget.classLabel.isNotEmpty) {
       context.go('/diagnostic_student_select', extra: {
         'schoolId': widget.schoolId,
@@ -238,7 +258,7 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
                                         formatStudentDisplayName(
                                             widget.studentName!),
                                         locale))
-                                : l10n.diagnosticFinishedTitle,
+                                : (widget.title ?? l10n.diagnosticFinishedTitle),
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               fontSize: 24,
@@ -326,7 +346,7 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
                                       AppColors.brand.withValues(alpha: 0.35),
                                 ),
                                 icon: const Icon(Icons.home_rounded, size: 18),
-                                label: Text(l10n.backToKioskBtn),
+                                label: Text(widget.returnLabel ?? l10n.backToKioskBtn),
                               ),
                             ),
                           ),

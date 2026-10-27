@@ -42,6 +42,7 @@
     }
   },
   "diagnosticFinishedTitle": "Диагностика завершена",
+  "testFinishedTitle": "Тест завершён",
   "diagnosticFinishedSubtitle": "Спасибо! Результаты будут переданы учителю.",
   "diagnosticFinishedInfoNote": "Результаты готовятся для администрации школы и учителей.",
   "backToKioskBtn": "Вернуться на главную",
