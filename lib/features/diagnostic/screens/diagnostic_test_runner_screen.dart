@@ -2294,7 +2294,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       children: [
         Positioned.fill(
           child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, showBottomNav ? 110 : 24),
+            padding: EdgeInsets.fromLTRB(20, 20, 20, showBottomNav ? kDiagnosticBottomNavReserve : 24),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: _kDockMaxWidth),
@@ -2321,6 +2321,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                       remainingSeconds: _remainingSeconds,
                       isFixedVariant: _isFixedVariantAttempt,
                       grade: widget.grade,
+                      classLabel: widget.classLabel,
                     ),
                     if (_isFixedVariantAttempt) ...[
                       const SizedBox(height: 12),

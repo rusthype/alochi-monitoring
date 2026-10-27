@@ -52,4 +52,36 @@ void main() {
     await tester.pump();
     expect(closed, isTrue);
   });
+
+  group('adapts to window size without overlapping the bottom dock', () {
+    for (final size in const [
+      Size(1280, 720),
+      Size(1920, 1080),
+      Size(1024, 600),
+    ]) {
+      testWidgets('${size.width.toInt()}x${size.height.toInt()}',
+          (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(_wrap(DiagnosticScratchpad(onClose: () {})));
+
+        final rect =
+            tester.getRect(find.byKey(const Key('diagnosticScratchpadDialog')));
+        expect(rect.bottom,
+            lessThanOrEqualTo(size.height - kDiagnosticBottomNavReserve));
+        expect(rect.width, lessThanOrEqualTo(kDiagnosticScratchpadMaxWidth));
+        // Roomy windows should use most of the space, not a fixed small box.
+        expect(rect.width, greaterThan(size.width * 0.6));
+        // Canvas buttons stay fully on screen.
+        for (final label in ['Tozalash']) {
+          final b = tester.getRect(find.widgetWithText(OutlinedButton, label));
+          expect(b.bottom,
+              lessThanOrEqualTo(size.height - kDiagnosticBottomNavReserve));
+        }
+        expect(find.widgetWithText(OutlinedButton, 'Tozalash'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  });
 }
