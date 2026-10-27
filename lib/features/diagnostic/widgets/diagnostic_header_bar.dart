@@ -38,6 +38,10 @@ class DiagnosticHeaderBar extends StatelessWidget {
   /// when [isFixedVariant] is true.
   final int? grade;
 
+  /// Class label with letter (e.g. "3-B"). When non-empty it replaces the
+  /// plain "N-sinf" pill.
+  final String classLabel;
+
   const DiagnosticHeaderBar({
     super.key,
     required this.subjectLabel,
@@ -49,6 +53,7 @@ class DiagnosticHeaderBar extends StatelessWidget {
     required this.language,
     required this.isFixedVariant,
     this.grade,
+    this.classLabel = '',
     this.remainingSeconds,
   });
 
@@ -77,7 +82,17 @@ class DiagnosticHeaderBar extends StatelessWidget {
                     style: const TextStyle(color: AppColors.ink3, fontSize: 13),
                   ),
                 ),
-                if (grade != null) ...[
+                if (classLabel.trim().isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  _GradePill(
+                    grade: grade ??
+                        int.tryParse(
+                            RegExp(r'^\d+').stringMatch(classLabel.trim()) ??
+                                '') ??
+                        1,
+                    label: classLabel.trim(),
+                  ),
+                ] else if (grade != null) ...[
                   const SizedBox(width: 8),
                   _GradePill(grade: grade!),
                 ],
@@ -206,7 +221,8 @@ class DiagnosticHeaderBar extends StatelessWidget {
 /// file never imports that screen.
 class _GradePill extends StatelessWidget {
   final int grade;
-  const _GradePill({required this.grade});
+  final String? label;
+  const _GradePill({required this.grade, this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +250,7 @@ class _GradePill extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        '$grade-${AppLocalizations.of(context)!.gradeShort}',
+        label ?? '$grade-${AppLocalizations.of(context)!.gradeShort}',
         style:
             TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: c.$2),
       ),
