@@ -265,12 +265,17 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
     setState(() => _startingKeys.add(test.testKey));
 
     Map<String, dynamic>? data;
+    var variant = 1;
     try {
       data = await api.fetchTest(test.testKey, authToken: widget.session.token);
-      // Question images must be on disk before the test opens (no in-test
-      // spinners, works offline afterwards); card spinner stays meanwhile.
-      if (data != null && !await testCatalogService.ensureImagesCached(data)) {
-        data = null;
+      if (data != null) {
+        // This student's variant images must be on disk before the test opens
+        // (no in-test spinners, works offline afterwards); the card spinner
+        // stays meanwhile. The same variant is then launched.
+        variant = _pickVariant(data);
+        if (!await testCatalogService.ensureVariantImages(data, variant)) {
+          data = null;
+        }
       }
     } finally {
       if (mounted) setState(() => _startingKeys.remove(test.testKey));
@@ -284,7 +289,6 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
       return;
     }
 
-    final variant = _pickVariant(data);
     // StudentSession only exposes a single `studentName` string (no
     // first/last split, no school field — see core/models/models.dart) —
     // best-effort split for EngineHostScreen's firstName/lastName params.

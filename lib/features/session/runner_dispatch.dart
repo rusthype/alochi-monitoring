@@ -21,6 +21,10 @@ Future<void> launchRunner(
   String groupName = '',
   String groupId = '',
   String studentId = '',
+
+  /// Variant the student-entry screen already prepared (images downloaded).
+  /// Used only when the student has no saved attempt to resume.
+  int? preparedVariant,
 }) async {
   // Time-lock safety net: the catalog UI (login_screen.dart) already blocks
   // navigation into locked tests, this is a second layer in case launchRunner
@@ -50,10 +54,12 @@ Future<void> launchRunner(
     return;
   }
 
-  // Safety net only: images are downloaded when the TEST is tapped on the
-  // group screen, never here. If anything is missing (evicted/deleted), say so
-  // and go back instead of silently downloading mid-flow.
-  if (!await testCatalogService.imagesComplete(cached)) {
+  // Safety net only: the variant's images are downloaded when the STUDENT is
+  // selected (student_entry_screen), never here. If anything is missing
+  // (evicted/deleted), say so and go back instead of silently downloading.
+  final intended = await previewAttemptVariant(cached,
+      testKey: session.testKey, studentId: studentId, drawn: preparedVariant);
+  if (!await testCatalogService.variantImagesComplete(cached, intended)) {
     if (context.mounted) {
       ToastService.showError(
           context, AppLocalizations.of(context)!.testNotInCache);
@@ -69,6 +75,7 @@ Future<void> launchRunner(
     lastName: lastName,
     studentId: studentId,
     groupName: groupName,
+    preferredVariant: intended,
   );
 
   if (!context.mounted) return;
@@ -140,6 +147,46 @@ Future<void> launchRunner(
 /// starting over.
 const _staleAttemptMs = 12 * 60 * 60 * 1000;
 
+/// The variant of a saved attempt that [resolveAttemptVariant] would resume
+/// (same rules), or null when a fresh variant has to be picked. Read-only.
+Future<int?> _savedVariantToResume(String testKey, String studentId) async {
+  final saved = await AttemptStore.loadForStudent(testKey, studentId);
+  final nowMs = DateTime.now().millisecondsSinceEpoch;
+  if (saved == null) return null;
+  final savedVariant = int.tryParse(saved['variant']?.toString() ?? '');
+  final deadlineRaw = saved['deadline_epoch_ms'];
+  final deadlineMs = deadlineRaw is num ? deadlineRaw.toInt() : null;
+  final notExpired = deadlineMs == null || deadlineMs > nowMs;
+  // A record already marked completed was (or is about to be) submitted:
+  // it must be resumed even past its deadline so the engine can replay the
+  // identical submission instead of silently dropping it.
+  final completed = saved['completed'] == true;
+  // An unfinished attempt is resumed even when its deadline has passed: the
+  // engine then auto-submits what the student had. Starting a fresh attempt
+  // here would hand out a full timer again. Only a record from another
+  // day (long abandoned) is dropped.
+  final stale = deadlineMs != null && nowMs - deadlineMs > _staleAttemptMs;
+  if (savedVariant != null && (notExpired || completed || !stale)) {
+    return savedVariant;
+  }
+  return null;
+}
+
+/// The variant this student will get, WITHOUT persisting anything: the saved
+/// attempt's variant if one would be resumed, else [drawn] (a variant the
+/// caller already drew and prepared), else a fresh random draw. The caller
+/// must remember a fresh draw and pass it back as [drawn] / `preferredVariant`
+/// so the variant prepared (images downloaded) is the variant launched.
+Future<int> previewAttemptVariant(
+  Map<String, dynamic> cached, {
+  required String testKey,
+  required String studentId,
+  int? drawn,
+}) async =>
+    await _savedVariantToResume(testKey, studentId) ??
+    drawn ??
+    _pickRandomVariant(cached);
+
 @visibleForTesting
 Future<int> resolveAttemptVariant(
   Map<String, dynamic> cached, {
@@ -148,30 +195,13 @@ Future<int> resolveAttemptVariant(
   required String lastName,
   required String studentId,
   required String groupName,
+  int? preferredVariant,
 }) async {
-  final saved = await AttemptStore.loadForStudent(testKey, studentId);
   final nowMs = DateTime.now().millisecondsSinceEpoch;
+  final resumed = await _savedVariantToResume(testKey, studentId);
+  if (resumed != null) return resumed;
 
-  if (saved != null) {
-    final savedVariant = int.tryParse(saved['variant']?.toString() ?? '');
-    final deadlineRaw = saved['deadline_epoch_ms'];
-    final deadlineMs = deadlineRaw is num ? deadlineRaw.toInt() : null;
-    final notExpired = deadlineMs == null || deadlineMs > nowMs;
-    // A record already marked completed was (or is about to be) submitted:
-    // it must be resumed even past its deadline so the engine can replay the
-    // identical submission instead of silently dropping it.
-    final completed = saved['completed'] == true;
-    // An unfinished attempt is resumed even when its deadline has passed: the
-    // engine then auto-submits what the student had. Starting a fresh attempt
-    // here would hand out a full timer again. Only a record from another
-    // day (long abandoned) is dropped.
-    final stale = deadlineMs != null && nowMs - deadlineMs > _staleAttemptMs;
-    if (savedVariant != null && (notExpired || completed || !stale)) {
-      return savedVariant;
-    }
-  }
-
-  final variant = _pickRandomVariant(cached);
+  final variant = preferredVariant ?? _pickRandomVariant(cached);
   await AttemptStore.save(testKey, {
     'variant': variant,
     'answers': <String, dynamic>{},

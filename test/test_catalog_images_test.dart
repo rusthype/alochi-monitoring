@@ -1,6 +1,6 @@
-// Monitoring test download: JSON + every question image in the persistent
-// test-image store (<support>/test_images/<sha256(url)>.img). "Downloaded"
-// means all of it is on disk; no student-start download; survives relaunch.
+// Monitoring: test download = JSON only; at STUDENT selection only that
+// student's variant images (+ shared ones) go into the persistent store
+// (<support>/test_images/<sha256(url)>.img); survives relaunch, works offline.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -9,6 +9,7 @@ import 'package:alochi_monitoring/core/api/api_client.dart';
 import 'package:alochi_monitoring/core/cache/test_image_store.dart';
 import 'package:alochi_monitoring/core/db/test_cache.dart';
 import 'package:alochi_monitoring/core/services/test_catalog_service.dart';
+import 'package:alochi_monitoring/features/session/runner_dispatch.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -36,14 +37,19 @@ class _Api extends MonitoringApi {
 
 String _u(int i) => 'https://img.test/q$i.png';
 
-Map<String, dynamic> _test(int n, {int version = 1, int offset = 0}) => {
+/// Variant `v` owns images q{v*100 + i}; `cover` is shared by every variant.
+Map<String, dynamic> _test(int n, {int version = 1, int variants = 2}) => {
       'title': 'T',
       'grade': 5,
       'version': version,
+      'cover': 'https://img.test/cover.png',
       'variants': {
-        '1': [
-          for (var i = 0; i < n; i++) {'image_url': _u(i + offset)},
-        ],
+        for (var v = 1; v <= variants; v++)
+          '$v': {
+            'Math': [
+              for (var i = 0; i < n; i++) {'image_url': _u(v * 100 + i)},
+            ],
+          },
       },
     };
 
@@ -102,136 +108,36 @@ void main() {
     return (store, svcWith(store, _Api([], {'k': data})));
   }
 
-  test('download completes only after all images are stored, bounded parallel',
+  String cover = 'https://img.test/cover.png';
+
+  test('only the chosen variant + shared images are requested', () async {
+    final data = _test(3);
+    final (store, svc) = await make(data);
+    expect(svc.variantImageUrls(data, 2).toSet(),
+        {cover, _u(200), _u(201), _u(202)});
+    expect(await svc.ensureVariantImages(data, 2), isTrue);
+    expect(requested.toSet(), {cover, _u(200), _u(201), _u(202)});
+    expect(requested.any((u) => u.contains('/q10')), isFalse); // variant 1
+    expect(await svc.variantImagesComplete(data, 2), isTrue);
+    expect(await svc.variantImagesComplete(data, 1), isFalse);
+    expect(store.cachedFile(_u(100)), isNull);
+  });
+
+  test('test_data wrapper and no-variants tests: everything is shared',
       () async {
-    final gates = {for (var i = 0; i < 10; i++) _u(i): Completer<void>()};
-    for (final e in gates.entries) {
-      behaviour[e.key] = (_) async {
-        await e.value.future;
-        return http.Response.bytes([1, 2, 3], 200);
-      };
-    }
-    final (_, svc) = await make(_test(10));
-    var finished = false;
-    final f = svc.download('k').then((ok) {
-      finished = true;
-      return ok;
-    });
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(finished, isFalse);
-    expect(maxInFlight, lessThanOrEqualTo(4));
-    expect(maxInFlight, greaterThan(1));
-    for (var i = 0; i < 10; i++) {
-      expect(finished, isFalse);
-      gates[_u(i)]!.complete();
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
-    expect(await f, isTrue);
-    expect(await svc.isTestReady('k'), isTrue);
+    final (_, svc) = await make({});
+    final wrapped = {'test_data': _test(2)};
+    expect(svc.variantImageUrls(wrapped, 1).toSet(),
+        {cover, _u(100), _u(101)});
+    final flat = {
+      'a': {'image_url': _u(1)},
+      'b': [_u(2)],
+    };
+    expect(svc.variantImageUrls(flat, 7).toSet(), {_u(1), _u(2)});
   });
 
-  test('404/410 skipped (counted done), rest stored, no retry for 404',
+  test('download() is JSON only: no image request, status stays cached',
       () async {
-    behaviour[_u(1)] = (_) async => http.Response('', 404);
-    behaviour[_u(2)] = (_) async => http.Response('', 410);
-    final (store, svc) = await make(_test(4));
-    expect(await svc.download('k'), isTrue);
-    expect(store.cachedFile(_u(0)), isNotNull);
-    expect(store.cachedFile(_u(1)), isNull);
-    expect(store.cachedFile(_u(3)), isNotNull);
-    expect(attempts[_u(1)], 1);
-    expect(await svc.isTestReady('k'), isTrue); // 404s count as done
-  });
-
-  test('network failure after retries -> false, JSON cached, not ready',
-      () async {
-    behaviour[_u(1)] = (_) async => throw const SocketException('down');
-    final (_, svc) = await make(_test(3));
-    expect(await svc.download('k'), isFalse);
-    expect(attempts[_u(1)], 3);
-    expect(await TestCache.get('k'), isNotNull);
-    expect(await svc.isTestReady('k'), isFalse);
-  });
-
-  test('transient failure recovers; 5xx is a failure not a skip', () async {
-    behaviour[_u(0)] = (n) async => n < 3
-        ? throw TimeoutException('slow')
-        : http.Response.bytes([9], 200);
-    final (_, svc) = await make(_test(1));
-    expect(await svc.download('k'), isTrue);
-
-    behaviour[_u(5)] = (_) async => http.Response('busy', 503);
-    final (_, svc2) = await make(_test(1, offset: 5));
-    expect(await svc2.download('k'), isFalse);
-  });
-
-  test('empty or truncated body is never stored', () async {
-    behaviour[_u(0)] = (_) async => http.Response.bytes([], 200);
-    final (store, svc) = await make(_test(1));
-    expect(await svc.download('k'), isFalse);
-    expect(store.cachedFile(_u(0)), isNull);
-    expect(Directory('${dir.path}/test_images').listSync(), isEmpty);
-  });
-
-  test('relaunch: new store over same dir sees everything, zero network',
-      () async {
-    final (_, svc) = await make(_test(3));
-    expect(await svc.download('k'), isTrue);
-    final before = requested.length;
-
-    // "relaunch": brand-new store + service instances over the same folder.
-    final store2 = newStore();
-    await store2.init();
-    final svc2 = svcWith(store2, _Api([], {'k': _test(3)}));
-    expect(await svc2.isTestReady('k'), isTrue);
-    expect(await svc2.ensureImagesCached(_test(3)), isTrue);
-    expect(requested.length, before);
-  });
-
-  test('partial test is not ready; retry fetches only the missing images',
-      () async {
-    final (store, svc) = await make(_test(3));
-    await store.fetch(_u(0)); // e.g. an older build got only one image
-    await TestCache.upsert('k', 'T', 5, 1, jsonEncode(_test(3)));
-    expect(await svc.isTestReady('k'), isFalse);
-    requested.clear();
-    expect(await svc.ensureImagesCached(_test(3)), isTrue);
-    expect(requested.toSet(), {_u(1), _u(2)});
-    expect(await svc.isTestReady('k'), isTrue);
-  });
-
-  test('progress callback counts done/total', () async {
-    behaviour[_u(2)] = (_) async => http.Response('', 404);
-    final (store, svc) = await make(_test(4));
-    await store.fetch(_u(0));
-    final seen = <String>[];
-    expect(await svc.download('k', onProgress: (d, t) => seen.add('$d/$t')),
-        isTrue);
-    expect(seen.first, '1/4');
-    expect(seen.last, '4/4');
-    expect(seen.length, 4);
-  });
-
-  test('offline: previously-404 image does not block, a real miss does',
-      () async {
-    behaviour[_u(1)] = (_) async => http.Response('', 404);
-    final (store, svc) = await make(_test(2));
-    expect(await svc.ensureImagesCached(_test(2)), isTrue); // learns u1 = 404
-
-    behaviour[_u(1)] = (_) async => throw const SocketException('off');
-    expect(await svc.ensureImagesCached(_test(2)), isTrue);
-
-    // wipe the store: u0 now truly missing while offline -> blocks
-    for (final f in Directory('${dir.path}/test_images').listSync()) {
-      f.deleteSync();
-    }
-    behaviour[_u(0)] = (_) async => throw const SocketException('off');
-    expect(store.cachedFile(_u(0)), isNull);
-    expect(await svc.ensureImagesCached(_test(2)), isFalse);
-  });
-
-  test('catalog status: JSON-only (old build) shows notDownloaded, '
-      'complete shows cached', () async {
     final store = newStore();
     await store.init();
     final api = _Api([
@@ -240,42 +146,203 @@ void main() {
       'k': _test(3)
     });
     final svc = svcWith(store, api);
-    // old build: JSON cached, one image only
-    await TestCache.upsert('k', 'T', 5, 1, jsonEncode(_test(3)));
-    await store.fetch(_u(0));
-    var entries = await svc.refresh();
-    expect(entries.single.status, CatalogStatus.notDownloaded);
-
     expect(await svc.download('k'), isTrue);
-    entries = await svc.refresh();
-    expect(entries.single.status, CatalogStatus.cached);
+    expect(requested, isEmpty);
+    expect((await svc.refresh()).single.status, CatalogStatus.cached);
   });
 
-  test('gc after prune: unreferenced files deleted, referenced kept; '
-      'no half files counted', () async {
-    final (store, svc) = await make(_test(2));
-    expect(await svc.download('k'), isTrue);
-    // an image of a test that no longer exists + a leftover temp file
-    await store.fetch('https://img.test/old.png');
+  test('variant download completes only after all images, bounded parallel',
+      () async {
+    final data = _test(10);
+    final urls = svcWith(newStore(), _Api([], {})).variantImageUrls(data, 1);
+    final gates = {for (final u in urls) u: Completer<void>()};
+    for (final e in gates.entries) {
+      behaviour[e.key] = (_) async {
+        await e.value.future;
+        return http.Response.bytes([1, 2, 3], 200);
+      };
+    }
+    final (_, svc) = await make(data);
+    var finished = false;
+    final f = svc.ensureVariantImages(data, 1).then((ok) {
+      finished = true;
+      return ok;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(finished, isFalse);
+    expect(maxInFlight, lessThanOrEqualTo(4));
+    expect(maxInFlight, greaterThan(1));
+    for (final u in urls) {
+      expect(finished, isFalse);
+      gates[u]!.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(await f, isTrue);
+  });
+
+  test('404/410 skipped (counted done), rest stored, no retry for 404',
+      () async {
+    behaviour[_u(101)] = (_) async => http.Response('', 404);
+    behaviour[_u(102)] = (_) async => http.Response('', 410);
+    final data = _test(4);
+    final (store, svc) = await make(data);
+    expect(await svc.ensureVariantImages(data, 1), isTrue);
+    expect(store.cachedFile(_u(100)), isNotNull);
+    expect(store.cachedFile(_u(101)), isNull);
+    expect(store.cachedFile(_u(103)), isNotNull);
+    expect(attempts[_u(101)], 1);
+    expect(await svc.variantImagesComplete(data, 1), isTrue);
+  });
+
+  test('network failure after retries -> false; not complete; retry works',
+      () async {
+    behaviour[_u(101)] = (_) async => throw const SocketException('down');
+    final data = _test(3);
+    final (_, svc) = await make(data);
+    expect(await svc.ensureVariantImages(data, 1), isFalse);
+    expect(attempts[_u(101)], 3);
+    expect(await svc.variantImagesComplete(data, 1), isFalse);
+
+    behaviour.clear(); // network back
+    requested.clear();
+    expect(await svc.ensureVariantImages(data, 1), isTrue);
+    expect(requested.contains(_u(101)), isTrue);
+    expect(requested.contains(_u(100)), isFalse); // already stored
+  });
+
+  test('transient failure recovers; 5xx is a failure not a skip', () async {
+    behaviour[_u(100)] = (n) async => n < 3
+        ? throw TimeoutException('slow')
+        : http.Response.bytes([9], 200);
+    final data = _test(1);
+    final (_, svc) = await make(data);
+    expect(await svc.ensureVariantImages(data, 1), isTrue);
+
+    behaviour[_u(200)] = (_) async => http.Response('busy', 503);
+    expect(await svc.ensureVariantImages(data, 2), isFalse);
+  });
+
+  test('empty or truncated body is never stored', () async {
+    behaviour[_u(100)] = (_) async => http.Response.bytes([], 200);
+    final data = _test(1);
+    final (store, svc) = await make(data);
+    expect(await svc.ensureVariantImages(data, 1), isFalse);
+    expect(store.cachedFile(_u(100)), isNull);
+    expect(
+        Directory('${dir.path}/test_images')
+            .listSync()
+            .any((f) => f.path.endsWith('.tmp')),
+        isFalse);
+  });
+
+  test('relaunch: new store over same dir sees everything, zero network; '
+      're-selecting a student reuses stored images', () async {
+    final data = _test(3);
+    final (_, svc) = await make(data);
+    expect(await svc.ensureVariantImages(data, 1), isTrue);
+    final before = requested.length;
+    expect(await svc.ensureVariantImages(data, 1), isTrue); // re-select
+    expect(requested.length, before);
+
+    final store2 = newStore(); // "relaunch"
+    await store2.init();
+    final svc2 = svcWith(store2, _Api([], {}));
+    expect(await svc2.variantImagesComplete(data, 1), isTrue);
+    expect(await svc2.ensureVariantImages(data, 1), isTrue);
+    expect(requested.length, before);
+  });
+
+  test('progress callback counts done/total', () async {
+    behaviour[_u(102)] = (_) async => http.Response('', 404);
+    final data = _test(4); // variant 1: 4 + cover = 5 urls
+    final (store, svc) = await make(data);
+    await store.fetch(_u(100));
+    final seen = <String>[];
+    expect(
+        await svc.ensureVariantImages(data, 1,
+            onProgress: (d, t) => seen.add('$d/$t')),
+        isTrue);
+    expect(seen.first, '1/5');
+    expect(seen.last, '5/5');
+    expect(seen.length, 5);
+  });
+
+  test('offline: previously-404 image does not block, a real miss does',
+      () async {
+    behaviour[_u(101)] = (_) async => http.Response('', 404);
+    final data = _test(2);
+    final (store, svc) = await make(data);
+    expect(await svc.ensureVariantImages(data, 1), isTrue); // learns u101=404
+
+    behaviour[_u(101)] = (_) async => throw const SocketException('off');
+    expect(await svc.ensureVariantImages(data, 1), isTrue);
+
+    for (final f in Directory('${dir.path}/test_images').listSync()) {
+      f.deleteSync();
+    }
+    behaviour[_u(100)] = (_) async => throw const SocketException('off');
+    expect(store.cachedFile(_u(100)), isNull);
+    expect(await svc.ensureVariantImages(data, 1), isFalse); // no variant swap
+  });
+
+  test('prepared variant == launched variant (random draw is not repeated)',
+      () async {
+    SharedPreferences.setMockInitialValues({});
+    final data = _test(2, variants: 6);
+    // Student has no saved attempt: preview draws, caller remembers the draw.
+    final drawn = await previewAttemptVariant(data,
+        testKey: 'nosave_test', studentId: 'S-1');
+    // launchRunner passes it back as `drawn`: same variant, never re-drawn.
+    for (var i = 0; i < 20; i++) {
+      expect(
+          await previewAttemptVariant(data,
+              testKey: 'nosave_test', studentId: 'S-1', drawn: drawn),
+          drawn);
+    }
+    // resolve (the persisting step) honours the prepared variant.
+    expect(
+        await resolveAttemptVariant(data,
+            testKey: 'nosave_test',
+            firstName: 'A',
+            lastName: 'B',
+            studentId: 'S-1',
+            groupName: 'g',
+            preferredVariant: drawn),
+        drawn);
+    // Now the attempt is saved: preview == resume, whatever `drawn` says.
+    expect(
+        await previewAttemptVariant(data,
+            testKey: 'nosave_test',
+            studentId: 'S-1',
+            drawn: drawn == 1 ? 2 : 1),
+        drawn);
+  });
+
+  test('gc: keeps every URL of any cached test (all variants), removes the '
+      'rest; no half files counted', () async {
+    final data = _test(2);
+    final (store, svc) = await make(data);
+    await TestCache.upsert('k', 'T', 5, 1, jsonEncode(data));
+    expect(await svc.ensureVariantImages(data, 1), isTrue);
+    await store.fetch(_u(200)); // other variant of the SAME cached test
+    await store.fetch('https://img.test/old.png'); // unreferenced
     final root = Directory('${dir.path}/test_images');
     File('${root.path}/abc.img.123.tmp').writeAsBytesSync([1]);
     expect(store.cachedFile('https://img.test/abc'), isNull); // tmp != image
-    // still inside the grace period: nothing is removed
-    await svc.gcStore();
-    expect(root.listSync().length, 4);
-    // age everything, then GC
+
+    await svc.gcStore(); // grace period: nothing removed
+    expect(root.listSync().length, 6); // cover, 2 v1, v2 one, old, tmp
     final old = DateTime.now().subtract(const Duration(days: 3));
     for (final f in root.listSync().whereType<File>()) {
       f.setLastModifiedSync(old);
     }
     await svc.gcStore();
-    expect(store.cachedFile(_u(0)), isNotNull);
-    expect(store.cachedFile(_u(1)), isNotNull);
+    expect(store.cachedFile(_u(100)), isNotNull);
+    expect(store.cachedFile(_u(200)), isNotNull); // kept: in cached JSON
     expect(store.cachedFile('https://img.test/old.png'), isNull);
-    expect(root.listSync().length, 2);
+    expect(root.listSync().length, 4);
 
-    // test removed from catalog -> prune + GC drops its images too
-    await TestCache.pruneNotIn({});
+    await TestCache.pruneNotIn({}); // test removed from catalog
     for (final f in root.listSync().whereType<File>()) {
       f.setLastModifiedSync(old);
     }
