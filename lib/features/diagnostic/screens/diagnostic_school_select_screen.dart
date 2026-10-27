@@ -122,6 +122,7 @@ class _DiagnosticSchoolSelectScreenState
     AppLocalizations l10n,
     Locale locale, {
     bool pinned = false,
+    bool showCity = true,
   }) {
     return DiagnosticSchoolCard(
       number: s.number,
@@ -130,7 +131,9 @@ class _DiagnosticSchoolSelectScreenState
         locale,
         (n) => l10n.diagnosticSchoolNumberName(n),
       ),
-      subtitle: s.cityName.isEmpty ? null : toDisplayScript(s.cityName, locale),
+      subtitle: !showCity || s.cityName.isEmpty
+          ? null
+          : toDisplayScript(s.cityName, locale),
       marker: pinned ? l10n.diagnosticSchoolLastChosen : null,
       onTap: () => _selectSchool(s.raw),
     );
@@ -161,7 +164,8 @@ class _DiagnosticSchoolSelectScreenState
     for (final s in rest) {
       groups.putIfAbsent(s.cityName, () => []).add(s);
     }
-    final keys = groups.keys.where((k) => k.isNotEmpty).toList();
+    // Stable order: by first school number overall, not by search-result order.
+    final keys = distinctCities(_schools).where(groups.containsKey).toList();
     if (groups.containsKey('')) keys.add('');
     final headers = showChips;
 
@@ -234,7 +238,10 @@ class _DiagnosticSchoolSelectScreenState
               ),
             ),
           ),
-        wrap([for (final s in groups[k]!) _card(s, l10n, locale)]),
+        wrap([
+          for (final s in groups[k]!)
+            _card(s, l10n, locale, showCity: !headers),
+        ]),
         const SizedBox(height: 20),
       ],
     ];

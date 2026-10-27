@@ -80,6 +80,48 @@ void main() {
     });
   });
 
+  group('derived number', () {
+    int? d(String name, [Object? n]) =>
+        DiagnosticSchool.fromMap(row('a', name, n)).number;
+    test('from name', () {
+      expect(d("Qo'qon shahar 16-sonli umumiy o'rta ta'lim maktabi"), 16);
+      expect(d('Қўқон шаҳар 16-сонли умумий ўрта таълим мактаби'), 16);
+      expect(d("Buvayda tumani 5-sonli umumiy o'rta ta'lim maktabi"), 5);
+      expect(d('Maktab 56'), 56);
+      expect(d('88 maktab'), 88);
+      expect(d('Школа №56'), 56);
+      expect(d('7-школа'), 7);
+    });
+    test('real school_number wins; unparsable/4-digit -> null', () {
+      expect(d('Maktab 56', 3), 3);
+      expect(d('Toshkent maktabi'), isNull);
+      expect(d('2024 maktab'), isNull);
+      expect(d(''), isNull);
+    });
+    test('numeric ordering and search by derived number', () {
+      final names = {
+        '1': 'Maktab 1',
+        '16': '16-sonli maktab',
+        '2': '2-sonli maktab',
+        '21': '21 maktab',
+        '37': 'Maktab 37',
+        '4': '4-sonli maktab',
+        '41': '41 maktab',
+        '6': '6-sonli maktab',
+        '8': '8-sonli maktab',
+      };
+      final out = sortSchools(names.entries
+          .map((e) => DiagnosticSchool.fromMap(row(e.key, e.value, null))));
+      expect(
+          out.map((s) => s.number).toList(), [1, 2, 4, 6, 8, 16, 21, 37, 41]);
+      expect(schoolMatchesQuery(out.first, '1'), isTrue);
+      expect(
+          shortSchoolName(DiagnosticSchool.fromMap(row('a', 'Maktab 56', null)),
+              const Locale('uz'), numLabel),
+          '56-maktab');
+    });
+  });
+
   group('screen', () {
     Future<void> pump(WidgetTester t, List<Map<String, dynamic>> rows,
         {Map<String, Object> prefs = const {}}) async {
@@ -101,6 +143,27 @@ void main() {
       await t.pumpAndSettle();
     }
 
+    testWidgets('city group order is stable while searching', (t) async {
+      await pump(t, [
+        row('1', 'Alpha 1', 1, city: 'Buxoro'),
+        row('2', 'Beta 2', 2, city: 'Samarqand'),
+        row('3', 'Gamma 3', 3, city: 'Samarqand'),
+        row('4', 'Delta 4', 4, city: 'Buxoro'),
+      ]);
+      double y(String s) => t.getTopLeft(find.text(s).last).dy;
+      expect(y('Buxoro'), lessThan(y('Samarqand')));
+      await t.enterText(find.byType(TextField), '3');
+      await t.pumpAndSettle();
+      // Buxoro group has no match now; Samarqand remains. Search 'a' keeps order.
+      await t.enterText(find.byType(TextField), 'a');
+      await t.pumpAndSettle();
+      expect(y('Buxoro'), lessThan(y('Samarqand')));
+      await t.enterText(find.byType(TextField), '3');
+      await t.pumpAndSettle();
+      expect(find.text('3-maktab'), findsOneWidget);
+      expect(find.text('1-maktab'), findsNothing);
+    });
+
     testWidgets('two cities -> Hammasi + 2 chips, filter works', (t) async {
       await pump(t, [
         row('1', 'A', 1, city: 'Toshkent'),
@@ -109,7 +172,8 @@ void main() {
       ]);
       expect(find.text('Hammasi'), findsOneWidget);
       // Chip + group header for each city.
-      expect(find.text('Toshkent'), findsNWidgets(3)); // chip, header, subtitle
+      expect(find.text('Toshkent'),
+          findsNWidgets(2)); // chip, header (no repeated subtitle)
       expect(find.text('Boshqa'), findsOneWidget);
       expect(find.text('3-maktab'), findsOneWidget);
       await t.tap(find.text('Samarqand').first);

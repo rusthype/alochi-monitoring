@@ -56,7 +56,15 @@ class ErrorSnapshot {
 
 class ErrorLog {
   static const _entriesKey = 'device_error_log';
-  static const _countsKey = 'device_error_counts';
+  static const _eventsKey = 'device_error_events';
+  // Legacy lifetime counters: never reported, deleted on first write.
+  static const _legacyCountsKey = 'device_error_counts';
+
+  static const window = Duration(days: 7);
+  static const maxEventsPerKind = 1000;
+
+  /// Injectable clock for tests.
+  static DateTime Function() clock = DateTime.now;
 
   /// Set by DeviceReportSender; called (unawaited) after every record.
   static void Function()? onRecorded;
@@ -72,37 +80,72 @@ class ErrorLog {
   static Future<void> _record(Object error, String? context) async {
     final kind = classifyError(error, context);
     final prefs = await SharedPreferences.getInstance();
-    final snap = _read(prefs);
-    final counts = {...snap.counts, kind: (snap.counts[kind] ?? 0) + 1};
-    final entries = appendRing(snap.entries, {
+    final now = clock().toUtc();
+    final events = _readEvents(prefs, now);
+    final list = [
+      ...(events[kind] ?? const <int>[]),
+      now.millisecondsSinceEpoch
+    ];
+    events[kind] = list.length > maxEventsPerKind
+        ? list.sublist(list.length - maxEventsPerKind)
+        : list;
+    final entries = appendRing(_readEntries(prefs, now), {
       'kind': kind,
       'message': sanitizeErrorMessage(error.toString()),
-      'at': DateTime.now().toUtc().toIso8601String(),
+      'at': now.toIso8601String(),
     });
-    await prefs.setString(_countsKey, jsonEncode(counts));
+    await prefs.setString(_eventsKey, jsonEncode(events));
     await prefs.setString(_entriesKey, jsonEncode(entries));
+    await prefs.remove(_legacyCountsKey);
     final cb = onRecorded;
     if (cb != null) cb();
   }
 
-  static ErrorSnapshot _read(SharedPreferences prefs) {
-    var counts = <String, int>{};
-    var entries = <Map<String, dynamic>>[];
+  /// Per-kind event times (epoch ms) within [window] of [now].
+  static Map<String, List<int>> _readEvents(
+      SharedPreferences prefs, DateTime now) {
+    final out = <String, List<int>>{};
     try {
-      final c = jsonDecode(prefs.getString(_countsKey) ?? '{}') as Map;
-      counts = {for (final e in c.entries) e.key.toString(): e.value as int};
-      final l = jsonDecode(prefs.getString(_entriesKey) ?? '[]') as List;
-      entries = [for (final e in l) Map<String, dynamic>.from(e as Map)];
+      final cutoff = now.subtract(window).millisecondsSinceEpoch;
+      final m = jsonDecode(prefs.getString(_eventsKey) ?? '{}') as Map;
+      for (final e in m.entries) {
+        final l = [
+          for (final t in e.value as List)
+            if ((t as int) >= cutoff) t
+        ];
+        if (l.isNotEmpty) out[e.key.toString()] = l;
+      }
     } catch (_) {
       // Corrupt store: start over rather than block reporting.
     }
-    return ErrorSnapshot(counts, entries);
+    return out;
+  }
+
+  static List<Map<String, dynamic>> _readEntries(
+      SharedPreferences prefs, DateTime now) {
+    try {
+      final cutoff = now.subtract(window);
+      final l = jsonDecode(prefs.getString(_entriesKey) ?? '[]') as List;
+      return [
+        for (final e in l)
+          if (DateTime.tryParse(((e as Map)['at'] ?? '').toString())
+                  ?.isAfter(cutoff) ??
+              false)
+            Map<String, dynamic>.from(e)
+      ];
+    } catch (_) {
+      return [];
+    }
   }
 
   static Future<ErrorSnapshot> snapshot() async {
     try {
       await _chain;
-      return _read(await SharedPreferences.getInstance());
+      final prefs = await SharedPreferences.getInstance();
+      final now = clock().toUtc();
+      final ev = _readEvents(prefs, now);
+      return ErrorSnapshot({for (final e in ev.entries) e.key: e.value.length},
+          _readEntries(prefs, now));
     } catch (_) {
       return const ErrorSnapshot({}, []);
     }

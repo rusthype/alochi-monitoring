@@ -61,6 +61,47 @@ void main() {
     expect(snap.entries.last['kind'], kErrUpdateSignature);
   });
 
+  group('7-day window', () {
+    tearDown(() => ErrorLog.clock = DateTime.now);
+
+    test('counts and last_errors drop events older than 7 days', () async {
+      SharedPreferences.setMockInitialValues({});
+      final t0 = DateTime.utc(2026, 10, 1);
+      ErrorLog.clock = () => t0;
+      await ErrorLog.record(Exception('ECONNRESET'));
+      ErrorLog.clock = () => t0.add(const Duration(days: 6));
+      await ErrorLog.record(Exception('boom'));
+      var s = await ErrorLog.snapshot();
+      expect(s.counts, {kErrNetworkReset: 1, kErrOther: 1});
+      ErrorLog.clock = () => t0.add(const Duration(days: 8));
+      s = await ErrorLog.snapshot();
+      expect(s.counts, {kErrOther: 1});
+      expect(s.entries.length, 1);
+      expect(s.entries.single['kind'], kErrOther);
+    });
+
+    test('per-kind cap of 1000', () async {
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      SharedPreferences.setMockInitialValues({
+        'device_error_events':
+            '{"other":[${List.filled(1000, now).join(',')}]}',
+      });
+      await ErrorLog.record(Exception('boom'));
+      expect((await ErrorLog.snapshot()).counts[kErrOther], 1000);
+    });
+
+    test('legacy lifetime counters are ignored and removed', () async {
+      SharedPreferences.setMockInitialValues(
+          {'device_error_counts': '{"network_econnreset":665}'});
+      expect((await ErrorLog.snapshot()).counts, isEmpty);
+      await ErrorLog.record(Exception('boom'));
+      final s = await ErrorLog.snapshot();
+      expect(s.counts, {kErrOther: 1});
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('device_error_counts'), isFalse);
+    });
+  });
+
   test('payload shape, school_id null when unknown', () {
     const info = DeviceInfo(
         os: 'macos',
