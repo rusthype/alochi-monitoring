@@ -30,6 +30,7 @@ import 'package:intl/intl.dart';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/engine/test_models.dart' show pickVariantNumber;
 import '../../core/models/models.dart';
 import '../../core/session/logout.dart';
 import '../../shared/theme/app_theme.dart';
@@ -285,12 +286,7 @@ class _StudentMessagesScreenState extends State<StudentMessagesScreen> {
     final blob = (data['test_data'] is Map)
         ? Map<String, dynamic>.from(data['test_data'] as Map)
         : data;
-    final variants = blob['variants'];
-    int variant = 1;
-    if (variants is Map && variants.isNotEmpty) {
-      final keys = variants.keys.map((k) => k.toString()).toList()..shuffle();
-      variant = int.tryParse(keys.first) ?? 1;
-    }
+    final variant = pickVariantNumber(blob['variants']);
 
     final nameParts = widget.session.studentName.trim().split(RegExp(r'\s+'));
     final firstName = nameParts.isNotEmpty ? nameParts.first : '';
