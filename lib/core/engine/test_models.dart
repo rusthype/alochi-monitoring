@@ -58,6 +58,10 @@ class Question {
   // sentence_order
   final String? words;
 
+  // sentence_order: true when the backend sent `words` as a JSON list (English
+  // World); false when it is a '/'-joined string (History chronology).
+  final bool wordsFromList;
+
   // yes_no
   final String? yesNoAns; // "YES" or "NO"
 
@@ -86,6 +90,7 @@ class Question {
     this.img,
     this.scramble,
     this.words,
+    this.wordsFromList = false,
     this.yesNoAns,
     this.strAns,
     this.reading,
@@ -167,7 +172,12 @@ class Question {
       case QuestionType.sentenceOrder:
         return Question(
           type: type,
-          words: json['words']?.toString(),
+          // English ships `words` as a JSON list; `toString()` would yield
+          // "[is, a, It, ball]" (one bogus segment), so join it with ' / '.
+          words: json['words'] is List
+              ? (json['words'] as List).join(' / ')
+              : json['words']?.toString(),
+          wordsFromList: json['words'] is List,
           strAns: json['ans']?.toString(),
           topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, par: par, parName: parName, category: category,
         );
