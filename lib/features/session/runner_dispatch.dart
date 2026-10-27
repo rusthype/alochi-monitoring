@@ -21,7 +21,6 @@ Future<void> launchRunner(
   String groupName = '',
   String groupId = '',
   String studentId = '',
-  void Function(int done, int total)? onImageProgress,
 }) async {
   // Time-lock safety net: the catalog UI (login_screen.dart) already blocks
   // navigation into locked tests, this is a second layer in case launchRunner
@@ -51,15 +50,13 @@ Future<void> launchRunner(
     return;
   }
 
-  // Every question image must be on disk BEFORE the test opens (no in-test
-  // spinners, works with no internet afterwards). Already-cached tests make
-  // no network call; a genuine network failure keeps the test closed so the
-  // student can tap again to retry.
-  if (!await testCatalogService.ensureImagesCached(cached,
-      onProgress: onImageProgress)) {
+  // Safety net only: images are downloaded when the TEST is tapped on the
+  // group screen, never here. If anything is missing (evicted/deleted), say so
+  // and go back instead of silently downloading mid-flow.
+  if (!await testCatalogService.imagesComplete(cached)) {
     if (context.mounted) {
       ToastService.showError(
-          context, AppLocalizations.of(context)!.downloadError);
+          context, AppLocalizations.of(context)!.testNotInCache);
     }
     return;
   }

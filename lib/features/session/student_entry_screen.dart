@@ -34,8 +34,6 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
   int? _grade;
   String? _err;
   bool _launching = false;
-  // "done/total" while launchRunner downloads question images; null otherwise.
-  String? _imageProgress;
   List<Map<String, dynamic>> _groups = [];
   Map<String, dynamic>? _selectedGroup;
   bool _loadingGroups = true;
@@ -208,13 +206,9 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       groupName: groupName,
       groupId: groupId,
       studentId: studentId,
-      onImageProgress: (done, total) {
-        if (mounted) setState(() => _imageProgress = '$done/$total');
-      },
     );
     if (!mounted) return;
-    setState(() => _imageProgress = null);
-
+    
     // Foydalanuvchi "Keyingi o'quvchi"ni bossa yoki testdan qaytsa, 
     // to'g'ridan-to'g'ri Guruh tanlash oynasiga (GroupSelectScreen) qaytarib yuboramiz.
     Navigator.of(context).pop();
@@ -756,9 +750,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                 Padding(
                                   padding: const EdgeInsets.only(left: 16),
                                   child: Text(
-                                    _launching && _imageProgress != null
-                                        ? '${l10n.downloading} $_imageProgress'
-                                        : l10n.startTest,
+                                    l10n.startTest,
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,

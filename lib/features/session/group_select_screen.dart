@@ -81,6 +81,8 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
   List<CatalogEntry> _catalog = [];
   String? _err;
   final Set<String> _downloadingKeys = {};
+  // "done/total" of the running download per test_key (shown on the button).
+  final Map<String, String> _downloadProgress = {};
 
   @override
   void initState() {
@@ -176,6 +178,11 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
         groupId: groupId.isEmpty ? null : groupId,
         schoolCode: widget.schoolCode,
         schoolId: widget.schoolId,
+        onProgress: (done, total) {
+          if (mounted) {
+            setState(() => _downloadProgress[entry.testKey] = '$done/$total');
+          }
+        },
       );
       if (!ok && mounted) {
         ToastService.showError(
@@ -185,7 +192,10 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       debugPrint('GroupSelectScreen: download(${entry.testKey}) error: $e');
     }
     if (!mounted) return;
-    setState(() => _downloadingKeys.remove(entry.testKey));
+    setState(() {
+      _downloadingKeys.remove(entry.testKey);
+      _downloadProgress.remove(entry.testKey);
+    });
     // Holatni yangilash uchun shu guruh katalogini qayta yuklaymiz —
     // muvaffaqiyatli yuklangan test "Boshlash"ga aylanadi.
     if (_selectedGroup != null) {
@@ -193,7 +203,19 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
     }
   }
 
-  void _goToStudentEntry(CatalogEntry entry, Map<String, dynamic>? group) {
+  Future<void> _goToStudentEntry(
+      CatalogEntry entry, Map<String, dynamic>? group) async {
+    // "Downloaded" must mean JSON + every image on disk. If something went
+    // missing since the catalog was built, do not enter: refresh the list so
+    // the test shows as not downloaded again.
+    if (!await testCatalogService.isTestReady(entry.testKey)) {
+      if (!mounted) return;
+      ToastService.showError(
+          context, AppLocalizations.of(context)!.testNotInCache);
+      if (_selectedGroup != null) await _selectGroup(_selectedGroup!);
+      return;
+    }
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         settings: const RouteSettings(name: 'student_entry'),
@@ -499,7 +521,10 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            _DoubleBezel(
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: isDownloading ? null : () => _downloadEntry(entry),
+              child: _DoubleBezel(
               child: Container(
                 color: AppColors.gray50.withValues(alpha: 0.5),
                 padding: const EdgeInsets.all(20),
@@ -557,12 +582,28 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                       ],
                     ),
                     isDownloading
-                        ? const SizedBox(
-                            width: 40,
-                            height: 40,
-                            child: Center(
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: AppColors.brand)),
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_downloadProgress[entry.testKey] != null) ...[
+                                Text(
+                                  _downloadProgress[entry.testKey]!,
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.brand),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              const SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: Center(
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.brand)),
+                              ),
+                            ],
                           )
                         : _HoverableDownloadButton(
                             onPressed: () => _downloadEntry(entry),
@@ -570,6 +611,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                   ],
                 ),
               ),
+            ),
             ),
             if (entry.isNew)
               const Positioned(top: -6, right: -6, child: NewBadge()),
