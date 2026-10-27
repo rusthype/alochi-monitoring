@@ -1,0 +1,21 @@
+{
+  "_note": "TEST VECTOR ONLY. Never use this keypair outside tests.",
+  "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAwYopN1PKyNdnG+8oph5FDbM3jzfue3FIlc+BHdr06R0=\n-----END PUBLIC KEY-----\n",
+  "public_key_pem_b64": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUNvd0JRWURLMlZ3QXlFQXdZb3BOMVBLeU5kbkcrOG9waDVGRGJNM2p6ZnVlM0ZJbGMrQkhkcjA2UjA9Ci0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQo=",
+  "command": "force_update",
+  "request_id": "11111111-2222-4333-8444-555555555555",
+  "device_id": "dev-vector-1",
+  "sent_at": "2026-01-02T03:04:05Z",
+  "expires_at": "2026-01-09T03:04:05Z",
+  "canonical": "kiosk-cmd-v1|force_update|11111111-2222-4333-8444-555555555555|dev-vector-1|2026-01-02T03:04:05Z|2026-01-09T03:04:05Z",
+  "sig": "zNL4arDYC7wcBFGtxRKsae77AEZuy-miF0KGSWUaGuupEdKS0ahjJMVr8uX5E9TsZonlRTvImK0LoCacRDR_Bg",
+  "message": {
+    "type": "command",
+    "command": "force_update",
+    "request_id": "11111111-2222-4333-8444-555555555555",
+    "device_id": "dev-vector-1",
+    "sent_at": "2026-01-02T03:04:05Z",
+    "expires_at": "2026-01-09T03:04:05Z",
+    "sig": "zNL4arDYC7wcBFGtxRKsae77AEZuy-miF0KGSWUaGuupEdKS0ahjJMVr8uX5E9TsZonlRTvImK0LoCacRDR_Bg"
+  }
+}

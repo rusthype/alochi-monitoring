@@ -72,7 +72,7 @@ class DeviceCommandClient {
         _now = now ?? DateTime.now,
         _deviceId = deviceId ?? DeviceInfoCollector.deviceId,
         _pubKey = commandPublicKey ?? kioskCommandPublicKeyFromEnvironment(),
-        _verify = verifySignature ?? unavailableEd25519Verify,
+        _verify = verifySignature ?? ed25519Verify,
         _shouldConnect = shouldConnect ?? _defaultShouldConnect,
         _gate = testGate ?? ActiveTestGate.active,
         _check = checkUpdate ?? UpdateService.instance.fetchUpdateInfo,
@@ -220,8 +220,14 @@ class DeviceCommandClient {
     }
   }
 
-  void _ack(String requestId, String status) =>
-      _send({'type': 'ack', 'request_id': requestId, 'status': status});
+  final Map<String, String> _lastAck = {};
+
+  void _ack(String requestId, String status) {
+    _lastAck.remove(requestId);
+    _lastAck[requestId] = status;
+    if (_lastAck.length > _seenCap) _lastAck.remove(_lastAck.keys.first);
+    _send({'type': 'ack', 'request_id': requestId, 'status': status});
+  }
 
   static final _idRe = RegExp(r'^[A-Za-z0-9_.:\-]{1,64}$');
 
@@ -235,7 +241,7 @@ class DeviceCommandClient {
       if (m['type'] != 'command' || m['command'] != 'force_update') return;
       final id = m['request_id'];
       if (id is! String || !_idRe.hasMatch(id)) return;
-      final reason = checkCommandAuth(
+      final reason = await checkCommandAuth(
         m,
         publicKey: _pubKey,
         ownDeviceId: await _deviceId(),
@@ -247,7 +253,13 @@ class DeviceCommandClient {
         return;
       }
       await _loadSeen();
-      if (_seen.contains(id)) return;
+      if (_seen.contains(id)) {
+        // Redelivery (server resends a deferred request on every reconnect):
+        // idempotent, re-state the last answer, never start a second update.
+        final st = _lastAck[id] ?? (id == _pendingId ? 'deferred' : null);
+        if (st != null) _ack(id, st);
+        return;
+      }
       _seen.add(id); // no await between the check above and this add
       if (_seen.length > _seenCap) _seen.removeAt(0);
       await _saveSeen();

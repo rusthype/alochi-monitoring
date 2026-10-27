@@ -43,7 +43,7 @@ Uint8List _fakeSig(Uint8List key, Uint8List msg) {
   return Uint8List.fromList([...h, ...h]);
 }
 
-bool _fakeVerify(Uint8List key, Uint8List msg, Uint8List sig) {
+Future<bool> _fakeVerify(Uint8List key, Uint8List msg, Uint8List sig) async {
   final e = _fakeSig(key, msg);
   if (sig.length != e.length) return false;
   for (var i = 0; i < e.length; i++) {
@@ -241,12 +241,12 @@ void main() {
     UpdateResult result = const UpdateResult.success();
     late DeviceCommandClient c;
 
-    Future<void> boot() async {
+    Future<void> boot({bool testRunning = false}) async {
       ch = FakeChannel();
-      gate = ValueNotifier(false);
+      gate = ValueNotifier(testRunning);
       checks = 0;
       installs = [];
-      available = null;
+      available = testRunning ? _info : null;
       result = const UpdateResult.success();
       c = DeviceCommandClient(
         deviceId: () async => 'd',
@@ -323,6 +323,44 @@ void main() {
       expect(installs.length, 1);
     });
 
+    test('redelivery of a deferred request is idempotent', () async {
+      await boot();
+      available = _info;
+      gate.value = true;
+      final m = cmd('rd1');
+      ch.server(m);
+      await pump();
+      ch.server(m); // server resends on every reconnect while deferred
+      await pump();
+      ch.server(m);
+      await pump();
+      expect(ch.acks, ['deferred', 'deferred', 'deferred']);
+      expect(installs, isEmpty);
+      expect(checks, 1);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(kPendingForceUpdateKey), 'rd1');
+
+      gate.value = false; // the post-gate update must still happen, once
+      await pump();
+      expect(installs.length, 1);
+      ch.server(m); // late redelivery after the update started
+      await pump();
+      expect(installs.length, 1);
+      expect(ch.acks.last, 'updating');
+    });
+
+    test('redelivery after a restart while pending re-acks deferred', () async {
+      SharedPreferences.setMockInitialValues({
+        kPendingForceUpdateKey: 'rs1',
+        kSeenCommandIdsKey: jsonEncode(['rs1']),
+      });
+      await boot(testRunning: true); // restored pending waits for the gate
+      ch.server(cmd('rs1'));
+      await pump();
+      expect(ch.acks, ['deferred']);
+      expect(installs, isEmpty);
+    });
+
     test('gate flips back before the grace ends -> keeps waiting', () async {
       await boot();
       available = _info;
@@ -341,10 +379,13 @@ void main() {
     test('duplicate request_id is ignored', () async {
       await boot();
       ch.server(cmd('dup'));
+      await pump();
       ch.server(cmd('dup'));
       await pump();
-      expect(ch.acks, ['up_to_date']);
+      // Redelivery re-states the answer but never re-runs the check/update.
+      expect(ch.acks, ['up_to_date', 'up_to_date']);
       expect(checks, 1);
+      expect(installs, isEmpty);
     });
 
     test('malformed / unknown / oversize / binary input is ignored', () async {
@@ -474,7 +515,8 @@ void main() {
       await expectIgnored(cmd('n1'));
     });
 
-    test('default verifier (no Ed25519 impl) rejects everything', () async {
+    test('default (real Ed25519) verifier rejects a non-Ed25519 signature',
+        () async {
       ch = FakeChannel();
       checks = 0;
       c = DeviceCommandClient(
@@ -516,11 +558,18 @@ void main() {
     });
   });
 
-  group('shared backend vector', () {
-    final f = File('/private/tmp/claude-501/kiosk-cmd-vector.json');
-    final present = f.existsSync();
-    test('canonical string and public key parse match the backend', () {
-      final v = jsonDecode(f.readAsStringSync()) as Map<String, dynamic>;
+  group('shared backend vector (real Ed25519)', () {
+    final v = jsonDecode(
+            File('test/fixtures/kiosk_cmd_vector.json').readAsStringSync())
+        as Map<String, dynamic>;
+    final key = parseEd25519PublicKey(v['public_key_pem'])!;
+    final at = DateTime.utc(2026, 1, 3);
+    Map<String, dynamic> msg() => Map<String, dynamic>.from(v['message']);
+    Uint8List canon() => Uint8List.fromList(utf8.encode(v['canonical']));
+    Uint8List sig() => Uint8List.fromList(
+        base64Url.decode(base64Url.normalize(v['sig'] as String)));
+
+    test('canonical string and key parsing match the backend', () {
       expect(
           kioskCommandCanonical(
               command: v['command'],
@@ -529,17 +578,69 @@ void main() {
               sentAt: v['sent_at'],
               expiresAt: v['expires_at']),
           v['canonical']);
-      expect(parseEd25519PublicKey(v['public_key_pem'])!.length, 32);
-      expect(parseEd25519PublicKey(v['public_key_pem_b64'])!.length, 32);
+      expect(key.length, 32);
+      expect(parseEd25519PublicKey(v['public_key_pem_b64'])!, key);
       expect(parseEd25519PublicKey('garbage'), isNull);
       expect(parseEd25519PublicKey(''), isNull);
-    }, skip: present ? false : 'vector file missing');
+    });
 
-    test('real Ed25519 verification of the backend signature', () {
-      fail('needs an Ed25519 implementation (none in current dependencies)');
-    },
-        skip:
-            'BLOCKED: pointycastle 3.9.1 / crypto have no Ed25519; see report');
+    test('backend signature verifies; any tampering does not', () async {
+      expect(await ed25519Verify(key, canon(), sig()), isTrue);
+      final bad = canon()..[canon().length - 2] ^= 1;
+      expect(await ed25519Verify(key, bad, sig()), isFalse);
+      expect(await ed25519Verify(key, canon(), sig()..[0] ^= 1), isFalse);
+      expect(await ed25519Verify(Uint8List(32), canon(), sig()), isFalse);
+    });
+
+    test('checkCommandAuth: accepted for the right device/time only', () async {
+      Future<String?> chk(Map m,
+              {String dev = 'dev-vector-1', DateTime? now}) =>
+          checkCommandAuth(m,
+              publicKey: key,
+              ownDeviceId: dev,
+              now: now ?? at,
+              verify: ed25519Verify);
+      expect(await chk(msg()), isNull);
+      expect(await chk(msg(), dev: 'other'), 'device_mismatch');
+      expect(await chk(msg(), now: DateTime.utc(2026, 1, 10)), 'expired');
+      expect(
+          await chk(msg(), now: DateTime.utc(2025, 12, 1)), 'sent_in_future');
+      expect(await chk(msg()..['expires_at'] = '2026-01-09T03:04:06Z'),
+          'bad_signature');
+      expect(await chk(msg()..remove('sig')), 'missing_field');
+    });
+
+    test('end to end: signed message -> ack updating, then ONE update',
+        () async {
+      final ch = FakeChannel();
+      var installs = 0;
+      final c = DeviceCommandClient(
+        deviceId: () async => 'dev-vector-1',
+        commandPublicKey: key,
+        now: () => at,
+        connect: (_) async => ch,
+        sleep: parkingSleep,
+        testGate: ValueNotifier(false),
+        checkUpdate: () async => _info,
+        installUpdate: (i) async {
+          installs++;
+          return const UpdateResult.success();
+        },
+      );
+      c.start();
+      await pump();
+      ch.server(msg());
+      await pump();
+      ch.server(msg()); // replay
+      await pump();
+      expect(ch.acks, ['updating', 'updating']);
+      expect(installs, 1);
+      // Unsigned / wrongly keyed variant: nothing happens.
+      ch.server(msg()..['request_id'] = '99999999-2222-4333-8444-555555555555');
+      await pump();
+      expect(ch.sent.length, 2);
+      await c.stop();
+    });
   });
 
   group('ActiveTestGate', () {

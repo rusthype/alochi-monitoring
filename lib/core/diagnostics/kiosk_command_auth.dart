@@ -10,9 +10,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:cryptography/cryptography.dart';
+
 /// Ed25519 verification primitive: true iff [sig] (64 bytes) is a valid
 /// signature of [message] under [publicKey] (32 bytes).
-typedef Ed25519Verify = bool Function(
+typedef Ed25519Verify = Future<bool> Function(
     Uint8List publicKey, Uint8List message, Uint8List sig);
 
 const String _pubKeyB64 = String.fromEnvironment('KIOSK_COMMAND_PUBKEY_B64');
@@ -70,20 +72,27 @@ Uint8List? parseEd25519PublicKey(String raw) {
 Uint8List? kioskCommandPublicKeyFromEnvironment() =>
     parseEd25519PublicKey(_pubKeyB64);
 
-/// Default verifier: no Ed25519 implementation is available in the current
-/// dependencies, so this REJECTS everything (fail-closed) until one is wired.
-bool unavailableEd25519Verify(Uint8List k, Uint8List m, Uint8List s) => false;
+/// Real Ed25519 verification (pure Dart, package:cryptography).
+Future<bool> ed25519Verify(
+        Uint8List publicKey, Uint8List message, Uint8List sig) =>
+    Ed25519().verify(
+      message,
+      signature: Signature(
+        sig,
+        publicKey: SimplePublicKey(publicKey, type: KeyPairType.ed25519),
+      ),
+    );
 
 /// Returns null if [msg] is an authentic, current command for [ownDeviceId];
 /// otherwise a short reason code (safe to log). Does not check replays.
-String? checkCommandAuth(
+Future<String?> checkCommandAuth(
   Map msg, {
   required Uint8List? publicKey,
   required String ownDeviceId,
   required DateTime now,
   required Ed25519Verify verify,
   Duration maxFutureSkew = const Duration(minutes: 10),
-}) {
+}) async {
   if (publicKey == null) return 'no_pubkey';
   final command = msg['command'];
   final requestId = msg['request_id'];
@@ -121,7 +130,7 @@ String? checkCommandAuth(
     expiresAt: expiresAt,
   );
   try {
-    if (!verify(
+    if (!await verify(
         publicKey, Uint8List.fromList(utf8.encode(canonical)), sigBytes)) {
       return 'bad_signature';
     }

@@ -62,6 +62,8 @@ dependencies:
   # Offline LAN hub (teacher PC serves the open pack to student PCs).
   shelf: ^1.4.3
   shelf_router: ^1.1.5
+  # Pure-Dart Ed25519 verify for signed remote kiosk commands (no native plugin).
+  cryptography: ^2.9.0
 
 dev_dependencies:
   flutter_test:
