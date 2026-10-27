@@ -1073,12 +1073,14 @@ class _TestEngineState extends State<TestEngine>
         );
 
       case QuestionType.sentenceOrder:
-        // English World "Writing" keeps free-text input so contraction-
-        // equivalence grading (answer_normalization.dart) actually matters —
-        // tap-to-order chips only ever offer the canonical answer-key words.
-        // Every other sentence_order usage (e.g. History chronology) keeps
-        // the tap-to-order UI. See SentenceFreeTextWidget's doc-comment.
-        if (sectionName == 'Writing') {
+        // Free-text typing (not tap-to-order chips) for English World:
+        // chips only ever offer the canonical answer-key words, so
+        // contraction-equivalence grading (answer_normalization.dart) would
+        // never matter. English is identified by section "Writing" or by the
+        // backend sending `words` as a JSON list (also section "Sentences");
+        // History chronology sends a '/'-joined string and keeps the chips.
+        // See SentenceFreeTextWidget's doc-comment.
+        if (sectionName == 'Writing' || q.wordsFromList) {
           return SentenceFreeTextWidget(
             index: i,
             question: q,
