@@ -1,7 +1,8 @@
 // lib/features/diagnostic/widgets/diagnostic_school_card.dart
 //
 // Kiosk school card: big number badge, short name, optional city subtitle and
-// an optional "last chosen" marker. Also used by the class-select grid.
+// an optional "last chosen" marker. Separate from DiagnosticPillButton (the
+// class-select screen depends on that one's pill shape).
 import 'package:flutter/material.dart';
 import '../../../shared/theme/app_theme.dart';
 
@@ -12,16 +13,6 @@ class DiagnosticSchoolCard extends StatelessWidget {
   final String? marker;
   final VoidCallback onTap;
 
-  /// Card width; the school screen keeps the 240 default, the class grid
-  /// passes its computed column width.
-  final double width;
-
-  /// Badge icon when [number] is null.
-  final IconData icon;
-
-  /// Optional widget at the end of the title row (e.g. a web-test marker).
-  final Widget? trailing;
-
   const DiagnosticSchoolCard({
     super.key,
     required this.number,
@@ -29,16 +20,13 @@ class DiagnosticSchoolCard extends StatelessWidget {
     required this.onTap,
     this.subtitle,
     this.marker,
-    this.width = 240,
-    this.icon = Icons.school_rounded,
-    this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
     final pinned = marker != null;
     return SizedBox(
-      width: width,
+      width: 240,
       child: Material(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
@@ -81,8 +69,8 @@ class DiagnosticSchoolCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: number == null
-                          ? Icon(
-                              icon,
+                          ? const Icon(
+                              Icons.school_rounded,
                               color: AppColors.brand,
                               size: 28,
                             )
@@ -128,10 +116,6 @@ class DiagnosticSchoolCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (trailing != null) ...[
-                      const SizedBox(width: 6),
-                      trailing!,
-                    ],
                   ],
                 ),
               ],
