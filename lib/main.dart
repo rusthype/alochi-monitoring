@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/sync/sync_service.dart';
+import 'core/cache/test_image_store.dart';
 import 'core/services/heartbeat_service.dart';
 import 'core/network/connectivity_service.dart';
 import 'core/locale/locale_provider.dart';
@@ -111,6 +112,16 @@ void main(List<String> args) {
       unawaited(CrashReporterService.captureCrash(
           details.exception, details.stack ?? StackTrace.current));
     };
+
+    // Resolve the downloaded-test image folder up front so AppNetworkImage can
+    // look files up synchronously (first frame, no spinner). Best-effort.
+    if (!kIsWeb) {
+      try {
+        await TestImageStore.instance.init();
+      } catch (e) {
+        debugPrint('TestImageStore.init failed: $e');
+      }
+    }
 
     // Never null: on a broken prefs file this retries, then falls back to an
     // in-memory store — sharedPreferencesProvider MUST always be overridden
