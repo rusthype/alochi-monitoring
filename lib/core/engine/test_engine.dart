@@ -11,6 +11,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 import 'package:flutter/material.dart';
 import '../../shared/theme/app_theme.dart';
+import '../widgets/skeleton.dart';
 import '../api/api_client.dart';
 import '../db/attempt_store.dart';
 import 'test_models.dart';
@@ -141,14 +142,46 @@ class _TestEngineState extends State<TestEngine>
   /// Key = "SectionName/questionIndex".
   final Map<String, TextEditingController> _controllers = {};
 
-  /// Per-slot keys (key = AnswerSlot.key) so tapping the active section tab
-  /// can scroll to the first unanswered question.
-  final Map<String, GlobalKey> _slotKeys = {};
+  /// Per-slot keys (generation -> AnswerSlot.key -> key) so tapping the
+  /// active section tab can scroll to the first unanswered question.
+  final Map<int, Map<String, GlobalKey>> _slotKeys = {};
 
   /// True when the last section change moved to a later section — drives the
   /// slide direction of the section switch animation.
   bool _forward = true;
   bool _finishing = false;
+
+  /// False until [_restoreAttempt] has finished (or failed over to a fresh
+  /// attempt): the UI shows a skeleton meanwhile so nothing typed can be
+  /// overwritten by the restore, and `_deadlineMs` is never null in play.
+  bool _restored = false;
+
+  /// Extra seconds granted by the proctor before [_deadlineMs] existed;
+  /// applied once the restore resolves.
+  int _pendingExtendSecs = 0;
+
+  /// Set while the finish-confirm dialog is up (guards a double-click from
+  /// stacking a second dialog) together with its route, so a timeout /
+  /// remote end can close exactly that dialog.
+  bool _confirmOpen = false;
+  Route<dynamic>? _confirmRoute;
+
+  /// Bumped on every section change. Slot GlobalKeys are generated per
+  /// generation: during an A -> B -> A switch the outgoing and the incoming
+  /// "A" are both alive in the AnimatedSwitcher and must not share keys.
+  int _sectionGen = 0;
+
+  /// Keys of the answer slots that are backed by a [TextEditingController]
+  /// (typed answers). Choice / yes_no answers must never be synced from a
+  /// controller.
+  late final Set<String> _textSlotKeys = {
+    for (final section in _sections)
+      for (final slot in section.answerSlots)
+        if (slot.question.type == QuestionType.spelling ||
+            slot.question.type == QuestionType.sentenceOrder ||
+            slot.question.type == QuestionType.fillBlank)
+          slot.key,
+  };
 
   // ── Derived state ──────────────────────────────────────────────────────────
 
@@ -237,17 +270,30 @@ class _TestEngineState extends State<TestEngine>
           // the deadline too, not just the displayed _secs, otherwise the
           // next tick's _syncSecsFromDeadline() would immediately recompute
           // _secs from the OLD deadline and undo this extension.
-          if (_deadlineMs != null) _deadlineMs = _deadlineMs! + secs * 1000;
-          setState(() => _secs += secs);
+          if (_deadlineMs != null) {
+            _deadlineMs = _deadlineMs! + secs * 1000;
+          } else {
+            _pendingExtendSecs += secs; // restore still in flight
+          }
+          // Paused: the countdown is rebuilt from the frozen remaining time
+          // on resume, so the extension must go there too or it is lost.
+          final frozen = _pausedRemainingMs;
+          if (frozen != null) {
+            _pausedRemainingMs = (frozen + secs * 1000).clamp(0, 1 << 62);
+          }
+          setState(() => _secs = (_secs + secs).clamp(0, 1 << 31));
           HeartbeatService.instance.remainingSeconds = _secs;
           unawaited(_persistNow());
-          var minutes = (secs / 60).round();
-          if (minutes < 1) minutes = 1;
-          _pushToast(
-            _ToastKind.extended,
-            AppLocalizations.of(context)!.timeAdded(minutes),
-            const Duration(seconds: 5),
-          );
+          // Only an addition is announced; a negative correction is silent.
+          if (secs > 0) {
+            var minutes = (secs / 60).round();
+            if (minutes < 1) minutes = 1;
+            _pushToast(
+              _ToastKind.extended,
+              AppLocalizations.of(context)!.timeAdded(minutes),
+              const Duration(seconds: 5),
+            );
+          }
         }
       };
     ProctorService.instance.start();
@@ -267,7 +313,63 @@ class _TestEngineState extends State<TestEngine>
   /// exists, seeding [_answers]/[_controllers] and the remaining countdown
   /// from the saved deadline. Otherwise starts a fresh attempt and persists
   /// its deadline immediately so a crash right after start can still resume.
+  static const Duration _serverResumeTimeout = Duration(seconds: 5);
+
   Future<void> _restoreAttempt() async {
+    try {
+      await _doRestore();
+    } catch (e, st) {
+      // Whatever went wrong while reading a saved attempt, the student must
+      // still get a working test: fall back to a fresh attempt.
+      debugPrint('TestEngine: restore failed, starting fresh: $e\n$st');
+      await _startFresh();
+    } finally {
+      if (mounted) setState(() => _restored = true);
+    }
+  }
+
+  /// Fresh attempt after a failed restore: clears whatever a half-finished
+  /// restore seeded, mints a deadline, persists it and starts the clock.
+  Future<void> _startFresh() async {
+    if (!mounted || _finishing) return;
+    final nowMs = _nowMs;
+    _answers.clear();
+    for (final c in _controllers.values) {
+      c.clear();
+    }
+    _completed = false;
+    _pausedRemainingMs = null;
+    _pausedRestoreNeedsSave = false;
+    _attemptId ??= newIdempotencyToken();
+    _startedAtMs = nowMs;
+    _deadlineMs =
+        nowMs + widget.duration.inMilliseconds + _pendingExtendSecs * 1000;
+    _pendingExtendSecs = 0;
+    if (!mounted) return;
+    setState(() {
+      _restored = true;
+      _secs = (_deadlineMs! - nowMs) ~/ 1000;
+    });
+    try {
+      await _persistNow();
+    } catch (e) {
+      debugPrint('TestEngine: persist after failed restore: $e');
+    }
+    if (!mounted) return;
+    HeartbeatService.instance.remainingSeconds = _secs;
+    _startTimer();
+    _reportProgress();
+  }
+
+  /// Seeds a restored string answer into its controller, but only for slots
+  /// that really are typed (never for yes_no / choice answers).
+  void _seedController(String key, dynamic value) {
+    if (value is String && _textSlotKeys.contains(key)) {
+      _ctrl(key).text = value;
+    }
+  }
+
+  Future<void> _doRestore() async {
     final testKey = widget.spec.testKey;
     final nowMs = _nowMs;
 
@@ -277,22 +379,42 @@ class _TestEngineState extends State<TestEngine>
     // survives a crash on the SAME PC, server alone loses the last <30s of
     // typing on a genuine crash. See sessionPing/reportAnswers for the
     // write side of this contract.
-    final localAnswers =
-        await AttemptStore.loadForStudent(testKey, widget.studentId);
-    Map<String, dynamic>? serverAnswers;
+    //
     // Only ping the server when a real session is active (i.e. the normal
     // app flow already called HeartbeatService.startTest before pushing
     // this widget — see runner_dispatch.dart). Mirrors HeartbeatService's
     // own `_activeSessionId == null` short-circuit and keeps TestEngine
-    // network-free when rendered without that flow (widget tests).
-    if (HeartbeatService.instance.activeSessionId != null) {
+    // network-free when rendered without that flow (widget tests). Bounded:
+    // the student never waits on a slow network to start answering.
+    Future<Map<String, dynamic>?> fetchServer() async {
       try {
-        final resp = await api.sessionResume(testKey);
-        if (resp['exists'] == true) serverAnswers = resp;
+        final resp =
+            await api.sessionResume(testKey).timeout(_serverResumeTimeout);
+        if (resp['exists'] == true) return resp;
       } catch (_) {
         // Best-effort — a network/HTTP failure here just falls back to
         // local resume (or a fresh start), same posture as every ping call.
       }
+      return null;
+    }
+
+    final serverFuture = HeartbeatService.instance.activeSessionId != null
+        ? fetchServer()
+        : Future<Map<String, dynamic>?>.value(null);
+    var localAnswers =
+        await AttemptStore.loadForStudent(testKey, widget.studentId);
+    final Map<String, dynamic>? serverAnswers = await serverFuture;
+
+    // A saved IN-PROGRESS attempt of another test version maps its keys to
+    // different questions: drop it. A completed record is always replayed.
+    final savedVersion = localAnswers?['test_version'];
+    if (localAnswers != null &&
+        localAnswers['completed'] != true &&
+        savedVersion is num &&
+        savedVersion.toInt() != widget.spec.version) {
+      debugPrint('TestEngine: saved attempt is for test version '
+          '$savedVersion, spec is ${widget.spec.version} - discarding');
+      localAnswers = null;
     }
 
     final localVariant =
@@ -327,7 +449,7 @@ class _TestEngineState extends State<TestEngine>
         for (final entry in ans.entries) {
           final key = entry.key.toString();
           _answers[key] = entry.value;
-          if (entry.value is String) _ctrl(key).text = entry.value as String;
+          _seedController(key, entry.value);
         }
       }
       final remaining = serverAnswers['remaining_seconds'];
@@ -341,6 +463,8 @@ class _TestEngineState extends State<TestEngine>
       }
       _startedAtMs = elapsed is num ? nowMs - elapsed.toInt() * 1000 : nowMs;
       resumed = true;
+      _applyPendingExtend();
+      _markRestored(); // in-memory state is complete; the WAL write is not UI
       await _persistNow(); // mirror server state into local WAL too
     } else if (localCount >= 0) {
       final ans = localAnswers?['answers'];
@@ -349,7 +473,7 @@ class _TestEngineState extends State<TestEngine>
         for (final entry in ans.entries) {
           final key = entry.key.toString();
           _answers[key] = entry.value;
-          if (entry.value is String) _ctrl(key).text = entry.value as String;
+          _seedController(key, entry.value);
         }
       }
       final startedRaw = localAnswers?['started_at'];
@@ -373,6 +497,8 @@ class _TestEngineState extends State<TestEngine>
       final shift = _deadlineMs! - savedDeadline;
       _startedAtMs = startedRaw is num ? startedRaw.toInt() + shift : nowMs;
       resumed = true;
+      _applyPendingExtend();
+      _markRestored();
     }
 
     if (!resumed) {
@@ -381,6 +507,8 @@ class _TestEngineState extends State<TestEngine>
       _attemptId ??= newIdempotencyToken();
       _startedAtMs = nowMs;
       _deadlineMs = nowMs + widget.duration.inMilliseconds;
+      _applyPendingExtend();
+      _markRestored();
       await _persistNow();
     }
 
@@ -422,6 +550,20 @@ class _TestEngineState extends State<TestEngine>
     // _setAnswer), so the heartbeat wouldn't otherwise see this session's
     // progress until the student answers another question. Report it now.
     _reportProgress();
+  }
+
+  /// Lifts the restore gate: from here on [_answers], the controllers and
+  /// [_deadlineMs] are final for the UI. Idempotent.
+  void _markRestored() {
+    if (mounted && !_restored) setState(() => _restored = true);
+  }
+
+  /// Folds extra time granted while the restore was in flight into the
+  /// freshly built deadline.
+  void _applyPendingExtend() {
+    if (_pendingExtendSecs == 0) return;
+    _deadlineMs = _deadlineMs! + _pendingExtendSecs * 1000;
+    _pendingExtendSecs = 0;
   }
 
   /// Wraps a single answer mutation with a debounced attempt_store save.
@@ -484,8 +626,8 @@ class _TestEngineState extends State<TestEngine>
 
   void _scheduleSave() {
     _saveDebounce?.cancel();
-    _saveDebounce = Timer(const Duration(milliseconds: 500), () {
-      _persistNow();
+    _saveDebounce = Timer(const Duration(milliseconds: 200), () {
+      unawaited(_persistNow());
     });
   }
 
@@ -493,6 +635,9 @@ class _TestEngineState extends State<TestEngine>
     if (_deadlineMs == null) return; // restore still in flight
     await AttemptStore.save(widget.spec.testKey, {
       'variant': widget.variant,
+      // A resume against another version of the test would map the saved
+      // keys to different questions (see _doRestore).
+      'test_version': widget.spec.version,
       'answers': Map<String, dynamic>.from(_answers),
       'started_at': _startedAtMs,
       if (_attemptId != null) 'attempt_id': _attemptId,
@@ -507,6 +652,7 @@ class _TestEngineState extends State<TestEngine>
   }
 
   void _startTimer() {
+    if (!mounted || _finishing) return;
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       _syncSecsFromDeadline();
@@ -543,6 +689,12 @@ class _TestEngineState extends State<TestEngine>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _syncSecsFromDeadline();
+    } else if (!_finishing) {
+      // inactive / hidden / paused / detached: the process may be killed
+      // right after this (window closed, power saving) - flush now instead
+      // of waiting for the debounce.
+      _saveDebounce?.cancel();
+      unawaited(_persistNow());
     }
   }
 
@@ -598,6 +750,12 @@ class _TestEngineState extends State<TestEngine>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    // A save still pending in the debounce window must not be lost with the
+    // screen (kiosk logout / navigation): _persistNow only reads fields.
+    if (!_finishing && (_saveDebounce?.isActive ?? false)) {
+      _saveDebounce?.cancel();
+      unawaited(_persistNow());
+    }
     _saveDebounce?.cancel();
     _activeStopwatch.stop();
     for (final t in _toasts) {
@@ -656,11 +814,16 @@ class _TestEngineState extends State<TestEngine>
     setState(() {
       _forward = idx > _sectionIdx;
       _sectionIdx = idx;
+      _sectionGen++;
+      // Bound the cache: only the last few generations can still be on
+      // screen (outgoing children of the AnimatedSwitcher).
+      _slotKeys.removeWhere((gen, _) => gen < _sectionGen - 4);
     });
     _reportProgress();
   }
 
-  GlobalKey _slotKey(String key) => _slotKeys.putIfAbsent(key, GlobalKey.new);
+  GlobalKey _slotKey(String key, int gen) =>
+      (_slotKeys[gen] ??= {}).putIfAbsent(key, GlobalKey.new);
 
   /// Smoothly scrolls the active section to its first unanswered question.
   /// No-op when everything is answered; never changes the section.
@@ -668,7 +831,7 @@ class _TestEngineState extends State<TestEngine>
     final section = _sections[_sectionIdx];
     for (final slot in section.answerSlots) {
       if (_hasValue(_answers[slot.key])) continue;
-      final ctx = _slotKeys[slot.key]?.currentContext;
+      final ctx = _slotKeys[_sectionGen]?[slot.key]?.currentContext;
       if (ctx != null) {
         Scrollable.ensureVisible(
           ctx,
@@ -683,76 +846,139 @@ class _TestEngineState extends State<TestEngine>
 
   /// Sync controller text into _answers so scorer sees latest input.
   void _syncTextAnswers() {
-    for (final entry in _controllers.entries) {
-      final current = entry.value.text;
-      _answers[entry.key] = current;
-    }
+    _flushControllersIntoAnswers();
     _scheduleSave();
+  }
+
+  /// Copies typed text into [_answers] - for typed slots only. A controller
+  /// that exists for any other key must never overwrite a choice / yes_no
+  /// answer with stale text.
+  void _flushControllersIntoAnswers() {
+    for (final entry in _controllers.entries) {
+      if (_textSlotKeys.contains(entry.key)) {
+        _answers[entry.key] = entry.value.text;
+      }
+    }
   }
 
   // ── Finish flow ────────────────────────────────────────────────────────────
 
   Future<void> _requestFinish() async {
-    if (_finishing) return;
+    // A double-click must not stack a second dialog.
+    if (_finishing || _confirmOpen) return;
+    _confirmOpen = true;
     _timer?.cancel();
 
     final unanswered = _totalQuestions - _answeredCount;
     // Always confirm before submitting — even when every question is
     // answered, a stray/misclick tap on Finish must not submit silently.
     final l10n = AppLocalizations.of(context)!;
-    final ok = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          l10n.finishConfirmTitle,
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        content: Text(unanswered > 0
-            ? '$unanswered ${l10n.questionsUnansweredPrompt}'
-            : l10n.finishConfirmAllAnsweredPrompt),
-        actions: [
-          TextButton(
-            onPressed: () {
-              _startTimer();
-              Navigator.pop(dialogContext, false);
-            },
-            child: Text(l10n.back),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.brand,
-              minimumSize: const Size(100, 40),
+    final bool? ok;
+    try {
+      ok = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          _confirmRoute = ModalRoute.of(dialogContext);
+          return AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              l10n.finishConfirmTitle,
+              style: const TextStyle(fontWeight: FontWeight.w800),
             ),
-            child: Text(l10n.finish),
-          ),
-        ],
-      ),
-    );
+            content: Text(unanswered > 0
+                ? '$unanswered ${l10n.questionsUnansweredPrompt}'
+                : l10n.finishConfirmAllAnsweredPrompt),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  _startTimer();
+                  Navigator.pop(dialogContext, false);
+                },
+                child: Text(l10n.back),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.brand,
+                  minimumSize: const Size(100, 40),
+                ),
+                child: Text(l10n.finish),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      _confirmOpen = false;
+      _confirmRoute = null;
+    }
     if (ok != true) return;
 
     _finishNow();
+  }
+
+  /// Closes the finish-confirm dialog (only that route) when the attempt ends
+  /// underneath it - timeout or remote end - so it can't linger over the
+  /// result screen.
+  void _dismissConfirm() {
+    final route = _confirmRoute;
+    _confirmRoute = null;
+    _confirmOpen = false;
+    if (route == null || !route.isActive) return;
+    final nav = route.navigator;
+    if (nav == null) return;
+    if (route.isCurrent) {
+      nav.pop(false);
+    } else {
+      nav.removeRoute(route);
+    }
   }
 
   void _finishNow() {
     if (_finishing) return;
     _finishing = true;
     _timer?.cancel();
+    _dismissConfirm();
 
     _questionStopwatch.stop();
-    _reportProgress();
-
-    for (final entry in _controllers.entries) {
-      _answers[entry.key] = entry.value.text;
+    try {
+      _reportProgress();
+    } catch (e) {
+      debugPrint('TestEngine: reportProgress at finish failed: $e');
     }
+
+    _flushControllersIntoAnswers();
     // Cancel any pending debounced save — the host screen deletes the
     // attempt record on successful submit; a stray delayed write here could
     // race that deletion and leave a finished test resumable.
     _saveDebounce?.cancel();
 
-    final result = TestScorer.score(widget.spec, _variantKey, _answers);
+    unawaited(_submit());
+  }
+
+  /// Scores, persists the "completed" marker and hands the result to the
+  /// host. Any failure re-opens the test (working Finish button, timer
+  /// restarted while time remains) instead of leaving a dead screen.
+  Future<void> _submit() async {
+    final answers = Map<String, dynamic>.from(_answers);
+    ScoredResult result;
+    try {
+      result = TestScorer.score(widget.spec, _variantKey, answers);
+    } catch (e, st) {
+      // Never lose the answers because scoring tripped: hand over the raw
+      // answers (the server re-scores from `raw_answers`).
+      debugPrint('TestEngine: scoring failed, submitting raw answers: $e\n$st');
+      result = ScoredResult(
+        testKey: widget.spec.testKey,
+        sectionScores: const [],
+        totalCorrect: 0,
+        totalQuestions: 0,
+        totalPct: 0,
+        rawAnswers: answers,
+      );
+    }
     final startedAtMs = _startedAtMs;
     final elapsedSeconds =
         startedAtMs != null ? ((_nowMs - startedAtMs) / 1000).round() : null;
@@ -760,13 +986,40 @@ class _TestEngineState extends State<TestEngine>
     // result to the host, so the host's token (derived from attempt_id) and a
     // crash-replay both refer to this exact snapshot.
     _completed = true;
-    _persistNow().whenComplete(() {
-      widget.onComplete(
+    try {
+      await _persistNow();
+    } catch (e) {
+      debugPrint('TestEngine: persist at finish failed: $e');
+    }
+    try {
+      // onComplete is typed void but hosts pass async functions: await what
+      // they return so a failure is handled here, not by the zone.
+      final dynamic complete = widget.onComplete;
+      final dynamic ret = complete(
           result,
           (elapsedSeconds != null && elapsedSeconds > 0)
               ? elapsedSeconds
               : null);
-    });
+      if (ret is Future) await ret;
+    } catch (e, st) {
+      debugPrint('TestEngine: onComplete failed, re-opening test: $e\n$st');
+      _reopenAfterFailedSubmit();
+    }
+  }
+
+  void _reopenAfterFailedSubmit() {
+    if (!mounted) return;
+    _finishing = false;
+    _completed = false;
+    _questionStopwatch.start();
+    unawaited(_persistNow());
+    final deadline = _deadlineMs;
+    // Time left: keep counting. Time up: leave the clock at 00:00 and let
+    // the student press Finish again (no tight auto-retry loop).
+    if (deadline != null && deadline - _nowMs > 0 && !_lockShieldVisible) {
+      _startTimer();
+    }
+    setState(() {});
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -778,6 +1031,8 @@ class _TestEngineState extends State<TestEngine>
       return ExitErrorScaffold(
           message: AppLocalizations.of(context)!.testDataNotFoundMsg);
     }
+
+    if (!_restored) return _buildRestoring();
 
     final progress =
         _totalQuestions > 0 ? _answeredCount / _totalQuestions : 0.0;
@@ -887,6 +1142,32 @@ class _TestEngineState extends State<TestEngine>
     );
   }
 
+  /// Shown until the saved attempt (if any) is loaded, so nothing can be
+  /// answered into state the restore would then overwrite.
+  Widget _buildRestoring() {
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: const Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Skeleton(height: 28, borderRadius: 10),
+                SizedBox(height: 16),
+                Skeleton(height: 96, borderRadius: 14),
+                SizedBox(height: 12),
+                Skeleton(height: 96, borderRadius: 14),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildToastBanner(_ToastEntry entry) {
     final isWarning = entry.kind == _ToastKind.warning;
     final l10n = AppLocalizations.of(context)!;
@@ -984,18 +1265,21 @@ class _TestEngineState extends State<TestEngine>
   // ── Section body dispatch ──────────────────────────────────────────────────
 
   Widget _buildSectionBody(SectionData section) {
+    // Captured per built child: a rebuilt outgoing child keeps asking for ITS
+    // keys, never the incoming same-named section's.
+    final gen = _sectionGen;
     return _SectionScroll(
       key: ValueKey(section.name),
       child: Builder(builder: (ctx) {
         if (section.isReading) {
-          return _buildReadingBody(section);
+          return _buildReadingBody(section, gen);
         }
-        return _buildQuestionListBody(section);
+        return _buildQuestionListBody(section, gen);
       }),
     );
   }
 
-  Widget _buildQuestionListBody(SectionData section) {
+  Widget _buildQuestionListBody(SectionData section, int gen) {
     final qs = section.questions;
     if (qs.isEmpty) {
       return Center(
@@ -1015,12 +1299,12 @@ class _TestEngineState extends State<TestEngine>
       if (q.skipped) continue; // unparsable/unknown item: index kept, no UI
       if (q.type == QuestionType.reading && q.reading != null) {
         final reading = q.reading!;
-        children.add(_buildInlineReading(section, reading, i, displayIdx));
+        children.add(_buildInlineReading(section, reading, i, displayIdx, gen));
         displayIdx += reading.answerableCount;
       } else {
         final key = '${section.name}/$i';
         children.add(KeyedSubtree(
-          key: _slotKey(key),
+          key: _slotKey(key, gen),
           child: _buildQuestionWidget(q, displayIdx, key, section.name),
         ));
         displayIdx += 1;
@@ -1029,7 +1313,7 @@ class _TestEngineState extends State<TestEngine>
     return Column(children: children);
   }
 
-  Widget _buildReadingBody(SectionData section) {
+  Widget _buildReadingBody(SectionData section, int gen) {
     // Build local sub-answer map (index → value) for ReadingSectionWidget
     final container = section.readingContainer!;
     final Map<String, dynamic> subAnswers = {};
@@ -1043,15 +1327,16 @@ class _TestEngineState extends State<TestEngine>
       answers: subAnswers,
       onAnswer: (subIdx, value) {
         final fullKey = '${section.name}/$subIdx';
-        // For fill_blank, also sync controller
-        if (value is String) {
+        // For fill_blank, also sync controller (typed slots only - a
+        // yes_no sub-answer must not get a stale-able controller).
+        if (value is String && _textSlotKeys.contains(fullKey)) {
           _ctrl(fullKey).text = value;
         }
         _setAnswer(fullKey, value);
       },
       onReport: (subIdx) =>
           _openReportSheet('${section.name}/$subIdx', container.qs[subIdx]),
-      slotKeyFor: (subIdx) => _slotKey('${section.name}/$subIdx'),
+      slotKeyFor: (subIdx) => _slotKey('${section.name}/$subIdx', gen),
     );
   }
 
@@ -1067,6 +1352,7 @@ class _TestEngineState extends State<TestEngine>
     ReadingSection reading,
     int itemIdx,
     int displayStart,
+    int gen,
   ) {
     final Map<String, dynamic> subAnswers = {};
     for (int j = 0; j < reading.qs.length; j++) {
@@ -1080,16 +1366,29 @@ class _TestEngineState extends State<TestEngine>
       indexOffset: displayStart,
       onAnswer: (subIdx, value) {
         final fullKey = '${section.name}/$itemIdx/$subIdx';
-        // For fill_blank, also sync controller
-        if (value is String) {
+        // For fill_blank, also sync controller (typed slots only - a
+        // yes_no sub-answer must not get a stale-able controller).
+        if (value is String && _textSlotKeys.contains(fullKey)) {
           _ctrl(fullKey).text = value;
         }
         _setAnswer(fullKey, value);
       },
       onReport: (subIdx) => _openReportSheet(
           '${section.name}/$itemIdx/$subIdx', reading.qs[subIdx]),
-      slotKeyFor: (subIdx) => _slotKey('${section.name}/$itemIdx/$subIdx'),
+      slotKeyFor: (subIdx) =>
+          _slotKey('${section.name}/$itemIdx/$subIdx', gen),
     );
+  }
+
+  /// Restored / server answers may carry any type: never hard-cast.
+  int? _intAnswer(String key) {
+    final v = _answers[key];
+    return v is int ? v : null;
+  }
+
+  String? _stringAnswer(String key) {
+    final v = _answers[key];
+    return v is String ? v : null;
   }
 
   Widget _buildQuestionWidget(
@@ -1100,7 +1399,7 @@ class _TestEngineState extends State<TestEngine>
         return TextChoiceWidget(
           index: i,
           question: q,
-          answer: _answers[key] as int?,
+          answer: _intAnswer(key),
           onSelect: (v) => _setAnswer(key, v),
           onReport: report,
         );
@@ -1109,7 +1408,7 @@ class _TestEngineState extends State<TestEngine>
         return ImageChoiceWidget(
           index: i,
           question: q,
-          answer: _answers[key] as int?,
+          answer: _intAnswer(key),
           onSelect: (v) => _setAnswer(key, v),
           onReport: report,
         );
@@ -1152,7 +1451,7 @@ class _TestEngineState extends State<TestEngine>
         return YesNoWidget(
           index: i,
           question: q,
-          answer: _answers[key] as String?,
+          answer: _stringAnswer(key),
           onSelect: (v) => _setAnswer(key, v),
           onReport: report,
         );
@@ -1163,7 +1462,7 @@ class _TestEngineState extends State<TestEngine>
           question: q,
           initialValue: _answers[key] is String ? _answers[key] as String : '',
           onChanged: (v) {
-            _ctrl(key).text = v;
+            if (_textSlotKeys.contains(key)) _ctrl(key).text = v;
             _setAnswer(key, v);
           },
           onReport: report,
