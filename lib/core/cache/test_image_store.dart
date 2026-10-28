@@ -29,7 +29,8 @@ class TestImageStore {
   TestImageStore({
     Directory? root,
     http.Client? client,
-    this.timeout = const Duration(seconds: 30),
+    this.timeout = const Duration(seconds: 20),
+    this.maxDuration = const Duration(minutes: 3),
   })  : _root = root,
         _clientOverride = client;
 
@@ -43,7 +44,13 @@ class TestImageStore {
   Directory? _root;
   final http.Client? _clientOverride;
   http.Client? _lazyClient;
+
+  /// Max silence on the connection: the response headers, and every body
+  /// chunk, must arrive within this long. A slow but alive link finishes.
   final Duration timeout;
+
+  /// Hard ceiling for one whole download, however steadily it trickles.
+  final Duration maxDuration;
 
   http.Client get _client =>
       _clientOverride ?? (_lazyClient ??= http.Client());
@@ -99,16 +106,83 @@ class TestImageStore {
     return File(p.join(root.path, '$name.img'));
   }
 
+  /// Paths already sniffed as real images this run (the renderer calls
+  /// [cachedFile] on every build; the sniff reads from disk).
+  final Set<String> _sniffed = {};
+
   /// The stored image for [url], synchronously, or null. Used by the renderer
-  /// so a stored image shows on the very first frame.
+  /// so a stored image shows on the very first frame. A file that is not an
+  /// image (poisoned by an old build / disk damage) is deleted and reported
+  /// as absent, so it gets downloaded again.
   File? cachedFile(String url) {
     try {
       final f = _fileFor(url);
       if (f == null || !f.existsSync() || f.lengthSync() <= 0) return null;
+      if (_sniffed.contains(f.path)) return f;
+      final raf = f.openSync();
+      List<int> head;
+      try {
+        head = raf.readSync(_sniffBytes);
+      } finally {
+        raf.closeSync();
+      }
+      if (!looksLikeImage(head)) {
+        debugPrint('TestImageStore: ${p.basename(f.path)} is not an image, '
+            'deleting ($url)');
+        f.deleteSync();
+        return null;
+      }
+      _sniffed.add(f.path);
       return f;
     } catch (_) {
       return null;
     }
+  }
+
+  /// Drops the stored copy of [url] (e.g. it failed to decode), so the next
+  /// download replaces it. Never throws.
+  void evict(String url) {
+    try {
+      final f = _fileFor(url);
+      if (f == null) return;
+      _sniffed.remove(f.path);
+      if (f.existsSync()) f.deleteSync();
+    } catch (e) {
+      debugPrint('TestImageStore.evict: $e');
+    }
+  }
+
+  static const int _sniffBytes = 512;
+
+  /// JPEG / PNG / GIF / WEBP magic bytes, or an `<svg` (optionally after a BOM,
+  /// whitespace and an `<?xml` prolog). Anything else - HTML login pages, JSON
+  /// errors - is not an image.
+  @visibleForTesting
+  static bool looksLikeImage(List<int> h) {
+    bool at(int i, List<int> sig) {
+      if (h.length < i + sig.length) return false;
+      for (var k = 0; k < sig.length; k++) {
+        if (h[i + k] != sig[k]) return false;
+      }
+      return true;
+    }
+
+    if (at(0, const [0xFF, 0xD8, 0xFF])) return true; // JPEG
+    if (at(0, const [0x89, 0x50, 0x4E, 0x47])) return true; // PNG
+    if (at(0, const [0x47, 0x49, 0x46, 0x38])) return true; // GIF8
+    if (at(0, const [0x52, 0x49, 0x46, 0x46]) &&
+        at(8, const [0x57, 0x45, 0x42, 0x50])) {
+      return true; // RIFF....WEBP
+    }
+    var i = 0;
+    if (at(0, const [0xEF, 0xBB, 0xBF])) i = 3;
+    while (i < h.length && (h[i] == 0x20 || h[i] == 0x09 || h[i] == 0x0A || h[i] == 0x0D)) {
+      i++;
+    }
+    final text = String.fromCharCodes(h.skip(i)).toLowerCase();
+    if (text.startsWith('<svg')) return true;
+    if (text.startsWith('<?xml') && text.contains('<svg')) return true;
+    return false;
   }
 
   final Map<String, Future<StoreFetch>> _inFlight = {};
@@ -132,6 +206,34 @@ class TestImageStore {
   Future<StoreFetch> _fetchNow(String url) async {
     final dest = _fileFor(url);
     if (dest == null) throw StateError('TestImageStore not initialised');
+    final tmp =
+        File('${dest.path}.${DateTime.now().microsecondsSinceEpoch}.tmp');
+    try {
+      return await _download(url, dest, tmp).timeout(maxDuration);
+    } on TimeoutException {
+      // Stop the stalled transfer instead of letting it hold the socket.
+      _abortClient();
+      rethrow;
+    } finally {
+      try {
+        if (tmp.existsSync()) tmp.deleteSync();
+      } catch (e) {
+        debugPrint('TestImageStore: temp cleanup failed: $e');
+      }
+    }
+  }
+
+  /// Closes the process-owned client (a test-injected one is left alone); the
+  /// next download opens a fresh one.
+  void _abortClient() {
+    final c = _lazyClient;
+    _lazyClient = null;
+    try {
+      c?.close();
+    } catch (_) {}
+  }
+
+  Future<StoreFetch> _download(String url, File dest, File tmp) async {
     final req = http.Request('GET', Uri.parse(url))
       ..headers['User-Agent'] = 'AlochiMonitoring/1.0';
     final resp = await _client.send(req).timeout(timeout);
@@ -143,14 +245,32 @@ class TestImageStore {
       await resp.stream.drain<void>().timeout(timeout);
       throw HttpException('HTTP ${resp.statusCode}', uri: Uri.parse(url));
     }
-    final bytes = await resp.stream.toBytes().timeout(timeout);
+    // Stream to disk; `Stream.timeout` fires on silence BETWEEN chunks, so
+    // only a stalled connection is cut, not a slow one.
+    final sink = tmp.openWrite();
+    final head = <int>[];
+    var length = 0;
+    try {
+      await for (final chunk in resp.stream.timeout(timeout)) {
+        sink.add(chunk);
+        length += chunk.length;
+        if (head.length < _sniffBytes) {
+          head.addAll(chunk.take(_sniffBytes - head.length));
+        }
+      }
+      await sink.flush();
+    } finally {
+      await sink.close();
+    }
     final expected = resp.contentLength;
-    if (bytes.isEmpty || (expected != null && expected != bytes.length)) {
-      throw HttpException('incomplete body (${bytes.length}/$expected)',
+    if (length == 0 || (expected != null && expected != length)) {
+      throw HttpException('incomplete body ($length/$expected)',
           uri: Uri.parse(url));
     }
-    final tmp = File('${dest.path}.${DateTime.now().microsecondsSinceEpoch}.tmp');
-    await tmp.writeAsBytes(bytes, flush: true);
+    if (!looksLikeImage(head)) {
+      throw HttpException('response is not an image (${resp.headers['content-type']})',
+          uri: Uri.parse(url));
+    }
     await tmp.rename(dest.path);
     return StoreFetch.stored;
   }

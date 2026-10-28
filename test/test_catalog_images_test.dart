@@ -68,6 +68,9 @@ Map<String, dynamic> _test(int n, {int version = 1, int variants = 2}) => {
 
 const cover = 'https://img.test/cover.png';
 
+// Minimal valid PNG signature: the store sniffs magic bytes now.
+const _png = <int>[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1];
+
 void main() {
   late Directory dir;
   late List<String> requested;
@@ -86,7 +89,7 @@ void main() {
         try {
           final h = behaviour[url];
           if (h != null) return await h(n);
-          return http.Response.bytes(utf8.encode('IMG$url'), 200);
+          return http.Response.bytes([..._png, ...utf8.encode(url)], 200);
         } finally {
           inFlight--;
         }
@@ -173,7 +176,7 @@ void main() {
     for (final e in gates.entries) {
       behaviour[e.key] = (_) async {
         await e.value.future;
-        return http.Response.bytes([1, 2, 3], 200);
+        return http.Response.bytes(_png, 200);
       };
     }
     final (_, svc) = await make(data);
@@ -227,7 +230,7 @@ void main() {
   test('transient failure recovers; 5xx is a failure not a skip', () async {
     behaviour[_u(100)] = (n) async => n < 3
         ? throw TimeoutException('slow')
-        : http.Response.bytes([9], 200);
+        : http.Response.bytes(_png, 200);
     final data = _test(1);
     final (_, svc) = await make(data);
     expect(await svc.ensureVariantImages(data, 1), isTrue);
@@ -392,7 +395,7 @@ void main() {
       for (final u in allUrls(data).toSet())
         u: (_) async {
           await Future<void>.delayed(const Duration(milliseconds: 15));
-          return http.Response.bytes([1, 2, 3], 200);
+          return http.Response.bytes(_png, 200);
         }
     };
     final (store, svc) = await makeBg(data);
@@ -425,7 +428,7 @@ void main() {
       for (final u in allUrls(data).toSet())
         u: (_) async {
           await gate.future;
-          return http.Response.bytes([1, 2, 3], 200);
+          return http.Response.bytes(_png, 200);
         }
     };
     final (store, svc) = await makeBg(data);
@@ -464,7 +467,7 @@ void main() {
     final data = _test(1, variants: 1);
     behaviour[_u(100)] = (n) async => n < 3
         ? throw const SocketException('flaky')
-        : http.Response.bytes([7], 200);
+        : http.Response.bytes(_png, 200);
     final (store, svc) = await makeBg(data);
     await svc.backgroundPrefetch('k', data);
     expect(attempts[_u(100)], 3);
@@ -567,7 +570,7 @@ void main() {
       for (final u in allUrls(data).toSet())
         u: (_) async {
           await gate.future;
-          return http.Response.bytes([1], 200);
+          return http.Response.bytes(_png, 200);
         }
     };
     final store = newStore();
@@ -679,7 +682,7 @@ void main() {
         for (final u in [cover, _u(100), _u(101)])
           u: (_) async {
             await gate.future;
-            return http.Response.bytes([1], 200);
+            return http.Response.bytes(_png, 200);
           }
       };
       await openRoster(tester, newStore());
@@ -703,7 +706,7 @@ void main() {
         for (final u in [cover, _u(100), _u(101)])
           u: (_) async => failing
               ? throw const SocketException('down')
-              : http.Response.bytes([1], 200)
+              : http.Response.bytes(_png, 200)
       };
       await openRoster(tester, newStore());
       await tester.tap(find.textContaining('Ali'));
