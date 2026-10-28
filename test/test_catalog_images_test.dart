@@ -355,7 +355,7 @@ void main() {
     expect(store.cachedFile('https://img.test/old.png'), isNull);
     expect(root.listSync().length, 4);
 
-    await TestCache.pruneNotIn({}); // test removed from catalog
+    await TestCache.deleteKeys({'k'}); // test removed from catalog
     for (final f in root.listSync().whereType<File>()) {
       f.setLastModifiedSync(old);
     }
