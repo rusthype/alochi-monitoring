@@ -8,14 +8,43 @@
 // answers + remaining countdown after a crash/restart, as long as the
 // attempt's deadline has not passed.
 //
-// SharedPreferences is sufficient here (small JSON blob per test, no
-// relational queries needed) — kept separate from the sqflite-backed
-// offline_queue.dart / test_cache.dart which serve different purposes.
+// Storage: one small encrypted JSON file per record under
+// `<app support>/attempts/`, written atomically (temp file + flush + rename,
+// the previous good copy kept as `.bak`). The records used to live in the
+// single shared_preferences.json, which the desktop plugin rewrites in full
+// and non-atomically on every change - a power cut could tear it and take
+// every attempt (and the whole prefs file) with it. Until [init] succeeds
+// (tests, or an unwritable data dir) the old SharedPreferences backend is used
+// unchanged; records still sitting there are migrated lazily on first read.
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'queue_crypto.dart';
+
+/// One stored record found by [AttemptStore.listAll].
+class AttemptEntry {
+  /// Storage slot id (the legacy shared_preferences key).
+  final String slotKey;
+  final String testKey;
+
+  /// True for a record of a student displaced from the main slot of
+  /// [testKey]; false for the main slot.
+  final bool isParked;
+  final Map<String, dynamic> record;
+
+  const AttemptEntry({
+    required this.slotKey,
+    required this.testKey,
+    required this.isParked,
+    required this.record,
+  });
+}
 
 /// Persists a single in-progress attempt per `test_key`.
 ///
@@ -32,16 +61,90 @@ import 'queue_crypto.dart';
 /// }
 /// ```
 class AttemptStore {
-  static String _key(String testKey) => 'attempt_$testKey';
+  static const _slotPrefix = 'attempt_';
+  static const _parkSep = '__parked__';
+
+  static String _key(String testKey) => '$_slotPrefix$testKey';
 
   /// Where the record of a student who was displaced from the main slot of
   /// [testKey] (another student started the same test on this PC) is kept.
   static String _parkKey(String testKey, String studentId) =>
-      'attempt_${testKey}__parked__$studentId';
+      '$_slotPrefix$testKey$_parkSep$studentId';
 
   /// Which student currently owns each main slot - lets [save] skip the
   /// read-and-compare on every keystroke-driven save.
   static final Map<String, String> _mainOwner = {};
+
+  // ── backend selection ──────────────────────────────────────────────────────
+
+  static Directory? _dir;
+
+  /// Slots already looked up in the legacy shared_preferences backend.
+  static final Set<String> _legacyChecked = {};
+
+  /// Resolves `<app support>/attempts` and switches to the file backend.
+  /// Never throws: on failure the SharedPreferences backend stays in use.
+  static Future<void> init() async {
+    try {
+      final base = await getApplicationSupportDirectory();
+      final dir = Directory(p.join(base.path, 'attempts'));
+      await dir.create(recursive: true);
+      _dir = dir;
+    } catch (e) {
+      debugPrint('AttemptStore.init failed, using shared_preferences: $e');
+    }
+  }
+
+  /// Test seam: use [dir] for the file backend, or null for the legacy
+  /// SharedPreferences backend. Also forgets all in-memory caches.
+  @visibleForTesting
+  static void useDirectoryForTest(Directory? dir) {
+    _dir = dir;
+    _mainOwner.clear();
+    _legacyChecked.clear();
+  }
+
+  // ── serialization of all store operations ──────────────────────────────────
+
+  static Future<void> _tail = Future<void>.value();
+
+  /// File backend: runs [op] after every earlier store operation finished, so
+  /// concurrent debounced saves can never interleave their temp-file/rename
+  /// steps. The SharedPreferences backend (tests, fallback) needs no ordering
+  /// and runs directly, exactly as before.
+  static Future<T> _serial<T>(Future<T> Function() op) {
+    if (_dir == null) return op();
+    final r = _tail.then((_) => op());
+    _tail = r.then((_) {}, onError: (_) {});
+    return r;
+  }
+
+  // ── slot file naming ───────────────────────────────────────────────────────
+
+  static final RegExp _escaped = RegExp(r'~([0-9a-f]+)~');
+
+  /// Reversible, filesystem-safe form of a slot key (everything outside
+  /// [A-Za-z0-9_-] becomes `~<hex>~`).
+  static String _fileStem(String slot) {
+    final b = StringBuffer();
+    for (final r in slot.runes) {
+      final c = String.fromCharCode(r);
+      if (RegExp(r'[A-Za-z0-9_\-]').hasMatch(c)) {
+        b.write(c);
+      } else {
+        b.write('~${r.toRadixString(16)}~');
+      }
+    }
+    return b.toString();
+  }
+
+  static String _slotFromStem(String stem) => stem.replaceAllMapped(
+      _escaped, (m) => String.fromCharCode(int.parse(m[1]!, radix: 16)));
+
+  static String _path(Directory dir, String slot) =>
+      p.join(dir.path, '${_fileStem(slot)}.json');
+
+  // ── raw slot access (call only inside _serial) ─────────────────────────────
 
   static Future<Map<String, dynamic>?> _decode(String? raw) async {
     if (raw == null || raw.isEmpty) return null;
@@ -51,11 +154,93 @@ class AttemptStore {
     return null;
   }
 
-  /// Loads the saved attempt for [testKey], or null if none exists / corrupt.
-  static Future<Map<String, dynamic>?> load(String testKey) async {
+  static Future<({String raw, Map<String, dynamic> rec})?> _readFile(
+      String path) async {
+    try {
+      final raw = await File(path).readAsString();
+      final rec = await _decode(raw);
+      return rec == null ? null : (raw: raw, rec: rec);
+    } catch (_) {
+      return null; // missing, empty, torn or tampered
+    }
+  }
+
+  /// The raw (encrypted) text and decoded record of [slot], or null.
+  static Future<({String raw, Map<String, dynamic> rec})?> _readSlot(
+      String slot) async {
+    final dir = _dir;
+    if (dir == null) {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(slot);
+      final rec = await _decode(raw);
+      return rec == null ? null : (raw: raw!, rec: rec);
+    }
+    final path = _path(dir, slot);
+    final hit = await _readFile(path) ?? await _readFile('$path.bak');
+    if (hit != null) return hit;
+    return _migrateLegacy(dir, slot);
+  }
+
+  /// Moves a record still stored in shared_preferences into its own file.
+  static Future<({String raw, Map<String, dynamic> rec})?> _migrateLegacy(
+      Directory dir, String slot) async {
+    if (!_legacyChecked.add(slot)) return null;
     try {
       final prefs = await SharedPreferences.getInstance();
-      return await _decode(prefs.getString(_key(testKey)));
+      final raw = prefs.getString(slot);
+      final rec = await _decode(raw);
+      if (rec == null) return null;
+      await _writeSlot(slot, raw!);
+      await prefs.remove(slot);
+      return (raw: raw, rec: rec);
+    } catch (e) {
+      debugPrint('AttemptStore: legacy migration of $slot failed: $e');
+      return null;
+    }
+  }
+
+  static Future<void> _writeSlot(String slot, String raw) async {
+    final dir = _dir;
+    if (dir == null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(slot, raw);
+      return;
+    }
+    final path = _path(dir, slot);
+    final tmp = File('$path.tmp');
+    await tmp.writeAsString(raw, flush: true);
+    try {
+      await File(path).rename('$path.bak'); // keep the previous good copy
+    } on FileSystemException {
+      // no previous copy
+    }
+    await tmp.rename(path);
+  }
+
+  static Future<void> _deleteSlot(String slot) async {
+    final dir = _dir;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(slot);
+    if (dir == null) return;
+    final path = _path(dir, slot);
+    for (final f in [path, '$path.bak', '$path.tmp']) {
+      try {
+        await File(f).delete();
+      } on PathNotFoundException {
+        // already gone
+      }
+    }
+  }
+
+  // ── public API ─────────────────────────────────────────────────────────────
+
+  /// Loads the saved attempt for [testKey], or null if none exists / corrupt.
+  static Future<Map<String, dynamic>?> load(String testKey) =>
+      _serial(() => _loadMain(testKey));
+
+  static Future<Map<String, dynamic>?> _loadMain(String testKey) async {
+    try {
+      return (await _readSlot(_key(testKey)))?.rec;
     } catch (e) {
       debugPrint('AttemptStore.load($testKey) error: $e');
       return null;
@@ -80,19 +265,19 @@ class AttemptStore {
   /// student's unfinished / completed-but-unsent record is parked by [save]
   /// instead of being overwritten; it is found again here.
   static Future<Map<String, dynamic>?> loadForStudent(
-      String testKey, String studentId) async {
-    if (studentId.isEmpty) return null;
-    final saved = await load(testKey);
-    if (saved != null && saved['student_id'] == studentId) return saved;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final parked =
-          await _decode(prefs.getString(_parkKey(testKey, studentId)));
-      if (parked != null && parked['student_id'] == studentId) return parked;
-    } catch (e) {
-      debugPrint('AttemptStore.loadForStudent($testKey) parked error: $e');
-    }
-    return null;
+      String testKey, String studentId) {
+    if (studentId.isEmpty) return Future.value(null);
+    return _serial(() async {
+      final saved = await _loadMain(testKey);
+      if (saved != null && saved['student_id'] == studentId) return saved;
+      try {
+        final parked = (await _readSlot(_parkKey(testKey, studentId)))?.rec;
+        if (parked != null && parked['student_id'] == studentId) return parked;
+      } catch (e) {
+        debugPrint('AttemptStore.loadForStudent($testKey) parked error: $e');
+      }
+      return null;
+    });
   }
 
   /// A record worth protecting from being displaced: it holds answers, or it
@@ -110,39 +295,99 @@ class AttemptStore {
   /// record worth keeping, that record is parked (per student) first, so a
   /// second student on the same PC can never destroy the first one's
   /// answers; the saving student's own parked copy (if any) is superseded.
-  static Future<void> save(String testKey, Map<String, dynamic> data) async {
+  static Future<void> save(String testKey, Map<String, dynamic> data) {
+    // Serialise the payload NOW: the caller may keep mutating [data].
+    final String encoded;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final sid = data['student_id']?.toString() ?? '';
-      if (_mainOwner[testKey] != sid) {
-        final existingRaw = prefs.getString(_key(testKey));
-        final existing = await _decode(existingRaw);
-        final oldSid = existing?['student_id']?.toString() ?? '';
-        if (existing != null &&
-            oldSid.isNotEmpty &&
-            oldSid != sid &&
-            _worthParking(existing)) {
-          await prefs.setString(_parkKey(testKey, oldSid), existingRaw!);
-        }
-        if (sid.isNotEmpty) await prefs.remove(_parkKey(testKey, sid));
-      }
-      final encrypted = await QueueCrypto.encryptPayload(jsonEncode(data));
-      await prefs.setString(_key(testKey), encrypted);
-      _mainOwner[testKey] = sid;
+      encoded = jsonEncode(data);
     } catch (e) {
-      debugPrint('AttemptStore.save($testKey) error: $e');
+      debugPrint('AttemptStore.save($testKey) encode error: $e');
+      return Future<void>.value();
     }
+    return _serial(() async {
+      try {
+        final sid = data['student_id']?.toString() ?? '';
+        if (_mainOwner[testKey] != sid) {
+          final existing = await _readSlot(_key(testKey));
+          final oldSid = existing?.rec['student_id']?.toString() ?? '';
+          if (existing != null &&
+              oldSid.isNotEmpty &&
+              oldSid != sid &&
+              _worthParking(existing.rec)) {
+            await _writeSlot(_parkKey(testKey, oldSid), existing.raw);
+          }
+          if (sid.isNotEmpty) await _deleteSlot(_parkKey(testKey, sid));
+        }
+        final encrypted = await QueueCrypto.encryptPayload(encoded);
+        await _writeSlot(_key(testKey), encrypted);
+        _mainOwner[testKey] = sid;
+      } catch (e) {
+        debugPrint('AttemptStore.save($testKey) error: $e');
+      }
+    });
   }
 
   /// Removes the saved attempt for [testKey]. Called after a successful
   /// submit so the next launch starts a fresh attempt.
-  static Future<void> clear(String testKey) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_key(testKey));
-      _mainOwner.remove(testKey);
-    } catch (e) {
-      debugPrint('AttemptStore.clear($testKey) error: $e');
-    }
-  }
+  static Future<void> clear(String testKey) => _serial(() async {
+        try {
+          await _deleteSlot(_key(testKey));
+          _mainOwner.remove(testKey);
+        } catch (e) {
+          debugPrint('AttemptStore.clear($testKey) error: $e');
+        }
+      });
+
+  /// Removes exactly the slot [e] was listed from (main or parked).
+  static Future<void> clearEntry(AttemptEntry e) => _serial(() async {
+        try {
+          await _deleteSlot(e.slotKey);
+          if (!e.isParked) _mainOwner.remove(e.testKey);
+        } catch (err) {
+          debugPrint('AttemptStore.clearEntry(${e.slotKey}) error: $err');
+        }
+      });
+
+  /// Every stored record, main and parked, across all tests (crash recovery
+  /// scan). Unreadable records are skipped. Never throws.
+  static Future<List<AttemptEntry>> listAll() => _serial(() async {
+        final slots = <String>{};
+        try {
+          final dir = _dir;
+          if (dir != null && await dir.exists()) {
+            await for (final f in dir.list()) {
+              final name = p.basename(f.path);
+              final stem = name.endsWith('.json')
+                  ? name.substring(0, name.length - 5)
+                  : name.endsWith('.json.bak')
+                      ? name.substring(0, name.length - 9)
+                      : null;
+              if (stem != null) slots.add(_slotFromStem(stem));
+            }
+          }
+          final prefs = await SharedPreferences.getInstance();
+          slots.addAll(prefs.getKeys().where((k) => k.startsWith(_slotPrefix)));
+        } catch (e) {
+          debugPrint('AttemptStore.listAll scan error: $e');
+        }
+        final out = <AttemptEntry>[];
+        for (final slot in slots) {
+          if (!slot.startsWith(_slotPrefix)) continue;
+          try {
+            final hit = await _readSlot(slot);
+            if (hit == null) continue;
+            final rest = slot.substring(_slotPrefix.length);
+            final cut = rest.indexOf(_parkSep);
+            out.add(AttemptEntry(
+              slotKey: slot,
+              testKey: cut < 0 ? rest : rest.substring(0, cut),
+              isParked: cut >= 0,
+              record: hit.rec,
+            ));
+          } catch (e) {
+            debugPrint('AttemptStore.listAll($slot) error: $e');
+          }
+        }
+        return out;
+      });
 }

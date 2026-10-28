@@ -13,6 +13,7 @@ import 'core/services/test_catalog_service.dart' show testCatalogService;
 import 'core/services/heartbeat_service.dart';
 import 'core/network/connectivity_service.dart';
 import 'core/locale/locale_provider.dart';
+import 'core/db/attempt_store.dart';
 import 'core/storage/prefs_loader.dart';
 import 'core/theme/app_prefs_provider.dart';
 import 'l10n/app_localizations.dart';
@@ -121,6 +122,10 @@ void main(List<String> args) {
       onFailure: (error, stack) =>
           unawaited(CrashReporterService.captureCrash(error, stack)),
     );
+
+    // Attempt records get their own atomically-written files (a power cut can
+    // tear the shared prefs file). Never throws; must precede any use.
+    if (!kIsWeb) await AttemptStore.init();
 
     try {
       // Explicit ProviderContainer (instead of a bare ProviderScope) so that
