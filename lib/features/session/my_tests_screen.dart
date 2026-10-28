@@ -193,8 +193,8 @@ class _MyTestsScreenState extends State<MyTestsScreen> {
     try {
       // No groupId/schoolCode — the backend resolves the student's own
       // active group from the Authorization header (see file header).
-      // fetchTestCatalog/fetchMyProfile both swallow their own errors
-      // (return [] / null) — run them in parallel, neither blocks the other.
+      // fetchMyProfile swallows its own errors (returns null); a failed
+      // fetchTestCatalog throws and lands in the catch below (loadFailed).
       final results = await Future.wait([
         api.fetchTestCatalog(authToken: widget.session.token),
         api.fetchMyProfile(authToken: widget.session.token),

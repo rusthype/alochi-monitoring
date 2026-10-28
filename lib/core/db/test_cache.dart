@@ -154,21 +154,37 @@ class TestCache {
   /// olingandan keyin chaqirilishi kerak — tarmoq xatosida chaqirilmasin
   /// (offline rejim buzilmasligi uchun).
   static Future<void> pruneNotIn(Set<String> keepKeys) async {
+    // Bo'sh to'plam hech qachon "hammasini o'chir" degani emas (2026-10-28:
+    // bo'sh/qisman katalog javobi butun keshni o'chirgan).
+    if (keepKeys.isEmpty) return;
     final mem = _memory;
     if (mem != null) {
       mem.removeWhere((k, _) => !keepKeys.contains(k));
       return;
     }
     final db = await _database;
-    if (keepKeys.isEmpty) {
-      await db.delete('cached_tests');
-      return;
-    }
     final placeholders = List.filled(keepKeys.length, '?').join(',');
     await db.delete(
       'cached_tests',
       where: 'test_key NOT IN ($placeholders)',
       whereArgs: keepKeys.toList(),
+    );
+  }
+
+  /// Aynan berilgan test_key yozuvlarini o'chiradi (bo'sh to'plam — hech narsa).
+  static Future<void> deleteKeys(Set<String> keys) async {
+    if (keys.isEmpty) return;
+    final mem = _memory;
+    if (mem != null) {
+      mem.removeWhere((k, _) => keys.contains(k));
+      return;
+    }
+    final db = await _database;
+    final placeholders = List.filled(keys.length, '?').join(',');
+    await db.delete(
+      'cached_tests',
+      where: 'test_key IN ($placeholders)',
+      whereArgs: keys.toList(),
     );
   }
 }
