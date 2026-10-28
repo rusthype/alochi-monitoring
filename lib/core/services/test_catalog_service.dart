@@ -393,10 +393,17 @@ class TestCatalogService {
   Future<void> _tagGlobal(Iterable<String> keys) async {
     final add = keys.toSet();
     if (add.isEmpty) return;
-    final prefs = await SharedPreferences.getInstance();
-    final cur = (prefs.getStringList(_globalKeysKey) ?? const <String>[]).toSet();
-    if (cur.containsAll(add)) return;
-    await prefs.setStringList(_globalKeysKey, {...cur, ...add}.toList());
+    // Best effort: an untagged test is simply never pruned, and a prefs
+    // failure must not fail the download that triggered this.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cur =
+          (prefs.getStringList(_globalKeysKey) ?? const <String>[]).toSet();
+      if (cur.containsAll(add)) return;
+      await prefs.setStringList(_globalKeysKey, {...cur, ...add}.toList());
+    } catch (e) {
+      debugPrint('TestCatalogService: could not tag global tests: $e');
+    }
   }
 
   /// Keshdan o'chiriladigan test: (1) oldin FILTRSIZ katalog ro'yxatida
@@ -485,9 +492,10 @@ class TestCatalogService {
   }
 
   /// A downloaded test is only worth keeping if the engine can play it: the
-  /// (optionally `test_data`-wrapped) blob has `parts` and at least one
-  /// non-empty variant. Anything else would replace a working cached copy
-  /// with an empty test.
+  /// (optionally `test_data`-wrapped) blob has at least one non-empty variant
+  /// and, when `parts` is present, it is a non-empty list. Anything else would
+  /// replace a working cached copy with an empty test. (`parts` may be absent
+  /// in USB-pack data, so it is not mandatory.)
   @visibleForTesting
   static bool isPlayableTestJson(Map<String, dynamic> data) {
     final blob = data['test_data'] is Map
@@ -495,7 +503,7 @@ class TestCatalogService {
         : data;
     final parts = blob['parts'];
     final variants = blob['variants'];
-    if (parts is! List || parts.isEmpty) return false;
+    if (parts != null && (parts is! List || parts.isEmpty)) return false;
     if (variants is! Map || variants.isEmpty) return false;
     return variants.values.any((v) => v is Map && v.isNotEmpty);
   }
@@ -530,7 +538,7 @@ class TestCatalogService {
         // Keep whatever is cached: a truncated / error payload must not
         // replace a working copy.
         debugPrint('TestCatalogService.download($testKey): invalid test JSON '
-            '(no parts/variants), cache untouched');
+            '(no playable variants), cache untouched');
         return false;
       }
 

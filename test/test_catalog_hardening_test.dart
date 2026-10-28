@@ -260,7 +260,7 @@ void main() {
       expect(await svc.download('k'), isTrue);
       final bad = <Map<String, dynamic>>[
         {'title': 'T', 'version': 2, 'parts': ['Math'], 'variants': {}},
-        {'title': 'T', 'version': 2, 'variants': {'1': {'Math': []}}},
+        {'title': 'T', 'version': 2, 'parts': 'Math', 'variants': {'1': {'Math': [1]}}},
         {'title': 'T', 'version': 2, 'parts': [], 'variants': {'1': {'Math': [1]}}},
         {'detail': 'error page', 'version': 2},
         {'title': 'T', 'version': 2, 'parts': ['Math'], 'variants': {'1': {}}},

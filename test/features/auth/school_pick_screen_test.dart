@@ -172,7 +172,9 @@ void main() {
         entry('t', [btn('4', 'u4')]),
       ]);
     });
-    expect(find.textContaining('boom'), findsOneWidget);
+    // Localized text, never the raw exception.
+    expect(find.text("Yuklanmadi. Qayta urinib ko'ring."), findsOneWidget);
+    expect(find.textContaining('boom'), findsNothing);
     await t.tap(find.text('Qayta urinish'));
     await t.pumpAndSettle();
     expect(find.text('4-maktab'), findsOneWidget);

@@ -658,7 +658,8 @@ class MonitoringApi {
 
   /// Natijani serverga yuboradi va XP/coins ma'lumotini qaytaradi.
   /// {synced: bool, xp_earned: int, coins_earned: int, total_xp: int, level: int}
-  /// Xato holatida `permanent:true` (4xx, retry qilma) yoki `retryable:true` (5xx/network).
+  /// Xato holatida `permanent:true` (faqat 400/422 — retry foydasiz) yoki `retryable:true`
+  /// (qolgan hamma narsa: 401/403/404/408/413/429, 5xx, HTML javob, tarmoq).
   /// [idempotencyToken] berilsa `Idempotency-Key` header qo'shiladi — flush retry dedup uchun.
   Future<Map<String, dynamic>> submitResultFull(TestResult result,
       {Map<String, dynamic>? detail, String? idempotencyToken}) async {
@@ -1040,8 +1041,9 @@ class MonitoringApi {
     }
   }
 
-  /// Xato holatida `permanent:true` (4xx, retry qilma) yoki `retryable:true`
-  /// (5xx/network) qaytaradi — submitResultFull bilan bir xil klassifikatsiya.
+  /// Xato holatida `permanent:true` (faqat 400/409/422) yoki `retryable:true`
+  /// (qolgan hamma narsa) qaytaradi — submitResultFull bilan bir xil
+  /// klassifikatsiya ([isPermanentResultRejection]).
   ///
   /// NOTE: `_send()` only ever throws ApiException for network/timeout
   /// failures (always statusCode 0) — real HTTP status codes come back as a
