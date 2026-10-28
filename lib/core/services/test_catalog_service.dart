@@ -8,7 +8,31 @@ import '../api/api_client.dart';
 import '../cache/test_image_store.dart';
 import '../db/attempt_store.dart';
 import '../db/test_cache.dart';
+import '../diagnostics/active_test_gate.dart';
+import 'heartbeat_service.dart';
 import '../offline/lan_client_session.dart' show isOfflineModeOpen;
+
+/// The `variants` key the engine actually renders for [variant]: the exact key
+/// when present, else the numerically nearest numeric key, else the first one
+/// (null for an empty map). Mirrors `TestSpec._fallbackVariant` in
+/// engine/test_models.dart (private there) so the readiness gate checks the
+/// SAME variant's images the student will see.
+// ponytail: test_models.dart should call this instead of keeping its own copy.
+String? effectiveVariantKey(Map<dynamic, dynamic> variants, int variant) {
+  if (variants.isEmpty) return null;
+  final want = variant.toString();
+  if (variants[want] != null) return want;
+  final keys = variants.keys.map((k) => k.toString()).toList();
+  final numeric = keys.where((k) => int.tryParse(k) != null);
+  var best = keys.first;
+  if (numeric.isNotEmpty) {
+    best = numeric.reduce((a, b) =>
+        (int.parse(a) - variant).abs() <= (int.parse(b) - variant).abs()
+            ? a
+            : b);
+  }
+  return best;
+}
 
 /// Test katalog yozuvi holati.
 enum CatalogStatus {
@@ -191,8 +215,17 @@ class TestCatalogService {
   /// muammosi).
   Future<List<CatalogEntry>> refresh(
       {String? groupId, String? schoolCode, String? schoolId}) async {
-    // Keshdan metadata olish (har doim holda kerak)
-    final cachedRows = await TestCache.all();
+    // Keshdan metadata olish (har doim holda kerak). A broken cache DB must
+    // never break the catalog: TestCache quarantines a corrupt file itself,
+    // anything else is treated as "nothing cached".
+    List<Map<String, dynamic>> cachedRows;
+    try {
+      cachedRows = await TestCache.all();
+    } catch (e) {
+      debugPrint('TestCatalogService.refresh: cache unreadable: $e');
+      cachedRows = [];
+    }
+    final unfiltered = _blank(groupId) && _blank(schoolCode) && _blank(schoolId);
     final cachedVersions = <String, int>{};
     for (final row in cachedRows) {
       final key = row['test_key']?.toString() ?? '';
@@ -251,7 +284,11 @@ class TestCatalogService {
       final grade = int.tryParse(item['grade']?.toString() ?? '') ?? 0;
       final version = int.tryParse(item['version']?.toString() ?? '') ?? 0;
 
-      final cachedVer = cachedVersions[key];
+      var cachedVer = cachedVersions[key];
+      // A row whose JSON cannot be read back is not a downloaded test.
+      if (cachedVer != null && !await _readable(key, cachedVer)) {
+        cachedVer = null;
+      }
       final CatalogStatus status;
       if (isOfflineModeOpen && (cachedVer == null || version > cachedVer)) {
         // USB pack / LAN client: the content comes from the pack itself, so
@@ -313,15 +350,18 @@ class TestCatalogService {
 
     // Muvaffaqiyatli fetch — backend katalogida endi yo'q (masalan
     // arxivlangan) testlarni keshdan tozalaymiz, best-effort (asosiy
-    // natijani bloklamasin).
-    try {
-      final keep = entries.map((e) => e.testKey).toSet();
-      await _pruneStale(keep, cachedVersions.keys);
-      if (cachedVersions.keys.any((k) => !keep.contains(k))) {
-        unawaited(gcStore());
+    // natijani bloklamasin). FAQAT filtrsiz (maktab/guruh berilmagan) so'rov:
+    // filtrlangan katalog boshqa guruh/maktab testlarini yashiradi. Qarang
+    // [_pruneStale].
+    if (unfiltered && !isOfflineModeOpen) {
+      try {
+        final keep = entries.map((e) => e.testKey).toSet();
+        await _tagGlobal(keep.where(cachedVersions.containsKey));
+        final removed = await _pruneStale(keep, cachedVersions.keys);
+        if (removed > 0) unawaited(gcStore());
+      } catch (e) {
+        debugPrint('TestCatalogService.refresh: cache prune error: $e');
       }
-    } catch (e) {
-      debugPrint('TestCatalogService.refresh: cache prune error: $e');
     }
 
     // Heal: cached tests whose images are incomplete get a background top-up.
@@ -330,50 +370,134 @@ class TestCatalogService {
     return entries;
   }
 
-  static const _missingCountsKey = 'catalog_missing_counts';
-  static const _pruneAfterMisses = 2;
+  static bool _blank(String? v) => v == null || v.isEmpty;
+
+  /// Test day clock (prune needs "misses on 2 distinct calendar days").
+  @visibleForTesting
+  static DateTime Function() clock = DateTime.now;
+
+  static const _missingDaysKey = 'catalog_missing_days_v2';
+  static const _globalKeysKey = 'catalog_global_test_keys';
+  static const _pruneAfterDays = 2;
   static const _missingCountsCap = 500;
 
-  /// Keshdan faqat ketma-ket [_pruneAfterMisses] ta MUVAFFAQIYATLI, bo'sh
-  /// bo'lmagan katalogda ko'rinmagan testni o'chiradi. Bo'sh katalog yoki
-  /// qisman (boshqa guruh/maktab filtri) javob bitta o'zi hech narsani
-  /// o'chirmaydi; test qaytib ko'rinsa hisoblagich 0 ga tushadi; saqlangan
-  /// urinishi (AttemptStore) bor test hech qachon o'chirilmaydi.
-  Future<void> _pruneStale(Set<String> fetched, Iterable<String> cached) async {
-    if (fetched.isEmpty) return;
+  static String _today() {
+    final d = clock();
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}';
+  }
+
+  /// Marks tests as listed by an UNFILTERED catalog request (downloaded
+  /// without a school/group, or seen in such a list). Only these may ever be
+  /// pruned, and only by another unfiltered request.
+  Future<void> _tagGlobal(Iterable<String> keys) async {
+    final add = keys.toSet();
+    if (add.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
-    final counts = <String, int>{};
+    final cur = (prefs.getStringList(_globalKeysKey) ?? const <String>[]).toSet();
+    if (cur.containsAll(add)) return;
+    await prefs.setStringList(_globalKeysKey, {...cur, ...add}.toList());
+  }
+
+  /// Keshdan o'chiriladigan test: (1) oldin FILTRSIZ katalog ro'yxatida
+  /// ko'ringan / filtrsiz yuklangan, (2) endi filtrsiz katalogda yo'q va
+  /// (3) bu MUVAFFAQIYATLI, bo'sh bo'lmagan javoblarda kamida
+  /// [_pruneAfterDays] ta turli kalendar kunida takrorlangan. Maktab/guruhga
+  /// bog'langan yuklashlar (filtr bilan yuklangan) hech qachon o'chirilmaydi:
+  /// filtrsiz katalog ularni yashiradi, "yo'q" degani "arxivlangan" degani
+  /// emas — o'quvchi yuklab olgan test Start bosilganda ishlashi shart.
+  /// Saqlangan urinishi (AttemptStore) bor test hech qachon o'chirilmaydi.
+  /// Qaytaradi: o'chirilganlar soni.
+  Future<int> _pruneStale(Set<String> fetched, Iterable<String> cached) async {
+    if (fetched.isEmpty) return 0;
+    final prefs = await SharedPreferences.getInstance();
+    final global = (prefs.getStringList(_globalKeysKey) ?? const <String>[]).toSet();
+    final today = _today();
+
+    final misses = <String, ({int days, String last})>{};
     try {
-      final raw = prefs.getString(_missingCountsKey);
+      final raw = prefs.getString(_missingDaysKey);
       final decoded = (raw == null || raw.isEmpty) ? null : jsonDecode(raw);
       if (decoded is Map) {
         decoded.forEach((k, v) {
-          final n = v is int ? v : int.tryParse(v.toString());
-          if (n != null && n > 0) counts[k.toString()] = n;
+          if (v is Map) {
+            final n = int.tryParse(v['n']?.toString() ?? '');
+            if (n != null && n > 0) {
+              misses[k.toString()] = (days: n, last: v['d']?.toString() ?? '');
+            }
+          }
         });
       }
     } catch (e) {
-      debugPrint('TestCatalogService: bad catalog_missing_counts: $e');
+      debugPrint('TestCatalogService: bad $_missingDaysKey: $e');
     }
 
-    final next = <String, int>{};
+    final next = <String, ({int days, String last})>{};
     final doomed = <String>{};
     for (final key in cached) {
       if (fetched.contains(key)) continue; // qaytdi — hisoblagich tashlanadi
-      final n = (counts[key] ?? 0) + 1;
-      if (n >= _pruneAfterMisses) {
+      if (!global.contains(key)) continue; // filtr bilan yuklangan — daxlsiz
+      final prev = misses[key];
+      // The same calendar day counts once however often the list refreshes.
+      final days = prev == null
+          ? 1
+          : (prev.last == today ? prev.days : prev.days + 1);
+      if (days >= _pruneAfterDays) {
         if (await AttemptStore.load(key) != null) {
-          next[key] = n; // davom etayotgan urinish — o'chirilmaydi
+          next[key] = (days: days, last: today); // davom etayotgan urinish
         } else {
           doomed.add(key);
         }
       } else {
-        next[key] = n;
+        next[key] = (days: days, last: today);
       }
     }
     await TestCache.deleteKeys(doomed);
+    if (doomed.isNotEmpty) {
+      await prefs.setStringList(
+          _globalKeysKey, global.difference(doomed).toList());
+    }
     final capped = Map.fromEntries(next.entries.take(_missingCountsCap));
-    await prefs.setString(_missingCountsKey, jsonEncode(capped));
+    await prefs.setString(
+        _missingDaysKey,
+        jsonEncode({
+          for (final e in capped.entries)
+            e.key: {'n': e.value.days, 'd': e.value.last}
+        }));
+    return doomed.length;
+  }
+
+  /// `key@version` pairs whose cached JSON already read back fine this run.
+  static final Set<String> _verified = {};
+
+  Future<bool> _readable(String key, int version) async {
+    final tag = '$key@$version';
+    if (_verified.contains(tag)) return true;
+    Map<String, dynamic>? data;
+    try {
+      data = await TestCache.get(key);
+    } catch (e) {
+      debugPrint('TestCatalogService: cache read $key failed: $e');
+    }
+    if (data == null) return false;
+    _verified.add(tag);
+    return true;
+  }
+
+  /// A downloaded test is only worth keeping if the engine can play it: the
+  /// (optionally `test_data`-wrapped) blob has `parts` and at least one
+  /// non-empty variant. Anything else would replace a working cached copy
+  /// with an empty test.
+  @visibleForTesting
+  static bool isPlayableTestJson(Map<String, dynamic> data) {
+    final blob = data['test_data'] is Map
+        ? Map<String, dynamic>.from(data['test_data'] as Map)
+        : data;
+    final parts = blob['parts'];
+    final variants = blob['variants'];
+    if (parts is! List || parts.isEmpty) return false;
+    if (variants is! Map || variants.isEmpty) return false;
+    return variants.values.any((v) => v is Map && v.isNotEmpty);
   }
 
   /// Testni backend'dan yuklab keshga (JSON) saqlaydi. Rasmlar bu yerda
@@ -402,16 +526,31 @@ class TestCatalogService {
         return false;
       }
 
+      if (!isPlayableTestJson(data)) {
+        // Keep whatever is cached: a truncated / error payload must not
+        // replace a working copy.
+        debugPrint('TestCatalogService.download($testKey): invalid test JSON '
+            '(no parts/variants), cache untouched');
+        return false;
+      }
+
       final title = data['title']?.toString() ?? '';
       final grade = int.tryParse(data['grade']?.toString() ?? '') ?? 0;
       final version = int.tryParse(data['version']?.toString() ?? '') ?? 0;
       final jsonStr = jsonEncode(data);
 
       final prev = await TestCache.versionOf(testKey);
+      // New version: images of the OLD spec may have changed behind the same
+      // URL - drop them (unless another cached test still uses them) so the
+      // prefetch below fetches fresh files.
+      final stale = (prev != null && prev != version)
+          ? await _urlsOnlyUsedBy(testKey)
+          : const <String>[];
       await TestCache.upsert(testKey, title, grade, version, jsonStr);
-      // Yangi versiya: eski versiyaning rasmlari endi hech qayerda
-      // ishlatilmasligi mumkin — best-effort tozalash.
-      if (prev != null && prev != version) unawaited(gcStore());
+      if (_blank(groupId) && _blank(schoolCode) && _blank(schoolId)) {
+        await _tagGlobal([testKey]);
+      }
+      if (stale.isNotEmpty) await _evictImages(stale);
 
       // Whole-test image top-up in the background (all variants); never
       // blocks or fails this call.
@@ -421,6 +560,42 @@ class TestCatalogService {
     } catch (e) {
       debugPrint('TestCatalogService.download($testKey) error: $e');
       return false;
+    }
+  }
+
+  /// Image URLs of the cached [testKey] that no OTHER cached test references.
+  Future<List<String>> _urlsOnlyUsedBy(String testKey) async {
+    try {
+      final old = await TestCache.get(testKey);
+      if (old == null) return const [];
+      final urls = _imageUrls(old).toSet();
+      if (urls.isEmpty) return const [];
+      for (final row in await TestCache.all()) {
+        final other = row['test_key']?.toString() ?? '';
+        if (other.isEmpty || other == testKey) continue;
+        final data = await TestCache.get(other);
+        if (data != null) urls.removeAll(_imageUrls(data));
+        if (urls.isEmpty) break;
+      }
+      return urls.toList();
+    } catch (e) {
+      debugPrint('TestCatalogService: stale image lookup failed: $e');
+      return const [];
+    }
+  }
+
+  Future<void> _evictImages(List<String> urls) async {
+    try {
+      await _store.init();
+      await _loadMissing();
+      var changed = false;
+      for (final u in urls) {
+        _store.evict(u);
+        changed = _knownMissing.remove(u) || changed;
+      }
+      if (changed) await _saveMissing();
+    } catch (e) {
+      debugPrint('TestCatalogService: stale image eviction failed: $e');
     }
   }
 
@@ -477,7 +652,10 @@ class TestCatalogService {
     };
     final urls = <String>{..._imageUrls(shared)};
     if (variants is Map) {
-      final mine = variants[variant.toString()];
+      // The variant the engine will RENDER (it falls back when the exact key
+      // is missing), not the requested number.
+      final key = effectiveVariantKey(variants, variant);
+      final mine = key == null ? null : variants[key];
       if (mine != null) urls.addAll(_imageUrls(mine));
     }
     return urls.toList();
@@ -518,23 +696,29 @@ class TestCatalogService {
       var done = total - missing.length;
       onProgress?.call(done, total);
 
-      var failed = false;
+      // One bad URL must not abort the batch: every image gets its turn,
+      // failures are collected and decide the result at the end.
+      final failures = <String>[];
       var next = 0;
       Future<void> worker() async {
-        while (!failed && next < missing.length) {
+        while (next < missing.length) {
           final url = missing[next++];
-          if (!await _downloadOne(url)) {
-            failed = true;
-            return;
+          if (await _downloadOne(url)) {
+            done++;
+            onProgress?.call(done, total);
+          } else {
+            failures.add(url);
           }
-          done++;
-          onProgress?.call(done, total);
         }
       }
 
       await Future.wait(List.generate(
           math.min(_imageConcurrency, missing.length), (_) => worker()));
-      return !failed;
+      if (failures.isNotEmpty) {
+        debugPrint('TestCatalogService.ensureUrls: ${failures.length} of '
+            '${missing.length} images failed: ${failures.take(3).join(', ')}');
+      }
+      return failures.isEmpty;
     } finally {
       _foreground--;
       _activeDownloads--;
@@ -603,8 +787,9 @@ class TestCatalogService {
     try {
       Future<void> worker() async {
         while (next < queue.length) {
-          // The student-tap prepare has priority: stay out of its way.
-          while (_foreground > 0) {
+          // The student-tap prepare has priority, and a running test must
+          // never share bandwidth/CPU with a background download.
+          while (_foreground > 0 || isTestRunning()) {
             await Future<void>.delayed(_bgYield);
           }
           final url = queue[next++];
@@ -643,9 +828,26 @@ class TestCatalogService {
     }
   }
 
+  DateTime? _lastHeal;
+
+  /// True while a test screen is up (read-only use of the engine's gates).
+  /// Overridable for tests.
+  @visibleForTesting
+  static bool Function() isTestRunning = () =>
+      ActiveTestGate.active.value || HeartbeatService.instance.testScreenActive;
+
   /// Cached tests whose images are incomplete get a background job (called
   /// on app start and after every successful catalog refresh). Never throws.
   Future<void> healIncompleteTests() async {
+    // Decoding every cached test is expensive: at most once per 10 minutes,
+    // and never while a test is being taken.
+    final now = clock();
+    final last = _lastHeal;
+    if (isTestRunning() ||
+        (last != null && now.difference(last) < const Duration(minutes: 10))) {
+      return;
+    }
+    _lastHeal = now;
     try {
       for (final row in await TestCache.all()) {
         final key = row['test_key']?.toString() ?? '';
@@ -725,20 +927,35 @@ class TestCatalogService {
     return _knownMissing.contains(url);
   }
 
-  /// Rekursiv tarzda JSON ichidan barcha http/https boshlanadigan string'larni yig'adi.
-  List<String> _collectImageUrls(dynamic node) {
+  static final RegExp _imageKey = RegExp(
+      r'^(img|image|images|image_url|image_urls|imageurl|option_images|'
+      r'options_images|cover|cover_image|cover_url|thumbnail|thumb|picture|'
+      r'photo|diagram|illustration|src)$|(_img|_image|_images|_image_url)$',
+      caseSensitive: false);
+  static final RegExp _imageExt =
+      RegExp(r'\.(png|jpe?g|gif|webp|svg)$', caseSensitive: false);
+
+  /// Path of [s] without query / fragment.
+  static String _pathOf(String s) {
+    var end = s.length;
+    for (final c in ['?', '#']) {
+      final i = s.indexOf(c);
+      if (i >= 0 && i < end) end = i;
+    }
+    return s.substring(0, end);
+  }
+
+  /// Rekursiv tarzda JSON ichidan RASM url'larini yig'adi: faqat ma'lum rasm
+  /// kalitlari (`img`, `image_url`, `cover`, ...) ostidagi qiymatlar yoki
+  /// kengaytmasi rasm bo'lgan (query'siz) manzillar. Savol matnidagi har bir
+  /// "http..." satri (havola, manba) rasm EMAS — uni yuklash testni
+  /// "tayyor emas" holatida ushlab qoladi.
+  List<String> _collectImageUrls(dynamic node, {bool underImageKey = false}) {
     if (node is String) {
-      if (node.startsWith('http://') || node.startsWith('https://')) {
-        return [node];
-      }
-      final lower = node.toLowerCase();
-      if (node.startsWith('/') &&
-          (lower.endsWith('.png') ||
-              lower.endsWith('.jpg') ||
-              lower.endsWith('.jpeg') ||
-              lower.endsWith('.gif') ||
-              lower.endsWith('.webp') ||
-              lower.endsWith('.svg'))) {
+      final isHttp = node.startsWith('http://') || node.startsWith('https://');
+      final hasExt = _imageExt.hasMatch(_pathOf(node));
+      if (isHttp) return (underImageKey || hasExt) ? [node] : [];
+      if (node.startsWith('/') && hasExt) {
         return [MonitoringApi.fixImageUrl(node)];
       }
       return [];
@@ -746,14 +963,15 @@ class TestCatalogService {
     if (node is List) {
       final urls = <String>[];
       for (final item in node) {
-        urls.addAll(_collectImageUrls(item));
+        urls.addAll(_collectImageUrls(item, underImageKey: underImageKey));
       }
       return urls;
     }
     if (node is Map) {
       final urls = <String>[];
-      for (final value in node.values) {
-        urls.addAll(_collectImageUrls(value));
+      for (final e in node.entries) {
+        urls.addAll(_collectImageUrls(e.value,
+            underImageKey: underImageKey || _imageKey.hasMatch(e.key.toString())));
       }
       return urls;
     }

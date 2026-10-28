@@ -56,6 +56,7 @@ Map<String, dynamic> _test(int n, {int version = 1, int variants = 2}) => {
       'grade': 5,
       'version': version,
       'cover': 'https://img.test/cover.png',
+      'parts': ['Math'],
       'variants': {
         for (var v = 1; v <= variants; v++)
           '$v': {

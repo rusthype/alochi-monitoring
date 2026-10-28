@@ -21,7 +21,8 @@ enum StoreFetch {
   /// Valid file is now on disk.
   stored,
 
-  /// Server answered 404/410: the asset does not exist. Not stored.
+  /// Server answered 404/410/403/other permanent 4xx: the asset cannot be
+  /// had. Not stored.
   missing,
 }
 
@@ -187,7 +188,13 @@ class TestImageStore {
 
   final Map<String, Future<StoreFetch>> _inFlight = {};
 
-  /// Downloads [url] into the store. Returns [StoreFetch.missing] for 404/410
+  /// A client error that retrying cannot fix (404, 410, 403, ...): the image is
+  /// recorded as missing instead of failing the whole download. 408 / 429 are
+  /// transient and, like every 5xx, stay errors.
+  static bool isMissingStatus(int code) =>
+      code >= 400 && code < 500 && code != 408 && code != 429;
+
+  /// Downloads [url] into the store. Returns [StoreFetch.missing] for 4xx
   /// and throws on any other failure (network, timeout, bad status, empty or
   /// truncated body) — nothing partial is ever left under the final name.
   /// De-duplicated: concurrent callers (background prefetch, student-tap
@@ -237,7 +244,7 @@ class TestImageStore {
     final req = http.Request('GET', Uri.parse(url))
       ..headers['User-Agent'] = 'AlochiMonitoring/1.0';
     final resp = await _client.send(req).timeout(timeout);
-    if (resp.statusCode == 404 || resp.statusCode == 410) {
+    if (isMissingStatus(resp.statusCode)) {
       await resp.stream.drain<void>().timeout(timeout);
       return StoreFetch.missing;
     }
