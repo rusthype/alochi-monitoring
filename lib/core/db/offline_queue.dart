@@ -273,6 +273,10 @@ class OfflineQueue {
     return synced;
   }
 
+  /// How many rows the last [peekLocalQueue] could not decrypt (skipped, not
+  /// removed) - lets the export tell the operator that results are missing.
+  static int lastPeekUnreadable = 0;
+
   /// Read-only snapshot of every not-yet-flushed `local_queue` row,
   /// decrypted — NEVER deletes, updates attempts, or races the background
   /// auto-flush (unlike [flushLocal]). Used by DiagnosticExportService to
@@ -282,12 +286,15 @@ class OfflineQueue {
     final d = await db;
     final rows = await d.query('local_queue', orderBy: 'created ASC');
     final result = <Map<String, dynamic>>[];
+    lastPeekUnreadable = 0;
     for (final row in rows) {
       try {
         final json = jsonDecode(
             await QueueCrypto.decryptPayload(row['payload'] as String));
         if (json is Map) result.add(Map<String, dynamic>.from(json));
       } catch (e) {
+        // Skipped, never deleted: the row stays queued for the real flush.
+        lastPeekUnreadable++;
         debugPrint(
             'OfflineQueue.peekLocalQueue decrypt error (id=${row['id']}): $e');
       }
@@ -310,30 +317,46 @@ class OfflineQueue {
   }
 
   // ── Cleanup ────────────────────────────────────────────────────────────────
-  static const int _maxAttempts = 10;
+  // Result rows (queue / local_queue) are deleted by AGE only. They used to
+  // also be dropped at attempts >= 10, but SyncService flushes every 10 s, so
+  // ~100 s of 5xx / 429 / timeouts silently destroyed finished exams. The
+  // attempts column is still incremented, for diagnostics only.
+  static const int _resultMaxAgeMs = 30 * 24 * 60 * 60 * 1000; // 30 kun
   static const int _maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 kun
 
-  /// "O'lik" qatorlarni tozalaydi: attempts >= 10 YOKI 7 kundan eski.
-  /// Muvaffaqiyatli yuborilgan qatorlar flush paytida allaqachon o'chiriladi —
-  /// bu faqat doimiy xato beradigan yoki juda eski yig'ilib qolganlar uchun.
+  /// Eski qatorlarni tozalaydi. Natija qatorlari (queue, local_queue) faqat
+  /// 30 kundan eski bo'lsa o'chiriladi — urinishlar soni HECH QACHON sabab
+  /// emas; har bir o'chirish oldidan log yoziladi. tg_queue va
+  /// local_students 7 kun qoidasida qoladi. Muvaffaqiyatli yuborilgan
+  /// qatorlar flush paytida allaqachon o'chiriladi.
   /// Qaytaradi: o'chirilgan jami qatorlar soni.
-  static Future<int> purgeStale() async {
+  static Future<int> purgeStale({int? nowMs}) async {
     final d = await db;
-    final cutoff = DateTime.now().millisecondsSinceEpoch - _maxAgeMs;
+    final now = nowMs ?? DateTime.now().millisecondsSinceEpoch;
+    final resultCutoff = now - _resultMaxAgeMs;
+    final cutoff = now - _maxAgeMs;
     int removed = 0;
-    // queue va local_queue: attempts + created ustunlari bor
     for (final table in ['queue', 'local_queue']) {
-      removed += await d.delete(table,
-          where: 'attempts >= ? OR created < ?',
-          whereArgs: [_maxAttempts, cutoff]);
+      final stale = await d.query(table,
+          columns: ['id', 'created', 'attempts', 'token'],
+          where: 'created < ?',
+          whereArgs: [resultCutoff]);
+      for (final row in stale) {
+        debugPrint('OfflineQueue.purgeStale: deleting $table row '
+            'id=${row['id']} token=${row['token']} '
+            'created=${row['created']} attempts=${row['attempts']} '
+            '(older than 30 days)');
+        removed += await d
+            .delete(table, where: 'id = ?', whereArgs: [row['id']]);
+      }
     }
     // legacy tg_queue: attempts ustuni yo'q — faqat yosh bo'yicha
     removed +=
         await d.delete('tg_queue', where: 'created < ?', whereArgs: [cutoff]);
-    removed += await LocalStudentsDb.purgeStale();
+    removed += await LocalStudentsDb.purgeStale(nowMs: now);
     if (removed > 0) {
       debugPrint(
-          'OfflineQueue.purgeStale: $removed eski/o\'lik qator o\'chirildi');
+          'OfflineQueue.purgeStale: $removed eski qator o\'chirildi');
     }
     return removed;
   }

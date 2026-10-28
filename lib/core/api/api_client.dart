@@ -15,6 +15,32 @@ import '../db/diagnostic_history_db.dart';
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart'
     show diagnosticKioskApi;
 
+/// Stable machine codes of [ApiException.code] for transport-level failures
+/// (never shown to the student: the UI maps them through
+/// `localizedApiError` in api_error_text.dart).
+const String kApiTimeout = 'timeout';
+const String kApiNetwork = 'network';
+const String kApiTls = 'tls';
+
+/// The body was not what the endpoint promises (captive-portal / proxy HTML,
+/// truncated JSON). Always retryable, whatever the HTTP status says.
+const String kApiBadResponse = 'bad_response';
+
+/// true ONLY when the server definitively rejected a result payload, so
+/// retrying can never help: 400 / 409 / 422. Everything else (401, 403, 404,
+/// 408, 413, 429, 5xx, network, HTML bodies) is retryable - dropping a finished
+/// exam on a transient proxy / deploy / auth glitch loses the student's work.
+bool isPermanentResultRejection(int status, {String? code}) =>
+    code != kApiBadResponse &&
+    (status == 400 || status == 409 || status == 422);
+
+bool _looksLikeHtml(http.Response r) {
+  final ct = (r.headers['content-type'] ?? '').toLowerCase();
+  if (ct.contains('text/html')) return true;
+  final head = r.body.trimLeft();
+  return head.startsWith('<');
+}
+
 class ApiException implements Exception {
   final int statusCode;
   final String message;
@@ -103,21 +129,53 @@ class MonitoringApi {
       };
 
   Future<http.Response> _send(Future<http.Response> Function() req) async {
+    // `message` is a debug string only; the UI shows text by `code`.
     try {
       return await req().timeout(_timeout);
     } on TimeoutException catch (e) {
       ErrorLog.record(e, 'api');
       throw const ApiException(
-          0, "Server javob bermayapti. Internetingizni tekshiring.");
+          0, "Server javob bermayapti. Internetingizni tekshiring.",
+          code: kApiTimeout);
     } on SocketException catch (e) {
       ErrorLog.record(e, 'api');
-      throw const ApiException(0, "Internet aloqasi yo'q.");
+      throw const ApiException(0, "Internet aloqasi yo'q.", code: kApiNetwork);
+    } on HandshakeException catch (e) {
+      ErrorLog.record(e, 'api');
+      throw const ApiException(0, "Tarmoq xatosi. Qayta urinib ko'ring.",
+          code: kApiTls);
+    } on TlsException catch (e) {
+      ErrorLog.record(e, 'api');
+      throw const ApiException(0, "Tarmoq xatosi. Qayta urinib ko'ring.",
+          code: kApiTls);
+    } on FormatException catch (e) {
+      ErrorLog.record(e, 'api');
+      throw const ApiException(0, "Noto'g'ri javob", code: kApiBadResponse);
     } on HttpException catch (e) {
       ErrorLog.record(e, 'api');
-      throw const ApiException(0, "Tarmoq xatosi. Qayta urinib ko'ring.");
+      throw const ApiException(0, "Tarmoq xatosi. Qayta urinib ko'ring.",
+          code: kApiNetwork);
     } on http.ClientException catch (e) {
       ErrorLog.record(e, 'api');
-      throw const ApiException(0, "Tarmoq xatosi. Qayta urinib ko'ring.");
+      throw const ApiException(0, "Tarmoq xatosi. Qayta urinib ko'ring.",
+          code: kApiNetwork);
+    } on OSError catch (e) {
+      ErrorLog.record(e, 'api');
+      throw const ApiException(0, "Tarmoq xatosi. Qayta urinib ko'ring.",
+          code: kApiNetwork);
+    }
+  }
+
+  /// JSON body of [resp]; a non-JSON body (captive portal, proxy error page)
+  /// becomes a retryable [kApiBadResponse] instead of a raw FormatException.
+  dynamic _decode(http.Response resp) {
+    try {
+      return jsonDecode(utf8.decode(resp.bodyBytes));
+    } catch (_) {
+      throw ApiException(
+          resp.statusCode,
+          resp.statusCode >= 500 ? 'Server xatosi' : "Noto'g'ri javob",
+          code: kApiBadResponse);
     }
   }
 
@@ -128,13 +186,12 @@ class MonitoringApi {
           headers: {..._headers, ...extraHeaders},
           body: jsonEncode(body),
         ));
-    Map<String, dynamic> data;
-    try {
-      data = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-    } catch (_) {
-      throw ApiException(resp.statusCode,
-          resp.statusCode >= 500 ? 'Server xatosi' : 'Noto\'g\'ri javob');
+    final decoded = _decode(resp);
+    if (decoded is! Map<String, dynamic>) {
+      throw ApiException(resp.statusCode, "Noto'g'ri javob",
+          code: kApiBadResponse);
     }
+    final data = decoded;
     if (resp.statusCode >= 400) {
       final raw = data['detail'] ?? data['message'] ?? '';
       final msg = raw.toString().isNotEmpty
@@ -154,7 +211,7 @@ class MonitoringApi {
     if (resp.statusCode >= 400) {
       throw ApiException(resp.statusCode, _statusMessage(resp.statusCode));
     }
-    return jsonDecode(utf8.decode(resp.bodyBytes));
+    return _decode(resp);
   }
 
   /// [_get] bilan bir xil, lekin katta javoblar (test katalog/kontent) uchun
@@ -168,7 +225,12 @@ class MonitoringApi {
     if (resp.statusCode >= 400) {
       throw ApiException(resp.statusCode, _statusMessage(resp.statusCode));
     }
-    return compute(jsonDecode, utf8.decode(resp.bodyBytes));
+    try {
+      return await compute(jsonDecode, utf8.decode(resp.bodyBytes));
+    } on FormatException {
+      throw ApiException(resp.statusCode, "Noto'g'ri javob",
+          code: kApiBadResponse);
+    }
   }
 
   String _statusMessage(int status) {
@@ -568,24 +630,12 @@ class MonitoringApi {
           await _fetchResultDetail(resp['id'] as String? ?? '');
       return {'synced': true, ...resp, 'wrong_answers': wrongAnswers};
     } on ApiException catch (e) {
-      if (e.statusCode == 409) {
+      if (e.statusCode == 409 && e.code != kApiBadResponse) {
         return {'synced': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
       }
-      if (e.statusCode == 429) {
-        // Rate-limited, not rejected — a school-wide NAT IP can share the
-        // monitoring_submit throttle across ~20-30 concurrently-finishing
-        // students. Treating this as permanent (like a real 4xx payload
-        // rejection) silently DROPPED the result from the offline queue
-        // instead of retrying it (2026-07-21 fix).
-        return {
-          'synced': false,
-          'retryable': true,
-          'xp_earned': 0,
-          'wrong_answers': <dynamic>[]
-        };
-      }
-      if (e.statusCode >= 400 && e.statusCode < 500) {
-        // Permanent client error — server rejected payload, retrying won't help
+      if (isPermanentResultRejection(e.statusCode, code: e.code)) {
+        // Server definitively rejected the payload (400 / 422) - retrying
+        // can never help.
         return {
           'synced': false,
           'permanent': true,
@@ -593,7 +643,8 @@ class MonitoringApi {
           'wrong_answers': <dynamic>[]
         };
       }
-      // 5xx or network error (statusCode == 0) — transient, retry via queue
+      // Everything else (401/403/404/408/413/429, 5xx, HTML bodies, network)
+      // is transient from the result's point of view - keep it queued.
       return {
         'synced': false,
         'retryable': true,
@@ -857,7 +908,7 @@ class MonitoringApi {
     if (resp.statusCode >= 400) {
       throw ApiException(resp.statusCode, _statusMessage(resp.statusCode));
     }
-    final data = jsonDecode(utf8.decode(resp.bodyBytes));
+    final data = _decode(resp);
     if (data is! Map) return null;
     return ResultBreakdown.fromJson(Map<String, dynamic>.from(data));
   }
@@ -956,11 +1007,10 @@ class MonitoringApi {
           ));
       if (resp.statusCode >= 400) {
         debugPrint('submitLocalResultFull non-2xx: ${resp.statusCode}');
-        // 429 is a rate limit, not a payload rejection — must stay
-        // retryable, same fix as submitResultFull above.
-        final permanent = resp.statusCode != 429 && resp.statusCode < 500;
-        return {'synced': false, 'permanent': permanent};
+        return {'synced': false, 'permanent': _permanentReply(resp)};
       }
+      // A 2xx HTML page is a captive portal, not our server's acknowledgement.
+      if (_looksLikeHtml(resp)) return {'synced': false, 'permanent': false};
       return {'synced': true};
     } on ApiException {
       // Network/timeout — always retryable, never permanent.
@@ -970,6 +1020,12 @@ class MonitoringApi {
       return {'synced': false, 'permanent': false};
     }
   }
+
+  /// Permanent only for a real 400/409/422 from OUR server - an HTML error
+  /// page (proxy / captive portal) with the same status is not a verdict.
+  bool _permanentReply(http.Response resp) => isPermanentResultRejection(
+      resp.statusCode,
+      code: _looksLikeHtml(resp) ? kApiBadResponse : null);
 
   /// Offline navbatdagi (online + lokal) natijalarni qayta yuborishga urinadi.
   /// Qaytaradi: muvaffaqiyatli yuborilgan jami yozuvlar soni.
@@ -997,11 +1053,9 @@ class MonitoringApi {
           ));
       if (resp.statusCode >= 400) {
         debugPrint('submitQuestionReport non-2xx: ${resp.statusCode}');
-        // 429 is a rate limit, not a payload rejection — must stay
-        // retryable, same fix as submitResultFull/submitLocalResultFull.
-        final permanent = resp.statusCode != 429 && resp.statusCode < 500;
-        return {'synced': false, 'permanent': permanent};
+        return {'synced': false, 'permanent': _permanentReply(resp)};
       }
+      if (_looksLikeHtml(resp)) return {'synced': false, 'permanent': false};
       return {'synced': true};
     } on ApiException {
       // Network/timeout — always retryable, never permanent.

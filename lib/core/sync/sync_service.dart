@@ -55,6 +55,7 @@ class SyncService {
         // elapses too — _flushAll's own `flushing` guard would no-op it
         // anyway, but this avoids the redundant attempt entirely.
         _timer?.cancel();
+        resetBackoff();
         _flushAll().then((_) => _scheduleNext());
       }
     });
@@ -77,6 +78,7 @@ class SyncService {
     _probeDebounce?.cancel();
     _probeDebounce = Timer(probeDebounce, () {
       _timer?.cancel();
+      resetBackoff();
       (probeFlushOverride ?? _flushAll)().then((_) => _scheduleNext());
     });
   }
@@ -88,6 +90,13 @@ class SyncService {
       _flushAll().then((_) => _scheduleNext());
     });
   }
+
+  /// Connectivity came back: the next flush runs at the base interval again.
+  @visibleForTesting
+  void resetBackoff() => _consecutiveFailures = 0;
+
+  @visibleForTesting
+  Duration get currentInterval => _currentInterval();
 
   Duration _currentInterval() {
     if (_consecutiveFailures <= 0) return _baseInterval;
@@ -125,11 +134,21 @@ class SyncService {
       // Haqiqiy internetni 1 ta arzon GET bilan tekshiramiz. Interfeys "ulangan"
       // bo'lsa-da internet yo'q bo'lsa, bu N ta 20s timeout urinishidan saqlaydi.
       if (!await api.ping()) return SyncFlushOutcome.noNetwork;
-      if (pending > 0) await api.flushOfflineQueue();
+      var stuck = false;
+      if (pending > 0) {
+        await api.flushOfflineQueue();
+        // Rows still there and none left (synced or permanently rejected):
+        // the server is failing (5xx / 429 / timeout) — back off instead of
+        // retrying every 10 s. Any progress, or an empty queue, resets it.
+        final left = await OfflineQueue.totalPendingCount();
+        stuck = left > 0 && left >= pending;
+      }
       for (final attemptId in pendingDiagAttempts) {
         await flushDiagnosticAnswers(attemptId);
       }
-      _consecutiveFailures = 0;
+      // Outcome unchanged for callers (they compare pending counts
+      // themselves); only the schedule reacts.
+      _consecutiveFailures = stuck ? _consecutiveFailures + 1 : 0;
       return SyncFlushOutcome.success;
     } catch (e) {
       _consecutiveFailures++;
