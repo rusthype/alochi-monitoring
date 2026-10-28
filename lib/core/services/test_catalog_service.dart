@@ -112,24 +112,50 @@ class TestCatalogService {
   final MonitoringApi Function() _apiOf;
   final TestImageStore? _storeOverride;
   final Duration _retryDelay;
+  final Duration Function() _bgJitter;
+  final List<Duration> _bgBackoff;
+  final Duration _bgYield;
+
+  static Duration _randomJitter() =>
+      Duration(milliseconds: math.Random().nextInt(8000));
 
   /// `store` / `retryDelay` are injectable for tests only; production uses
   /// the process-wide [TestImageStore.instance] (the SAME store the renderer
   /// [AppNetworkImage] reads from).
   TestCatalogService(MonitoringApi api,
       {TestImageStore? store,
-      Duration retryDelay = const Duration(milliseconds: 400)})
+      Duration retryDelay = const Duration(milliseconds: 400),
+      Duration Function()? bgJitter,
+      List<Duration> bgBackoff = const [
+        Duration(seconds: 2),
+        Duration(seconds: 8),
+        Duration(seconds: 30),
+      ],
+      Duration bgYield = const Duration(milliseconds: 500)})
       : _apiOf = (() => api),
         _storeOverride = store,
-        _retryDelay = retryDelay;
+        _retryDelay = retryDelay,
+        _bgJitter = bgJitter ?? _randomJitter,
+        _bgBackoff = bgBackoff,
+        _bgYield = bgYield;
 
   /// Resolves the API on every call — the global `api` can be swapped for an
   /// offline-pack implementation at runtime.
   TestCatalogService.dynamic(this._apiOf,
       {TestImageStore? store,
-      Duration retryDelay = const Duration(milliseconds: 400)})
+      Duration retryDelay = const Duration(milliseconds: 400),
+      Duration Function()? bgJitter,
+      List<Duration> bgBackoff = const [
+        Duration(seconds: 2),
+        Duration(seconds: 8),
+        Duration(seconds: 30),
+      ],
+      Duration bgYield = const Duration(milliseconds: 500)})
       : _storeOverride = store,
-        _retryDelay = retryDelay;
+        _retryDelay = retryDelay,
+        _bgJitter = bgJitter ?? _randomJitter,
+        _bgBackoff = bgBackoff,
+        _bgYield = bgYield;
 
   TestImageStore get _store => _storeOverride ?? TestImageStore.instance;
 
@@ -297,6 +323,9 @@ class TestCatalogService {
       debugPrint('TestCatalogService.refresh: cache prune error: $e');
     }
 
+    // Heal: cached tests whose images are incomplete get a background top-up.
+    unawaited(healIncompleteTests());
+
     return entries;
   }
 
@@ -336,6 +365,10 @@ class TestCatalogService {
       // Yangi versiya: eski versiyaning rasmlari endi hech qayerda
       // ishlatilmasligi mumkin — best-effort tozalash.
       if (prev != null && prev != version) unawaited(gcStore());
+
+      // Whole-test image top-up in the background (all variants); never
+      // blocks or fails this call.
+      unawaited(backgroundPrefetch(testKey, data));
 
       return true;
     } catch (e) {
@@ -424,6 +457,7 @@ class TestCatalogService {
       {void Function(int done, int total)? onProgress}) async {
     if (urls.isEmpty) return true;
     _activeDownloads++;
+    _foreground++;
     try {
       await _store.init();
 
@@ -455,7 +489,119 @@ class TestCatalogService {
           math.min(_imageConcurrency, missing.length), (_) => worker()));
       return !failed;
     } finally {
+      _foreground--;
       _activeDownloads--;
+    }
+  }
+
+  /// Student-tap prepare in progress (priority over background prefetch).
+  int _foreground = 0;
+
+  // ---- Background prefetch of ALL images of a test --------------------
+
+  static const _bgConcurrency = 2;
+
+  /// One job at a time (global concurrency 2) and one job per testKey.
+  Future<void> _bgTail = Future<void>.value();
+  final Map<String, Future<void>> _bgJobs = {};
+
+  /// Downloads every missing unique image of [json] (all variants) into the
+  /// store in the background: gentle (2 at a time, random start jitter,
+  /// 2s/8s/30s backoff per URL), single-flight per [testKey] (a call while
+  /// one is queued/running returns that job), de-duplicated with the
+  /// foreground prepare through the store's in-flight map, and yielding to
+  /// it. Never throws; a URL that still fails is left for the next heal run
+  /// or the student-tap prepare.
+  Future<void> backgroundPrefetch(String testKey, Map<String, dynamic> json) {
+    final running = _bgJobs[testKey];
+    if (running != null) return running;
+    final urls = _imageUrls(json);
+    if (urls.isEmpty) return Future<void>.value();
+    final job = _bgTail.then((_) => _runBackground(urls)).catchError((Object e) {
+      debugPrint('Background prefetch($testKey) failed: $e');
+    });
+    _bgTail = job;
+    _bgJobs[testKey] = job;
+    job.whenComplete(() {
+      if (identical(_bgJobs[testKey], job)) _bgJobs.remove(testKey);
+    });
+    return job;
+  }
+
+  Future<void> _runBackground(List<String> urls) async {
+    await _loadMissing();
+    try {
+      await _store.init();
+    } catch (e) {
+      debugPrint('Background prefetch: store init failed: $e');
+      return;
+    }
+    List<String> todo() => [
+          for (final u in urls)
+            if (_store.cachedFile(u) == null && !_knownMissing.contains(u)) u,
+        ];
+    if (todo().isEmpty) return;
+    await Future<void>.delayed(_bgJitter());
+    final queue = todo();
+    var next = 0;
+    _activeDownloads++;
+    try {
+      Future<void> worker() async {
+        while (next < queue.length) {
+          // The student-tap prepare has priority: stay out of its way.
+          while (_foreground > 0) {
+            await Future<void>.delayed(_bgYield);
+          }
+          final url = queue[next++];
+          if (_store.cachedFile(url) != null) continue;
+          await _backgroundOne(url);
+        }
+      }
+
+      await Future.wait(List.generate(_bgConcurrency, (_) => worker()));
+    } finally {
+      _activeDownloads--;
+    }
+  }
+
+  Future<void> _backgroundOne(String url) async {
+    for (var attempt = 0; attempt <= _bgBackoff.length; attempt++) {
+      try {
+        await _recordFetch(url, await _store.fetch(url));
+        return;
+      } catch (e) {
+        debugPrint('Background image failed for $url (attempt ${attempt + 1}): $e');
+      }
+      if (attempt < _bgBackoff.length) {
+        await Future<void>.delayed(_bgBackoff[attempt]);
+      }
+    }
+  }
+
+  /// Updates the remembered-404 set after a successful round-trip.
+  Future<void> _recordFetch(String url, StoreFetch r) async {
+    if (r == StoreFetch.missing) {
+      debugPrint('Image missing on server, skipped: $url');
+      if (_knownMissing.add(url)) await _saveMissing();
+    } else if (_knownMissing.remove(url)) {
+      await _saveMissing();
+    }
+  }
+
+  /// Cached tests whose images are incomplete get a background job (called
+  /// on app start and after every successful catalog refresh). Never throws.
+  Future<void> healIncompleteTests() async {
+    try {
+      for (final row in await TestCache.all()) {
+        final key = row['test_key']?.toString() ?? '';
+        if (key.isEmpty || _bgJobs.containsKey(key)) continue;
+        final data = await TestCache.get(key);
+        if (data == null) continue;
+        if (await _allPresent(_imageUrls(data))) continue;
+        unawaited(backgroundPrefetch(key, data));
+      }
+    } catch (e) {
+      debugPrint('TestCatalogService.healIncompleteTests failed: $e');
     }
   }
 
@@ -511,13 +657,7 @@ class TestCatalogService {
     final retries = _knownMissing.contains(url) ? 0 : _imageRetries;
     for (var attempt = 0; attempt <= retries; attempt++) {
       try {
-        final r = await _store.fetch(url);
-        if (r == StoreFetch.missing) {
-          debugPrint('Image missing on server, skipped: $url');
-          if (_knownMissing.add(url)) await _saveMissing();
-        } else if (_knownMissing.remove(url)) {
-          await _saveMissing();
-        }
+        await _recordFetch(url, await _store.fetch(url));
         return true;
       } catch (e) {
         debugPrint('Image download failed for $url (attempt ${attempt + 1}): $e');

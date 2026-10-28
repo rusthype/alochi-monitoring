@@ -6,14 +6,26 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:alochi_monitoring/core/api/api_client.dart';
+import 'package:crypto/crypto.dart';
 import 'package:alochi_monitoring/core/cache/test_image_store.dart';
 import 'package:alochi_monitoring/core/db/test_cache.dart';
 import 'package:alochi_monitoring/core/services/test_catalog_service.dart';
 import 'package:alochi_monitoring/features/session/runner_dispatch.dart';
+import 'package:alochi_monitoring/features/session/student_entry_screen.dart';
+import 'package:alochi_monitoring/features/session/test_session.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _RosterApi extends MonitoringApi {
+  @override
+  Future<List<Map<String, dynamic>>> fetchStudents(String groupId) async => [
+        {'id': 's1', 'student_code': 'S-1', 'name': 'Valiyev Ali'},
+      ];
+}
 
 class _Api extends MonitoringApi {
   _Api(this.catalog, this.tests);
@@ -52,6 +64,8 @@ Map<String, dynamic> _test(int n, {int version = 1, int variants = 2}) => {
           },
       },
     };
+
+const cover = 'https://img.test/cover.png';
 
 void main() {
   late Directory dir;
@@ -108,7 +122,6 @@ void main() {
     return (store, svcWith(store, _Api([], {'k': data})));
   }
 
-  String cover = 'https://img.test/cover.png';
 
   test('only the chosen variant + shared images are requested', () async {
     final data = _test(3);
@@ -348,5 +361,366 @@ void main() {
     }
     await svc.gcStore();
     expect(root.listSync(), isEmpty);
+  });
+
+  // ---------------- background prefetch / heal / strictness ----------------
+
+  TestCatalogService svcBg(TestImageStore store, _Api api) => TestCatalogService(
+      api,
+      store: store,
+      retryDelay: Duration.zero,
+      bgJitter: () => Duration.zero,
+      bgBackoff: const [Duration.zero, Duration.zero, Duration.zero],
+      bgYield: const Duration(milliseconds: 5));
+
+  Future<(TestImageStore, TestCatalogService)> makeBg(
+      Map<String, dynamic> data) async {
+    final store = newStore();
+    await store.init();
+    return (store, svcBg(store, _Api([], {'k': data})));
+  }
+
+  List<String> allUrls(Map<String, dynamic> d) =>
+      svcWith(newStore(), _Api([], {})).variantImageUrls(d, 1) +
+      svcWith(newStore(), _Api([], {})).variantImageUrls(d, 2);
+
+  test('background job downloads ALL variants, concurrency never above 2',
+      () async {
+    final data = _test(4);
+    behaviour = {
+      for (final u in allUrls(data).toSet())
+        u: (_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 15));
+          return http.Response.bytes([1, 2, 3], 200);
+        }
+    };
+    final (store, svc) = await makeBg(data);
+    await svc.backgroundPrefetch('k', data);
+    for (final u in allUrls(data)) {
+      expect(store.cachedFile(u), isNotNull, reason: u);
+    }
+    expect(maxInFlight, lessThanOrEqualTo(2));
+    expect(maxInFlight, greaterThan(1));
+    expect(requested.toSet().length, requested.length); // each url once
+  });
+
+  test('single-flight per testKey: a second call joins the running job',
+      () async {
+    final data = _test(2);
+    final (_, svc) = await makeBg(data);
+    final a = svc.backgroundPrefetch('k', data);
+    final b = svc.backgroundPrefetch('k', data);
+    expect(identical(a, b), isTrue);
+    await a;
+    expect(requested.toSet().length, requested.length);
+  });
+
+  test('foreground + background overlap: no URL is downloaded twice, '
+      'foreground waits for the in-flight ones and is ready only when all '
+      'are on disk', () async {
+    final data = _test(3);
+    final gate = Completer<void>();
+    behaviour = {
+      for (final u in allUrls(data).toSet())
+        u: (_) async {
+          await gate.future;
+          return http.Response.bytes([1, 2, 3], 200);
+        }
+    };
+    final (store, svc) = await makeBg(data);
+    final bg = svc.backgroundPrefetch('k', data);
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    var ready = false;
+    final fg = svc.ensureVariantImages(data, 1).then((ok) {
+      ready = ok;
+      return ok;
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(ready, isFalse); // (a)/(b): not ready while downloads are in flight
+    expect(await svc.variantImagesComplete(data, 1), isFalse);
+    gate.complete();
+    expect(await fg, isTrue);
+    expect(await svc.variantImagesComplete(data, 1), isTrue);
+    await bg;
+    expect(attempts.values.every((n) => n == 1), isTrue);
+    expect(store.cachedFile(_u(200)), isNotNull);
+  });
+
+  test('(c) network failure after retries: variant never ready, retry works',
+      () async {
+    final data = _test(2);
+    behaviour[_u(101)] = (_) async => throw const SocketException('down');
+    final (_, svc) = await makeBg(data);
+    expect(await svc.ensureVariantImages(data, 1), isFalse);
+    expect(await svc.variantImagesComplete(data, 1), isFalse);
+    behaviour.clear();
+    expect(await svc.ensureVariantImages(data, 1), isTrue);
+    expect(await svc.variantImagesComplete(data, 1), isTrue);
+  });
+
+  test('background retries with backoff, then succeeds; gives up quietly',
+      () async {
+    final data = _test(1, variants: 1);
+    behaviour[_u(100)] = (n) async => n < 3
+        ? throw const SocketException('flaky')
+        : http.Response.bytes([7], 200);
+    final (store, svc) = await makeBg(data);
+    await svc.backgroundPrefetch('k', data);
+    expect(attempts[_u(100)], 3);
+    expect(store.cachedFile(_u(100)), isNotNull);
+
+    final d2 = _test(1, variants: 1)..['cover'] = 'https://img.test/c2.png';
+    behaviour['https://img.test/c2.png'] =
+        (_) async => throw const SocketException('dead');
+    await svc.backgroundPrefetch('k2', d2); // must not throw
+    expect(attempts['https://img.test/c2.png'], 4); // 1 + 3 backoff steps
+    expect(store.cachedFile('https://img.test/c2.png'), isNull);
+  });
+
+  test('background: 404 skipped and remembered', () async {
+    final data = _test(2, variants: 1);
+    behaviour[_u(101)] = (_) async => http.Response('', 404);
+    final (_, svc) = await makeBg(data);
+    await svc.backgroundPrefetch('k', data);
+    expect(await svc.variantImagesComplete(data, 1), isTrue);
+    expect(attempts[_u(101)], 1);
+  });
+
+  test('resume after relaunch fetches only the missing files', () async {
+    final data = _test(3);
+    final (_, svc) = await makeBg(data);
+    await svc.ensureVariantImages(data, 1);
+    requested.clear();
+    final store2 = newStore(); // relaunch
+    await store2.init();
+    final svc2 = svcBg(store2, _Api([], {'k': data}));
+    await svc2.backgroundPrefetch('k', data);
+    expect(requested.toSet(), {_u(200), _u(201), _u(202)});
+  });
+
+  test('init removes leftover partial files; zero-byte/truncated never counts',
+      () async {
+    final root = Directory('${dir.path}/test_images')..createSync();
+    final old = DateTime.now().subtract(const Duration(minutes: 10));
+    final part = File('${root.path}/abc.part')..writeAsBytesSync([1]);
+    final tmp = File('${root.path}/${'a' * 64}.img.1.tmp')
+      ..writeAsBytesSync([1]);
+    final fresh = File('${root.path}/zzz.tmp')..writeAsBytesSync([1]);
+    part.setLastModifiedSync(old);
+    tmp.setLastModifiedSync(old);
+    final url = _u(1);
+    final name = sha256.convert(utf8.encode(url)).toString();
+    File('${root.path}/$name.img').writeAsBytesSync([]); // zero byte
+    final store = newStore();
+    expect(store.cachedFile(url), isNull);
+    await store.init();
+    expect(part.existsSync(), isFalse);
+    expect(tmp.existsSync(), isFalse);
+    expect(fresh.existsSync(), isTrue); // young temp may be a live write
+    expect(File('${root.path}/$name.img').existsSync(), isFalse);
+    expect(store.cachedFile(url), isNull);
+  });
+
+  test('truncated body (Content-Length mismatch) is never stored', () async {
+    final data = _test(1, variants: 1);
+    final store = TestImageStore(
+        root: Directory('${dir.path}/test_images'),
+        client: MockClient.streaming((req, _) async => http.StreamedResponse(
+            Stream.value([1, 2, 3]), 200,
+            contentLength: 10)),
+        timeout: const Duration(seconds: 2));
+    await store.init();
+    final svc = svcBg(store, _Api([], {'k': data}));
+    expect(await svc.ensureVariantImages(data, 1), isFalse);
+    expect(store.cachedFile(_u(100)), isNull);
+  });
+
+  test('refresh() heals incomplete cached tests in the background', () async {
+    final data = _test(2);
+    final store = newStore();
+    await store.init();
+    final api = _Api([
+      {'test_key': 'k', 'title': 'T', 'grade': 5, 'version': 1}
+    ], {
+      'k': data
+    });
+    final svc = svcBg(store, api);
+    await TestCache.upsert('k', 'T', 5, 1, jsonEncode(data)); // JSON only
+    await svc.refresh();
+    for (var i = 0; i < 100; i++) {
+      if (await svc.variantImagesComplete(data, 1) &&
+          await svc.variantImagesComplete(data, 2)) {
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    for (final u in allUrls(data)) {
+      expect(store.cachedFile(u), isNotNull, reason: u);
+    }
+  });
+
+  test('download() returns before the background job finishes', () async {
+    final data = _test(2);
+    final gate = Completer<void>();
+    behaviour = {
+      for (final u in allUrls(data).toSet())
+        u: (_) async {
+          await gate.future;
+          return http.Response.bytes([1], 200);
+        }
+    };
+    final store = newStore();
+    await store.init();
+    final svc = svcBg(store, _Api([], {'k': data}));
+    expect(await svc.download('k'), isTrue); // returns while gated
+    expect(store.cachedFile(_u(100)), isNull);
+    gate.complete();
+    await svc.backgroundPrefetch('k', data); // joins the running job
+    expect(store.cachedFile(_u(100)), isNotNull);
+  });
+
+  testWidgets('(d) launchRunner refuses when one image is missing and never '
+      'downloads', (tester) async {
+    final data = _test(2, variants: 1);
+    final store = newStore();
+    // real file I/O must not run inside the testWidgets FakeAsync zone
+    await tester.runAsync(() async {
+      await store.init();
+      await store.fetch(_u(100)); // cover + _u(101) stay missing
+      await TestCache.upsert('mon:t', 'T', 5, 1, jsonEncode(data));
+    });
+    requested.clear();
+    TestImageStore.instanceForTest = store;
+
+    late BuildContext ctx;
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('uz'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Builder(builder: (c) {
+        ctx = c;
+        return const Scaffold(body: SizedBox());
+      }),
+    ));
+    await tester.runAsync(() => launchRunner(
+          ctx,
+          session: const TestSession(
+            testKey: 'mon:t',
+            title: 'T',
+            runnerType: 'engine',
+            schoolCode: '1',
+            schoolLabel: '1',
+            testGrade: 5,
+          ),
+          firstName: 'A',
+          lastName: 'B',
+          studentGrade: 5,
+          studentId: 'S-9',
+        ));
+    await tester.pump();
+    final l10n = AppLocalizations.of(ctx)!;
+    expect(find.text(l10n.testNotInCache), findsOneWidget);
+    expect(requested, isEmpty);
+    await tester.pump(const Duration(seconds: 5));
+    TestImageStore.instanceForTest = TestImageStore();
+  });
+
+  group('(a)/(c) student_entry Start button', () {
+    Future<void> openRoster(WidgetTester tester, TestImageStore store) async {
+      final data = _test(2, variants: 1);
+      await tester.runAsync(() async {
+        await store.init();
+        await TestCache.upsert('mon:t', 'T', 5, 1, jsonEncode(data));
+      });
+      TestImageStore.instanceForTest = store;
+      final saved = api;
+      api = _RosterApi();
+      addTearDown(() {
+        api = saved;
+        TestImageStore.instanceForTest = TestImageStore();
+      });
+      // ignore: prefer_const_constructors
+      await tester.pumpWidget(MaterialApp(
+        locale: const Locale('uz'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const StudentEntryScreen(
+          session: TestSession(
+            testKey: 'mon:t',
+            title: 'T',
+            runnerType: 'engine',
+            schoolCode: '1',
+            schoolLabel: '1',
+            testGrade: 5,
+          ),
+          preselectedGroup: {'id': 'g1', 'name': '5-A'},
+        ),
+      ));
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Future<void> settle(WidgetTester tester) async {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 150)));
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    InkWell startButton(WidgetTester tester) => tester.widget<InkWell>(
+        find.byWidgetPredicate(
+            (w) => w is InkWell && w.borderRadius == BorderRadius.circular(30)));
+
+    testWidgets('disabled while any image is missing/in flight; enabled only '
+        'when 100% on disk', (tester) async {
+      final gate = Completer<void>();
+      behaviour = {
+        for (final u in [cover, _u(100), _u(101)])
+          u: (_) async {
+            await gate.future;
+            return http.Response.bytes([1], 200);
+          }
+      };
+      await openRoster(tester, newStore());
+      await tester.tap(find.textContaining('Ali'));
+      await settle(tester);
+      expect(startButton(tester).onTap, isNull); // downloading, gated
+      final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+      expect(find.textContaining(l10n.downloading), findsOneWidget);
+
+      gate.complete();
+      for (var i = 0; i < 20 && startButton(tester).onTap == null; i++) {
+        await settle(tester);
+      }
+      expect(startButton(tester).onTap, isNotNull); // everything on disk
+    });
+
+    testWidgets('network failure: stays blocked with downloadError toast; '
+        're-tapping the student retries', (tester) async {
+      var failing = true;
+      behaviour = {
+        for (final u in [cover, _u(100), _u(101)])
+          u: (_) async => failing
+              ? throw const SocketException('down')
+              : http.Response.bytes([1], 200)
+      };
+      await openRoster(tester, newStore());
+      await tester.tap(find.textContaining('Ali'));
+      final l10n0 = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+      for (var i = 0; i < 30 && find.text(l10n0.downloadError).evaluate().isEmpty; i++) {
+        await settle(tester);
+      }
+      final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+      expect(startButton(tester).onTap, isNull);
+      expect(find.text(l10n.downloadError), findsOneWidget);
+
+      failing = false;
+      await tester.pump(const Duration(seconds: 5)); // toast gone
+      await tester.tap(find.textContaining('Ali'));
+      for (var i = 0; i < 20 && startButton(tester).onTap == null; i++) {
+        await settle(tester);
+      }
+      expect(startButton(tester).onTap, isNotNull);
+    });
   });
 }

@@ -67,6 +67,11 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
   // Pack mode only: roster ids that already finished this test.
   Set<String> _done = {};
 
+  String get _selectedStudentId => (_selectedStudent?['student_code'] ??
+          _selectedStudent?['id'] ??
+          '')
+      .toString();
+
   bool get _rosterActive =>
       _selectedGroup != null && (_loadingStudents || _students.isNotEmpty);
 
@@ -75,7 +80,9 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     // A roster student (incl. a just-added pending child) is required: the
     // old anonymous manual first/last-name path (studentId == '') is replaced
     // by "Bola qo'shish", which gives the child a real/pending id.
-    return _selectedStudent != null;
+    // They can start ONLY once every image of their variant is on disk; after
+    // a failed prepare the button stays blocked until a re-tap succeeds.
+    return _selectedStudent != null && _preparedFor == _selectedStudentId;
   }
 
   @override
@@ -272,9 +279,17 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     });
     var ok = false;
     int? variant;
+    Map<String, dynamic>? cached;
+    var cacheReadable = true;
     try {
-      final cached = await TestCache.get(widget.session.testKey);
-      if (cached == null) {
+      cached = await TestCache.get(widget.session.testKey);
+    } catch (e) {
+      // Unreadable cache: nothing to prepare here; launchRunner reports it.
+      cacheReadable = false;
+      debugPrint('StudentEntryScreen: cache read error: $e');
+    }
+    try {
+      if (!cacheReadable || cached == null) {
         // Pack/LAN mode: launchRunner loads the test itself; nothing to fetch.
         ok = true;
       } else {
@@ -959,17 +974,20 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Padding(
+                                Flexible(
+                                  child: Padding(
                                   padding: const EdgeInsets.only(left: 16),
                                   child: Text(
                                     _prepProgress != null
                                         ? '${l10n.downloading} $_prepProgress'
                                         : l10n.startTest,
+                                    overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 15,
                                     ),
+                                  ),
                                   ),
                                 ),
                                 Container(
