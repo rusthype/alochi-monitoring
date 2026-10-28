@@ -101,20 +101,57 @@ class MonitoringApi {
     final suffix = splitIndex == -1 ? '' : url.substring(splitIndex);
 
     final schemeIndex = prefixAndPath.indexOf('://');
-    if (schemeIndex == -1) return Uri.encodeFull(url);
+    if (schemeIndex == -1) return encodeUrlKeepingEscapes(url);
 
     final hostStart = schemeIndex + 3;
     final pathStart = prefixAndPath.indexOf('/', hostStart);
-    if (pathStart == -1) return Uri.encodeFull(url);
+    if (pathStart == -1) return encodeUrlKeepingEscapes(url);
 
     final prefix = prefixAndPath.substring(0, pathStart);
     final path = prefixAndPath.substring(pathStart);
     final normalizedPath =
         path.split('/').where((segment) => segment.isNotEmpty).join('/');
 
-    return Uri.encodeFull(
+    return encodeUrlKeepingEscapes(
       '$prefix/${normalizedPath.isEmpty ? '' : normalizedPath}$suffix',
     );
+  }
+
+  static bool _isHex(int c) =>
+      (c >= 0x30 && c <= 0x39) ||
+      (c >= 0x41 && c <= 0x46) ||
+      (c >= 0x61 && c <= 0x66);
+
+  /// Like [Uri.encodeFull], but an existing `%XX` escape is left alone
+  /// (`encodeFull('a%20b.png')` gives `a%2520b.png`, a different file).
+  /// Spaces, Uzbek / Cyrillic letters and a stray `%` are still encoded.
+  @visibleForTesting
+  static String encodeUrlKeepingEscapes(String url) {
+    final out = StringBuffer();
+    final units = url.codeUnits;
+    var i = 0;
+    var plainStart = 0;
+    void flush(int end) {
+      if (end > plainStart) {
+        out.write(Uri.encodeFull(url.substring(plainStart, end)));
+      }
+    }
+
+    while (i < units.length) {
+      if (units[i] == 0x25 &&
+          i + 2 < units.length &&
+          _isHex(units[i + 1]) &&
+          _isHex(units[i + 2])) {
+        flush(i);
+        out.write(url.substring(i, i + 3));
+        i += 3;
+        plainStart = i;
+      } else {
+        i++;
+      }
+    }
+    flush(units.length);
+    return out.toString();
   }
 
   static const Duration _timeout = Duration(seconds: 20);
@@ -460,6 +497,8 @@ class MonitoringApi {
     }
   }
 
+  /// Throws [ApiException] on any failure (network, non-200, non-list body):
+  /// an empty list means a school that REALLY has no groups, never an error.
   Future<List<Map<String, dynamic>>> fetchGroups(String schoolCode,
       {String? schoolId}) async {
     try {
@@ -474,17 +513,28 @@ class MonitoringApi {
                 '$_base/groups/?school=${Uri.encodeComponent(schoolCode)}$sid'),
             headers: _headers,
           ));
-      if (resp.statusCode != 200) return [];
-      final data = jsonDecode(resp.body);
-      if (data is! List) return [];
-      return data
-          .whereType<Map<String, dynamic>>()
-          .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
-          .toList();
+      return _rosterRows(resp);
     } catch (e) {
       debugPrint('fetchGroups error: $e');
-      return [];
+      rethrow;
     }
+  }
+
+  /// Rows of a groups / students response. Non-200 and non-list bodies throw
+  /// (the screens show a retry banner); only a real `[]` is "empty".
+  List<Map<String, dynamic>> _rosterRows(http.Response resp) {
+    if (resp.statusCode != 200) {
+      throw ApiException(resp.statusCode, _statusMessage(resp.statusCode));
+    }
+    final data = _decode(resp);
+    if (data is! List) {
+      throw ApiException(resp.statusCode, "Noto'g'ri javob",
+          code: kApiBadResponse);
+    }
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
+        .toList();
   }
 
   /// [testKey] (optional) asks the backend to flag students who already took
@@ -501,13 +551,7 @@ class MonitoringApi {
                 '$_base/groups/${Uri.encodeComponent(groupId)}/students/$q'),
             headers: _headers,
           ));
-      if (resp.statusCode != 200) return [];
-      final data = jsonDecode(resp.body);
-      if (data is! List) return [];
-      return data
-          .whereType<Map<String, dynamic>>()
-          .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
-          .toList();
+      return _rosterRows(resp);
     } catch (e) {
       debugPrint('fetchStudents error: $e');
       rethrow;
