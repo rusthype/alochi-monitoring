@@ -42,6 +42,9 @@ class _RosterApi extends MonitoringApi {
   }
 }
 
+// Minimal valid PNG signature: the store sniffs magic bytes now.
+const _png = <int>[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1];
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late MonitoringApi savedApi;
@@ -140,7 +143,7 @@ void main() {
           await gate.future;
           return fail
               ? http.Response('x', 500)
-              : http.Response.bytes([1, 2, 3], 200);
+              : http.Response.bytes(_png, 200);
         }),
         timeout: const Duration(seconds: 2),
       );

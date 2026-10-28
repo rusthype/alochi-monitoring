@@ -4,6 +4,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _NoGroupsApi extends MonitoringApi {
   @override
@@ -33,7 +34,10 @@ Widget _app(Locale locale) => MaterialApp(
 
 void main() {
   late MonitoringApi savedApi;
-  setUp(() => savedApi = api);
+  setUp(() {
+    savedApi = api;
+    SharedPreferences.setMockInitialValues({}); // GroupsCache fallback
+  });
   tearDown(() => api = savedApi);
 
   for (final (name, fake, locale, expected) in [

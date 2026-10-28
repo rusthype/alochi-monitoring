@@ -13,12 +13,18 @@
 // StudentEntryScreen — group_id is never sent, the catalog behaves
 // exactly as before this reorder (backward compatible, offline/kiosk
 // flow untouched).
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/services/groups_cache.dart';
 import '../../core/services/test_catalog_service.dart';
+import '../../core/services/toast_service.dart';
 import '../../shared/theme/app_theme.dart';
+import '../diagnostic/widgets/school_picker_body.dart'
+    show SchoolPickerErrorBanner;
 import '../../shared/widgets/new_badge.dart';
 import 'student_entry_screen.dart';
 import 'test_session.dart';
@@ -84,6 +90,14 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
   GroupSelectError? _err;
   final Set<String> _downloadingKeys = {};
 
+  /// Bumped on every group tap: a slow answer for a group the proctor has
+  /// already left must not overwrite the catalog of the current one.
+  int _selectToken = 0;
+
+  /// A test card is being opened / the pushed student screen is still up:
+  /// further taps are ignored (double-tap would stack two routes).
+  bool _pushing = false;
+
   @override
   void initState() {
     super.initState();
@@ -97,6 +111,12 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       };
 
   Future<void> _loadGroups() async {
+    if (!_loadingGroups || _err != null) {
+      setState(() {
+        _loadingGroups = true;
+        _err = null;
+      });
+    }
     try {
       final g = await api.fetchGroups(widget.schoolCode,
           schoolId: widget.schoolId);
@@ -117,24 +137,46 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
         }
         // Guruhsiz maktab — filtrlash uchun hech narsa yo'q, hozirgidek
         // to'g'ridan o'quvchi ekraniga o'tamiz (group_id yuborilmaydi).
-        _goToStudentEntry(fallback, null);
+        setState(() => _loadingGroups = false);
+        unawaited(_goToStudentEntry(fallback, null));
         return;
       }
+      unawaited(GroupsCache.save(widget.schoolCode, widget.schoolId, g));
       setState(() {
         _groups = g;
         _loadingGroups = false;
       });
     } catch (e) {
+      debugPrint('GroupSelectScreen: fetchGroups failed: $e');
+      // Offline / flaky server: the last good list still lets the proctor
+      // reach the tests that are already downloaded.
+      final cached =
+          await GroupsCache.load(widget.schoolCode, widget.schoolId);
       if (!mounted) return;
       setState(() {
         _loadingGroups = false;
-        _err = GroupSelectError.groupsLoadFailed;
+        if (cached.isNotEmpty) {
+          _groups = cached;
+        } else {
+          _err = GroupSelectError.groupsLoadFailed;
+        }
       });
+    }
+  }
+
+  /// Retry on the error banner: reload whatever failed.
+  void _retryAfterError() {
+    final group = _selectedGroup;
+    if (_err == GroupSelectError.testsLoadFailed && group != null) {
+      _selectGroup(group);
+    } else {
+      _loadGroups();
     }
   }
 
   Future<void> _selectGroup(Map<String, dynamic> group) async {
     final groupId = (group['id'] ?? '').toString();
+    final token = ++_selectToken;
     setState(() {
       _selectedGroup = group;
       _loadingCatalog = true;
@@ -154,13 +196,13 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       // (backend updated_at bo'yicha; null bo'lsa oxiriga tushadi).
       entries.sort((a, b) =>
           (b.updatedAt ?? DateTime(0)).compareTo(a.updatedAt ?? DateTime(0)));
-      if (!mounted) return;
+      if (!mounted || token != _selectToken) return; // another group tapped
       setState(() {
         _catalog = entries;
         _loadingCatalog = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || token != _selectToken) return;
       setState(() {
         _loadingCatalog = false;
         _err = GroupSelectError.testsLoadFailed;
@@ -176,18 +218,13 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
   Future<void> _downloadEntry(CatalogEntry entry) async {
     final groupId = (_selectedGroup?['id'] ?? '').toString();
     setState(() => _downloadingKeys.add(entry.testKey));
-    try {
-      await testCatalogService.download(
-        entry.testKey,
-        groupId: groupId.isEmpty ? null : groupId,
-        schoolCode: widget.schoolCode,
-        schoolId: widget.schoolId,
-      );
-    } catch (e) {
-      debugPrint('GroupSelectScreen: download(${entry.testKey}) error: $e');
-    }
+    final ok = await _download(entry, groupId);
     if (!mounted) return;
     setState(() => _downloadingKeys.remove(entry.testKey));
+    if (!ok) {
+      ToastService.showError(
+          context, AppLocalizations.of(context)!.downloadError);
+    }
     // Holatni yangilash uchun shu guruh katalogini qayta yuklaymiz —
     // muvaffaqiyatli yuklangan test "Boshlash"ga aylanadi.
     if (_selectedGroup != null) {
@@ -195,8 +232,72 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
     }
   }
 
-  void _goToStudentEntry(CatalogEntry entry, Map<String, dynamic>? group) {
-    Navigator.of(context).push(
+  /// download() never throws; a false result must reach the proctor.
+  Future<bool> _download(CatalogEntry entry, String groupId) async {
+    try {
+      return await testCatalogService.download(
+        entry.testKey,
+        groupId: groupId.isEmpty ? null : groupId,
+        schoolCode: widget.schoolCode,
+        schoolId: widget.schoolId,
+      );
+    } catch (e) {
+      debugPrint('GroupSelectScreen: download(${entry.testKey}) error: $e');
+      return false;
+    }
+  }
+
+  /// Test card tap. A test with a NEWER server version is re-downloaded
+  /// BEFORE the roster opens (spinner on the card, failure toast), so the
+  /// students are never prepared and tested on an outdated copy. Offline the
+  /// cached copy is used as is.
+  Future<void> _openEntry(CatalogEntry entry) async {
+    if (_pushing) return;
+    _pushing = true;
+    var entryToOpen = entry;
+    try {
+      if (entry.status == CatalogStatus.updatable) {
+        final groupId = (_selectedGroup?['id'] ?? '').toString();
+        setState(() => _downloadingKeys.add(entry.testKey));
+        final ok = await _download(entry, groupId);
+        // updatable only comes from a successful online catalog, so a failure
+        // while the server is still reachable is a real error; if the network
+        // is gone now the cached copy is exactly what offline play needs.
+        var useCached = false;
+        if (!ok) useCached = !await onlineApi.ping();
+        if (!mounted) return;
+        setState(() => _downloadingKeys.remove(entry.testKey));
+        if (!ok && !useCached) {
+          ToastService.showError(
+              context, AppLocalizations.of(context)!.downloadError);
+          return;
+        }
+        if (ok) entryToOpen = _asCached(entry);
+      }
+      await _goToStudentEntry(entryToOpen, _selectedGroup);
+    } finally {
+      _pushing = false;
+    }
+  }
+
+  CatalogEntry _asCached(CatalogEntry e) => CatalogEntry(
+        testKey: e.testKey,
+        title: e.title,
+        grade: e.grade,
+        version: e.version,
+        status: CatalogStatus.cached,
+        schoolButtons: e.schoolButtons,
+        runnerType: e.runnerType,
+        lockedUntil: e.lockedUntil,
+        updatedAt: e.updatedAt,
+        availableUntil: e.availableUntil,
+        createdAt: e.createdAt,
+      );
+
+  /// Completes when the pushed student screen is popped.
+  Future<void> _goToStudentEntry(
+      CatalogEntry entry, Map<String, dynamic>? group) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         settings: const RouteSettings(name: 'student_entry'),
         builder: (_) => StudentEntryScreen(
@@ -240,33 +341,10 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             if (_err != null) ...[
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppColors.errorMuted,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: AppColors.error
-                                          .withValues(alpha: 0.2)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.warning_rounded,
-                                        color: AppColors.error, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        _errText(
-                                            AppLocalizations.of(context)!,
-                                            _err!),
-                                        style: const TextStyle(
-                                            color: AppColors.error,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              SchoolPickerErrorBanner(
+                                message: _errText(
+                                    AppLocalizations.of(context)!, _err!),
+                                onRetry: _retryAfterError,
                               ),
                               const SizedBox(height: 24),
                             ],
@@ -664,7 +742,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
 
     return _HoverableTestCard(
       entry: entry,
-      onTap: () => _goToStudentEntry(entry, _selectedGroup),
+      onTap: () => _openEntry(entry),
     );
   }
 }

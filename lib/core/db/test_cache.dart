@@ -20,15 +20,28 @@ class TestCache {
   static void enterMemoryMode() => _memory = {};
   static void exitMemoryMode() => _memory = null;
 
-  static Future<Database> get _database async {
-    if (_db != null) return _db!;
-    if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
-    }
+  /// Test seam: open the cache at this file instead of the support dir.
+  @visibleForTesting
+  static String? pathOverride;
+
+  @visibleForTesting
+  static Future<void> resetForTest() async {
+    try {
+      await _db?.close();
+    } catch (_) {}
+    _db = null;
+    pathOverride = null;
+  }
+
+  static Future<String> _dbPath() async {
+    final o = pathOverride;
+    if (o != null) return o;
     final dir = await getApplicationSupportDirectory();
-    final path = join(dir.path, 'test_cache.db');
-    _db = await openDatabase(
+    return join(dir.path, 'test_cache.db');
+  }
+
+  static Future<Database> _open(String path) {
+    return openDatabase(
       path,
       version: 1,
       onCreate: (db, _) async {
@@ -44,7 +57,76 @@ class TestCache {
         ''');
       },
     );
-    return _db!;
+  }
+
+  static Future<Database> get _database async {
+    final open = _db;
+    if (open != null) return open;
+    if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
+    final path = await _dbPath();
+    try {
+      return _db = await _open(path);
+    } catch (e) {
+      if (!_isCorrupt(e)) rethrow;
+      debugPrint('TestCache: open failed ($e), quarantining the file');
+      await _quarantine(path);
+      return _db = await _open(path);
+    }
+  }
+
+  /// Unreadable file (not a database / malformed) - as opposed to a merely
+  /// locked or busy one, which must never cost the user their cache.
+  static bool _isCorrupt(Object e) {
+    if (e is! DatabaseException) return false;
+    final m = e.toString().toLowerCase();
+    if (m.contains('locked') || m.contains('busy')) return false;
+    return m.contains('not a database') ||
+        m.contains('malformed') ||
+        m.contains('corrupt') ||
+        m.contains('notadb') ||
+        m.contains('disk image');
+  }
+
+  /// Moves the damaged file (and its -wal/-shm) aside as `<name>.corrupt-<ts>`
+  /// and forgets the handle, so the next access creates an empty database.
+  static Future<void> _quarantine(String path) async {
+    try {
+      await _db?.close();
+    } catch (_) {}
+    _db = null;
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    for (final suffix in ['', '-wal', '-shm']) {
+      final f = File('$path$suffix');
+      try {
+        if (await f.exists()) await f.rename('$path.corrupt-$ts$suffix');
+      } catch (e) {
+        debugPrint('TestCache: could not move ${f.path} aside: $e');
+      }
+    }
+  }
+
+  /// Runs [op] against the database. A corrupt file is quarantined and [op]
+  /// retried once on the fresh database; a final failure returns [fallback]
+  /// when given, else rethrows. The cache must never take the app down.
+  static Future<T> _run<T>(Future<T> Function(Database db) op,
+      {T Function()? fallback}) async {
+    for (var attempt = 0;; attempt++) {
+      try {
+        return await op(await _database);
+      } catch (e) {
+        if (attempt == 0 && _isCorrupt(e)) {
+          debugPrint('TestCache: corrupt database ($e), recreating');
+          await _quarantine(await _dbPath());
+          continue;
+        }
+        debugPrint('TestCache: database error: $e');
+        if (fallback != null) return fallback();
+        rethrow;
+      }
+    }
   }
 
   /// Yangi yoki yangilangan test ma'lumotini saqlaydi (upsert).
@@ -64,19 +146,18 @@ class TestCache {
       }
       return;
     }
-    final db = await _database;
-    await db.insert(
-      'cached_tests',
-      {
-        'test_key': testKey,
-        'title': title,
-        'grade': grade,
-        'version': version,
-        'json': jsonStr,
-        'downloaded_at': DateTime.now().millisecondsSinceEpoch,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await _run((db) => db.insert(
+          'cached_tests',
+          {
+            'test_key': testKey,
+            'title': title,
+            'grade': grade,
+            'version': version,
+            'json': jsonStr,
+            'downloaded_at': DateTime.now().millisecondsSinceEpoch,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        ));
   }
 
   /// Bitta test yozuvini qaytaradi yoki null (topilmasa).
@@ -87,13 +168,14 @@ class TestCache {
       final e = mem[testKey];
       return e == null ? null : Map<String, dynamic>.from(e.json);
     }
-    final db = await _database;
-    final rows = await db.query(
-      'cached_tests',
-      where: 'test_key = ?',
-      whereArgs: [testKey],
-      limit: 1,
-    );
+    final rows = await _run(
+        (db) => db.query(
+              'cached_tests',
+              where: 'test_key = ?',
+              whereArgs: [testKey],
+              limit: 1,
+            ),
+        fallback: () => <Map<String, Object?>>[]);
     if (rows.isEmpty) return null;
     final row = rows.first;
     final jsonStr = row['json'] as String?;
@@ -121,12 +203,19 @@ class TestCache {
               })
           .toList();
     }
-    final db = await _database;
-    final rows = await db.query(
-      'cached_tests',
-      columns: ['test_key', 'title', 'grade', 'version', 'downloaded_at'],
-      orderBy: 'downloaded_at DESC',
-    );
+    final rows = await _run(
+        (db) => db.query(
+              'cached_tests',
+              columns: [
+                'test_key',
+                'title',
+                'grade',
+                'version',
+                'downloaded_at'
+              ],
+              orderBy: 'downloaded_at DESC',
+            ),
+        fallback: () => <Map<String, Object?>>[]);
     if (rows.isEmpty) return [];
     return rows.map((r) => Map<String, dynamic>.from(r)).toList();
   }
@@ -135,14 +224,15 @@ class TestCache {
   static Future<int?> versionOf(String testKey) async {
     final mem = _memory;
     if (mem != null) return mem[testKey]?.version;
-    final db = await _database;
-    final rows = await db.query(
-      'cached_tests',
-      columns: ['version'],
-      where: 'test_key = ?',
-      whereArgs: [testKey],
-      limit: 1,
-    );
+    final rows = await _run(
+        (db) => db.query(
+              'cached_tests',
+              columns: ['version'],
+              where: 'test_key = ?',
+              whereArgs: [testKey],
+              limit: 1,
+            ),
+        fallback: () => <Map<String, Object?>>[]);
     if (rows.isEmpty) return null;
     final v = rows.first['version'];
     if (v == null) return null;
@@ -162,13 +252,12 @@ class TestCache {
       mem.removeWhere((k, _) => !keepKeys.contains(k));
       return;
     }
-    final db = await _database;
     final placeholders = List.filled(keepKeys.length, '?').join(',');
-    await db.delete(
-      'cached_tests',
-      where: 'test_key NOT IN ($placeholders)',
-      whereArgs: keepKeys.toList(),
-    );
+    await _run((db) => db.delete(
+          'cached_tests',
+          where: 'test_key NOT IN ($placeholders)',
+          whereArgs: keepKeys.toList(),
+        ));
   }
 
   /// Aynan berilgan test_key yozuvlarini o'chiradi (bo'sh to'plam — hech narsa).
@@ -179,13 +268,12 @@ class TestCache {
       mem.removeWhere((k, _) => keys.contains(k));
       return;
     }
-    final db = await _database;
     final placeholders = List.filled(keys.length, '?').join(',');
-    await db.delete(
-      'cached_tests',
-      where: 'test_key IN ($placeholders)',
-      whereArgs: keys.toList(),
-    );
+    await _run((db) => db.delete(
+          'cached_tests',
+          where: 'test_key IN ($placeholders)',
+          whereArgs: keys.toList(),
+        ));
   }
 }
 

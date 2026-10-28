@@ -53,6 +53,19 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
   /// re-rendering the same stuck error widget.
   int _retryNonce = 0;
 
+  /// URLs whose stored copy failed to decode: skipped for the rest of this
+  /// widget's life (the file itself is deleted, so a later download replaces it).
+  final Set<String> _brokenStored = {};
+
+  void _onStoredBroken(String fixedUrl) {
+    if (!_brokenStored.add(fixedUrl)) return;
+    TestImageStore.instance.evict(fixedUrl);
+    // Not during layout/build: rebuild with the network path next frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // Offline USB pack image: a file on disk, not a URL.
@@ -84,9 +97,11 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
 
     // Downloaded-test image: a file in the persistent store, rendered on the
     // very first frame (sync lookup) — no spinner, no network.
-    final stored = TestImageStore.instance.cachedFile(fixedUrl);
+    final stored = _brokenStored.contains(fixedUrl)
+        ? null
+        : TestImageStore.instance.cachedFile(fixedUrl);
 
-    Widget img = CachedNetworkImage(
+    final Widget network = CachedNetworkImage(
       key: ValueKey('$fixedUrl#$_retryNonce'),
       imageUrl: fixedUrl,
       cacheManager: AlochiImageCacheManager(),
@@ -135,6 +150,7 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
       },
     );
 
+    Widget img = network;
     if (stored != null) {
       img = Image.file(
         stored,
@@ -144,9 +160,12 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
         fit: widget.fit,
         alignment: widget.alignment,
         filterQuality: FilterQuality.medium,
-        errorBuilder: (_, __, ___) =>
-            widget.errorWidget ??
-            SizedBox(height: widget.height ?? 80, width: widget.width),
+        // A stored file that does not decode (damaged / not an image): drop it
+        // and show the network image instead of an empty box.
+        errorBuilder: (_, __, ___) {
+          _onStoredBroken(fixedUrl);
+          return network;
+        },
       );
     }
 
