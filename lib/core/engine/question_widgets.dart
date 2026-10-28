@@ -9,6 +9,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../shared/widgets/app_network_image.dart';
 import '../offline/offline_media.dart';
+import '../widgets/skeleton.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/utils/svg_aspect.dart';
 import 'test_models.dart';
@@ -54,7 +55,7 @@ Widget _buildQuestionImage(
             packFile,
             height: height,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => _brokenImagePlaceholder(height),
+            errorBuilder: (_, __, ___) => brokenImagePlaceholder(height),
           ),
         ),
       ),
@@ -70,7 +71,12 @@ Widget _buildQuestionImage(
           height: height,
           fit: BoxFit.contain,
           borderRadius: br,
-          errorWidget: _brokenImagePlaceholder(height),
+          placeholder: Skeleton(height: height, borderRadius: 10),
+          errorBuilder: (ctx, retry) => brokenImagePlaceholder(
+            height,
+            retryLabel: AppLocalizations.of(ctx)!.retry,
+            onRetry: retry,
+          ),
         ),
       ),
     );
@@ -85,21 +91,49 @@ Widget _buildQuestionImage(
           src,
           height: height,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => _brokenImagePlaceholder(height),
+          errorBuilder: (_, __, ___) => brokenImagePlaceholder(height),
         ),
       ),
     ),
   );
 }
 
-Widget _brokenImagePlaceholder(double height) => Container(
+/// Broken-image box; with [onRetry] it shows a tap-to-reload label.
+@visibleForTesting
+Widget brokenImagePlaceholder(
+  double height, {
+  String? retryLabel,
+  VoidCallback? onRetry,
+}) =>
+    Container(
       height: height,
       decoration: BoxDecoration(
         color: AppColors.err.withValues(alpha: .07),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Center(
-        child: Icon(Icons.broken_image_outlined, color: AppColors.ink3),
+      child: Center(
+        child: onRetry == null
+            ? const Icon(Icons.broken_image_outlined, color: AppColors.ink3)
+            : InkWell(
+                onTap: onRetry,
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.broken_image_outlined,
+                          color: AppColors.ink3),
+                      const SizedBox(height: 4),
+                      Text(
+                        retryLabel ?? '',
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.ink3),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
       ),
     );
 
@@ -931,20 +965,6 @@ class SentenceFreeTextWidget extends StatelessWidget {
 
     final words = _splitWords(question.words ?? '');
 
-    const normalStyle = TextStyle(
-      fontSize: 14,
-      fontWeight: FontWeight.w600,
-      color: AppColors.ink1,
-      height: 1.4,
-    );
-    const struckStyle = TextStyle(
-      fontSize: 14,
-      fontWeight: FontWeight.w600,
-      color: AppColors.ink3,
-      height: 1.4,
-      decoration: TextDecoration.lineThrough,
-    );
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -962,19 +982,17 @@ class SentenceFreeTextWidget extends StatelessWidget {
               valueListenable: controller,
               builder: (context, value, _) {
                 final typedText = value.text;
-                final spans = <TextSpan>[];
-                for (var i = 0; i < words.length; i++) {
-                  if (i > 0) {
-                    spans.add(const TextSpan(text: ' / ', style: normalStyle));
-                  }
-                  final word = words[i];
-                  final used = _isWordUsed(word, typedText);
-                  spans.add(TextSpan(
-                    text: word,
-                    style: used ? struckStyle : normalStyle,
-                  ));
-                }
-                return Text.rich(TextSpan(children: spans));
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final word in words)
+                      _WordChip(
+                        word: word,
+                        used: _isWordUsed(word, typedText),
+                      ),
+                  ],
+                );
               },
             ),
           ),
@@ -992,6 +1010,53 @@ class SentenceFreeTextWidget extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ]),
+    );
+  }
+}
+
+/// Prompt-word chip for [SentenceFreeTextWidget]. Same look as the Spelling
+/// letter chips; a word the pupil already typed fades to muted + struck through.
+class _WordChip extends StatelessWidget {
+  final String word;
+  final bool used;
+  const _WordChip({required this.word, required this.used});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: used ? AppColors.successMuted : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: used ? AppColors.success : AppColors.violetBorder,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (used) ...[
+            const Icon(Icons.check_rounded, size: 14, color: AppColors.success),
+            const SizedBox(width: 4),
+          ],
+          Flexible(
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 180),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+                color: used ? AppColors.ink3 : AppColors.ink1,
+                decoration:
+                    used ? TextDecoration.lineThrough : TextDecoration.none,
+              ),
+              child: Text(word),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1278,6 +1343,10 @@ class ReadingBlockWidget extends StatelessWidget {
   /// or "section/sub" slot key. Null → no report icon on any sub-question.
   final void Function(int subIndex)? onReport;
 
+  /// Optional per-sub-question [GlobalKey] source — lets the engine scroll to
+  /// a specific sub-question (tap on the active section tab).
+  final GlobalKey? Function(int subIndex)? slotKeyFor;
+
   const ReadingBlockWidget({
     super.key,
     required this.reading,
@@ -1285,6 +1354,7 @@ class ReadingBlockWidget extends StatelessWidget {
     required this.onAnswer,
     this.indexOffset = 0,
     this.onReport,
+    this.slotKeyFor,
   });
 
   @override
@@ -1294,48 +1364,55 @@ class ReadingBlockWidget extends StatelessWidget {
       children: [
         ReadingPassageWidget(reading: reading),
         ...List.generate(reading.qs.length, (i) {
-          final q = reading.qs[i];
-          final ansKey = i.toString();
-          final displayIndex = indexOffset + i;
-
-          final report = onReport == null ? null : () => onReport!(i);
-
-          switch (q.type) {
-            case QuestionType.yesNo:
-              return YesNoWidget(
-                index: displayIndex,
-                question: q,
-                answer: answers[ansKey] as String?,
-                onSelect: (v) => onAnswer(i, v),
-                onReport: report,
-              );
-
-            case QuestionType.textChoice:
-              return TextChoiceWidget(
-                index: displayIndex,
-                question: q,
-                answer: answers[ansKey] as int?,
-                onSelect: (v) => onAnswer(i, v),
-                onReport: report,
-              );
-
-            case QuestionType.fillBlank:
-              return FillBlankWidget(
-                index: displayIndex,
-                question: q,
-                initialValue:
-                    answers[ansKey] is String ? answers[ansKey] as String : '',
-                onChanged: (v) => onAnswer(i, v),
-                onReport: report,
-              );
-
-            default:
-              // Unexpected sub-question type in reading container
-              return const SizedBox.shrink();
-          }
+          final slotKey = slotKeyFor?.call(i);
+          return slotKey == null
+              ? _buildSub(i)
+              : KeyedSubtree(key: slotKey, child: _buildSub(i));
         }),
       ],
     );
+  }
+
+  Widget _buildSub(int i) {
+    final q = reading.qs[i];
+    final ansKey = i.toString();
+    final displayIndex = indexOffset + i;
+
+    final report = onReport == null ? null : () => onReport!(i);
+
+    switch (q.type) {
+      case QuestionType.yesNo:
+        return YesNoWidget(
+          index: displayIndex,
+          question: q,
+          answer: answers[ansKey] as String?,
+          onSelect: (v) => onAnswer(i, v),
+          onReport: report,
+        );
+
+      case QuestionType.textChoice:
+        return TextChoiceWidget(
+          index: displayIndex,
+          question: q,
+          answer: answers[ansKey] as int?,
+          onSelect: (v) => onAnswer(i, v),
+          onReport: report,
+        );
+
+      case QuestionType.fillBlank:
+        return FillBlankWidget(
+          index: displayIndex,
+          question: q,
+          initialValue:
+              answers[ansKey] is String ? answers[ansKey] as String : '',
+          onChanged: (v) => onAnswer(i, v),
+          onReport: report,
+        );
+
+      default:
+        // Unexpected sub-question type in reading container
+        return const SizedBox.shrink();
+    }
   }
 }
 
@@ -1358,12 +1435,16 @@ class ReadingSectionWidget extends StatelessWidget {
   /// See [ReadingBlockWidget.onReport].
   final void Function(int subIndex)? onReport;
 
+  /// See [ReadingBlockWidget.slotKeyFor].
+  final GlobalKey? Function(int subIndex)? slotKeyFor;
+
   const ReadingSectionWidget({
     super.key,
     required this.section,
     required this.answers,
     required this.onAnswer,
     this.onReport,
+    this.slotKeyFor,
   });
 
   @override
@@ -1375,6 +1456,7 @@ class ReadingSectionWidget extends StatelessWidget {
       answers: answers,
       onAnswer: onAnswer,
       onReport: onReport,
+      slotKeyFor: slotKeyFor,
     );
   }
 }

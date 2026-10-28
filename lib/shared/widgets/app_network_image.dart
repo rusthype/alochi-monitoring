@@ -21,6 +21,11 @@ class AppNetworkImage extends StatefulWidget {
   final BorderRadius? borderRadius;
   final Widget? placeholder;
   final Widget? errorWidget;
+
+  /// Like [errorWidget] but receives a `retry` callback that evicts the failed
+  /// cache entry and reloads in place. Takes precedence over [errorWidget]
+  /// for network failures.
+  final Widget Function(BuildContext context, VoidCallback retry)? errorBuilder;
   final Alignment alignment;
   final bool showZoom;
 
@@ -34,6 +39,7 @@ class AppNetworkImage extends StatefulWidget {
     this.borderRadius,
     this.placeholder,
     this.errorWidget,
+    this.errorBuilder,
     this.showZoom = false,
   });
 
@@ -101,13 +107,18 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
               ),
             ),
       ),
-      errorWidget: (ctx, url, err) =>
-          widget.errorWidget ??
+      errorWidget: (ctx, url, err) {
+        Future<void> retry() async {
+          await AlochiImageCacheManager().removeFile(fixedUrl);
+          if (mounted) setState(() => _retryNonce++);
+        }
+
+        if (widget.errorBuilder != null) {
+          return widget.errorBuilder!(ctx, retry);
+        }
+        return widget.errorWidget ??
           InkWell(
-            onTap: () async {
-              await AlochiImageCacheManager().removeFile(fixedUrl);
-              if (mounted) setState(() => _retryNonce++);
-            },
+            onTap: retry,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -120,7 +131,8 @@ class _AppNetworkImageState extends State<AppNetworkImage> {
                 ),
               ],
             ),
-          ),
+          );
+      },
     );
 
     if (stored != null) {
