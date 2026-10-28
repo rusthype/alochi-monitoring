@@ -1,7 +1,6 @@
 // lib/features/auth/login_screen.dart
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
@@ -186,8 +185,6 @@ class _LoginScreenState extends State<LoginScreen>
   final _formKey = GlobalKey<FormState>();
   bool _loading = false;
   bool _showPass = false;
-  bool _userEdited = false;
-  bool _passwordEdited = false;
   bool _submitAttempted = false;
   // ponytail: tarjima matni state'da saqlanmaydi — checking/online/offline
   // holati saqlanadi, matn build vaqtida l10n orqali hisoblanadi (til
@@ -254,9 +251,9 @@ class _LoginScreenState extends State<LoginScreen>
     OfflinePackSession.notifier.addListener(_onPackChanged);
 
     // All startup I/O is deliberately fire-and-forget. The complete login
-    // card is already in the first frame; credentials, ping, catalog and
-    // update state hydrate it in the background without gating the UI.
-    _tryAutoLogin();
+    // card is already in the first frame; ping, catalog and update state
+    // hydrate it in the background without gating the UI.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _resetStudentIdentity());
     _loadCatalog();
     UpdateService.instance.fetchUpdateInfo().then((info) {
       if (mounted && info != null) setState(() => _updateInfo = info);
@@ -325,21 +322,22 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  /// Avto-login o'rniga faqat login/parolni formaga to'ldirib qo'yadi
-  Future<void> _tryAutoLogin() async {
-    try {
-      if (!kIsWeb) {
-        final creds = await CredentialCache.loadCredentials();
-        if (creds != null) {
-          // Frame one is immediately interactive. Never let a slower cache
-          // read overwrite credentials the user has already started typing.
-          if (!_userEdited) _userCtrl.text = creds['username'] ?? '';
-          if (!_passwordEdited) _passCtrl.text = creds['password'] ?? '';
-        }
-      }
-    } catch (_) {
-      // Credentials are only a convenience; the form is already usable.
-    }
+  /// The login screen is where a shared kiosk sits between students: nothing
+  /// of the previous student's session may survive into the next login (a
+  /// stale token or identity would be sent with the next student's results).
+  /// In-memory identity only - the credential cache is NOT touched, it is what
+  /// lets an earlier student sign in again while offline.
+  ///
+  /// The form is deliberately NOT pre-filled from that cache any more: there
+  /// is no "remember me" choice, so pressing Login on a pre-filled form signed
+  /// the next child in as the previous one.
+  void _resetStudentIdentity() {
+    if (!mounted) return;
+    api.clearToken();
+    HeartbeatService.instance.clearStudentContext();
+    ProviderScope.containerOf(context)
+        .read(currentStudentSessionProvider.notifier)
+        .state = null;
   }
 
   Future<bool> _checkOnline() async {
@@ -1145,7 +1143,6 @@ class _LoginScreenState extends State<LoginScreen>
                     hint: '',
                     icon: Icons.person_outline_rounded,
                     action: TextInputAction.next,
-                    onChanged: (_) => _userEdited = true,
                     onSubmit: (_) => _passFocus.requestFocus(),
                     validator: (v) => v!.isEmpty ? l10n.usernameRequired : null,
                   ),
@@ -1159,7 +1156,6 @@ class _LoginScreenState extends State<LoginScreen>
                     icon: Icons.lock_outline_rounded,
                     obscure: !_showPass,
                     action: TextInputAction.done,
-                    onChanged: (_) => _passwordEdited = true,
                     onSubmit: (_) => _login(),
                     validator: (v) => v!.isEmpty ? l10n.passwordRequired : null,
                     suffix: IconButton(

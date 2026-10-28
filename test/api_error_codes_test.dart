@@ -6,7 +6,6 @@ import 'dart:io';
 
 import 'package:alochi_monitoring/core/api/api_client.dart';
 import 'package:alochi_monitoring/core/api/api_error_text.dart';
-import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:alochi_monitoring/l10n/app_localizations_ru.dart';
 import 'package:alochi_monitoring/l10n/app_localizations_uz.dart';
 import 'package:flutter_test/flutter_test.dart';

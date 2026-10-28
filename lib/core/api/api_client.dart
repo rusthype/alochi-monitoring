@@ -962,11 +962,16 @@ class MonitoringApi {
   /// global testlarni ko'rsatadi — bu endpoint esa maktabni PIN oqimiga
   /// kirish nuqtasi sifatida ko'rsatish uchun, hatto o'sha maktabning barcha
   /// testlari guruhga bog'langan bo'lsa ham (2026-07-12).
-  /// Xato holatida [] qaytaradi, crash qilmaydi.
-  Future<List<Map<String, String>>> fetchCatalogSchools() async {
+  /// Xato holatida [] qaytaradi, crash qilmaydi — `strict: true` bo'lsa
+  /// xatoni tashlaydi (maktab tanlash ekrani "bo'sh" bilan "yuklanmadi"ni
+  /// farqlashi uchun).
+  Future<List<Map<String, String>>> fetchCatalogSchools(
+      {bool strict = false}) async {
     try {
       final data = await _get('/tests/catalog/schools/');
-      if (data is! List) return [];
+      if (data is! List) {
+        throw const ApiException(200, "Noto'g'ri javob", code: kApiBadResponse);
+      }
       return data
           .whereType<Map>()
           .map((e) => {
@@ -978,6 +983,7 @@ class MonitoringApi {
           .toList();
     } catch (e) {
       debugPrint('fetchCatalogSchools error: $e');
+      if (strict) rethrow;
       return [];
     }
   }

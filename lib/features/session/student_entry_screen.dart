@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/api/api_error_text.dart';
 import '../../core/db/local_students_db.dart';
 import '../../core/db/test_cache.dart';
 import '../../core/models/add_student.dart';
@@ -16,6 +17,8 @@ import '../../core/services/test_catalog_service.dart';
 import '../../core/services/toast_service.dart';
 import '../../shared/widgets/add_student_dialog.dart';
 import '../../shared/theme/app_theme.dart';
+import '../diagnostic/widgets/school_picker_body.dart'
+    show SchoolPickerErrorBanner;
 import '../diagnostic/widgets/diagnostic_widgets.dart'
     show StudentPrefetchStatus, StudentStatusBadge;
 import 'runner_dispatch.dart';
@@ -56,7 +59,15 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
   String _searchQuery = '';
   int? _grade;
   String? _err;
+
+  /// `_err` is a failed roster / group load (retry banner), not a validation
+  /// or "empty group" message.
+  bool _loadFailed = false;
   bool _launching = false;
+
+  /// Consecutive failed prepares per student: after 2 the variant is redrawn
+  /// so one unreachable image cannot block that student for good.
+  final Map<String, int> _prepFails = {};
 
   // Variant-image preparation: when a student is selected, ONLY that
   // student's variant images are downloaded into the persistent store, so
@@ -132,33 +143,45 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
         _groups = g;
         _loadingGroups = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('StudentEntryScreen: fetchGroups failed: $e');
       if (!mounted) return;
       setState(() {
         _loadingGroups = false;
+        _err = localizedApiError(AppLocalizations.of(context)!, e);
       });
     }
   }
 
-  Future<void> _loadStudents() async {
+  /// Loads the roster of the selected group. [keepRoster] = refresh after a
+  /// finished test: the visible roster stays (no skeleton, no wipe) and a
+  /// failed refresh keeps it, only the selection / prepared state is reset.
+  Future<void> _loadStudents({bool keepRoster = false}) async {
     final groupId = (_selectedGroup?['id'] ?? '').toString();
     if (groupId.isEmpty) return;
     _cancelPrepare();
+    final testKey = widget.session.testKey;
+    final keep = keepRoster && _students.isNotEmpty;
     setState(() {
-      _loadingStudents = true;
-      _students = [];
+      _loadingStudents = !keep;
+      if (!keep) _students = [];
       _selectedStudent = null;
       _err = null;
+      _loadFailed = false;
     });
+    // This kiosk's own record is local: always available, even when the
+    // server cannot be reached.
+    Future<Set<String>> localDone() async => {
+          ...await OfflinePackSession.current?.finishedStudentIds(testKey) ??
+              <String>{},
+          ...await RosterDoneStore.load(testKey),
+        };
     try {
-      final testKey = widget.session.testKey;
       final fetched = await api.fetchStudents(groupId, testKey: testKey);
       // Children added while offline and not yet accepted by the server.
       final s = await _withLocalStudents(groupId, fetched);
       final done = <String>{
-        ...await OfflinePackSession.current?.finishedStudentIds(testKey) ??
-            <String>{},
-        ...await RosterDoneStore.load(testKey),
+        ...await localDone(),
         // Old backend: no `done` field -> nothing added.
         for (final st in s)
           if (st['done'] == true) _rosterKey(st),
@@ -173,11 +196,24 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       });
       unawaited(_refreshTestStatus());
     } catch (e) {
+      debugPrint('StudentEntryScreen: roster load failed: $e');
+      Set<String> done = _done;
+      try {
+        done = {..._done, ...await localDone()};
+      } catch (_) {}
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       setState(() {
         _loadingStudents = false;
-        _err = l10n.loadStudentsError;
+        _done = done;
+        // A failed refresh must not turn a populated roster into "no
+        // students": keep it and say so in a toast instead.
+        if (keep) {
+          ToastService.showError(context, l10n.loadStudentsError);
+        } else {
+          _err = l10n.loadStudentsError;
+          _loadFailed = true;
+        }
       });
     }
   }
@@ -382,7 +418,18 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     if (ok && _testStatus == StudentPrefetchStatus.error) {
       unawaited(_refreshTestStatus());
     }
-    if (!ok) {
+    if (ok) {
+      _prepFails.remove(studentId);
+    } else {
+      // Two failures in a row for the same student: draw another variant next
+      // time, so one bad image does not block this student forever.
+      final fails = (_prepFails[studentId] ?? 0) + 1;
+      if (fails >= 2) {
+        _drawnVariant.remove(studentId);
+        _prepFails.remove(studentId);
+      } else {
+        _prepFails[studentId] = fails;
+      }
       ToastService.showError(
           context, AppLocalizations.of(context)!.downloadError);
     }
@@ -440,30 +487,39 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       _err = null;
       _launching = true;
     });
-    // Normally already prepared when the student was tapped; manual-name
-    // entry (no roster) prepares here, with progress on the start button.
-    if (_preparedFor != studentId && !await _prepareFor(studentId)) {
+    try {
+      // Normally already prepared when the student was tapped; manual-name
+      // entry (no roster) prepares here, with progress on the start button.
+      if (_preparedFor != studentId && !await _prepareFor(studentId)) return;
+      if (!mounted) return;
+      await launchRunner(
+        context,
+        session: widget.session,
+        firstName: firstName,
+        lastName: lastName,
+        studentGrade: grade,
+        groupName: groupName,
+        groupId: groupId,
+        studentId: studentId,
+        preparedVariant: _preparedVariant,
+      );
+    } catch (e, st) {
+      // Never leave the Start button locked, never show raw exception text.
+      debugPrint('StudentEntryScreen: launchRunner failed: $e\n$st');
+      if (mounted) {
+        final text = AppLocalizations.of(context)!.errorOccurred;
+        ToastService.showError(
+            context, text.replaceFirst(RegExp(r'[:\s]+$'), ''));
+      }
+    } finally {
       if (mounted) setState(() => _launching = false);
-      return;
     }
-    if (!mounted) return;
-    await launchRunner(
-      context,
-      session: widget.session,
-      firstName: firstName,
-      lastName: lastName,
-      studentGrade: grade,
-      groupName: groupName,
-      groupId: groupId,
-      studentId: studentId,
-      preparedVariant: _preparedVariant,
-    );
     if (!mounted) return;
     // Stay on this roster (same group, same test) for the next student: also
     // after a launch failure (locked / not in cache), which just toasts.
-    setState(() => _launching = false);
     if (_selectedGroup != null) {
-      await _loadStudents(); // clears selection + prepared state, refreshes done
+      await _loadStudents(
+          keepRoster: true); // clears selection + prepared state, refreshes done
     } else {
       // Group-less path: no roster to reload, reset the selection by hand.
       _cancelPrepare();
@@ -851,6 +907,10 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                   ),
                                 ),
                               );
+                            } else if (_loadFailed) {
+                              // The error banner below already offers Retry.
+                              return const SliverToBoxAdapter(
+                                  child: SizedBox.shrink());
                             } else {
                               return SliverToBoxAdapter(
                                 child: Center(
@@ -881,7 +941,13 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                             constraints: const BoxConstraints(maxWidth: 600),
                             child: Column(
                               children: [
-                                if (_err != null) ...[
+                                if (_err != null && _loadFailed) ...[
+                                  const SizedBox(height: 12),
+                                  SchoolPickerErrorBanner(
+                                    message: _err!,
+                                    onRetry: _loadStudents,
+                                  ),
+                                ] else if (_err != null) ...[
                                   const SizedBox(height: 12),
                                   Container(
                                     padding: const EdgeInsets.all(10),

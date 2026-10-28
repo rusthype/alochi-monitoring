@@ -78,7 +78,7 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
   }
 
   void _confirm() async {
-    if (_selected == null) return;
+    if (_selected == null || _isChecking) return;
 
     final l10n = AppLocalizations.of(context)!;
     final expected = _expectedPin(_selected!);

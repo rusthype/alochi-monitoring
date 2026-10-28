@@ -93,6 +93,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               schoolCode: schoolCode,
               schoolLabel: extra['schoolLabel'] as String? ?? '',
               schoolId: extra['schoolId'] as String? ?? '',
+              // A school without groups falls back to the test the proctor
+              // tapped (no fallback = dead end for a guruhsiz maktab).
+              fallbackEntry: _ref(context).read(selectedCatalogEntryProvider),
             );
           }),
       GoRoute(

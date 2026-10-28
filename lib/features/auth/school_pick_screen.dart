@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/api/api_error_text.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../diagnostic/data/diagnostic_school_list.dart';
@@ -28,14 +29,31 @@ typedef MonitoringSchoolSources = ({
 });
 
 Future<MonitoringSchoolSources> _loadLive() async {
+  // Each source may fail on its own; the screen only fails when NOTHING could
+  // be loaded (an empty list must mean "no schools", not "no network").
+  Future<Object> settle<T>(Future<T> f) =>
+      f.then<Object>((v) => v as Object, onError: (Object e) => _Failed(e));
   final results = await Future.wait([
-    testCatalogService.refresh(),
-    api.fetchCatalogSchools(),
+    settle(testCatalogService.refresh()),
+    settle(api.fetchCatalogSchools(strict: true)),
   ]);
-  return (
-    entries: results[0] as List<CatalogEntry>,
-    schools: results[1] as List<Map<String, String>>,
-  );
+  final entries =
+      results[0] is _Failed ? <CatalogEntry>[] : results[0] as List<CatalogEntry>;
+  final schools = results[1] is _Failed
+      ? <Map<String, String>>[]
+      : results[1] as List<Map<String, String>>;
+  final anySchool =
+      schools.isNotEmpty || entries.any((e) => e.schoolButtons.isNotEmpty);
+  if (!anySchool) {
+    final failure = results.whereType<_Failed>().firstOrNull;
+    if (failure != null) throw failure.error;
+  }
+  return (entries: entries, schools: schools);
+}
+
+class _Failed {
+  final Object error;
+  const _Failed(this.error);
 }
 
 class SchoolPickScreen extends StatefulWidget {
@@ -52,6 +70,10 @@ class _SchoolPickScreenState extends State<SchoolPickScreen> {
   String? _error;
   List<DiagnosticSchool> _schools = [];
   String _lastId = '';
+
+  /// A school card was tapped and its setup screen is still up: further taps
+  /// are ignored (a double-tap would stack two /session_setup routes).
+  bool _selecting = false;
 
   @override
   void initState() {
@@ -104,7 +126,7 @@ class _SchoolPickScreenState extends State<SchoolPickScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e is ApiException ? e.message : e.toString();
+        _error = localizedApiError(l10n, e);
       });
     }
   }
@@ -118,7 +140,9 @@ class _SchoolPickScreenState extends State<SchoolPickScreen> {
     }
   }
 
-  void _select(DiagnosticSchool s) {
+  Future<void> _select(DiagnosticSchool s) async {
+    if (_selecting) return;
+    _selecting = true;
     final row = s.raw['row'] as MonitoringSchoolRow;
     final entry = row.entry ??
         CatalogEntry(
@@ -142,7 +166,11 @@ class _SchoolPickScreenState extends State<SchoolPickScreen> {
     container.read(selectedSchoolCodeProvider.notifier).state = row.code;
     _remember(s.id);
     // push (not replace): this screen stays underneath as the back target.
-    context.push('/session_setup', extra: {'testKey': entry.testKey});
+    try {
+      await context.push('/session_setup', extra: {'testKey': entry.testKey});
+    } finally {
+      _selecting = false;
+    }
   }
 
   void _close() => context.canPop() ? context.pop() : context.go('/');
