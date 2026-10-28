@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'core/diagnostics/active_test_gate.dart';
 import 'core/diagnostics/device_command_client.dart';
 import 'core/diagnostics/device_report_sender.dart';
 import 'dart:async';
@@ -36,26 +37,12 @@ void main(List<String> args) {
   // no error, no spinner. That exact failure mode shipped in v1.0.58 (a
   // `AppLocalizations.of(context)!` null-check thrown from
   // AlochiMonitoringApp.build(), fixed below). Overriding the builder here
-  // guarantees ANY future build-time exception, anywhere in the tree, is
-  // shown to the user instead of silently rendering nothing.
+  // keeps a failed subtree visibly "empty but calm" instead of a gray fill,
+  // WITHOUT ever showing exception text to a student (see
+  // [buildErrorPlaceholder]); the details go to the log / crash reporter.
   ErrorWidget.builder = (FlutterErrorDetails details) {
     debugPrint('ErrorWidget: ${details.exceptionAsString()}');
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Material(
-        color: const Color(0xFF1B1B1F),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Text(
-              'Xatolik yuz berdi: ${details.exceptionAsString()}',
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
-    );
+    return buildErrorPlaceholder(details);
   };
 
   runZonedGuarded(() async {
@@ -327,6 +314,7 @@ class AlochiMonitoringApp extends ConsumerWidget {
                 actions: <Type, Action<Intent>>{
                   CommandPaletteIntent: CallbackAction<CommandPaletteIntent>(
                     onInvoke: (CommandPaletteIntent intent) {
+                      if (kioskShortcutsBlocked()) return null;
                       CommandPalette.showFromRouter(router);
                       return null;
                     },
@@ -334,6 +322,7 @@ class AlochiMonitoringApp extends ConsumerWidget {
                   FullscreenToggleIntent:
                       CallbackAction<FullscreenToggleIntent>(
                     onInvoke: (FullscreenToggleIntent intent) {
+                      if (kioskShortcutsBlocked()) return null;
                       toggleFullscreen();
                       return null;
                     },
@@ -348,6 +337,47 @@ class AlochiMonitoringApp extends ConsumerWidget {
     );
   }
 }
+
+/// What replaces a widget whose build threw. Release: a neutral, textless
+/// placeholder (students must never see exception text or an error message —
+/// the failure is logged and crash-reported elsewhere). Debug: the exception,
+/// for the developer. Not localized on purpose: it has no text at all in
+/// release.
+@visibleForTesting
+Widget buildErrorPlaceholder(FlutterErrorDetails details, {bool? debug}) {
+  if (debug ?? kDebugMode) {
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Material(
+        color: const Color(0xFF1B1B1F),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              details.exceptionAsString(),
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  return const ColoredBox(
+    color: AppColors.bg,
+    child: Center(
+      child: Icon(Icons.hourglass_empty_rounded, color: AppColors.ink3, size: 36),
+    ),
+  );
+}
+
+/// True while a student test is on screen: the command palette (jump to any
+/// screen) and the F11 window-mode toggle must do nothing then. Either flag
+/// is enough — the engine registers with [HeartbeatService]; every runner
+/// holds the [ActiveTestGate].
+@visibleForTesting
+bool kioskShortcutsBlocked() =>
+    HeartbeatService.instance.testScreenActive || ActiveTestGate.active.value;
 
 class CommandPaletteIntent extends Intent {
   const CommandPaletteIntent();

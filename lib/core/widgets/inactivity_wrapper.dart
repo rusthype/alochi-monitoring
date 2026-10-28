@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../db/credential_cache.dart';
+import '../diagnostics/active_test_gate.dart';
 import '../services/heartbeat_service.dart';
+import '../session/logout.dart' show clearStudentSession;
 
 class InactivityWrapper extends StatefulWidget {
   final Widget child;
@@ -40,16 +41,23 @@ class _InactivityWrapperState extends State<InactivityWrapper> {
 
   Future<void> _handleInactivity() async {
     // A running (or teacher-paused) test is never logged out from under the
-    // student: its own deadline / the teacher ends it.
-    if (HeartbeatService.instance.testScreenActive) {
+    // student: its own deadline / the teacher ends it. Any runner holds the
+    // ActiveTestGate (the engine also registers with HeartbeatService).
+    if (HeartbeatService.instance.testScreenActive ||
+        ActiveTestGate.active.value) {
       _startTimer();
       return;
     }
     if (mounted) {
-      // Talaba oldingi talabaning login/parolini ko'rmasligi uchun
-      // saqlangan credential'larni tozalaymiz — navigatsiyadan oldin
-      // await qilinadi, aks holda keyingi ekran o'qishi bilan poyga bo'ladi.
-      await CredentialCache.clear();
+      // Same sequence as an explicit logout (api token, heartbeat identity,
+      // cached credentials) so the next student on this shared PC inherits
+      // nothing of the previous one. Awaited before navigating, otherwise
+      // the next screen's read would race it.
+      try {
+        await clearStudentSession();
+      } catch (e) {
+        debugPrint('InactivityWrapper: clearStudentSession failed: $e');
+      }
       if (!mounted) return;
       // Force pop to root route
       widget.router.go('/');
