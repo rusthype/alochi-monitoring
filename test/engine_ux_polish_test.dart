@@ -168,7 +168,7 @@ void main() {
       home: Scaffold(
         body: SpellingWidget(
           index: 0,
-          question: Question(
+          question: const Question(
             type: QuestionType.spelling,
             scramble: 'cat',
             strAns: 'cat',
