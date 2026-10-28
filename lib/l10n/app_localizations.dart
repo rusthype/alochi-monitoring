@@ -5325,6 +5325,12 @@ abstract class AppLocalizations {
   /// **'Topshirgan'**
   String get rosterDoneBadge;
 
+  /// No description provided for @rosterTestNotLoaded.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuklanmadi, qayta urinish'**
+  String get rosterTestNotLoaded;
+
   /// No description provided for @autoSaveOk.
   ///
   /// In uz, this message translates to:

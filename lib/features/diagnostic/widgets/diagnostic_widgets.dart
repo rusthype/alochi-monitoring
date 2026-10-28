@@ -355,7 +355,7 @@ class DiagnosticStudentCard extends StatelessWidget {
               ],
               if (status != null) ...[
                 const SizedBox(width: 6),
-                _StudentStatusBadge(status: status!, onRetryTap: onRetryTap),
+                StudentStatusBadge(status: status!, onRetryTap: onRetryTap),
               ],
               const SizedBox(width: 8),
               Container(
@@ -382,13 +382,23 @@ class DiagnosticStudentCard extends StatelessWidget {
   }
 }
 
-class _StudentStatusBadge extends StatelessWidget {
+class StudentStatusBadge extends StatelessWidget {
   final StudentPrefetchStatus status;
   final VoidCallback? onRetryTap;
-  const _StudentStatusBadge({required this.status, this.onRetryTap});
+
+  /// Optional hover/long-press hint (the monitoring roster passes one; the
+  /// diagnostic card keeps its icon-only look).
+  final String? tooltip;
+  const StudentStatusBadge(
+      {super.key, required this.status, this.onRetryTap, this.tooltip});
 
   @override
   Widget build(BuildContext context) {
+    final badge = _icon();
+    return tooltip == null ? badge : Tooltip(message: tooltip!, child: badge);
+  }
+
+  Widget _icon() {
     switch (status) {
       case StudentPrefetchStatus.ready:
         return const Icon(Icons.check_circle_outline,
@@ -409,7 +419,7 @@ class _StudentStatusBadge extends StatelessWidget {
   }
 }
 
-/// Diagnostic-attempt completion badge — separate from [_StudentStatusBadge]
+/// Diagnostic-attempt completion badge — separate from [StudentStatusBadge]
 /// (offline-download readiness) and NEVER shows a score/percentage, by
 /// explicit product decision (scores stay admin-panel-only). Round
 /// icon-only status badge next to the student's name (no text in the card

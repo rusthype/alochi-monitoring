@@ -1513,6 +1513,7 @@
   "diagnosticRetakeConfirm": "Начать заново",
   "testRetakeBody": "Этот ученик уже сдал этот тест. Начать ещё одну попытку?",
   "rosterDoneBadge": "Сдал",
+  "rosterTestNotLoaded": "Не загружено, повторить",
   "autoSaveOk": "Резервная копия: {time}, {count} результатов",
   "@autoSaveOk": {
     "placeholders": {

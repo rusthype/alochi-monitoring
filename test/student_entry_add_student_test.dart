@@ -12,6 +12,7 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 const _session = TestSession(
@@ -25,7 +26,9 @@ const _session = TestSession(
 
 class _RosterApi extends MonitoringApi {
   @override
-  Future<List<Map<String, dynamic>>> fetchStudents(String groupId) async => [
+  Future<List<Map<String, dynamic>>> fetchStudents(String groupId,
+          {String? testKey}) async =>
+      [
         {
           'id': 's1',
           'name': 'Aliyev Ali',
@@ -40,7 +43,9 @@ const _longName = 'Valiyevalivalixonovich Muhammadalijonovich';
 
 class _LongNameApi extends MonitoringApi {
   @override
-  Future<List<Map<String, dynamic>>> fetchStudents(String groupId) async => [
+  Future<List<Map<String, dynamic>>> fetchStudents(String groupId,
+          {String? testKey}) async =>
+      [
         {'id': 's3', 'name': _longName, 'pending': true},
       ];
 }
@@ -48,6 +53,8 @@ class _LongNameApi extends MonitoringApi {
 void main() {
   late MonitoringApi saved;
   setUp(() {
+    // RosterDoneStore (roster reload) reads SharedPreferences.
+    SharedPreferences.setMockInitialValues({});
     saved = api;
     api = _RosterApi();
   });

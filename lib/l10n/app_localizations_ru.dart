@@ -2917,6 +2917,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get rosterDoneBadge => 'Сдал';
 
   @override
+  String get rosterTestNotLoaded => 'Не загружено, повторить';
+
+  @override
   String autoSaveOk(String time, int count) {
     return 'Резервная копия: $time, $count результатов';
   }

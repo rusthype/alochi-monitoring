@@ -575,6 +575,14 @@ class TestCatalogService {
     return job;
   }
 
+  /// The queued/running background prefetch of [testKey], or null. Roster
+  /// badge: loading while non-null, awaited to know when it finished.
+  Future<void>? backgroundJob(String testKey) => _bgJobs[testKey];
+
+  /// ALL images of [cached] (every variant) are on disk or known 404/410.
+  Future<bool> testImagesComplete(Map<String, dynamic> cached) =>
+      _allPresent(_imageUrls(cached));
+
   Future<void> _runBackground(List<String> urls) async {
     await _loadMissing();
     try {

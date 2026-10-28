@@ -425,11 +425,18 @@ class MonitoringApi {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchStudents(String groupId) async {
+  /// [testKey] (optional) asks the backend to flag students who already took
+  /// that test (`done`: bool per student). An older backend ignores the query
+  /// and omits `done`/`code` — callers must treat both as optional.
+  Future<List<Map<String, dynamic>>> fetchStudents(String groupId,
+      {String? testKey}) async {
     try {
+      final q = (testKey == null || testKey.isEmpty)
+          ? ''
+          : '?test_key=${Uri.encodeQueryComponent(testKey)}';
       final resp = await _send(() => http.get(
             Uri.parse(
-                '$_base/groups/${Uri.encodeComponent(groupId)}/students/'),
+                '$_base/groups/${Uri.encodeComponent(groupId)}/students/$q'),
             headers: _headers,
           ));
       if (resp.statusCode != 200) return [];

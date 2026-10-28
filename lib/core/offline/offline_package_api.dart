@@ -135,7 +135,7 @@ class OfflinePackageApi extends MonitoringApi {
   /// the hub would refuse its results (`student_invalid`).
   @override
   Future<List<Map<String, dynamic>>> fetchStudents(String groupId,
-      {bool includeLocal = true}) async {
+      {bool includeLocal = true, String? testKey}) async {
     final students = session.pack.students;
     final rows = students
         .where((s) => s['group_id']?.toString() == groupId)

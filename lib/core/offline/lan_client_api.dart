@@ -202,7 +202,8 @@ class LanClientApi extends MonitoringApi {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> fetchStudents(String groupId) async {
+  Future<List<Map<String, dynamic>>> fetchStudents(String groupId,
+      {String? testKey}) async {
     return _maps(
         await session.getJson('/students', query: {'group_id': groupId}));
   }
