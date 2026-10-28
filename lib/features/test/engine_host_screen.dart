@@ -40,7 +40,6 @@ import '../../core/offline/offline_session.dart';
 import '../diagnostic/screens/diagnostic_finished_screen.dart';
 import '../offline/offline_saved_screen.dart';
 import '../../shared/widgets/exit_error_scaffold.dart';
-import '../../shared/theme/app_theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EngineHostScreen
@@ -141,6 +140,11 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   bool _offlineSaveFailed = false;
   VoidCallback? _offlineRetry;
 
+  // Online branch: the result could not be queued locally. The completed
+  // attempt record is KEPT and OfflineSavedScreen offers a retry.
+  bool _retrying = false;
+  bool _historySaved = false;
+
   // Set by TestEngine.onExpiredAutoSubmit when a relaunch found the
   // deadline already passed and auto-submitted without the student seeing
   // it happen. EngineResultScreen shows a one-time notice for this.
@@ -165,7 +169,9 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       } else {
         _spec = spec;
       }
-    } catch (e) {
+    } catch (e, st) {
+      // Never shown to the student (raw exception text) - log it only.
+      debugPrint('EngineHostScreen: test parse error: $e\n$st');
       _parseException = e;
     }
   }
@@ -262,11 +268,27 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   // ── onComplete ──────────────────────────────────────────────────────────────
 
   Future<void> _handleComplete(ScoredResult result, int? elapsedSeconds) async {
-    final payload = _buildPayload(result, elapsedSeconds);
+    Map<String, dynamic> payload;
+    try {
+      payload = _buildPayload(result, elapsedSeconds);
+    } catch (e, st) {
+      // Whatever tripped the full payload, the answers must still be queued:
+      // fall back to the minimal shape the backend needs (it re-scores from
+      // raw_answers).
+      debugPrint('EngineHostScreen: _buildPayload failed, minimal payload: '
+          '$e\n$st');
+      payload = _minimalPayload(result, elapsedSeconds);
+    }
     // One token per completion: an offline retry re-appends with the SAME
     // idempotency key, so it can never create a second chain entry.
-    final token = _completeToken ??=
-        await resolveResultToken(result.testKey, widget.studentId);
+    String token;
+    try {
+      token = _completeToken ??=
+          await resolveResultToken(result.testKey, widget.studentId);
+    } catch (e) {
+      debugPrint('EngineHostScreen: resolveResultToken failed: $e');
+      token = _completeToken ??= newIdempotencyToken();
+    }
 
     // Offline USB pack mode: the pack has no answer key, so the locally
     // computed score is meaningless and is never stored or shown. The answers
@@ -306,35 +328,49 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       return;
     }
 
-    // 1. Save to local history DB.
-    try {
-      final (math, eng) = _resolveMathEngBuckets(result, _spec?.subject);
-      await HistoryDb.insertResult(
-        firstName: widget.firstName,
-        lastName: widget.lastName,
-        school: widget.school,
-        gradeGroup: widget.group ?? '',
-        mathScore: math.correct,
-        engScore: eng.correct,
-        totalPct: result.totalPct,
-      );
-    } catch (e) {
-      debugPrint('EngineHostScreen: HistoryDb error: $e');
+    // 1. Save to local history DB (once - a retry must not duplicate it).
+    if (!_historySaved) {
+      _historySaved = true;
+      try {
+        final (math, eng) = _resolveMathEngBuckets(result, _spec?.subject);
+        await HistoryDb.insertResult(
+          firstName: widget.firstName,
+          lastName: widget.lastName,
+          school: widget.school,
+          gradeGroup: widget.group ?? '',
+          mathScore: math.correct,
+          engScore: eng.correct,
+          totalPct: result.totalPct,
+        );
+      } catch (e) {
+        debugPrint('EngineHostScreen: HistoryDb error: $e');
+      }
     }
 
-    // 2. Enqueue for offline-first sync.
+    // 2. Enqueue for offline-first sync. If this fails the answers exist
+    // nowhere else: keep the completed attempt record (do NOT clear it) and
+    // show the in-place retry state instead of a thank-you screen.
     try {
       await OfflineQueue.enqueueLocal(payload, token);
+    } catch (e, st) {
+      debugPrint('EngineHostScreen: enqueueLocal error: $e\n$st');
+      if (!mounted) return;
+      setState(() {
+        _offlineSaveFailed = true;
+        _offlineRetry = () {
+          if (_retrying) return;
+          _retrying = true;
+          _handleComplete(result, elapsedSeconds)
+              .whenComplete(() => _retrying = false);
+        };
+      });
+      return;
+    }
+    try {
       await RosterDoneStore.add(result.testKey, widget.studentId);
     } catch (e) {
-      debugPrint('EngineHostScreen: enqueueLocal error: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(AppLocalizations.of(context)!.resultNotSavedError),
-          backgroundColor: AppColors.err,
-          duration: const Duration(seconds: 6),
-        ));
-      }
+      // Badge bookkeeping only - the result itself is safely queued.
+      debugPrint('EngineHostScreen: RosterDoneStore.add error: $e');
     }
 
     // 3. Attempt an immediate flush (fire-and-forget — don't block navigation).
@@ -355,10 +391,36 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
     // for why this must not be a Navigator.pushReplacement.
     if (!mounted) return;
     setState(() {
+      _offlineSaveFailed = false;
       _completedResult = result;
       _completedToken = token;
     });
   }
+
+  /// Minimal queue payload used only if [_buildPayload] throws.
+  Map<String, dynamic> _minimalPayload(ScoredResult result, int? elapsed) => {
+        'name': '${widget.lastName} ${widget.firstName}',
+        'grade': widget.grade ?? _spec?.grade ?? 0,
+        'variant': widget.variant.toString(),
+        'source': 'flutter',
+        'math': {'cor': 0, 'tot': 0},
+        'english': {'cor': 0, 'tot': 0},
+        'vocab': {'cor': 0, 'tot': 0},
+        'pct': result.totalPct.round(),
+        'school_code': widget.school,
+        ...resultIdentityFields(
+            group: widget.group,
+            groupId: widget.groupId,
+            studentId: widget.studentId),
+        'raw_answers': result.rawAnswers,
+        if (elapsed != null && elapsed > 0) 'duration_seconds': elapsed,
+        'detail': <String, dynamic>{
+          'sections': <Map<String, dynamic>>[],
+          'topics': <Map<String, dynamic>>[],
+          'units': <Map<String, dynamic>>[],
+          'test_key': result.testKey,
+        },
+      };
 
   // ── Build ───────────────────────────────────────────────────────────────────
 
@@ -369,9 +431,9 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
           message: AppLocalizations.of(context)!.testDataEmptyMsg);
     }
     if (_parseException != null) {
+      // Fixed student-facing text; the exception itself is only logged.
       return ExitErrorScaffold(
-          message: AppLocalizations.of(context)!
-              .testLoadErrorMsg(_parseException.toString()));
+          message: AppLocalizations.of(context)!.testLoadFailed);
     }
     if (_spec == null) {
       return ExitErrorScaffold(
