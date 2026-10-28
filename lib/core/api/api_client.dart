@@ -80,6 +80,25 @@ int? retryAfterSecondsOf(http.Response r) {
   return d == null ? null : (d.inMilliseconds / 1000).ceil();
 }
 
+/// A failure of the connection or the server (network / timeout / TLS / HTML
+/// page / 5xx / 408 / 429) - as opposed to the server answering "no" (401, 403,
+/// 404 ...). Only these may be answered with a cached copy of the data.
+bool isOfflineLikeError(Object e) {
+  if (e is ApiException) {
+    switch (e.code) {
+      case kApiTimeout:
+      case kApiNetwork:
+      case kApiTls:
+      case kApiBadResponse:
+        return true;
+    }
+    final s = e.statusCode;
+    return s == 0 || s == 408 || s == 429 || s >= 500;
+  }
+  // Anything that is not a server verdict (socket, timeout, parse ...).
+  return true;
+}
+
 class ApiException implements Exception {
   final int statusCode;
   final String message;

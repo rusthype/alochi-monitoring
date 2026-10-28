@@ -20,7 +20,7 @@ class ServerClock {
   static Duration _offset = Duration.zero;
   static bool _known = false; // an offset was observed or loaded
   static int? _persistedMs;
-  static Future<void>? _loading;
+  static bool _loaded = false;
 
   /// Test seam: the device clock.
   @visibleForTesting
@@ -44,11 +44,15 @@ class ServerClock {
 
   /// Loads the persisted offset once (never throws). Call before the first
   /// [now] that matters while offline; later calls are free.
-  static Future<void> ensureLoaded() => _loading ??= _load();
+  static Future<void> ensureLoaded() async {
+    if (_loaded) return;
+    await _load();
+  }
 
   static Future<void> _load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      _loaded = true;
       final ms = prefs.getInt(_prefsKey);
       // A fresher offset observed meanwhile wins over the stored one.
       if (ms != null && !_known) {
@@ -97,7 +101,7 @@ class ServerClock {
     _offset = Duration.zero;
     _known = false;
     _persistedMs = null;
-    _loading = null;
+    _loaded = false;
     deviceNow = DateTime.now;
   }
 }

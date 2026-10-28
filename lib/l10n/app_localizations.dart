@@ -5618,6 +5618,72 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Testlar ro\'yxatini yuklab bo\'lmadi'**
   String get groupSelectTestsLoadFailed;
+
+  /// No description provided for @pendingResultsChip.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} natija yuborilmagan'**
+  String pendingResultsChip(int count);
+
+  /// No description provided for @pendingResultsOldestMinutes.
+  ///
+  /// In uz, this message translates to:
+  /// **'eng eskisi {n} daq. oldin'**
+  String pendingResultsOldestMinutes(int n);
+
+  /// No description provided for @pendingResultsOldestHours.
+  ///
+  /// In uz, this message translates to:
+  /// **'eng eskisi {n} soat oldin'**
+  String pendingResultsOldestHours(int n);
+
+  /// No description provided for @pendingResultsOldestDays.
+  ///
+  /// In uz, this message translates to:
+  /// **'eng eskisi {n} kun oldin'**
+  String pendingResultsOldestDays(int n);
+
+  /// No description provided for @pendingResultsSendNow.
+  ///
+  /// In uz, this message translates to:
+  /// **'Hozir yuborish'**
+  String get pendingResultsSendNow;
+
+  /// No description provided for @pendingResultsSentToast.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} natija yuborildi'**
+  String pendingResultsSentToast(int count);
+
+  /// No description provided for @pendingResultsFailedToast.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yuborib bo\'lmadi. Natijalar qurilmada saqlangan.'**
+  String get pendingResultsFailedToast;
+
+  /// No description provided for @pendingResultsNoNetworkToast.
+  ///
+  /// In uz, this message translates to:
+  /// **'Internet yo\'q. Natijalar qurilmada saqlangan.'**
+  String get pendingResultsNoNetworkToast;
+
+  /// No description provided for @diagnosticFinishedSavedPill.
+  ///
+  /// In uz, this message translates to:
+  /// **'Saqlandi'**
+  String get diagnosticFinishedSavedPill;
+
+  /// No description provided for @offlineRosterBanner.
+  ///
+  /// In uz, this message translates to:
+  /// **'Oflayn ro\'yxat'**
+  String get offlineRosterBanner;
+
+  /// No description provided for @queueDbRecoveredToast.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natijalar bazasi buzilgan edi va qayta yaratildi. Eski fayl saqlab qo\'yildi.'**
+  String get queueDbRecoveredToast;
 }
 
 class _AppLocalizationsDelegate

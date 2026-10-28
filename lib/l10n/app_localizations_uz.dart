@@ -3101,4 +3101,50 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get groupSelectTestsLoadFailed =>
       'Testlar ro\'yxatini yuklab bo\'lmadi';
+
+  @override
+  String pendingResultsChip(int count) {
+    return '$count natija yuborilmagan';
+  }
+
+  @override
+  String pendingResultsOldestMinutes(int n) {
+    return 'eng eskisi $n daq. oldin';
+  }
+
+  @override
+  String pendingResultsOldestHours(int n) {
+    return 'eng eskisi $n soat oldin';
+  }
+
+  @override
+  String pendingResultsOldestDays(int n) {
+    return 'eng eskisi $n kun oldin';
+  }
+
+  @override
+  String get pendingResultsSendNow => 'Hozir yuborish';
+
+  @override
+  String pendingResultsSentToast(int count) {
+    return '$count natija yuborildi';
+  }
+
+  @override
+  String get pendingResultsFailedToast =>
+      'Yuborib bo\'lmadi. Natijalar qurilmada saqlangan.';
+
+  @override
+  String get pendingResultsNoNetworkToast =>
+      'Internet yo\'q. Natijalar qurilmada saqlangan.';
+
+  @override
+  String get diagnosticFinishedSavedPill => 'Saqlandi';
+
+  @override
+  String get offlineRosterBanner => 'Oflayn ro\'yxat';
+
+  @override
+  String get queueDbRecoveredToast =>
+      'Natijalar bazasi buzilgan edi va qayta yaratildi. Eski fayl saqlab qo\'yildi.';
 }

@@ -26,6 +26,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../shared/widgets/language_switcher.dart';
+import '../../shared/widgets/pending_results_chip.dart';
 import '../../shared/widgets/update_progress_dialog.dart';
 import '../session/session_providers.dart';
 
@@ -563,6 +564,17 @@ class _LoginScreenState extends State<LoginScreen>
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: _appVersionBadge(palette),
+                  ),
+                ),
+              ),
+              // Teacher chip: results still only on this PC (hidden at 0).
+              const Positioned(
+                bottom: 0,
+                right: 0,
+                child: SafeArea(
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: PendingResultsChip(),
                   ),
                 ),
               ),
