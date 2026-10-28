@@ -322,6 +322,12 @@ class HeartbeatService with WidgetsBindingObserver {
     _resetProctorState();
   }
 
+  /// Drops a not-yet-sent answer report. The test screen calls this when it
+  /// goes away: nothing is lost (a 'finished' ping carries the latest
+  /// answers, and a submitted result supersedes them), but no timer may
+  /// outlive the screen that scheduled it.
+  void cancelPendingAnswerReport() => _cancelAnswerReport();
+
   void _cancelAnswerReport() {
     _answerReportTimer?.cancel();
     _answerReportTimer = null;
@@ -329,8 +335,8 @@ class HeartbeatService with WidgetsBindingObserver {
   }
 
   void finishTest() {
-    if (_testSessionId == null) return;
     _cancelAnswerReport();
+    if (_testSessionId == null) return;
     unawaited(_ping('finished', leaving: true));
     _testSessionId = null;
     _schoolCode = '';

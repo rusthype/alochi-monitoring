@@ -775,6 +775,7 @@ class _TestEngineState extends State<TestEngine>
     HeartbeatService.instance.onLockChanged = null;
     HeartbeatService.instance.onWarning = null;
     HeartbeatService.instance.onExtendSeconds = null;
+    HeartbeatService.instance.cancelPendingAnswerReport();
     if (!_finishing) {
       // Route popped/replaced without ever calling _finishNow() (kiosk
       // logout, navigation, ...). The attempt is KEPT: re-entering resumes the
