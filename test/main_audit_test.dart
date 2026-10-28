@@ -97,6 +97,8 @@ void main() {
       router.go('/diagnostic_session_setup');
       await tester.pump(const Duration(milliseconds: 500));
 
+      // LoginScreen.initState already clears the previous student session.
+      fake.cleared = 0;
       final release = ActiveTestGate.enter();
       await tester.pump(const Duration(minutes: 31));
       await tester.pump();
