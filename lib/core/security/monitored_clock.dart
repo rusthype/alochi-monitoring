@@ -102,6 +102,8 @@ class MonitoredClock {
 
   /// A saved attempt older than this (in ticks) is treated as "different boot".
   static const int _maxRebaseElapsedMs = 12 * 60 * 60 * 1000;
+  static const int _clockBackTolerance = 60 * 1000;
+  static const int _oneDayMs = 24 * 60 * 60 * 1000;
 
   MonitoredClock({
     TicksFn? ticks,
@@ -174,7 +176,18 @@ class MonitoredClock {
   /// Same boot (ticks did not go backwards): remaining time is the saved
   /// remaining minus the monotonic time that passed, immune to a date change
   /// while the app was closed. Otherwise (reboot, or a legacy record without
-  /// a snapshot) the stored epoch deadline is used unchanged.
+  /// a snapshot) the stored epoch deadline is used unchanged, with two guards
+  /// against a PC whose RTC is wrong after a power cut:
+  ///  * (a) the clock reads EARLIER than the save time by more than
+  ///    [_clockBackTolerance] (reset to 1970/2000, or moved back): granting
+  ///    `deadline - now` would hand out decades, so the REMAINING time that
+  ///    was recorded at save is kept instead;
+  ///  * (b) the clock is AHEAD of the save time by more than the remaining
+  ///    time plus a day: an absence that long is indistinguishable from a
+  ///    bogus forward jump (dead CMOS battery, NTP fixing a stale save), and
+  ///    expiring instantly would cost the child the whole attempt, so the
+  ///    remaining time recorded at save is kept too. Shorter absences expire
+  ///    honestly (power-off time counts, the engine auto-submits).
   int rebaseSavedDeadline({
     required int deadlineEpochMs,
     int? epochAtSaveMs,
@@ -182,7 +195,15 @@ class MonitoredClock {
   }) {
     if (epochAtSaveMs == null || ticksAtSaveMs == null) return deadlineEpochMs;
     final elapsed = ticksMs - ticksAtSaveMs;
-    if (elapsed < 0 || elapsed > _maxRebaseElapsedMs) return deadlineEpochMs;
+    if (elapsed < 0 || elapsed > _maxRebaseElapsedMs) {
+      final remainingAtSave = deadlineEpochMs - epochAtSaveMs;
+      final sinceSave = nowMs - epochAtSaveMs;
+      if (sinceSave < -_clockBackTolerance ||
+          sinceSave > (remainingAtSave < 0 ? 0 : remainingAtSave) + _oneDayMs) {
+        return nowMs + remainingAtSave;
+      }
+      return deadlineEpochMs;
+    }
     final remaining = deadlineEpochMs - epochAtSaveMs - elapsed;
     return nowMs + remaining;
   }

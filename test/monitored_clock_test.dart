@@ -188,12 +188,14 @@ void main() {
     test('reboot (ticks went backwards) falls back to the stored deadline', () {
       final f = _Fake()..ticks = 5000;
       final c = f.clock();
+      // Saved 5 min before "now" with 20 min left: a plausible power cut.
+      final saved = f.wall - 5 * 60000;
       final rebased = c.rebaseSavedDeadline(
-        deadlineEpochMs: 123456,
-        epochAtSaveMs: 1,
+        deadlineEpochMs: saved + 20 * 60000,
+        epochAtSaveMs: saved,
         ticksAtSaveMs: 9999999,
       );
-      expect(rebased, 123456);
+      expect(rebased, saved + 20 * 60000);
     });
 
     test('legacy record without snapshot is unchanged', () {
