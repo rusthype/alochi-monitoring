@@ -469,6 +469,8 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
       lastName: widget.lastName,
       school: widget.school,
       group: widget.group,
+      groupId: widget.groupId,
+      grade: widget.grade,
       studentId: widget.studentId,
       duration: _effectiveDuration(_spec!),
       onComplete: _handleComplete,

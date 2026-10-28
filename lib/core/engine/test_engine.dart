@@ -39,6 +39,12 @@ class TestEngine extends StatefulWidget {
   /// scoring/payload logic does not read it.
   final String studentId;
 
+  /// Identity extras stored in the attempt record so a crash-recovery scan
+  /// (attempt_recovery_service.dart) can rebuild the result payload without
+  /// this screen. Optional: absent in flows that do not know them.
+  final String? groupId;
+  final int? grade;
+
   /// Test duration. Countdown starts immediately.
   final Duration duration;
 
@@ -68,6 +74,8 @@ class TestEngine extends StatefulWidget {
     required this.school,
     this.group,
     this.studentId = '',
+    this.groupId,
+    this.grade,
     required this.duration,
     required this.onComplete,
     this.onExpiredAutoSubmit,
@@ -128,6 +136,12 @@ class _TestEngineState extends State<TestEngine>
   /// Nonce of this attempt (attempt_store `attempt_id`); null for records
   /// written before it existed. Carried through every persist, never changed.
   String? _attemptId;
+
+  /// Cumulative extra seconds already folded into [_deadlineMs] (what the
+  /// server's `extra_time_seconds` total looked like when last applied).
+  /// Persisted so a restart can tell newly granted extra time from the part
+  /// the saved deadline already contains.
+  int _extraAppliedS = 0;
 
   /// Set when the student finished (or time/admin ended it). Persisted BEFORE
   /// onComplete so a crash-replay re-submits the same snapshot, not a new one.
@@ -270,6 +284,7 @@ class _TestEngineState extends State<TestEngine>
           // the deadline too, not just the displayed _secs, otherwise the
           // next tick's _syncSecsFromDeadline() would immediately recompute
           // _secs from the OLD deadline and undo this extension.
+          _extraAppliedS += secs;
           if (_deadlineMs != null) {
             _deadlineMs = _deadlineMs! + secs * 1000;
           } else {
@@ -313,7 +328,7 @@ class _TestEngineState extends State<TestEngine>
   /// exists, seeding [_answers]/[_controllers] and the remaining countdown
   /// from the saved deadline. Otherwise starts a fresh attempt and persists
   /// its deadline immediately so a crash right after start can still resume.
-  static const Duration _serverResumeTimeout = Duration(seconds: 5);
+  static const Duration _serverResumeTimeout = Duration(seconds: 2);
 
   Future<void> _restoreAttempt() async {
     try {
@@ -387,6 +402,9 @@ class _TestEngineState extends State<TestEngine>
     // network-free when rendered without that flow (widget tests). Bounded:
     // the student never waits on a slow network to start answering.
     Future<Map<String, dynamic>?> fetchServer() async {
+      // Without a login token the call is a guaranteed 401 (LAN / offline
+      // clients answer locally and need none): do not even try.
+      if (!api.isLan && !api.hasAuthToken) return null;
       try {
         final resp =
             await api.sessionResume(testKey).timeout(_serverResumeTimeout);
@@ -497,7 +515,7 @@ class _TestEngineState extends State<TestEngine>
       final shift = _deadlineMs! - savedDeadline;
       _startedAtMs = startedRaw is num ? startedRaw.toInt() + shift : nowMs;
       resumed = true;
-      _applyPendingExtend();
+      _applyRestoredExtra((localAnswers?['extra_applied_s'] as num?)?.toInt());
       _markRestored();
     }
 
@@ -507,7 +525,7 @@ class _TestEngineState extends State<TestEngine>
       _attemptId ??= newIdempotencyToken();
       _startedAtMs = nowMs;
       _deadlineMs = nowMs + widget.duration.inMilliseconds;
-      _applyPendingExtend();
+      _applyRestoredExtra(0);
       _markRestored();
       await _persistNow();
     }
@@ -556,6 +574,34 @@ class _TestEngineState extends State<TestEngine>
   /// [_deadlineMs] are final for the UI. Idempotent.
   void _markRestored() {
     if (mounted && !_restored) setState(() => _restored = true);
+  }
+
+  /// Brings a freshly built deadline up to the server's cumulative extra
+  /// time. [savedExtraS] is the part the saved deadline already contains
+  /// (0 for a fresh attempt). Extra time granted while the PC was down or
+  /// before this screen existed has already been consumed by the heartbeat
+  /// baseline (its delta went to nobody), so it is read back from there:
+  /// apply `baseline - saved`, and drop whatever arrived through
+  /// [_pendingExtendSecs] since the baseline already contains it. With no
+  /// server total yet (baseline 0) the baseline is seeded with what the
+  /// deadline holds, so the first reply only adds the new part.
+  void _applyRestoredExtra(int? savedExtraS) {
+    final saved = savedExtraS ?? 0;
+    final hb = HeartbeatService.instance;
+    final total = hb.extraTimeBaseline;
+    if (total == 0) {
+      _extraAppliedS = saved;
+      if (saved != 0) hb.seedExtraTimeBaseline(saved);
+      _applyPendingExtend();
+      return;
+    }
+    _pendingExtendSecs = 0;
+    _extraAppliedS = total;
+    final delta = total - saved;
+    if (delta != 0) {
+      _deadlineMs = _deadlineMs! + delta * 1000;
+      _pausedRestoreNeedsSave = true; // persist the new deadline/extra total
+    }
   }
 
   /// Folds extra time granted while the restore was in flight into the
@@ -644,10 +690,16 @@ class _TestEngineState extends State<TestEngine>
       if (_completed) 'completed': true,
       'deadline_epoch_ms': _deadlineMs,
       if (_pausedRemainingMs != null) 'paused_remaining_ms': _pausedRemainingMs,
+      'extra_applied_s': _extraAppliedS,
       ..._clock.snapshot(),
       'student_name': _studentName(),
       'student_id': widget.studentId,
       'group_name': widget.group ?? '',
+      // Identity for the startup recovery scan (see attempt_recovery_service).
+      'test_key': widget.spec.testKey,
+      'school': widget.school,
+      'grade': widget.grade ?? widget.spec.grade,
+      'group_id': widget.groupId ?? '',
     });
   }
 

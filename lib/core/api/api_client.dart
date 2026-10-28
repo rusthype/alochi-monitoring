@@ -160,6 +160,10 @@ class MonitoringApi {
   void setToken(String token) => _token = token;
   void clearToken() => _token = null;
 
+  /// True once a login token is set (LAN/offline clients override their own
+  /// endpoints and do not need one).
+  bool get hasAuthToken => _token != null;
+
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
         if (_token != null) 'Authorization': 'Bearer $_token',

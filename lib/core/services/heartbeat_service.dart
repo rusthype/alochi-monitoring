@@ -192,6 +192,16 @@ class HeartbeatService with WidgetsBindingObserver {
     }
   }
 
+  /// Cumulative extra seconds the server has reported for the current attempt
+  /// (0 until the first reply that carries any). A restoring test screen
+  /// reads it because a reply that arrived before the screen existed has
+  /// already consumed its delta.
+  int get extraTimeBaseline => _extraTimeBaseline;
+
+  /// Tells the baseline that [seconds] are already reflected in a restored
+  /// deadline, so the next server total only adds the part not yet applied.
+  void seedExtraTimeBaseline(int seconds) => _extraTimeBaseline = seconds;
+
   void _resetProctorState() {
     _locked = false;
     _extraTimeBaseline = 0;

@@ -199,11 +199,12 @@ class AttemptStore {
     }
   }
 
-  static Future<void> _writeSlot(String slot, String raw) async {
+  static Future<void> _writeSlot(String slot, String raw,
+      {SharedPreferences? prefs}) async {
     final dir = _dir;
     if (dir == null) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(slot, raw);
+      await (prefs ?? await SharedPreferences.getInstance())
+          .setString(slot, raw);
       return;
     }
     final path = _path(dir, slot);
@@ -306,6 +307,10 @@ class AttemptStore {
     }
     return _serial(() async {
       try {
+        // Prefs backend: take the instance first, as the old code did - the
+        // widget tests' fake-async pumping depends on this hop order.
+        final prefs =
+            _dir == null ? await SharedPreferences.getInstance() : null;
         final sid = data['student_id']?.toString() ?? '';
         if (_mainOwner[testKey] != sid) {
           final existing = await _readSlot(_key(testKey));
@@ -319,7 +324,7 @@ class AttemptStore {
           if (sid.isNotEmpty) await _deleteSlot(_parkKey(testKey, sid));
         }
         final encrypted = await QueueCrypto.encryptPayload(encoded);
-        await _writeSlot(_key(testKey), encrypted);
+        await _writeSlot(_key(testKey), encrypted, prefs: prefs);
         _mainOwner[testKey] = sid;
       } catch (e) {
         debugPrint('AttemptStore.save($testKey) error: $e');
