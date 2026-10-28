@@ -2881,4 +2881,13 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get autoSaveFailed =>
       'Резервная копия не сохранена — используйте Экспорт';
+
+  @override
+  String get groupSelectNoTestsForSchool => 'Для этой школы тесты не найдены';
+
+  @override
+  String get groupSelectGroupsLoadFailed => 'Не удалось загрузить группы';
+
+  @override
+  String get groupSelectTestsLoadFailed => 'Не удалось загрузить список тестов';
 }

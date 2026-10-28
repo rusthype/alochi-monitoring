@@ -270,9 +270,8 @@ bool _isWordUsed(String word, String typedText) {
 
 /// Shared text field decoration used across spelling / sentence_order /
 /// fill_blank input widgets.
-InputDecoration _inputDecoration({String hintText = 'Javob...'}) =>
-    InputDecoration(
-      hintText: hintText,
+InputDecoration _inputDecoration(BuildContext context) => InputDecoration(
+      hintText: AppLocalizations.of(context)?.answerHintText,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
@@ -558,7 +557,7 @@ class SpellingWidget extends StatelessWidget {
           // silently rewrite a valid Uzbek word before it is ever scored.
           autocorrect: false,
           enableSuggestions: false,
-          decoration: _inputDecoration(),
+          decoration: _inputDecoration(context),
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ]),
@@ -988,7 +987,7 @@ class SentenceFreeTextWidget extends StatelessWidget {
           // it is ever scored.
           autocorrect: false,
           enableSuggestions: false,
-          decoration: _inputDecoration(),
+          decoration: _inputDecoration(context),
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ]),
@@ -1228,7 +1227,7 @@ class _FillBlankWidgetState extends State<FillBlankWidget> {
           // silently rewrite a valid Uzbek word before it is ever scored.
           autocorrect: false,
           enableSuggestions: false,
-          decoration: _inputDecoration(),
+          decoration: _inputDecoration(context),
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ]),

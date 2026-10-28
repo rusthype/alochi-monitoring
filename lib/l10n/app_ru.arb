@@ -1503,5 +1503,8 @@
       "count": {"type": "int"}
     }
   },
-  "autoSaveFailed": "Резервная копия не сохранена — используйте Экспорт"
+  "autoSaveFailed": "Резервная копия не сохранена — используйте Экспорт",
+  "groupSelectNoTestsForSchool": "Для этой школы тесты не найдены",
+  "groupSelectGroupsLoadFailed": "Не удалось загрузить группы",
+  "groupSelectTestsLoadFailed": "Не удалось загрузить список тестов"
 }

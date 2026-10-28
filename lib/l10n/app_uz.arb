@@ -1569,5 +1569,8 @@
       "count": {"type": "int"}
     }
   },
-  "autoSaveFailed": "Zaxira nusxa saqlanmadi — Eksportdan foydalaning"
+  "autoSaveFailed": "Zaxira nusxa saqlanmadi — Eksportdan foydalaning",
+  "groupSelectNoTestsForSchool": "Bu maktab uchun testlar topilmadi",
+  "groupSelectGroupsLoadFailed": "Guruhlarni yuklab bo'lmadi",
+  "groupSelectTestsLoadFailed": "Testlar ro'yxatini yuklab bo'lmadi"
 }

@@ -5266,6 +5266,24 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Zaxira nusxa saqlanmadi — Eksportdan foydalaning'**
   String get autoSaveFailed;
+
+  /// No description provided for @groupSelectNoTestsForSchool.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu maktab uchun testlar topilmadi'**
+  String get groupSelectNoTestsForSchool;
+
+  /// No description provided for @groupSelectGroupsLoadFailed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Guruhlarni yuklab bo\'lmadi'**
+  String get groupSelectGroupsLoadFailed;
+
+  /// No description provided for @groupSelectTestsLoadFailed.
+  ///
+  /// In uz, this message translates to:
+  /// **'Testlar ro\'yxatini yuklab bo\'lmadi'**
+  String get groupSelectTestsLoadFailed;
 }
 
 class _AppLocalizationsDelegate
