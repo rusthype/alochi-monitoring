@@ -1,13 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/db/test_cache.dart';
+import '../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
 import '../../core/offline/offline_session.dart';
+import '../../core/services/roster_done_store.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../core/services/toast_service.dart';
 import '../../shared/theme/app_theme.dart';
+import '../diagnostic/widgets/diagnostic_widgets.dart'
+    show StudentPrefetchStatus, StudentStatusBadge;
 import 'runner_dispatch.dart';
 import 'test_session.dart';
 import '../../core/widgets/skeleton.dart';
@@ -16,10 +22,15 @@ class StudentEntryScreen extends StatefulWidget {
   final TestSession session;
   final Map<String, dynamic>? preselectedGroup;
 
+  /// Test seam for the image-readiness badge; defaults to the global service.
+  @visibleForTesting
+  final TestCatalogService? catalog;
+
   const StudentEntryScreen({
     super.key,
     required this.session,
     this.preselectedGroup,
+    this.catalog,
   });
 
   @override
@@ -54,8 +65,17 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
   List<Map<String, dynamic>> _students = [];
   Map<String, dynamic>? _selectedStudent;
   bool _loadingStudents = false;
-  // Pack mode only: roster ids that already finished this test.
+  // Roster ids that already finished this test: pack chain + backend `done`
+  // flag + this kiosk's own local record (RosterDoneStore).
   Set<String> _done = {};
+  // Test-level image readiness badge; null = show nothing (pack/LAN, no cache).
+  StudentPrefetchStatus? _testStatus;
+  int _statusToken = 0;
+
+  TestCatalogService get _catalog => widget.catalog ?? testCatalogService;
+
+  static String _rosterKey(Map<String, dynamic> s) =>
+      (s['student_code'] ?? s['id'] ?? '').toString();
 
   String get _selectedStudentId => (_selectedStudent?['student_code'] ??
           _selectedStudent?['id'] ??
@@ -129,10 +149,16 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       _err = null;
     });
     try {
-      final s = await api.fetchStudents(groupId);
-      final done = await OfflinePackSession.current
-              ?.finishedStudentIds(widget.session.testKey) ??
-          <String>{};
+      final testKey = widget.session.testKey;
+      final s = await api.fetchStudents(groupId, testKey: testKey);
+      final done = <String>{
+        ...await OfflinePackSession.current?.finishedStudentIds(testKey) ??
+            <String>{},
+        ...await RosterDoneStore.load(testKey),
+        // Old backend: no `done` field -> nothing added.
+        for (final st in s)
+          if (st['done'] == true) _rosterKey(st),
+      };
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       setState(() {
@@ -141,6 +167,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
         _loadingStudents = false;
         _err = s.isEmpty ? l10n.noStudentsInGroup : null;
       });
+      unawaited(_refreshTestStatus());
     } catch (e) {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
@@ -149,6 +176,42 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
         _err = l10n.loadStudentsError;
       });
     }
+  }
+
+  /// Test-level "images on disk" badge: loading while the background prefetch
+  /// runs, then ready (all variants complete) or error (retry on tap).
+  Future<void> _refreshTestStatus() async {
+    final key = widget.session.testKey;
+    final token = ++_statusToken;
+    StudentPrefetchStatus? next;
+    try {
+      final cached = isOfflineModeOpen ? null : await TestCache.get(key);
+      if (cached != null) {
+        final job = _catalog.backgroundJob(key);
+        if (job != null) {
+          if (!mounted || token != _statusToken) return;
+          setState(() => _testStatus = StudentPrefetchStatus.loading);
+          await job;
+        }
+        next = await _catalog.testImagesComplete(cached)
+            ? StudentPrefetchStatus.ready
+            : StudentPrefetchStatus.error;
+      }
+    } catch (e) {
+      debugPrint('StudentEntryScreen: test status error: $e');
+      next = StudentPrefetchStatus.error;
+    }
+    if (!mounted || token != _statusToken) return;
+    setState(() => _testStatus = next);
+  }
+
+  Future<void> _retryTestPrefetch() async {
+    final key = widget.session.testKey;
+    final cached = await TestCache.get(key);
+    if (cached == null || !mounted) return;
+    setState(() => _testStatus = StudentPrefetchStatus.loading);
+    unawaited(_catalog.backgroundPrefetch(key, cached));
+    await _refreshTestStatus();
   }
 
   @override
@@ -207,7 +270,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
             studentId: studentId,
             drawn: _drawnVariant[studentId]);
         _drawnVariant[studentId] = variant;
-        ok = await testCatalogService.ensureVariantImages(cached, variant,
+        ok = await _catalog.ensureVariantImages(cached, variant,
             onProgress: (done, total) {
           if (mounted && token == _prepToken) {
             setState(() => _prepProgress = '$done/$total');
@@ -226,6 +289,9 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
         _preparedVariant = variant;
       }
     });
+    if (ok && _testStatus == StudentPrefetchStatus.error) {
+      unawaited(_refreshTestStatus());
+    }
     if (!ok) {
       ToastService.showError(
           context, AppLocalizations.of(context)!.downloadError);
@@ -308,10 +374,18 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       preparedVariant: _preparedVariant,
     );
     if (!mounted) return;
-    
-    // Foydalanuvchi "Keyingi o'quvchi"ni bossa yoki testdan qaytsa, 
-    // to'g'ridan-to'g'ri Guruh tanlash oynasiga (GroupSelectScreen) qaytarib yuboramiz.
-    Navigator.of(context).pop();
+    // Stay on this roster (same group, same test) for the next student: also
+    // after a launch failure (locked / not in cache), which just toasts.
+    setState(() => _launching = false);
+    if (_selectedGroup != null) {
+      await _loadStudents(); // clears selection + prepared state, refreshes done
+    } else {
+      // Group-less path: no roster to reload, reset the entry by hand.
+      _cancelPrepare();
+      _firstCtrl.clear();
+      _lastCtrl.clear();
+      setState(() => _err = null);
+    }
   }
 
   Future<bool> _confirmRetake() async {
@@ -639,11 +713,10 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                         name: name,
                                         avatarLetter: initial,
                                         isSelected: _selectedStudent == student,
-                                        isDone: _done.contains(
-                                            (student['student_code'] ??
-                                                    student['id'] ??
-                                                    '')
-                                                .toString()),
+                                        isDone:
+                                            _done.contains(_rosterKey(student)),
+                                        testStatus: _testStatus,
+                                        onRetryStatus: _retryTestPrefetch,
                                         onTap: () {
                                           setState(
                                               () => _selectedStudent = student);
@@ -946,6 +1019,8 @@ class _StudentCard extends StatefulWidget {
   final String avatarLetter;
   final bool isSelected;
   final bool isDone;
+  final StudentPrefetchStatus? testStatus;
+  final VoidCallback? onRetryStatus;
   final VoidCallback onTap;
 
   const _StudentCard({
@@ -953,6 +1028,8 @@ class _StudentCard extends StatefulWidget {
     required this.avatarLetter,
     required this.isSelected,
     this.isDone = false,
+    this.testStatus,
+    this.onRetryStatus,
     required this.onTap,
   });
 
@@ -1092,6 +1169,22 @@ class _StudentCardState extends State<_StudentCard> {
                                     fontWeight: FontWeight.w600)),
                           ]),
                         ),
+                      ),
+                    ),
+                  if (widget.testStatus != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: StudentStatusBadge(
+                        status: widget.testStatus!,
+                        onRetryTap: widget.onRetryStatus,
+                        tooltip: switch (widget.testStatus!) {
+                          StudentPrefetchStatus.ready =>
+                            AppLocalizations.of(context)!.downloaded,
+                          StudentPrefetchStatus.loading =>
+                            AppLocalizations.of(context)!.downloading,
+                          StudentPrefetchStatus.error =>
+                            AppLocalizations.of(context)!.rosterTestNotLoaded,
+                        },
                       ),
                     ),
                   AnimatedContainer(

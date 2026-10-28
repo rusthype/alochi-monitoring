@@ -129,7 +129,8 @@ class OfflinePackageApi extends MonitoringApi {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> fetchStudents(String groupId) async {
+  Future<List<Map<String, dynamic>>> fetchStudents(String groupId,
+      {String? testKey}) async {
     final students = session.pack.students;
     if (students.isEmpty) return [];
     return students

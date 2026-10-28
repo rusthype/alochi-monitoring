@@ -40,6 +40,7 @@ import '../../core/engine/test_scorer.dart';
 import '../../core/services/heartbeat_service.dart';
 import '../../core/services/html_service.dart';
 import '../../core/services/pdf_service.dart';
+import '../../core/services/roster_done_store.dart';
 import '../../core/sync/sync_service.dart';
 import '../../core/offline/lan_client_session.dart';
 import '../../core/offline/offline_crypto.dart';
@@ -285,6 +286,8 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
         });
         return;
       }
+      // Pack roster reads its own chain; a LAN client has no other record.
+      if (lan != null) await RosterDoneStore.add(result.testKey, widget.studentId);
       if (!mounted) return;
       setState(() {
         _offlineSaveFailed = false;
@@ -312,6 +315,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
     // 2. Enqueue for offline-first sync.
     try {
       await OfflineQueue.enqueueLocal(payload, token);
+      await RosterDoneStore.add(result.testKey, widget.studentId);
     } catch (e) {
       debugPrint('EngineHostScreen: enqueueLocal error: $e');
       if (mounted) {

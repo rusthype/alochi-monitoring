@@ -109,8 +109,8 @@ void main() {
   });
 
   group('student_entry_screen', () {
-    // Host: a button that pushes the roster; a launch ends with the roster
-    // popping itself, a cancelled retake leaves it on screen.
+    // Host: a button that pushes the roster; it stays on screen after a
+    // launch returns or a retake is cancelled.
     Future<void> pump(WidgetTester tester) async {
       await tester.pumpWidget(MaterialApp(
         locale: const Locale('uz'),
@@ -178,14 +178,15 @@ void main() {
       expect(find.byType(StudentEntryScreen), findsOneWidget);
 
       // confirm proceeds to launch (nothing cached in this harness -> the
-      // launcher bails and the roster pops itself).
+      // launcher bails and the roster STAYS on the same group/test).
       await tester.tap(find.text(l10n.startTest));
       await tester.pumpAndSettle();
       await tester.tap(find.text(l10n.diagnosticRetakeConfirm));
       await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 300)));
       await tester.pumpAndSettle(const Duration(seconds: 5));
-      expect(find.byType(StudentEntryScreen), findsNothing);
+      expect(find.byType(StudentEntryScreen), findsOneWidget);
+      expect(find.text(l10n.rosterDoneBadge), findsOneWidget);
     });
   });
 

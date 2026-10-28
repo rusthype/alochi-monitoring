@@ -1562,6 +1562,7 @@
   "diagnosticRetakeConfirm": "Qayta boshlash",
   "testRetakeBody": "Bu o'quvchi bu testni allaqachon topshirgan. Yana bir urinish boshlansinmi?",
   "rosterDoneBadge": "Topshirgan",
+  "rosterTestNotLoaded": "Yuklanmadi, qayta urinish",
   "autoSaveOk": "Zaxira nusxa: {time}, {count} ta natija",
   "@autoSaveOk": {
     "placeholders": {

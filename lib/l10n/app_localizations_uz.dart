@@ -2885,6 +2885,9 @@ class AppLocalizationsUz extends AppLocalizations {
   String get rosterDoneBadge => 'Topshirgan';
 
   @override
+  String get rosterTestNotLoaded => 'Yuklanmadi, qayta urinish';
+
+  @override
   String autoSaveOk(String time, int count) {
     return 'Zaxira nusxa: $time, $count ta natija';
   }
