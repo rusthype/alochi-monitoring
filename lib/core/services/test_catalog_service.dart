@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api_client.dart';
 import '../cache/test_image_store.dart';
+import '../db/attempt_store.dart';
 import '../db/test_cache.dart';
 import '../offline/lan_client_session.dart' show isOfflineModeOpen;
 
@@ -315,7 +316,7 @@ class TestCatalogService {
     // natijani bloklamasin).
     try {
       final keep = entries.map((e) => e.testKey).toSet();
-      await TestCache.pruneNotIn(keep);
+      await _pruneStale(keep, cachedVersions.keys);
       if (cachedVersions.keys.any((k) => !keep.contains(k))) {
         unawaited(gcStore());
       }
@@ -327,6 +328,52 @@ class TestCatalogService {
     unawaited(healIncompleteTests());
 
     return entries;
+  }
+
+  static const _missingCountsKey = 'catalog_missing_counts';
+  static const _pruneAfterMisses = 2;
+  static const _missingCountsCap = 500;
+
+  /// Keshdan faqat ketma-ket [_pruneAfterMisses] ta MUVAFFAQIYATLI, bo'sh
+  /// bo'lmagan katalogda ko'rinmagan testni o'chiradi. Bo'sh katalog yoki
+  /// qisman (boshqa guruh/maktab filtri) javob bitta o'zi hech narsani
+  /// o'chirmaydi; test qaytib ko'rinsa hisoblagich 0 ga tushadi; saqlangan
+  /// urinishi (AttemptStore) bor test hech qachon o'chirilmaydi.
+  Future<void> _pruneStale(Set<String> fetched, Iterable<String> cached) async {
+    if (fetched.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    final counts = <String, int>{};
+    try {
+      final raw = prefs.getString(_missingCountsKey);
+      final decoded = (raw == null || raw.isEmpty) ? null : jsonDecode(raw);
+      if (decoded is Map) {
+        decoded.forEach((k, v) {
+          final n = v is int ? v : int.tryParse(v.toString());
+          if (n != null && n > 0) counts[k.toString()] = n;
+        });
+      }
+    } catch (e) {
+      debugPrint('TestCatalogService: bad catalog_missing_counts: $e');
+    }
+
+    final next = <String, int>{};
+    final doomed = <String>{};
+    for (final key in cached) {
+      if (fetched.contains(key)) continue; // qaytdi — hisoblagich tashlanadi
+      final n = (counts[key] ?? 0) + 1;
+      if (n >= _pruneAfterMisses) {
+        if (await AttemptStore.load(key) != null) {
+          next[key] = n; // davom etayotgan urinish — o'chirilmaydi
+        } else {
+          doomed.add(key);
+        }
+      } else {
+        next[key] = n;
+      }
+    }
+    await TestCache.deleteKeys(doomed);
+    final capped = Map.fromEntries(next.entries.take(_missingCountsCap));
+    await prefs.setString(_missingCountsKey, jsonEncode(capped));
   }
 
   /// Testni backend'dan yuklab keshga (JSON) saqlaydi. Rasmlar bu yerda

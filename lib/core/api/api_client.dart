@@ -631,7 +631,8 @@ class MonitoringApi {
   /// ichidagi `type:"reading"` render bo'ladi va ball beradi) — min_client=3
   /// bilan belgilangan testlar (Tarix/Ona tili §5, ikkita matn) shu darajadan
   /// past clientlarga katalogda ko'rinmaydi (Sprint 3, katalog gating).
-  /// Xato holatida [] qaytaradi, crash qilmaydi.
+  /// Xato (tarmoq, HTTP >=400, ro'yxat bo'lmagan javob) holatida TASHLAYDI —
+  /// bo'sh ro'yxat faqat haqiqiy bo'sh katalogni bildiradi.
   ///
   /// `groupId` — berilsa, backend faqat shu guruhga bog'langan (yoki
   /// guruhsiz, ya'ni hammaga ochiq) testlarni qaytaradi (test↔guruh
@@ -654,29 +655,33 @@ class MonitoringApi {
       String? schoolCode,
       String? schoolId,
       String? authToken}) async {
-    try {
-      final gid = (groupId != null && groupId.isNotEmpty)
-          ? '&group_id=${Uri.encodeComponent(groupId)}'
-          : '';
-      final sc = (schoolCode != null && schoolCode.isNotEmpty)
-          ? '&school_code=${Uri.encodeComponent(schoolCode)}'
-          : '';
-      // school_id (School.number kolliziyasidan xoli) — berilsa, backend
-      // school_code'dan ustun qo'yadi (2026-09-07).
-      final sid = (schoolId != null && schoolId.isNotEmpty)
-          ? '&school_id=${Uri.encodeComponent(schoolId)}'
-          : '';
-      final data = await _getCompute('/tests/catalog/?client=3$gid$sc$sid',
-          extraHeaders: (authToken != null && authToken.isNotEmpty)
-              ? {'Authorization': 'Bearer $authToken'}
-              : const {});
-      if (data is! List) return [];
-      if (data.isEmpty) return [];
-      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-    } catch (e) {
-      debugPrint('fetchTestCatalog error: $e');
-      return [];
+    final gid = (groupId != null && groupId.isNotEmpty)
+        ? '&group_id=${Uri.encodeComponent(groupId)}'
+        : '';
+    final sc = (schoolCode != null && schoolCode.isNotEmpty)
+        ? '&school_code=${Uri.encodeComponent(schoolCode)}'
+        : '';
+    // school_id (School.number kolliziyasidan xoli) — berilsa, backend
+    // school_code'dan ustun qo'yadi (2026-09-07).
+    final sid = (schoolId != null && schoolId.isNotEmpty)
+        ? '&school_id=${Uri.encodeComponent(schoolId)}'
+        : '';
+    // Tarmoq/HTTP (>=400)/parse xatolari ATAYLAB tashlanadi: avval bu yerda
+    // `return []` edi va TestCatalogService.refresh() uni "muvaffaqiyatli
+    // bo'sh katalog" deb o'qib, butun yuklab olingan keshni tozalab yuborgan
+    // (2026-10-28). Faqat haqiqiy 200 + ro'yxat natija qaytaradi.
+    final data = await _getCompute('/tests/catalog/?client=3$gid$sc$sid',
+        extraHeaders: (authToken != null && authToken.isNotEmpty)
+            ? {'Authorization': 'Bearer $authToken'}
+            : const {});
+    if (data is! List) {
+      throw const ApiException(200, 'Katalog javobi ro\'yxat emas');
     }
+    if (data.isEmpty) return [];
+    return data
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   /// Bitta test JSON'ini yuklaydi. `client=3` — locked testni ham
