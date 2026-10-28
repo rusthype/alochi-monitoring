@@ -1,4 +1,5 @@
 // lib/core/db/offline_queue.dart
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -7,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/models.dart';
 import '../api/api_client.dart';
+import '../diagnostics/error_log.dart';
 import '../sync/server_backoff.dart';
 import 'db_migrate.dart';
 import 'local_students_db.dart';
@@ -23,7 +25,7 @@ class OfflineQueue {
       databaseFactory = databaseFactoryFfi;
     }
     final dir = await getApplicationSupportDirectory();
-    _db = await _open(join(dir.path, 'monitoring_queue.db'));
+    _db = await _openRecovering(join(dir.path, 'monitoring_queue.db'));
     return _db!;
   }
 
@@ -31,7 +33,56 @@ class OfflineQueue {
   @visibleForTesting
   static Future<void> openAtPath(String path) async {
     await resetForTest();
-    _db = await _open(path);
+    _db = await _openRecovering(path);
+  }
+
+  static bool _recoveryNotice = false;
+
+  /// True once after a corrupt queue file was replaced: the screens that
+  /// already poll the queue show ONE teacher-visible notice (the results that
+  /// were inside are in the `.corrupt-<ts>` file next to it, for support).
+  static bool takeRecoveryNotice() {
+    final v = _recoveryNotice;
+    _recoveryNotice = false;
+    return v;
+  }
+
+  /// Unreadable file (not a database / malformed) - as opposed to a merely
+  /// locked or busy one, whose results must never be moved away.
+  static bool _isCorrupt(Object e) {
+    if (e is! DatabaseException) return false;
+    final m = e.toString().toLowerCase();
+    if (m.contains('locked') || m.contains('busy')) return false;
+    return m.contains('not a database') ||
+        m.contains('malformed') ||
+        m.contains('corrupt') ||
+        m.contains('notadb') ||
+        m.contains('disk image');
+  }
+
+  /// [_open], but a corrupt file never crashes the app: it is moved aside as
+  /// `<name>.corrupt-<ts>` (with -wal / -shm), a fresh queue is created and
+  /// [takeRecoveryNotice] raises the teacher notice.
+  static Future<Database> _openRecovering(String path) async {
+    try {
+      return await _open(path);
+    } catch (e) {
+      if (!_isCorrupt(e)) rethrow;
+      debugPrint('OfflineQueue: $path is corrupt ($e), moving it aside');
+      unawaited(ErrorLog.record(e, 'queue_db'));
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      for (final suffix in ['', '-wal', '-shm']) {
+        final f = File('$path$suffix');
+        try {
+          if (await f.exists()) await f.rename('$path.corrupt-$ts$suffix');
+        } catch (err) {
+          debugPrint('OfflineQueue: could not move ${f.path} aside: $err');
+        }
+      }
+      final db = await _open(path);
+      _recoveryNotice = true;
+      return db;
+    }
   }
 
   @visibleForTesting
@@ -319,6 +370,24 @@ class OfflineQueue {
     final d = await db;
     final res = await d.rawQuery('SELECT COUNT(*) as c FROM local_queue');
     return (res.first['c'] as int?) ?? 0;
+  }
+
+  /// Age of the oldest result still waiting in either queue (null = none):
+  /// the teacher chip says how long a result has been stuck.
+  static Future<Duration?> oldestPendingAge({int? nowMs}) async {
+    final d = await db;
+    final rows = await Future.wait([
+      d.rawQuery('SELECT MIN(created) AS m FROM queue'),
+      d.rawQuery('SELECT MIN(created) AS m FROM local_queue'),
+    ]);
+    int? oldest;
+    for (final r in rows) {
+      final m = r.first['m'] as int?;
+      if (m != null && (oldest == null || m < oldest)) oldest = m;
+    }
+    if (oldest == null) return null;
+    final age = (nowMs ?? DateTime.now().millisecondsSinceEpoch) - oldest;
+    return Duration(milliseconds: age < 0 ? 0 : age);
   }
 
   /// Combined queue + local_queue pending count, run concurrently (see
