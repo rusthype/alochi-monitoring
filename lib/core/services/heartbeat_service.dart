@@ -87,6 +87,22 @@ class HeartbeatService with WidgetsBindingObserver {
   String? _cachedMachineId;
   String? _cachedMacAddress;
 
+  // The LAN address changes rarely but looking it up lists every interface;
+  // answers can be reported every few seconds, so cache it briefly.
+  String? _cachedLocalIp;
+  DateTime? _localIpAt;
+  static const Duration _localIpTtl = Duration(minutes: 2);
+
+  // ── Answer-report coalescing ────────────────────────────────────────────
+  /// Max wait between an answer change and its ping (trailing throttle: a
+  /// student typing continuously still gets a report every [answerReportDelay]
+  /// with the LATEST answers, and a burst of taps becomes one ping).
+  @visibleForTesting
+  static Duration answerReportDelay = const Duration(seconds: 2);
+  Timer? _answerReportTimer;
+  bool _answerPingInFlight = false;
+  bool _answerPingDirty = false;
+
   /// Set by whichever screen is currently showing an active test
   /// (`_TestEngineState.initState`), cleared on its `dispose`. Invoked when
   /// a ping response comes back with `terminated: true` — i.e. an admin
@@ -293,6 +309,7 @@ class HeartbeatService with WidgetsBindingObserver {
   /// is actually launched, `_testSessionId` must stay put for the rest of
   /// the attempt regardless of how the conflict check resolved.
   void cancelTest() {
+    _cancelAnswerReport();
     _testSessionId = null;
     _schoolCode = '';
     _name = '';
@@ -305,8 +322,15 @@ class HeartbeatService with WidgetsBindingObserver {
     _resetProctorState();
   }
 
+  void _cancelAnswerReport() {
+    _answerReportTimer?.cancel();
+    _answerReportTimer = null;
+    _answerPingDirty = false;
+  }
+
   void finishTest() {
     if (_testSessionId == null) return;
+    _cancelAnswerReport();
     unawaited(_ping('finished', leaving: true));
     _testSessionId = null;
     _schoolCode = '';
@@ -366,15 +390,50 @@ class HeartbeatService with WidgetsBindingObserver {
   }
 
   /// Called by TestEngine on every answer change (power-outage-tolerant
-  /// live sync). Fire-and-forget — fires an immediate ping carrying the
-  /// full answers map + foreground-active elapsed seconds, instead of
-  /// waiting up to 30s for the periodic timer, so a student who loses
-  /// power mid-test can resume on any PC via SessionResumeView. Must never
-  /// be awaited by the caller (answer-tap callback stays non-blocking).
+  /// live sync). Fire-and-forget: the answers go out with the next ping,
+  /// at most [answerReportDelay] later, with at most ONE such ping in
+  /// flight - answers that change meanwhile are sent once, latest only, when
+  /// it finishes. Instead of a ping per tap (a burst piled concurrent
+  /// requests onto a slow network), a student who loses power mid-test can
+  /// still resume on any PC via SessionResumeView with <= a couple of
+  /// seconds of typing missing. Must never be awaited by the caller.
   void reportAnswers(Map<String, dynamic> answers, int elapsedSeconds) {
     _answers = answers;
     _elapsedSeconds = elapsedSeconds;
-    unawaited(_ping('active'));
+    if (_answerReportTimer?.isActive ?? false) return; // latest rides along
+    _answerReportTimer = Timer(answerReportDelay, _flushAnswerReport);
+  }
+
+  void _flushAnswerReport() {
+    _answerReportTimer = null;
+    if (_answerPingInFlight) {
+      _answerPingDirty = true;
+      return;
+    }
+    _answerPingInFlight = true;
+    // _ping never throws (it catches everything), so this future cannot
+    // raise an unhandled error into the zone.
+    unawaited(_ping('active').whenComplete(() {
+      _answerPingInFlight = false;
+      if (_answerPingDirty) {
+        _answerPingDirty = false;
+        _flushAnswerReport();
+      }
+    }));
+  }
+
+  Future<String?> _localIp() async {
+    final at = _localIpAt;
+    if (at != null && DateTime.now().difference(at) < _localIpTtl) {
+      return _cachedLocalIp;
+    }
+    try {
+      _cachedLocalIp = await getLocalIpAddress();
+    } catch (e) {
+      debugPrint('HeartbeatService: local ip lookup failed (non-fatal): $e');
+    }
+    _localIpAt = DateTime.now();
+    return _cachedLocalIp;
   }
 
   /// [leaving]: an explicit leave of the test (finishTest). On a LAN client
@@ -388,9 +447,11 @@ class HeartbeatService with WidgetsBindingObserver {
     // firing its 'finished' ping, and that ping must carry the real key.
     final testKey = (leaving && api.isLan) ? '' : _testKey;
     final remaining = remainingSeconds;
-    await _resolveDeviceInfoOnce();
-    final localIp = await getLocalIpAddress();
+    // Everything below is best-effort and many callers are fire-and-forget
+    // (unawaited): nothing may escape as an unhandled async error.
     try {
+      await _resolveDeviceInfoOnce();
+      final localIp = await _localIp();
       final response = await api.sessionPing(
         sessionId: id,
         schoolCode: _schoolCode,
@@ -417,14 +478,18 @@ class HeartbeatService with WidgetsBindingObserver {
       // `terminated` is returned on every ping for a session an admin ended
       // remotely via the panel (not just the one that caused it), so this
       // check runs on every ping call site, not only the 30s heartbeat.
+      // Reply fields are untrusted shapes: never hard-cast them.
       final tok = response['proctor_token'];
       if (tok is String && tok.isNotEmpty) _proctorToken = tok;
       final iv = response['proctor_interval_ms'];
-      if (iv is int && iv >= 1000 && iv <= 30000) _proctorIntervalMs = iv;
+      if (iv is num && iv >= 1000 && iv <= 30000) _proctorIntervalMs = iv.toInt();
+      final locked = response['locked'];
+      final extra = response['extra_time_seconds'];
+      final commands = response['commands'];
       reconcileProctorState(
-        locked: response['locked'] as bool?,
-        extraTimeSeconds: response['extra_time_seconds'] as int?,
-        commands: response['commands'] as List<dynamic>?,
+        locked: locked is bool ? locked : null,
+        extraTimeSeconds: extra is num && extra.isFinite ? extra.toInt() : null,
+        commands: commands is List ? commands : null,
         terminated: response['terminated'] == true,
       );
       return response;
@@ -465,6 +530,7 @@ class HeartbeatService with WidgetsBindingObserver {
   }
 
   void dispose() {
+    _cancelAnswerReport();
     _timer?.cancel();
     _timer = null;
     WidgetsBinding.instance.removeObserver(this);
