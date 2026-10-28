@@ -27,9 +27,9 @@ http.Response _jsonBody(Object body, int status,
     http.Response.bytes(utf8.encode(jsonEncode(body)), status,
         headers: {'content-type': 'application/json', ...headers});
 
-http.Response _html(int status) => http.Response(
-    '<html><body>Please log in to the wifi</body></html>', status,
-    headers: {'content-type': 'text/html'});
+http.Response _html(int status) =>
+    http.Response('<html><body>Please log in to the wifi</body></html>', status,
+        headers: {'content-type': 'text/html'});
 
 Future<T> _with<T>(
     http.Response Function() respond, Future<T> Function() body) {
@@ -57,8 +57,8 @@ void main() {
         expect(r['permanent'], isNot(true));
       });
       test('${e.key}: 302 with a JSON object body is retryable', () async {
-        final r = await _with(
-            () => _jsonBody({'id': 'x', 'ok': true}, 302), e.value);
+        final r =
+            await _with(() => _jsonBody({'id': 'x', 'ok': true}, 302), e.value);
         expect(r['synced'], false);
         expect(r['permanent'], isNot(true));
       });
@@ -74,7 +74,8 @@ void main() {
       });
       test('${e.key}: JSON object without ok/id/duplicate is retryable',
           () async {
-        final r = await _with(() => _jsonBody({'hello': 'world'}, 200), e.value);
+        final r =
+            await _with(() => _jsonBody({'hello': 'world'}, 200), e.value);
         expect(r['synced'], false);
         expect(r['permanent'], isNot(true));
       });
@@ -159,8 +160,8 @@ void main() {
       ServerBackoff.note(const Duration(seconds: 20));
       ServerBackoff.note(const Duration(seconds: 5));
       expect(ServerBackoff.active, isTrue);
-      expect(ServerBackoff.remaining(),
-          greaterThan(const Duration(seconds: 15)));
+      expect(
+          ServerBackoff.remaining(), greaterThan(const Duration(seconds: 15)));
       ServerBackoff.clear();
       expect(ServerBackoff.active, isFalse);
       expect(ServerBackoff.remaining(), Duration.zero);

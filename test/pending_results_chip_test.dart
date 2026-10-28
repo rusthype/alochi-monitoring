@@ -54,7 +54,8 @@ void main() {
     expect(t.pendingResultsChip(3), '3 natija yuborilmagan');
   });
 
-  testWidgets('send now: progress while flushing, success toast with the '
+  testWidgets(
+      'send now: progress while flushing, success toast with the '
       'number that left the queue', (tester) async {
     var pending = 3;
     final gate = Completer<SyncFlushOutcome>();

@@ -34,7 +34,8 @@ void main() {
     final aside = tmp
         .listSync()
         .whereType<File>()
-        .where((f) => p.basename(f.path).startsWith('monitoring_queue.db.corrupt-'))
+        .where((f) =>
+            p.basename(f.path).startsWith('monitoring_queue.db.corrupt-'))
         .toList();
     expect(aside, hasLength(1));
     expect(aside.single.lengthSync(), 4096);
@@ -55,8 +56,7 @@ void main() {
 
     await OfflineQueue.openAtPath(path);
     expect(await OfflineQueue.pendingLocalCount(), 1);
-    expect(
-        tmp.listSync().where((f) => f.path.contains('.corrupt-')), isEmpty);
+    expect(tmp.listSync().where((f) => f.path.contains('.corrupt-')), isEmpty);
     expect(OfflineQueue.takeRecoveryNotice(), isFalse);
   });
 }

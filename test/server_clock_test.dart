@@ -45,8 +45,7 @@ void main() {
         isFalse);
   });
 
-  test('device clock reset to 2000: a lock that already lifted stays open',
-      () {
+  test('device clock reset to 2000: a lock that already lifted stays open', () {
     ServerClock.deviceNow = () => DateTime.utc(2000, 1, 1);
     // Unlocked an hour ago by server time.
     final lockedUntil = _serverNow.subtract(const Duration(hours: 1));
@@ -54,8 +53,8 @@ void main() {
         reason: 'the raw device clock would call it locked');
     ServerClock.observe(HttpDate.format(_serverNow));
     expect(ServerClock.isFuture(lockedUntil), isFalse);
-    expect(ServerClock.isFuture(_serverNow.add(const Duration(hours: 1))),
-        isTrue);
+    expect(
+        ServerClock.isFuture(_serverNow.add(const Duration(hours: 1))), isTrue);
   });
 
   test('device clock ahead: a lock that still holds is not opened early', () {
@@ -95,22 +94,26 @@ void main() {
       () async {
     ServerClock.deviceNow = () => DateTime.utc(2000, 1, 1);
     final a = MonitoringApi();
-    await http.runWithClient(() => a.ping(), () => MockClient((_) async {
-          return http.Response('{"status":"ok"}', 200, headers: {
-            'content-type': 'application/json',
-            'date': HttpDate.format(_serverNow),
-          });
-        }));
+    await http.runWithClient(
+        () => a.ping(),
+        () => MockClient((_) async {
+              return http.Response('{"status":"ok"}', 200, headers: {
+                'content-type': 'application/json',
+                'date': HttpDate.format(_serverNow),
+              });
+            }));
     expect(ServerClock.now().year, 2026);
 
     ServerClock.resetForTest();
     ServerClock.deviceNow = () => DateTime.utc(2000, 1, 1);
-    await http.runWithClient(() => a.ping(), () => MockClient((_) async {
-          return http.Response('<html>login</html>', 200, headers: {
-            'content-type': 'text/html',
-            'date': HttpDate.format(_serverNow),
-          });
-        }));
+    await http.runWithClient(
+        () => a.ping(),
+        () => MockClient((_) async {
+              return http.Response('<html>login</html>', 200, headers: {
+                'content-type': 'text/html',
+                'date': HttpDate.format(_serverNow),
+              });
+            }));
     expect(ServerClock.offset, Duration.zero);
   });
 

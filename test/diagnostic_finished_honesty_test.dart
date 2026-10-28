@@ -48,7 +48,8 @@ void main() {
     expect(find.text(t.diagnosticFinishedSubmittedPill), findsNothing);
     expect(find.byType(SyncStatusBadge), findsNothing);
     expect(find.byIcon(Icons.cloud_off_rounded), findsNothing);
-    expect(find.text('2'), findsNothing, reason: 'no pending count for a student');
+    expect(find.text('2'), findsNothing,
+        reason: 'no pending count for a student');
     await tester.pump(const Duration(seconds: 16));
   });
 

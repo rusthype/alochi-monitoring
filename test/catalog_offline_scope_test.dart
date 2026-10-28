@@ -69,8 +69,7 @@ void main() {
     dir.deleteSync(recursive: true);
   });
 
-  Future<void> cache(String key) =>
-      TestCache.upsert(key, key, 5, 1, _blob);
+  Future<void> cache(String key) => TestCache.upsert(key, key, 5, 1, _blob);
 
   Future<List<String>> offlineKeys(
       {String? groupId, String? schoolCode, String? schoolId}) async {
@@ -134,7 +133,8 @@ void main() {
     expect(await offlineKeys(schoolCode: '8', schoolId: 'sid8'), ['Other']);
   });
 
-  test('rows cached before scopes existed stay visible (cannot be proven wrong)',
+  test(
+      'rows cached before scopes existed stay visible (cannot be proven wrong)',
       () async {
     await cache('Legacy');
     expect(await offlineKeys(groupId: 'gA', schoolCode: '1'), ['Legacy']);
@@ -143,7 +143,8 @@ void main() {
   test('re-downloading a test keeps its scopes and lock', () async {
     await cache('A');
     api.byGroup['gA'] = [
-      _item('A', lockedUntil: '2031-01-01T10:00:00Z', until: '2031-01-01T12:00:00Z')
+      _item('A',
+          lockedUntil: '2031-01-01T10:00:00Z', until: '2031-01-01T12:00:00Z')
     ];
     await svc.refresh(groupId: 'gA', schoolCode: '1');
     await cache('A'); // upsert (replace) of a newer copy
