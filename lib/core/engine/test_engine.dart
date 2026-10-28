@@ -140,7 +140,13 @@ class _TestEngineState extends State<TestEngine>
   /// Key = "SectionName/questionIndex".
   final Map<String, TextEditingController> _controllers = {};
 
-  late final AnimationController _fadeCtrl;
+  /// Per-slot keys (key = AnswerSlot.key) so tapping the active section tab
+  /// can scroll to the first unanswered question.
+  final Map<String, GlobalKey> _slotKeys = {};
+
+  /// True when the last section change moved to a later section — drives the
+  /// slide direction of the section switch animation.
+  bool _forward = true;
   bool _finishing = false;
 
   // ── Derived state ──────────────────────────────────────────────────────────
@@ -196,11 +202,6 @@ class _TestEngineState extends State<TestEngine>
     WidgetsBinding.instance.addObserver(this);
     _secs = widget.duration.inSeconds; // fresh-start default; may be
     // corrected once _restoreAttempt() resolves (crash-recovery resume).
-
-    _fadeCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    )..forward();
 
     // Let HeartbeatService force-exit this test (same path as a timeout
     // auto-submit) if a ping reports the admin remotely ended this
@@ -603,7 +604,6 @@ class _TestEngineState extends State<TestEngine>
     }
     ProctorService.instance.stop();
     _clock.stopMonitoring();
-    _fadeCtrl.dispose();
     for (final c in _controllers.values) {
       c.dispose();
     }
@@ -652,9 +652,32 @@ class _TestEngineState extends State<TestEngine>
     // so resetting/appending to _questionTimes on section change would
     // measure per-section time, not per-question time.
     _syncTextAnswers(); // flush typed values before switching
-    _fadeCtrl.forward(from: 0);
-    setState(() => _sectionIdx = idx);
+    setState(() {
+      _forward = idx > _sectionIdx;
+      _sectionIdx = idx;
+    });
     _reportProgress();
+  }
+
+  GlobalKey _slotKey(String key) => _slotKeys.putIfAbsent(key, GlobalKey.new);
+
+  /// Smoothly scrolls the active section to its first unanswered question.
+  /// No-op when everything is answered; never changes the section.
+  void _scrollToFirstUnanswered() {
+    final section = _sections[_sectionIdx];
+    for (final slot in section.answerSlots) {
+      if (_hasValue(_answers[slot.key])) continue;
+      final ctx = _slotKeys[slot.key]?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOutCubic,
+          alignment: 0.1,
+        );
+      }
+      return;
+    }
   }
 
   /// Sync controller text into _answers so scorer sees latest input.
@@ -801,15 +824,33 @@ class _TestEngineState extends State<TestEngine>
             sections: sections,
             activeIndex: _sectionIdx,
             answeredInSection: _answeredInSection,
-            onTap: _goSection,
+            onTap: (i) =>
+                i == _sectionIdx ? _scrollToFirstUnanswered() : _goSection(i),
           ),
 
           const Divider(height: 1),
 
           // ── Section body ─────────────────────────────────────────────────────
           Expanded(
-            child: FadeTransition(
-              opacity: _fadeCtrl,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 320),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeOutCubic,
+              transitionBuilder: (child, anim) {
+                // Incoming child enters from the travel direction; the
+                // outgoing one (animation running 1 -> 0) leaves opposite.
+                final incoming =
+                    child.key == ValueKey(sections[_sectionIdx].name);
+                final dx = (_forward ? 1.0 : -1.0) * (incoming ? 0.06 : -0.06);
+                return FadeTransition(
+                  opacity: anim,
+                  child: SlideTransition(
+                    position: Tween<Offset>(begin: Offset(dx, 0), end: Offset.zero)
+                        .animate(anim),
+                    child: child,
+                  ),
+                );
+              },
               child: _buildSectionBody(sections[_sectionIdx]),
             ),
           ),
@@ -819,6 +860,9 @@ class _TestEngineState extends State<TestEngine>
             sectionIdx: _sectionIdx,
             sectionCount: sections.length,
             isLast: isLast,
+            sectionComplete: sections[_sectionIdx].questionCount > 0 &&
+                _answeredInSection(_sectionIdx) ==
+                    sections[_sectionIdx].questionCount,
             onPrev: () => _goSection(_sectionIdx - 1),
             onNext: () => _goSection(_sectionIdx + 1),
             onFinish: _requestFinish,
@@ -973,7 +1017,10 @@ class _TestEngineState extends State<TestEngine>
         displayIdx += reading.qs.length;
       } else {
         final key = '${section.name}/$i';
-        children.add(_buildQuestionWidget(q, displayIdx, key, section.name));
+        children.add(KeyedSubtree(
+          key: _slotKey(key),
+          child: _buildQuestionWidget(q, displayIdx, key, section.name),
+        ));
         displayIdx += 1;
       }
     }
@@ -1002,6 +1049,7 @@ class _TestEngineState extends State<TestEngine>
       },
       onReport: (subIdx) =>
           _openReportSheet('${section.name}/$subIdx', container.qs[subIdx]),
+      slotKeyFor: (subIdx) => _slotKey('${section.name}/$subIdx'),
     );
   }
 
@@ -1038,6 +1086,7 @@ class _TestEngineState extends State<TestEngine>
       },
       onReport: (subIdx) => _openReportSheet(
           '${section.name}/$itemIdx/$subIdx', reading.qs[subIdx]),
+      slotKeyFor: (subIdx) => _slotKey('${section.name}/$itemIdx/$subIdx'),
     );
   }
 
@@ -1278,7 +1327,7 @@ class _Pill extends StatelessWidget {
       );
 }
 
-class _SectionTabBar extends StatelessWidget {
+class _SectionTabBar extends StatefulWidget {
   final List<SectionData> sections;
   final int activeIndex;
   final int Function(int) answeredInSection;
@@ -1292,6 +1341,31 @@ class _SectionTabBar extends StatelessWidget {
   });
 
   @override
+  State<_SectionTabBar> createState() => _SectionTabBarState();
+}
+
+class _SectionTabBarState extends State<_SectionTabBar> {
+  final Map<int, GlobalKey> _tabKeys = {};
+
+  @override
+  void didUpdateWidget(_SectionTabBar old) {
+    super.didUpdateWidget(old);
+    if (old.activeIndex != widget.activeIndex) {
+      // Keep the active tab visible when the tab row itself scrolls.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = _tabKeys[widget.activeIndex]?.currentContext;
+        if (!mounted || ctx == null) return;
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+          alignment: 0.5,
+        );
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       color: AppColors.surface,
@@ -1299,12 +1373,13 @@ class _SectionTabBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
         child: Row(
-          children: List.generate(sections.length, (i) {
-            final answered = answeredInSection(i);
-            final total = sections[i].questionCount;
-            final isActive = i == activeIndex;
+          children: List.generate(widget.sections.length, (i) {
+            final answered = widget.answeredInSection(i);
+            final total = widget.sections[i].questionCount;
+            final isActive = i == widget.activeIndex;
             return GestureDetector(
-              onTap: () => onTap(i),
+              key: _tabKeys.putIfAbsent(i, GlobalKey.new),
+              onTap: () => widget.onTap(i),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding:
@@ -1320,7 +1395,7 @@ class _SectionTabBar extends StatelessWidget {
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text(
-                    sections[i].displayName,
+                    widget.sections[i].displayName,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
@@ -1367,6 +1442,9 @@ class _BottomNav extends StatelessWidget {
   final int sectionIdx;
   final int sectionCount;
   final bool isLast;
+
+  /// Current section fully answered — "next" turns green.
+  final bool sectionComplete;
   final VoidCallback onPrev;
   final VoidCallback onNext;
   final VoidCallback onFinish;
@@ -1375,6 +1453,7 @@ class _BottomNav extends StatelessWidget {
     required this.sectionIdx,
     required this.sectionCount,
     required this.isLast,
+    required this.sectionComplete,
     required this.onPrev,
     required this.onNext,
     required this.onFinish,
@@ -1454,9 +1533,11 @@ class _BottomNav extends StatelessWidget {
                   ),
                   label: const Icon(Icons.arrow_forward_rounded, size: 15),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brand,
+                    backgroundColor:
+                        sectionComplete ? AppColors.ok : AppColors.brand,
                     foregroundColor: Colors.white,
                     elevation: 0,
+                    animationDuration: const Duration(milliseconds: 220),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
                   ),

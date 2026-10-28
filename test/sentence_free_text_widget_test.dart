@@ -102,25 +102,15 @@ void main() {
     await tester.enterText(find.byType(TextField), "he's opening a");
     await tester.pump();
 
-    // Find the RichText that renders the prompt row (contains 'opening').
-    final richText = tester
-        .widgetList<RichText>(find.byType(RichText))
-        .firstWhere((rt) => rt.text.toPlainText().contains('opening'));
-
     bool isStruckThrough(String word) {
-      var found = false;
-      void visit(InlineSpan span) {
-        if (span is TextSpan) {
-          if (span.text == word &&
-              span.style?.decoration == TextDecoration.lineThrough) {
-            found = true;
-          }
-          span.children?.forEach(visit);
-        }
-      }
-
-      visit(richText.text);
-      return found;
+      final style = tester
+          .widget<AnimatedDefaultTextStyle>(find
+              .ancestor(
+                  of: find.text(word),
+                  matching: find.byType(AnimatedDefaultTextStyle))
+              .first)
+          .style;
+      return style.decoration == TextDecoration.lineThrough;
     }
 
     expect(isStruckThrough("he's"), isTrue);
@@ -128,5 +118,7 @@ void main() {
     expect(isStruckThrough('a'), isTrue);
     // Not typed yet — must render without the strike-through.
     expect(isStruckThrough('present'), isFalse);
+    // Used chips carry a small check mark (3 used words).
+    expect(find.byIcon(Icons.check_rounded), findsNWidgets(3));
   });
 }
