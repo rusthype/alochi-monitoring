@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/sync/sync_service.dart';
 import 'core/cache/test_image_store.dart';
+import 'core/services/test_catalog_service.dart' show testCatalogService;
 import 'core/services/heartbeat_service.dart';
 import 'core/network/connectivity_service.dart';
 import 'core/locale/locale_provider.dart';
@@ -116,6 +117,9 @@ void main(List<String> args) {
     if (!kIsWeb) {
       try {
         await TestImageStore.instance.init();
+        // Resume/heal: top up images of cached tests left incomplete (power
+        // cut, flaky network). Background, gentle, never throws.
+        unawaited(testCatalogService.healIncompleteTests());
       } catch (e) {
         debugPrint('TestImageStore.init failed: $e');
       }

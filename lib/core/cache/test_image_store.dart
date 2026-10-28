@@ -34,7 +34,11 @@ class TestImageStore {
         _clientOverride = client;
 
   /// Process-wide store; [init] is awaited once from main().
-  static final TestImageStore instance = TestImageStore();
+  static TestImageStore _instance = TestImageStore();
+  static TestImageStore get instance => _instance;
+
+  @visibleForTesting
+  static set instanceForTest(TestImageStore s) => _instance = s;
 
   Directory? _root;
   final http.Client? _clientOverride;
@@ -53,6 +57,37 @@ class TestImageStore {
       _root = root;
     }
     if (!root.existsSync()) root.createSync(recursive: true);
+    if (!_cleaned) {
+      _cleaned = true;
+      _cleanLeftovers(root);
+    }
+  }
+
+  bool _cleaned = false;
+  static final RegExp _finished = RegExp(r'^[0-9a-f]{64}\.img$');
+
+  /// Power-cut recovery: anything in the folder that is not a finished
+  /// `<sha256>.img` (temp/`.part` files from an interrupted write) and older
+  /// than a few minutes is deleted, as is any zero-byte `.img`. Never throws.
+  void _cleanLeftovers(Directory root, {Duration minAge = const Duration(minutes: 3)}) {
+    try {
+      final cutoff = DateTime.now().subtract(minAge);
+      for (final e in root.listSync(followLinks: false)) {
+        if (e is! File) continue;
+        try {
+          final name = p.basename(e.path);
+          if (_finished.hasMatch(name)) {
+            if (e.lengthSync() == 0) e.deleteSync();
+          } else if (e.lastModifiedSync().isBefore(cutoff)) {
+            e.deleteSync();
+          }
+        } catch (err) {
+          debugPrint('TestImageStore cleanup: $err');
+        }
+      }
+    } catch (e) {
+      debugPrint('TestImageStore cleanup failed: $e');
+    }
   }
 
   /// Where [url]'s image lives (whether or not it exists yet). Null until
@@ -76,10 +111,25 @@ class TestImageStore {
     }
   }
 
+  final Map<String, Future<StoreFetch>> _inFlight = {};
+
   /// Downloads [url] into the store. Returns [StoreFetch.missing] for 404/410
   /// and throws on any other failure (network, timeout, bad status, empty or
   /// truncated body) — nothing partial is ever left under the final name.
-  Future<StoreFetch> fetch(String url) async {
+  /// De-duplicated: concurrent callers (background prefetch, student-tap
+  /// prepare) for the same url share ONE request.
+  Future<StoreFetch> fetch(String url) {
+    final running = _inFlight[url];
+    if (running != null) return running;
+    final f = _fetchNow(url);
+    _inFlight[url] = f;
+    f.then((_) => null, onError: (_) => null).whenComplete(() {
+      if (identical(_inFlight[url], f)) _inFlight.remove(url);
+    });
+    return f;
+  }
+
+  Future<StoreFetch> _fetchNow(String url) async {
     final dest = _fileFor(url);
     if (dest == null) throw StateError('TestImageStore not initialised');
     final req = http.Request('GET', Uri.parse(url))
