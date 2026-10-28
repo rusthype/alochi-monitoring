@@ -9,8 +9,8 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/offline/offline_session.dart';
 import '../../../core/utils/student_name_formatter.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../core/db/offline_queue.dart';
 import '../widgets/celebration_particles.dart';
-import '../widgets/sync_status_badge.dart';
 
 const _kAutoReturnSeconds = 15;
 
@@ -29,6 +29,7 @@ class DiagnosticFinishedScreen extends StatefulWidget {
     this.onReturn,
     this.title,
     this.returnLabel,
+    this.pendingCountOverride,
   });
 
   final String? studentName;
@@ -63,6 +64,10 @@ class DiagnosticFinishedScreen extends StatefulWidget {
   /// Overrides the return button label. Null -> "Bosh sahifaga qaytish".
   final String? returnLabel;
 
+  /// Test seam for the offline-queue size; defaults to the real queue.
+  @visibleForTesting
+  final Future<int> Function()? pendingCountOverride;
+
   @override
   State<DiagnosticFinishedScreen> createState() =>
       _DiagnosticFinishedScreenState();
@@ -76,6 +81,11 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
   Timer? _autoReturnTimer;
   int _secondsLeft = _kAutoReturnSeconds;
   bool _isPaused = false;
+
+  /// Results still queued on this PC; null until read (and whenever it cannot
+  /// be read) - the thank-you only claims "sent" for a proven empty queue.
+  int? _pending;
+  Timer? _pendingTimer;
 
   @override
   void initState() {
@@ -93,6 +103,12 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
 
+    if (!OfflinePackSession.isActive) {
+      _refreshPending();
+      _pendingTimer =
+          Timer.periodic(const Duration(seconds: 2), (_) => _refreshPending());
+    }
+
     _autoReturnTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isPaused) return;
       if (_secondsLeft <= 1) {
@@ -104,8 +120,22 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
     });
   }
 
+  Future<void> _refreshPending() async {
+    try {
+      final n = widget.pendingCountOverride != null
+          ? await widget.pendingCountOverride!()
+          : await OfflineQueue.totalPendingCount();
+      if (mounted) setState(() => _pending = n);
+    } catch (e) {
+      // Unreadable queue: keep the last known value (initially unknown ->
+      // "Saqlandi"), never claim "Yuborildi" on a guess.
+      debugPrint('DiagnosticFinishedScreen: pending count unreadable: $e');
+    }
+  }
+
   @override
   void dispose() {
+    _pendingTimer?.cancel();
     _autoReturnTimer?.cancel();
     _entranceController.dispose();
     _particlesController.dispose();
@@ -167,10 +197,6 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
                 child: CelebrationParticles(animation: _particlesController),
               ),
             ),
-            // Pack mode: answers sit in the pack, not on the server, so the
-            // green "synced" badge would be false.
-            if (!OfflinePackSession.isActive)
-              const Positioned(top: 12, right: 12, child: SyncStatusBadge()),
             Center(
               child: SingleChildScrollView(
                 child: Padding(
@@ -279,13 +305,28 @@ class _DiagnosticFinishedScreenState extends State<DiagnosticFinishedScreen>
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              _StatusPill(
-                                icon: Icons.check_circle_rounded,
-                                label: OfflinePackSession.isActive
-                                    ? l10n.usbSavedTitle
-                                    : l10n.diagnosticFinishedSubmittedPill,
-                                color: AppColors.success,
-                              ),
+                              // Pack mode: answers sit in the pack, not on the
+                              // server. Otherwise "sent" only for a proven empty
+                              // queue; queued results are "saved" (teachers see
+                              // the pending chip on their screens).
+                              if (OfflinePackSession.isActive)
+                                _StatusPill(
+                                  icon: Icons.check_circle_rounded,
+                                  label: l10n.usbSavedTitle,
+                                  color: AppColors.success,
+                                )
+                              else if (_pending == 0)
+                                _StatusPill(
+                                  icon: Icons.check_circle_rounded,
+                                  label: l10n.diagnosticFinishedSubmittedPill,
+                                  color: AppColors.success,
+                                )
+                              else
+                                _StatusPill(
+                                  icon: Icons.save_rounded,
+                                  label: l10n.diagnosticFinishedSavedPill,
+                                  color: AppColors.blue,
+                                ),
                               if (widget.subjectsCompleted.isNotEmpty)
                                 _StatusPill(
                                   icon: Icons.menu_book_rounded,
