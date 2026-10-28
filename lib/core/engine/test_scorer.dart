@@ -152,6 +152,9 @@ class TestScorer {
         .replaceAll('’', "'")
         .replaceAll('ʻ', "'")
         .replaceAll('ʼ', "'")
+        .replaceAll('‘', "'") // U+2018 left single quote
+        .replaceAll('`', "'")
+        .replaceAll('´', "'") // U+00B4 acute accent
         .replaceAll(_multiSpaceRe, ' ');
     final slashCleaned = base.replaceAll(' / ', ' ');
     return expandContractions(slashCleaned);

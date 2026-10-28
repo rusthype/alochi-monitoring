@@ -18,6 +18,15 @@ enum QuestionType {
   fillBlank,     // {q, ans:str}
 }
 
+/// Tolerant int parse: `5`, `5.0` and `"5"` all give 5; anything else null.
+/// Server/cache blobs sometimes carry numeric fields as strings.
+int? _asInt(dynamic v) {
+  if (v == null) return null;
+  final n = v is num ? v : num.tryParse(v.toString().trim());
+  if (n == null || !n.isFinite) return null;
+  return n.toInt();
+}
+
 QuestionType? _parseType(String? raw) {
   switch (raw) {
     case 'text_choice':
@@ -82,6 +91,12 @@ class Question {
   final String? parName; // human-readable paragraph/topic title within a bob (Math World)
   final String? category;
 
+  /// Placeholder for a list item that failed to parse or has an unknown
+  /// type. It keeps the item's slot in the list so answer keys
+  /// ("Section/i") of the surrounding questions never shift, but it is never
+  /// rendered, counted or scored (see [SectionData.answerSlots]).
+  final bool skipped;
+
   const Question({
     required this.type,
     this.q,
@@ -101,7 +116,18 @@ class Question {
     this.par,
     this.parName,
     this.category,
+    this.skipped = false,
   });
+
+  const Question.skipped() : this(type: QuestionType.textChoice, skipped: true);
+
+  /// True when [ReadingBlockWidget] can render (and the scorer can grade)
+  /// this question as a nested reading sub-question.
+  bool get isReadingSubSupported =>
+      !skipped &&
+      (type == QuestionType.yesNo ||
+          type == QuestionType.textChoice ||
+          type == QuestionType.fillBlank);
 
   factory Question.fromJson(Map<String, dynamic> json) {
     final rawType = json['type']?.toString();
@@ -129,15 +155,10 @@ class Question {
     final category = json['category']?.toString();
 
     if (type == null) {
-      debugPrint('[TestEngine] Unknown question type "$rawType", falling back to text_choice');
-      // Safe fallback — treat as text_choice with empty opts so engine can render
-      return Question(
-        type: QuestionType.textChoice,
-        q: json['q']?.toString(),
-        opts: _parseOpts(json['opts']),
-        ans: (json['ans'] as num?)?.toInt() ?? 0,
-        topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, par: par, parName: parName, category: category,
-      );
+      // Unanswerable if rendered as an empty choice list: keep the slot for
+      // index stability but exclude it from rendering and scoring.
+      debugPrint('[TestEngine] Unknown question type "$rawType", skipping');
+      return const Question.skipped();
     }
 
     switch (type) {
@@ -146,7 +167,7 @@ class Question {
           type: type,
           q: json['q']?.toString(),
           opts: _parseOpts(json['opts']),
-          ans: (json['ans'] as num?)?.toInt() ?? 0,
+          ans: _asInt(json['ans']) ?? 0,
           topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, par: par, parName: parName, category: category,
         );
 
@@ -156,7 +177,7 @@ class Question {
           img: json['img']?.toString(),
           q: json['q']?.toString(),
           opts: _parseOpts(json['opts']),
-          ans: (json['ans'] as num?)?.toInt() ?? 0,
+          ans: _asInt(json['ans']) ?? 0,
           topic: topic, svg: svg, bob: bob, bobTitle: bobTitle, par: par, parName: parName, category: category,
         );
 
@@ -215,6 +236,28 @@ class Question {
   }
 }
 
+/// Parses a raw question list WITHOUT ever dropping an item: a non-map or
+/// unparsable entry becomes a [Question.skipped] placeholder so every later
+/// question keeps its original index (answer keys are "Section/index").
+List<Question> _parseQuestions(List raw, String where) {
+  final out = <Question>[];
+  for (var i = 0; i < raw.length; i++) {
+    final item = raw[i];
+    if (item is Map) {
+      try {
+        out.add(Question.fromJson(Map<String, dynamic>.from(item)));
+        continue;
+      } catch (e) {
+        debugPrint('[TestEngine] question parse error in $where #$i: $e');
+      }
+    } else {
+      debugPrint('[TestEngine] non-object question in $where #$i, skipping');
+    }
+    out.add(const Question.skipped());
+  }
+  return out;
+}
+
 // ── ReadingSection ─────────────────────────────────────────────────────────────
 
 class ReadingSection {
@@ -230,20 +273,15 @@ class ReadingSection {
     required this.qs,
   });
 
+  /// Sub-questions that are rendered, counted and scored. Other nested types
+  /// (spelling, sentence_order, image_choice, nested reading) are not
+  /// supported inside a passage, so they must not count as unanswerable
+  /// questions either.
+  int get answerableCount => qs.where((q) => q.isReadingSubSupported).length;
+
   factory ReadingSection.fromJson(Map<String, dynamic> json) {
     final rawQs = json['qs'];
-    final List<Question> qs = [];
-    if (rawQs is List && rawQs.isNotEmpty) {
-      for (final item in rawQs) {
-        if (item is Map<String, dynamic>) {
-          try {
-            qs.add(Question.fromJson(item));
-          } catch (e) {
-            debugPrint('[TestEngine] ReadingSection.qs parse error: $e');
-          }
-        }
-      }
-    }
+    final qs = rawQs is List ? _parseQuestions(rawQs, 'reading') : <Question>[];
     return ReadingSection(
       img: json['img']?.toString(),
       title: json['title']?.toString() ?? '',
@@ -397,19 +435,23 @@ class SectionData {
       // key scheme, one slot per inner question, in order.
       final qs = readingContainer!.qs;
       for (var j = 0; j < qs.length; j++) {
-        slots.add(AnswerSlot(key: '$name/$j', question: qs[j], displayIndex: j));
+        if (!qs[j].isReadingSubSupported) continue;
+        slots.add(AnswerSlot(
+            key: '$name/$j', question: qs[j], displayIndex: slots.length));
       }
       return slots;
     }
 
     for (var i = 0; i < questions.length; i++) {
       final q = questions[i];
+      if (q.skipped) continue; // index kept, nothing to answer
       if (q.type == QuestionType.reading && q.reading != null) {
         // Inline reading passage — a list item whose own answerable
         // questions live inside it. 3-segment key so it can never collide
         // with a sibling's 2-segment key.
         final inner = q.reading!.qs;
         for (var j = 0; j < inner.length; j++) {
+          if (!inner[j].isReadingSubSupported) continue;
           slots.add(AnswerSlot(
             key: '$name/$i/$j',
             question: inner[j],
@@ -472,9 +514,9 @@ class TestSpec {
   factory TestSpec.fromJson(Map<String, dynamic> json) {
     final testKey = json['test_key']?.toString() ?? '';
     final title = json['title']?.toString() ?? '';
-    final grade = (json['grade'] as num?)?.toInt() ?? 0;
-    final version = (json['version'] as num?)?.toInt() ?? 1;
-    final durationMinutes = (json['duration_minutes'] as num?)?.toInt();
+    final grade = _asInt(json['grade']) ?? 0;
+    final version = _asInt(json['version']) ?? 1;
+    final durationMinutes = _asInt(json['duration_minutes']);
     final subject = json['subject']?.toString();
 
     // parts
@@ -534,9 +576,10 @@ class TestSpec {
 
   static SectionData? _parseSection(String name, dynamic raw) {
     // Reading container: object with img/title/text/qs keys
-    if (raw is Map<String, dynamic> && raw.containsKey('qs')) {
+    if (raw is Map && raw.containsKey('qs')) {
       try {
-        final container = ReadingSection.fromJson(raw);
+        final container =
+            ReadingSection.fromJson(Map<String, dynamic>.from(raw));
         return SectionData(name: name, readingContainer: container);
       } catch (e) {
         debugPrint('[TestEngine] reading container parse error in "$name": $e');
@@ -547,17 +590,8 @@ class TestSpec {
     // Array of question objects
     if (raw is List) {
       if (raw.isEmpty) return SectionData(name: name);
-      final List<Question> qs = [];
-      for (final item in raw) {
-        if (item is Map<String, dynamic>) {
-          try {
-            qs.add(Question.fromJson(item));
-          } catch (e) {
-            debugPrint('[TestEngine] question parse error in section "$name": $e');
-          }
-        }
-      }
-      return SectionData(name: name, questions: qs);
+      return SectionData(
+          name: name, questions: _parseQuestions(raw, 'section "$name"'));
     }
 
     debugPrint('[TestEngine] Unrecognised section format for "$name", skipping');

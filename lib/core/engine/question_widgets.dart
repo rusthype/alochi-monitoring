@@ -27,6 +27,9 @@ Widget _buildQuestionSvg(String svg, {double height = 130}) {
       width: ratio == null ? null : height * ratio,
       fit: BoxFit.contain,
       placeholderBuilder: (_) => SizedBox(height: height),
+      // Malformed SVG: reuse the broken-image box instead of a permanent
+      // empty gap above the options.
+      errorBuilder: (_, __, ___) => brokenImagePlaceholder(height),
     ),
   );
 }
@@ -702,8 +705,15 @@ class _SentenceOrderWidgetState extends State<SentenceOrderWidget> {
     _ordered = _restoreOrdered(widget.controller.text, _pool);
   }
 
-  List<String> get _remaining =>
-      _pool.where((s) => !_ordered.contains(s)).toList();
+  /// Multiset difference: a pool with duplicates ("the cat the mat") keeps the
+  /// second "the" available after the first one is tapped.
+  List<String> get _remaining {
+    final rest = List<String>.of(_pool);
+    for (final s in _ordered) {
+      rest.remove(s); // first occurrence only
+    }
+    return rest;
+  }
 
   void _emit() {
     final joined = _ordered.join(' ');
@@ -1319,7 +1329,8 @@ class _FillBlankWidgetState extends State<FillBlankWidget> {
 ///
 /// Scope note (TZ §3/§10): the sub-question switch below only handles
 /// yes_no, text_choice, fill_blank — spelling/sentence_order/image_choice
-/// (and a nested reading) fall through to the SizedBox.shrink() default.
+/// (and a nested reading) are neither rendered nor counted as answer slots
+/// ([Question.isReadingSubSupported]), so totals match what is on screen.
 /// TZ §3 explicitly excludes image_choice from reading passages and §10
 /// leaves it as an open lead decision, so this is a deliberate scope
 /// boundary carried over unchanged, not something forgotten here.
@@ -1362,20 +1373,31 @@ class ReadingBlockWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ReadingPassageWidget(reading: reading),
-        ...List.generate(reading.qs.length, (i) {
-          final slotKey = slotKeyFor?.call(i);
-          return slotKey == null
-              ? _buildSub(i)
-              : KeyedSubtree(key: slotKey, child: _buildSub(i));
-        }),
+        ..._buildSubs(),
       ],
     );
   }
 
-  Widget _buildSub(int i) {
+  /// Only supported sub-question types are rendered (the same set the scorer
+  /// counts, see [Question.isReadingSubSupported]); display numbers run over
+  /// those alone so there are no gaps.
+  List<Widget> _buildSubs() {
+    final out = <Widget>[];
+    var shown = 0;
+    for (var i = 0; i < reading.qs.length; i++) {
+      if (!reading.qs[i].isReadingSubSupported) continue;
+      final slotKey = slotKeyFor?.call(i);
+      final sub = _buildSub(i, indexOffset + shown);
+      shown++;
+      out.add(slotKey == null ? sub : KeyedSubtree(key: slotKey, child: sub));
+    }
+    return out;
+  }
+
+  Widget _buildSub(int i, int displayIndex) {
     final q = reading.qs[i];
     final ansKey = i.toString();
-    final displayIndex = indexOffset + i;
+    final raw = answers[ansKey];
 
     final report = onReport == null ? null : () => onReport!(i);
 
@@ -1384,7 +1406,7 @@ class ReadingBlockWidget extends StatelessWidget {
         return YesNoWidget(
           index: displayIndex,
           question: q,
-          answer: answers[ansKey] as String?,
+          answer: raw is String ? raw : null,
           onSelect: (v) => onAnswer(i, v),
           onReport: report,
         );
@@ -1393,7 +1415,7 @@ class ReadingBlockWidget extends StatelessWidget {
         return TextChoiceWidget(
           index: displayIndex,
           question: q,
-          answer: answers[ansKey] as int?,
+          answer: raw is int ? raw : null,
           onSelect: (v) => onAnswer(i, v),
           onReport: report,
         );
@@ -1402,14 +1424,12 @@ class ReadingBlockWidget extends StatelessWidget {
         return FillBlankWidget(
           index: displayIndex,
           question: q,
-          initialValue:
-              answers[ansKey] is String ? answers[ansKey] as String : '',
+          initialValue: raw is String ? raw : '',
           onChanged: (v) => onAnswer(i, v),
           onReport: report,
         );
 
       default:
-        // Unexpected sub-question type in reading container
         return const SizedBox.shrink();
     }
   }

@@ -1012,10 +1012,11 @@ class _TestEngineState extends State<TestEngine>
     int displayIdx = 0;
     for (int i = 0; i < qs.length; i++) {
       final q = qs[i];
+      if (q.skipped) continue; // unparsable/unknown item: index kept, no UI
       if (q.type == QuestionType.reading && q.reading != null) {
         final reading = q.reading!;
         children.add(_buildInlineReading(section, reading, i, displayIdx));
-        displayIdx += reading.qs.length;
+        displayIdx += reading.answerableCount;
       } else {
         final key = '${section.name}/$i';
         children.add(KeyedSubtree(
@@ -1398,7 +1399,9 @@ class _SectionTabBarState extends State<_SectionTabBar> {
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text(
-                    widget.sections[i].displayName,
+                    widget.sections[i].name == 'Questions'
+                        ? AppLocalizations.of(context)!.mathSubjectFull
+                        : widget.sections[i].name,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
