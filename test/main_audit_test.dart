@@ -7,7 +7,6 @@ import 'package:alochi_monitoring/core/diagnostics/active_test_gate.dart';
 import 'package:alochi_monitoring/core/router/app_router.dart';
 import 'package:alochi_monitoring/core/widgets/command_palette.dart';
 import 'package:alochi_monitoring/main.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
