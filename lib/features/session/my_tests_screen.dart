@@ -34,6 +34,7 @@ import '../../core/api/api_client.dart';
 import '../../core/engine/test_models.dart' show pickVariantNumber;
 import '../../core/models/models.dart';
 import '../../core/services/heartbeat_service.dart';
+import '../../core/services/server_clock.dart';
 import '../../core/services/test_catalog_service.dart' show testCatalogService;
 import '../../core/session/logout.dart';
 import '../../shared/theme/app_theme.dart';
@@ -78,8 +79,7 @@ class _StudentTest {
     this.progressPct,
   });
 
-  bool get isLocked =>
-      lockedUntil != null && lockedUntil!.isAfter(DateTime.now());
+  bool get isLocked => ServerClock.isFuture(lockedUntil);
 
   static const _newThreshold = Duration(days: 3);
   bool get isNew =>

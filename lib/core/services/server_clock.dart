@@ -31,6 +31,17 @@ class ServerClock {
 
   static Duration get offset => _offset;
 
+  /// [t] (a server timestamp such as `locked_until`) is still in the future by
+  /// server time. Null = not in the future.
+  static bool isFuture(DateTime? t) => t != null && t.isAfter(now());
+
+  /// Time left until [t] by server time (zero when past or null).
+  static Duration until(DateTime? t) {
+    if (t == null) return Duration.zero;
+    final d = t.difference(now());
+    return d > Duration.zero ? d : Duration.zero;
+  }
+
   /// Loads the persisted offset once (never throws). Call before the first
   /// [now] that matters while offline; later calls are free.
   static Future<void> ensureLoaded() => _loading ??= _load();

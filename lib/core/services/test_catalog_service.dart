@@ -10,6 +10,7 @@ import '../db/attempt_store.dart';
 import '../db/test_cache.dart';
 import '../diagnostics/active_test_gate.dart';
 import 'heartbeat_service.dart';
+import 'server_clock.dart';
 import '../offline/lan_client_session.dart' show isOfflineModeOpen;
 
 /// The `variants` key the engine actually renders for [variant]: the exact key
@@ -215,6 +216,8 @@ class TestCatalogService {
   /// muammosi).
   Future<List<CatalogEntry>> refresh(
       {String? groupId, String? schoolCode, String? schoolId}) async {
+    // The lock checks that follow use server time (persisted offset).
+    await ServerClock.ensureLoaded();
     // Keshdan metadata olish (har doim holda kerak). A broken cache DB must
     // never break the catalog: TestCache quarantines a corrupt file itself,
     // anything else is treated as "nothing cached".

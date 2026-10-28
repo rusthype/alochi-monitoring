@@ -7,6 +7,7 @@ import '../../core/db/test_cache.dart';
 import '../../core/engine/test_models.dart' show pickVariantNumber;
 import '../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
 import '../../core/services/heartbeat_service.dart';
+import '../../core/services/server_clock.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../core/services/toast_service.dart';
 
@@ -29,8 +30,11 @@ Future<void> launchRunner(
   // Time-lock safety net: the catalog UI (login_screen.dart) already blocks
   // navigation into locked tests, this is a second layer in case launchRunner
   // is ever reached through another path.
+  // Server time, not the PC clock: a PC reset to 2000 must not lock every
+  // scheduled test, a clock running ahead must not open one early.
+  await ServerClock.ensureLoaded();
   final lockedUntil = TestCatalogService.lockedUntilFor(session.testKey);
-  if (lockedUntil != null && lockedUntil.isAfter(DateTime.now())) {
+  if (ServerClock.isFuture(lockedUntil)) {
     if (context.mounted) {
       ToastService.showError(context, AppLocalizations.of(context)!.testLocked);
     }
