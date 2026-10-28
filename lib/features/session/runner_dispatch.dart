@@ -181,15 +181,47 @@ Future<int?> _savedVariantToResume(String testKey, String studentId) async {
 /// caller already drew and prepared), else a fresh random draw. The caller
 /// must remember a fresh draw and pass it back as [drawn] / `preferredVariant`
 /// so the variant prepared (images downloaded) is the variant launched.
+///
+/// A FRESH draw whose images are not all on disk is swapped for another
+/// variant that is complete (variants are interchangeable forms of the same
+/// test): offline that is the difference between starting and being blocked
+/// by one missing picture. A resumed attempt keeps its variant, and when no
+/// variant is complete the draw stays (the caller downloads it).
 Future<int> previewAttemptVariant(
   Map<String, dynamic> cached, {
   required String testKey,
   required String studentId,
   int? drawn,
-}) async =>
-    await _savedVariantToResume(testKey, studentId) ??
-    drawn ??
-    _pickRandomVariant(cached);
+  TestCatalogService? catalog,
+}) async {
+  final saved = await _savedVariantToResume(testKey, studentId);
+  if (saved != null) return saved;
+  final first = drawn ?? _pickRandomVariant(cached);
+  final svc = catalog ?? testCatalogService;
+  try {
+    if (await svc.variantImagesComplete(cached, first)) return first;
+    final others = _variantNumbers(cached)..remove(first);
+    others.shuffle();
+    for (final v in others) {
+      if (await svc.variantImagesComplete(cached, v)) return v;
+    }
+  } catch (e) {
+    debugPrint('previewAttemptVariant: completeness check failed: $e');
+  }
+  return first;
+}
+
+List<int> _variantNumbers(Map<String, dynamic> cached) {
+  final blob = (cached['test_data'] is Map)
+      ? Map<String, dynamic>.from(cached['test_data'] as Map)
+      : cached;
+  final variants = blob['variants'];
+  if (variants is! Map) return [];
+  return variants.keys
+      .map((k) => int.tryParse(k.toString()))
+      .whereType<int>()
+      .toList();
+}
 
 @visibleForTesting
 Future<int> resolveAttemptVariant(

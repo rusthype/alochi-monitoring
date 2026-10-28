@@ -394,7 +394,8 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
         variant = await previewAttemptVariant(cached,
             testKey: widget.session.testKey,
             studentId: studentId,
-            drawn: _drawnVariant[studentId]);
+            drawn: _drawnVariant[studentId],
+            catalog: _catalog);
         _drawnVariant[studentId] = variant;
         ok = await _catalog.ensureVariantImages(cached, variant,
             onProgress: (done, total) {
