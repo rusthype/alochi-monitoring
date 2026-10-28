@@ -6,8 +6,6 @@
 // and offers "Hozir yuborish" (SyncService.flushNowWithResult) with progress
 // and a toast with the outcome. Same pill language as SyncStatusBadge, but a
 // teacher-facing message instead of a student-facing badge.
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/db/offline_queue.dart';
@@ -36,31 +34,66 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
   int _pending = 0;
   Duration? _oldest;
   bool _sending = false;
-  Timer? _timer;
+
+  bool get _overridden => widget.pendingCountOverride != null;
 
   @override
   void initState() {
     super.initState();
-    _refresh();
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) => _refresh());
+    // Event-driven, no timer and no queue access of its own: the queue
+    // publishes its size (OfflineQueue.pending) whenever rows are added /
+    // sent / dropped, and SyncService keeps it in step every few seconds.
+    OfflineQueue.pending.addListener(_onChanged);
+    OfflineQueue.changes.addListener(_onChanged);
+    SyncService.instance.flushing.addListener(_onChanged);
+    if (_overridden) {
+      _refresh();
+    } else {
+      final v = OfflineQueue.pending.value;
+      _pending = v.count;
+      _oldest = v.oldest;
+    }
+    // The overlay for the toast exists after the first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _noticeIfAny());
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    OfflineQueue.pending.removeListener(_onChanged);
+    OfflineQueue.changes.removeListener(_onChanged);
+    SyncService.instance.flushing.removeListener(_onChanged);
     super.dispose();
   }
 
+  void _onChanged() {
+    if (!mounted) return;
+    _refresh();
+    _noticeIfAny();
+  }
+
+  /// A corrupt queue file was replaced at open: tell the teacher once.
+  void _noticeIfAny() {
+    if (mounted && OfflineQueue.takeRecoveryNotice()) {
+      ToastService.showError(
+          context, AppLocalizations.of(context)!.queueDbRecoveredToast);
+    }
+  }
+
+  /// Returns the pending count after the refresh.
   Future<int> _refresh() async {
     try {
-      final pending = widget.pendingCountOverride != null
-          ? await widget.pendingCountOverride!()
-          : await OfflineQueue.totalPendingCount();
-      final oldest = pending <= 0
-          ? null
-          : widget.oldestAgeOverride != null
-              ? await widget.oldestAgeOverride!()
-              : await OfflineQueue.oldestPendingAge();
+      final int pending;
+      final Duration? oldest;
+      if (_overridden) {
+        pending = await widget.pendingCountOverride!();
+        oldest = pending <= 0 || widget.oldestAgeOverride == null
+            ? null
+            : await widget.oldestAgeOverride!();
+      } else {
+        final v = OfflineQueue.pending.value;
+        pending = v.count;
+        oldest = v.oldest;
+      }
       if (mounted) {
         setState(() {
           _pending = pending;
@@ -72,12 +105,6 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
       // A UI indicator, not the sync path: keep the last known state.
       debugPrint('PendingResultsChip._refresh: $e');
       return _pending;
-    } finally {
-      // A corrupt queue file was replaced at open: tell the teacher once.
-      if (mounted && OfflineQueue.takeRecoveryNotice()) {
-        ToastService.showError(
-            context, AppLocalizations.of(context)!.queueDbRecoveredToast);
-      }
     }
   }
 
@@ -92,6 +119,7 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
     } catch (e) {
       debugPrint('PendingResultsChip: flush failed: $e');
     }
+    if (!_overridden) await OfflineQueue.refreshPending();
     final left = await _refresh();
     if (!mounted) return;
     setState(() => _sending = false);

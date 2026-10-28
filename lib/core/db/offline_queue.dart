@@ -26,6 +26,7 @@ class OfflineQueue {
     }
     final dir = await getApplicationSupportDirectory();
     _db = await _openRecovering(join(dir.path, 'monitoring_queue.db'));
+    changes.value++; // a recovery notice may be waiting
     return _db!;
   }
 
@@ -34,9 +35,38 @@ class OfflineQueue {
   static Future<void> openAtPath(String path) async {
     await resetForTest();
     _db = await _openRecovering(path);
+    changes.value++;
   }
 
   static bool _recoveryNotice = false;
+
+  /// Bumped whenever rows are added to / removed from the result queues (or
+  /// the queue file is opened), so UI that shows the pending count refreshes
+  /// on the event instead of polling with a timer.
+  static final ValueNotifier<int> changes = ValueNotifier<int>(0);
+
+  /// Latest known size of the result queues and the age of the oldest row,
+  /// published by the queue operations themselves (PendingResultsChip reads
+  /// this and never queries the file on its own).
+  static final ValueNotifier<({int count, Duration? oldest})> pending =
+      ValueNotifier<({int count, Duration? oldest})>((count: 0, oldest: null));
+
+  static void _changed() {
+    changes.value++;
+    unawaited(refreshPending());
+  }
+
+  /// Re-reads [pending] from the queue. Never throws.
+  static Future<({int count, Duration? oldest})> refreshPending() async {
+    try {
+      final count = await _countAll();
+      final oldest = count > 0 ? await oldestPendingAge() : null;
+      return pending.value = (count: count, oldest: oldest);
+    } catch (e) {
+      debugPrint('OfflineQueue.refreshPending: $e');
+      return pending.value;
+    }
+  }
 
   /// True once after a corrupt queue file was replaced: the screens that
   /// already poll the queue show ONE teacher-visible notice (the results that
@@ -89,6 +119,7 @@ class OfflineQueue {
   static Future<void> resetForTest() async {
     await _db?.close();
     _db = null;
+    pending.value = (count: 0, oldest: null);
   }
 
   // Schema v9 adds `local_students` (local_students_db.dart): children a
@@ -224,6 +255,7 @@ class OfflineQueue {
       },
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
+    _changed();
   }
 
   static Future<int> flush(
@@ -268,6 +300,7 @@ class OfflineQueue {
         debugPrint('OfflineQueue.flush error (id=${row['id']}): $e');
       }
     }
+    _changed();
     return synced;
   }
 
@@ -299,6 +332,7 @@ class OfflineQueue {
       },
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
+    _changed();
   }
 
   static Future<int> flushLocal(
@@ -334,6 +368,7 @@ class OfflineQueue {
         debugPrint('OfflineQueue.flushLocal error (id=${row['id']}): $e');
       }
     }
+    _changed();
     return synced;
   }
 
@@ -394,6 +429,14 @@ class OfflineQueue {
   /// SyncService._flushAll and SyncStatusBadge._refreshPending, the two
   /// former call sites that used to compute this separately/sequentially).
   static Future<int> totalPendingCount() async {
+    final total = await _countAll();
+    // SyncService polls this every few seconds: keep [pending] in step with
+    // what it sees (e.g. the queue left over from the previous run).
+    if (total != pending.value.count) unawaited(refreshPending());
+    return total;
+  }
+
+  static Future<int> _countAll() async {
     final counts = await Future.wait([pendingCount(), pendingLocalCount()]);
     return counts[0] + counts[1];
   }
@@ -439,6 +482,7 @@ class OfflineQueue {
     if (removed > 0) {
       debugPrint(
           'OfflineQueue.purgeStale: $removed eski qator o\'chirildi');
+      _changed();
     }
     return removed;
   }

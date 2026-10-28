@@ -138,6 +138,40 @@ void main() {
     expect(OfflineQueue.takeRecoveryNotice(), isFalse, reason: 'consumed');
   });
 
+  testWidgets(
+      'follows the real queue without any timer: appears on enqueue, '
+      'disappears when the rows are gone', (tester) async {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    final tmp = Directory.systemTemp.createTempSync('chip_events_');
+    addTearDown(() async {
+      await OfflineQueue.resetForTest();
+      tmp.deleteSync(recursive: true);
+    });
+    await tester
+        .runAsync(() => OfflineQueue.openAtPath(p.join(tmp.path, 'q.db')));
+
+    await tester.pumpWidget(_wrap(const PendingResultsChip()));
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 80)));
+    await tester.pump();
+    final t = l10n(tester);
+    expect(find.text(t.pendingResultsSendNow), findsNothing);
+
+    await tester.runAsync(() => OfflineQueue.enqueueLocal({'a': 1}, 'x'));
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 80)));
+    await tester.pump();
+    expect(find.text(t.pendingResultsChip(1)), findsOneWidget);
+
+    await tester.runAsync(() async {
+      await OfflineQueue.flushLocal((_, __) async => {'synced': true});
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+    });
+    await tester.pump();
+    expect(find.text(t.pendingResultsSendNow), findsNothing);
+  });
+
   group('OfflineQueue.oldestPendingAge', () {
     late Directory tmp;
     setUpAll(() {

@@ -31,8 +31,8 @@ Future<void> launchRunner(
   // navigation into locked tests, this is a second layer in case launchRunner
   // is ever reached through another path.
   // Server time, not the PC clock: a PC reset to 2000 must not lock every
-  // scheduled test, a clock running ahead must not open one early.
-  await ServerClock.ensureLoaded();
+  // scheduled test, a clock running ahead must not open one early. (The lock
+  // comes from TestCatalogService.refresh, which already loaded the offset.)
   final lockedUntil = TestCatalogService.lockedUntilFor(session.testKey);
   if (ServerClock.isFuture(lockedUntil)) {
     if (context.mounted) {
