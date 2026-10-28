@@ -84,9 +84,10 @@ void main() {
       expect(find.byType(SentenceFreeTextWidget), findsOneWidget);
       expect(find.byType(SentenceOrderWidget), findsNothing);
       expect(find.byType(TextField), findsOneWidget);
-      // The prompt is one Text.rich: four segments joined by ' / '.
-      expect(find.text('is / a / It / ball', findRichText: true),
-          findsOneWidget);
+      // The prompt is four separate word chips (engine UX polish).
+      for (final w in ['is', 'a', 'It', 'ball']) {
+        expect(find.text(w), findsOneWidget);
+      }
       expect(find.textContaining('[is', findRichText: true), findsNothing);
 
       await tester.pumpWidget(const SizedBox());
