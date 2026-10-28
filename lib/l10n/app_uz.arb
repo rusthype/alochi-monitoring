@@ -1639,5 +1639,8 @@
         "type": "int"
       }
     }
-  }
+  },
+  "groupSelectNoTestsForSchool": "Bu maktab uchun testlar topilmadi",
+  "groupSelectGroupsLoadFailed": "Guruhlarni yuklab bo'lmadi",
+  "groupSelectTestsLoadFailed": "Testlar ro'yxatini yuklab bo'lmadi"
 }

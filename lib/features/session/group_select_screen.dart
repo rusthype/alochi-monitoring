@@ -38,6 +38,9 @@ String _newBadgeDateLabel(BuildContext context, CatalogEntry entry) {
   return AppLocalizations.of(context)!.newBadgeAddedOn(date);
 }
 
+/// Xato sababi — matn build()da joriy tilga qarab aniqlanadi (async
+/// metodlarda BuildContext'ga tayanmaslik uchun).
+enum GroupSelectError { noTestsForSchool, groupsLoadFailed, testsLoadFailed }
 
 class GroupSelectScreen extends StatefulWidget {
   final String schoolCode;
@@ -78,7 +81,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
 
   bool _loadingCatalog = false;
   List<CatalogEntry> _catalog = [];
-  String? _err;
+  GroupSelectError? _err;
   final Set<String> _downloadingKeys = {};
 
   @override
@@ -86,6 +89,12 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
     super.initState();
     _loadGroups();
   }
+
+  String _errText(AppLocalizations l10n, GroupSelectError e) => switch (e) {
+        GroupSelectError.noTestsForSchool => l10n.groupSelectNoTestsForSchool,
+        GroupSelectError.groupsLoadFailed => l10n.groupSelectGroupsLoadFailed,
+        GroupSelectError.testsLoadFailed => l10n.groupSelectTestsLoadFailed,
+      };
 
   Future<void> _loadGroups() async {
     try {
@@ -102,7 +111,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
           // bora oladigan joy yo'q, xato holatini ko'rsatamiz.
           setState(() {
             _loadingGroups = false;
-            _err = "Bu maktab uchun testlar topilmadi";
+            _err = GroupSelectError.noTestsForSchool;
           });
           return;
         }
@@ -119,7 +128,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       if (!mounted) return;
       setState(() {
         _loadingGroups = false;
-        _err = "Guruhlarni yuklab bo'lmadi";
+        _err = GroupSelectError.groupsLoadFailed;
       });
     }
   }
@@ -154,7 +163,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       if (!mounted) return;
       setState(() {
         _loadingCatalog = false;
-        _err = "Testlar ro'yxatini yuklab bo'lmadi";
+        _err = GroupSelectError.testsLoadFailed;
       });
     }
   }
@@ -247,7 +256,9 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
-                                        _err!,
+                                        _errText(
+                                            AppLocalizations.of(context)!,
+                                            _err!),
                                         style: const TextStyle(
                                             color: AppColors.error,
                                             fontSize: 14,

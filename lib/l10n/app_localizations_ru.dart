@@ -3078,4 +3078,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String diagnosticSchoolNumberName(int number) {
     return 'Школа №$number';
   }
+
+  @override
+  String get groupSelectNoTestsForSchool => 'Для этой школы тесты не найдены';
+
+  @override
+  String get groupSelectGroupsLoadFailed => 'Не удалось загрузить группы';
+
+  @override
+  String get groupSelectTestsLoadFailed => 'Не удалось загрузить список тестов';
 }

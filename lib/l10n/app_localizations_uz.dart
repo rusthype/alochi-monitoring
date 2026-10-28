@@ -3091,4 +3091,14 @@ class AppLocalizationsUz extends AppLocalizations {
   String diagnosticSchoolNumberName(int number) {
     return '$number-maktab';
   }
+
+  @override
+  String get groupSelectNoTestsForSchool => 'Bu maktab uchun testlar topilmadi';
+
+  @override
+  String get groupSelectGroupsLoadFailed => 'Guruhlarni yuklab bo\'lmadi';
+
+  @override
+  String get groupSelectTestsLoadFailed =>
+      'Testlar ro\'yxatini yuklab bo\'lmadi';
 }

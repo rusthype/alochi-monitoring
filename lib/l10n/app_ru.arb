@@ -1573,5 +1573,8 @@
         "type": "int"
       }
     }
-  }
+  },
+  "groupSelectNoTestsForSchool": "Для этой школы тесты не найдены",
+  "groupSelectGroupsLoadFailed": "Не удалось загрузить группы",
+  "groupSelectTestsLoadFailed": "Не удалось загрузить список тестов"
 }
