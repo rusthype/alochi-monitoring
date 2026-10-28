@@ -10,12 +10,15 @@ import 'package:alochi_monitoring/core/locale/locale_provider.dart';
 import 'package:alochi_monitoring/core/network/connectivity_service.dart';
 import 'package:alochi_monitoring/core/offline/offline_session.dart';
 import 'package:alochi_monitoring/core/offline/pack_loader.dart';
+import 'package:alochi_monitoring/core/services/test_catalog_service.dart';
 import 'package:alochi_monitoring/features/auth/login_screen.dart';
+import 'package:alochi_monitoring/features/auth/school_pick_screen.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:alochi_monitoring/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -91,12 +94,25 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-        child: MaterialApp(
+        child: MaterialApp.router(
           theme: AppTheme.theme,
           locale: const Locale('ru'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const LoginScreen(),
+          routerConfig: GoRouter(
+            routes: [
+              GoRoute(path: '/', builder: (_, __) => const LoginScreen()),
+              GoRoute(
+                path: '/school_select',
+                builder: (_, __) => SchoolPickScreen(
+                  load: () async => (
+                    entries: <CatalogEntry>[],
+                    schools: <Map<String, String>>[],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -154,13 +170,18 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('Schools button: blocked by a diagnostic pack, opens without one',
-      (tester) async {
-    // No pack: the catalog sheet opens.
+  testWidgets(
+      'Schools button: blocked by a diagnostic pack, opens the full-screen '
+      'picker without one', (tester) async {
+    // No pack: the full-screen school picker opens (no bottom sheet).
     await pumpLogin(tester);
     await tester.tap(find.byKey(const ValueKey('login-schools-button')));
+    // GoRouter resolves the push asynchronously; second pump runs the
+    // transition.
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.byType(BottomSheet), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.byType(SchoolPickScreen), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
 
     // Diagnostic-only pack: tapping does nothing.
@@ -168,7 +189,7 @@ void main() {
     await pumpLogin(tester);
     await tester.tap(find.byKey(const ValueKey('login-schools-button')));
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.byType(SchoolPickScreen), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }

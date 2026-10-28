@@ -9,6 +9,7 @@ import '../../features/session/session_providers.dart';
 import '../../features/session/test_session.dart';
 import '../widgets/error_screen.dart';
 import '../../features/session/session_setup_screen.dart';
+import '../../features/auth/school_pick_screen.dart';
 import '../../features/session/group_select_screen.dart';
 import '../../features/session/student_entry_screen.dart';
 import '../../features/session/my_tests_screen.dart';
@@ -72,6 +73,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/',
         builder: (context, state) => const LoginScreen(),
       ),
+      GoRoute(
+          path: '/school_select',
+          builder: (context, state) => const SchoolPickScreen()),
       GoRoute(
           path: '/session_setup',
           builder: (context, state) {
