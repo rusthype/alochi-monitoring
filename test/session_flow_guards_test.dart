@@ -282,6 +282,30 @@ void main() {
       await pumpGroupSelect(tester);
       expect(find.text('5-A'), findsOneWidget);
       expect(find.text(l10n(tester).groupSelectGroupsLoadFailed), findsNothing);
+      // The stale list is labelled, with a retry that picks up the server.
+      final t = l10n(tester);
+      expect(find.text(t.offlineRosterBanner), findsOneWidget);
+      fake.groupsError = null;
+      fake.groups = [
+        {'id': 'g1', 'name': '5-A'},
+        {'id': 'g2', 'name': '6-B'},
+      ];
+      await tester.tap(find.text(t.retry));
+      await settle(tester, 3);
+      expect(find.text('6-B'), findsOneWidget);
+      expect(find.text(t.offlineRosterBanner), findsNothing);
+    });
+
+    testWidgets('a real "no" from the server (404) is not answered with the '
+        'remembered list', (tester) async {
+      await tester.runAsync(() => GroupsCache.save('39', 'uuid-39', [
+            {'id': 'g1', 'name': '5-A'}
+          ]));
+      fake.groupsError = const ApiException(404, 'gone');
+      await pumpGroupSelect(tester);
+      expect(find.text('5-A'), findsNothing);
+      expect(find.text(l10n(tester).groupSelectGroupsLoadFailed),
+          findsOneWidget);
     });
 
     testWidgets('a school without groups goes straight to the roster with the '

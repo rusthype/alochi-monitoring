@@ -1642,5 +1642,51 @@
   },
   "groupSelectNoTestsForSchool": "Bu maktab uchun testlar topilmadi",
   "groupSelectGroupsLoadFailed": "Guruhlarni yuklab bo'lmadi",
-  "groupSelectTestsLoadFailed": "Testlar ro'yxatini yuklab bo'lmadi"
+  "groupSelectTestsLoadFailed": "Testlar ro'yxatini yuklab bo'lmadi",
+  "pendingResultsChip": "{count} natija yuborilmagan",
+  "@pendingResultsChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingResultsOldestMinutes": "eng eskisi {n} daq. oldin",
+  "@pendingResultsOldestMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingResultsOldestHours": "eng eskisi {n} soat oldin",
+  "@pendingResultsOldestHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingResultsOldestDays": "eng eskisi {n} kun oldin",
+  "@pendingResultsOldestDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingResultsSendNow": "Hozir yuborish",
+  "pendingResultsSentToast": "{count} natija yuborildi",
+  "@pendingResultsSentToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingResultsFailedToast": "Yuborib bo'lmadi. Natijalar qurilmada saqlangan.",
+  "pendingResultsNoNetworkToast": "Internet yo'q. Natijalar qurilmada saqlangan.",
+  "diagnosticFinishedSavedPill": "Saqlandi",
+  "offlineRosterBanner": "Oflayn ro'yxat",
+  "queueDbRecoveredToast": "Natijalar bazasi buzilgan edi va qayta yaratildi. Eski fayl saqlab qo'yildi."
 }

@@ -16,6 +16,7 @@ import '../../core/services/roster_done_store.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../core/services/toast_service.dart';
 import '../../shared/widgets/add_student_dialog.dart';
+import '../../shared/widgets/pending_results_chip.dart';
 import '../../shared/theme/app_theme.dart';
 import '../diagnostic/widgets/school_picker_body.dart'
     show SchoolPickerErrorBanner;
@@ -63,6 +64,10 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
   /// `_err` is a failed roster / group load (retry banner), not a validation
   /// or "empty group" message.
   bool _loadFailed = false;
+
+  /// The visible roster is the last good copy from this PC (server
+  /// unreachable): shown with the "Oflayn ro'yxat" banner + Retry.
+  bool _rosterFromCache = false;
   bool _launching = false;
 
   /// Consecutive failed prepares per student: after 2 the variant is redrawn
@@ -164,7 +169,10 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     final keep = keepRoster && _students.isNotEmpty;
     setState(() {
       _loadingStudents = !keep;
-      if (!keep) _students = [];
+      if (!keep) {
+        _students = [];
+        _rosterFromCache = false;
+      }
       _selectedStudent = null;
       _err = null;
       _loadFailed = false;
@@ -178,6 +186,11 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
         };
     try {
       final fetched = await api.fetchStudents(groupId, testKey: testKey);
+      // Last good roster for the offline case (never an empty list over a
+      // good one; pack / LAN rosters are not cached).
+      if (!isOfflineModeOpen) {
+        unawaited(TestCache.putRoster(groupId, testKey, fetched));
+      }
       // Children added while offline and not yet accepted by the server.
       final s = await _withLocalStudents(groupId, fetched);
       final done = <String>{
@@ -192,20 +205,41 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
         _students = s;
         _done = done;
         _loadingStudents = false;
+        _rosterFromCache = false;
         _err = s.isEmpty ? l10n.noStudentsInGroup : null;
       });
       unawaited(_refreshTestStatus());
     } catch (e) {
       debugPrint('StudentEntryScreen: roster load failed: $e');
+      // Server unreachable / failing: the last good roster of this group (with
+      // its done flags and codes) keeps the class testable.
+      List<Map<String, dynamic>>? cachedRoster;
+      if (!keep && !isOfflineModeOpen && isOfflineLikeError(e)) {
+        cachedRoster = await TestCache.getRoster(groupId, testKey);
+        if (cachedRoster != null) {
+          try {
+            cachedRoster = await _withLocalStudents(groupId, cachedRoster);
+          } catch (_) {}
+        }
+      }
       Set<String> done = _done;
       try {
         done = {..._done, ...await localDone()};
+        for (final st in cachedRoster ?? const <Map<String, dynamic>>[]) {
+          if (st['done'] == true) done.add(_rosterKey(st));
+        }
       } catch (_) {}
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       setState(() {
         _loadingStudents = false;
         _done = done;
+        if (cachedRoster != null) {
+          _students = cachedRoster;
+          _rosterFromCache = true;
+          _err = null;
+          return;
+        }
         // A failed refresh must not turn a populated roster into "no
         // students": keep it and say so in a toast instead.
         if (keep) {
@@ -215,6 +249,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
           _loadFailed = true;
         }
       });
+      if (cachedRoster != null) unawaited(_refreshTestStatus());
     }
   }
 
@@ -394,7 +429,8 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
         variant = await previewAttemptVariant(cached,
             testKey: widget.session.testKey,
             studentId: studentId,
-            drawn: _drawnVariant[studentId]);
+            drawn: _drawnVariant[studentId],
+            catalog: _catalog);
         _drawnVariant[studentId] = variant;
         ok = await _catalog.ensureVariantImages(cached, variant,
             onProgress: (done, total) {
@@ -694,6 +730,18 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                                 if (_selectedGroup != null) ...[
                                   if (widget.preselectedGroup == null)
                                     const SizedBox(height: 20),
+                                  if (_rosterFromCache &&
+                                      !_loadingStudents &&
+                                      _students.isNotEmpty)
+                                    Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 12),
+                                      child: SchoolPickerErrorBanner(
+                                        key: const Key('offlineRosterBanner'),
+                                        message: l10n.offlineRosterBanner,
+                                        onRetry: _loadStudents,
+                                      ),
+                                    ),
                                   if (!_loadingStudents && _students.isNotEmpty)
                                     Padding(
                                       padding:
@@ -1156,6 +1204,14 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                     ),
                   ),
                 ),
+              ),
+
+              // Teacher chip: results still only on this PC (hidden at 0).
+              // Above the Start bar so the two never overlap.
+              Positioned(
+                right: 16,
+                bottom: MediaQuery.of(context).padding.bottom + 84,
+                child: const PendingResultsChip(),
               ),
             ],
           ),

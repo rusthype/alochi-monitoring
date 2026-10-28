@@ -10,6 +10,7 @@ import '../db/attempt_store.dart';
 import '../db/test_cache.dart';
 import '../diagnostics/active_test_gate.dart';
 import 'heartbeat_service.dart';
+import 'server_clock.dart';
 import '../offline/lan_client_session.dart' show isOfflineModeOpen;
 
 /// The `variants` key the engine actually renders for [variant]: the exact key
@@ -215,6 +216,8 @@ class TestCatalogService {
   /// muammosi).
   Future<List<CatalogEntry>> refresh(
       {String? groupId, String? schoolCode, String? schoolId}) async {
+    // The lock checks that follow use server time (persisted offset).
+    await ServerClock.ensureLoaded();
     // Keshdan metadata olish (har doim holda kerak). A broken cache DB must
     // never break the catalog: TestCache quarantines a corrupt file itself,
     // anything else is treated as "nothing cached".
@@ -257,20 +260,31 @@ class TestCatalogService {
       // GroupSelectScreen._selectGroup) buni ochiq xato holati sifatida
       // ko'rsatib, qayta urinish imkonini bersin — jim tarzda bo'sh ro'yxat
       // qaytarish o'rniga.
-      if (cachedRows.isEmpty) {
+      // Offline the list is scoped like the online one: only the tests that
+      // were listed for this group / school (or globally), with their last
+      // known time lock. Rows cached before scoping existed stay visible.
+      final visible = cachedRows
+          .where((row) => visibleInScope(row['scopes'] as Set<String>?,
+              groupId: groupId, schoolCode: schoolCode, schoolId: schoolId))
+          .toList();
+      if (visible.isEmpty) {
         throw fetchError ?? Exception('catalog fetch failed');
       }
-      return cachedRows.map((row) {
+      return visible.map((row) {
         final key = row['test_key']?.toString() ?? '';
         final title = row['title']?.toString() ?? '';
         final grade = int.tryParse(row['grade']?.toString() ?? '') ?? 0;
         final version = int.tryParse(row['version']?.toString() ?? '') ?? 0;
+        final lockedUntil = _parseTime(row['locked_until']);
+        _lockedUntilCache[key] = lockedUntil;
         return CatalogEntry(
           testKey: key,
           title: title,
           grade: grade,
           version: version,
           status: CatalogStatus.cachedOnly,
+          lockedUntil: lockedUntil,
+          availableUntil: _parseTime(row['available_until']),
         );
       }).toList();
     }
@@ -333,6 +347,18 @@ class TestCatalogService {
               ? DateTime.tryParse(availableUntilRaw)
               : null;
 
+      // Remember the lock and the scope for the offline list (cached tests
+      // only; the pack/LAN memory cache ignores it).
+      if (cachedVer != null && !isOfflineModeOpen) {
+        await TestCache.recordListing(key,
+            scope: scopeToken(
+                groupId: groupId, schoolCode: schoolCode, schoolId: schoolId),
+            updateLock: true,
+            lockedUntil: lockedUntilRaw is String ? lockedUntilRaw : null,
+            availableUntil:
+                availableUntilRaw is String ? availableUntilRaw : null);
+      }
+
       entries.add(CatalogEntry(
         testKey: key,
         title: title,
@@ -371,6 +397,34 @@ class TestCatalogService {
   }
 
   static bool _blank(String? v) => v == null || v.isEmpty;
+
+  static DateTime? _parseTime(Object? v) =>
+      (v is String && v.isNotEmpty) ? DateTime.tryParse(v) : null;
+
+  /// The scope a catalog request lists tests under: `g:<group>` for a group
+  /// request, `s:<id>` / `c:<code>` for a school-only one, `*` (global) for an
+  /// unfiltered one.
+  @visibleForTesting
+  static String scopeToken(
+      {String? groupId, String? schoolCode, String? schoolId}) {
+    if (!_blank(groupId)) return 'g:$groupId';
+    if (!_blank(schoolId)) return 's:$schoolId';
+    if (!_blank(schoolCode)) return 'c:$schoolCode';
+    return '*';
+  }
+
+  /// Whether a cached test (listed under [scopes]; null = unknown, cached
+  /// before scoping existed) belongs in the offline list of this request.
+  @visibleForTesting
+  static bool visibleInScope(Set<String>? scopes,
+      {String? groupId, String? schoolCode, String? schoolId}) {
+    if (scopes == null || scopes.isEmpty) return true;
+    if (scopes.contains('*')) return true;
+    if (!_blank(groupId)) return scopes.contains('g:$groupId');
+    if (!_blank(schoolId) && scopes.contains('s:$schoolId')) return true;
+    if (!_blank(schoolCode) && scopes.contains('c:$schoolCode')) return true;
+    return false;
+  }
 
   /// Test day clock (prune needs "misses on 2 distinct calendar days").
   @visibleForTesting
@@ -555,6 +609,9 @@ class TestCatalogService {
           ? await _urlsOnlyUsedBy(testKey)
           : const <String>[];
       await TestCache.upsert(testKey, title, grade, version, jsonStr);
+      await TestCache.recordListing(testKey,
+          scope: scopeToken(
+              groupId: groupId, schoolCode: schoolCode, schoolId: schoolId));
       if (_blank(groupId) && _blank(schoolCode) && _blank(schoolId)) {
         await _tagGlobal([testKey]);
       }

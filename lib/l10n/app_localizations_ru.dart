@@ -3087,4 +3087,50 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get groupSelectTestsLoadFailed => 'Не удалось загрузить список тестов';
+
+  @override
+  String pendingResultsChip(int count) {
+    return 'Не отправлено результатов: $count';
+  }
+
+  @override
+  String pendingResultsOldestMinutes(int n) {
+    return 'самый старый — $n мин. назад';
+  }
+
+  @override
+  String pendingResultsOldestHours(int n) {
+    return 'самый старый — $n ч. назад';
+  }
+
+  @override
+  String pendingResultsOldestDays(int n) {
+    return 'самый старый — $n дн. назад';
+  }
+
+  @override
+  String get pendingResultsSendNow => 'Отправить сейчас';
+
+  @override
+  String pendingResultsSentToast(int count) {
+    return 'Отправлено результатов: $count';
+  }
+
+  @override
+  String get pendingResultsFailedToast =>
+      'Не удалось отправить. Результаты сохранены на устройстве.';
+
+  @override
+  String get pendingResultsNoNetworkToast =>
+      'Нет интернета. Результаты сохранены на устройстве.';
+
+  @override
+  String get diagnosticFinishedSavedPill => 'Сохранено';
+
+  @override
+  String get offlineRosterBanner => 'Офлайн-список';
+
+  @override
+  String get queueDbRecoveredToast =>
+      'База результатов была повреждена и создана заново. Старый файл сохранён.';
 }

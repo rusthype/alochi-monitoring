@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'db_migrate.dart';
 
 /// Sqflite kesh — yuklab olingan test JSON'lari saqlanadi.
 /// Jadval: cached_tests
@@ -41,22 +42,38 @@ class TestCache {
   }
 
   static Future<Database> _open(String path) {
-    return openDatabase(
-      path,
-      version: 1,
-      onCreate: (db, _) async {
-        await db.execute('''
-          CREATE TABLE IF NOT EXISTS cached_tests (
-            test_key       TEXT PRIMARY KEY,
-            title          TEXT NOT NULL,
-            grade          INTEGER NOT NULL,
-            version        INTEGER NOT NULL,
-            json           TEXT NOT NULL,
-            downloaded_at  INTEGER NOT NULL
-          )
-        ''');
-      },
-    );
+    // One idempotent ensure-schema for create AND every open (same pattern as
+    // OfflineQueue): older files get the additive columns / tables, nothing is
+    // dropped or rewritten.
+    return openDatabase(path, version: 1, onOpen: _ensureSchema);
+  }
+
+  static Future<void> _ensureSchema(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS cached_tests (
+        test_key       TEXT PRIMARY KEY,
+        title          TEXT NOT NULL,
+        grade          INTEGER NOT NULL,
+        version        INTEGER NOT NULL,
+        json           TEXT NOT NULL,
+        downloaded_at  INTEGER NOT NULL
+      )
+    ''');
+    // Offline catalog scoping: last known time lock + the scopes (group /
+    // school / global) this test was listed under. NULL = unknown (row cached
+    // before these columns existed).
+    await addColumnIfMissing(db, 'cached_tests', 'locked_until', 'TEXT');
+    await addColumnIfMissing(db, 'cached_tests', 'available_until', 'TEXT');
+    await addColumnIfMissing(db, 'cached_tests', 'scopes', 'TEXT');
+    // Last good roster per group (offline roster).
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS roster_cache (
+        group_id  TEXT PRIMARY KEY,
+        test_key  TEXT NOT NULL,
+        json      TEXT NOT NULL,
+        saved_at  INTEGER NOT NULL
+      )
+    ''');
   }
 
   static Future<Database> get _database async {
@@ -146,18 +163,87 @@ class TestCache {
       }
       return;
     }
-    await _run((db) => db.insert(
-          'cached_tests',
-          {
-            'test_key': testKey,
-            'title': title,
-            'grade': grade,
-            'version': version,
-            'json': jsonStr,
-            'downloaded_at': DateTime.now().millisecondsSinceEpoch,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        ));
+    await _run((db) async {
+      // REPLACE rewrites the whole row: carry the scoping columns over.
+      final prev = await db.query('cached_tests',
+          columns: ['locked_until', 'available_until', 'scopes'],
+          where: 'test_key = ?',
+          whereArgs: [testKey],
+          limit: 1);
+      await db.insert(
+        'cached_tests',
+        {
+          'test_key': testKey,
+          'title': title,
+          'grade': grade,
+          'version': version,
+          'json': jsonStr,
+          'downloaded_at': DateTime.now().millisecondsSinceEpoch,
+          if (prev.isNotEmpty) ...prev.first,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    });
+  }
+
+  /// Remember that [testKey] was listed under [scope] (see
+  /// TestCatalogService.scopeToken); [scope] is added to the known scopes.
+  /// With [updateLock] the time lock is written as given ([lockedUntil] /
+  /// [availableUntil] null clears a lock the server no longer has); without
+  /// it the stored lock is kept. No-op for an uncached test and in memory
+  /// mode. Never throws.
+  static Future<void> recordListing(String testKey,
+      {String? scope,
+      bool updateLock = false,
+      String? lockedUntil,
+      String? availableUntil}) async {
+    if (_memory != null) return;
+    try {
+      await _run((db) async {
+        final rows = await db.query('cached_tests',
+            columns: ['locked_until', 'available_until', 'scopes'],
+            where: 'test_key = ?',
+            whereArgs: [testKey],
+            limit: 1);
+        if (rows.isEmpty) return;
+        final row = rows.first;
+        final scopes = _decodeScopes(row['scopes']) ?? <String>{};
+        final before = scopes.length;
+        if (scope != null) scopes.add(scope);
+        final newLocked = !updateLock
+            ? row['locked_until'] as String?
+            : ((lockedUntil ?? '').isEmpty ? null : lockedUntil);
+        final newAvail = !updateLock
+            ? row['available_until'] as String?
+            : ((availableUntil ?? '').isEmpty ? null : availableUntil);
+        if (scopes.length == before &&
+            row['scopes'] != null &&
+            row['locked_until'] == newLocked &&
+            row['available_until'] == newAvail) {
+          return; // nothing changed: no write
+        }
+        await db.update(
+            'cached_tests',
+            {
+              'locked_until': newLocked,
+              'available_until': newAvail,
+              'scopes': jsonEncode(scopes.toList()..sort()),
+            },
+            where: 'test_key = ?',
+            whereArgs: [testKey]);
+      });
+    } catch (e) {
+      debugPrint('TestCache.recordListing($testKey): $e');
+    }
+  }
+
+  static Set<String>? _decodeScopes(Object? raw) {
+    if (raw is! String || raw.isEmpty) return null;
+    try {
+      final d = jsonDecode(raw);
+      if (d is List) return d.map((e) => e.toString()).toSet();
+    } catch (_) {}
+    return null;
   }
 
   /// Bitta test yozuvini qaytaradi yoki null (topilmasa).
@@ -211,13 +297,80 @@ class TestCache {
                 'title',
                 'grade',
                 'version',
-                'downloaded_at'
+                'downloaded_at',
+                'locked_until',
+                'available_until',
+                'scopes',
               ],
               orderBy: 'downloaded_at DESC',
             ),
         fallback: () => <Map<String, Object?>>[]);
     if (rows.isEmpty) return [];
-    return rows.map((r) => Map<String, dynamic>.from(r)).toList();
+    return rows.map((r) {
+      final m = Map<String, dynamic>.from(r);
+      // null = scopes unknown (row cached before scoping existed).
+      m['scopes'] = _decodeScopes(r['scopes']);
+      return m;
+    }).toList();
+  }
+
+  // ── Roster cache ──────────────────────────────────────────────────────────
+  static const _rosterKeep = 200;
+
+  /// Stores the last good roster of [groupId] (backend rows incl. `code` and
+  /// the `done` flag of [testKey]). An empty list is never stored: it must not
+  /// replace a good one. No-op in memory mode. Never throws.
+  static Future<void> putRoster(
+      String groupId, String testKey, List<Map<String, dynamic>> rows) async {
+    if (_memory != null || groupId.isEmpty || rows.isEmpty) return;
+    try {
+      await _run((db) async {
+        await db.insert(
+          'roster_cache',
+          {
+            'group_id': groupId,
+            'test_key': testKey,
+            'json': jsonEncode(rows),
+            'saved_at': DateTime.now().millisecondsSinceEpoch,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        await db.rawDelete(
+            'DELETE FROM roster_cache WHERE group_id NOT IN '
+            '(SELECT group_id FROM roster_cache ORDER BY saved_at DESC LIMIT ?)',
+            [_rosterKeep]);
+      });
+    } catch (e) {
+      debugPrint('TestCache.putRoster($groupId): $e');
+    }
+  }
+
+  /// Last good roster of [groupId], or null. `done` belongs to one test, so
+  /// for any other [testKey] it is dropped from the rows.
+  static Future<List<Map<String, dynamic>>?> getRoster(
+      String groupId, String testKey) async {
+    if (_memory != null || groupId.isEmpty) return null;
+    try {
+      final rows = await _run(
+          (db) => db.query('roster_cache',
+              where: 'group_id = ?', whereArgs: [groupId], limit: 1),
+          fallback: () => <Map<String, Object?>>[]);
+      if (rows.isEmpty) return null;
+      final decoded = jsonDecode(rows.first['json'] as String);
+      if (decoded is! List) return null;
+      final sameTest = rows.first['test_key'] == testKey;
+      final out = <Map<String, dynamic>>[];
+      for (final e in decoded) {
+        if (e is! Map) continue;
+        final m = Map<String, dynamic>.from(e);
+        if (!sameTest) m.remove('done');
+        out.add(m);
+      }
+      return out.isEmpty ? null : out;
+    } catch (e) {
+      debugPrint('TestCache.getRoster($groupId): $e');
+      return null;
+    }
   }
 
   /// Berilgan test_key uchun saqlangan version raqamini qaytaradi yoki null.

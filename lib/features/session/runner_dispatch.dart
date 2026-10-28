@@ -7,6 +7,7 @@ import '../../core/db/test_cache.dart';
 import '../../core/engine/test_models.dart' show pickVariantNumber;
 import '../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
 import '../../core/services/heartbeat_service.dart';
+import '../../core/services/server_clock.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../core/services/toast_service.dart';
 
@@ -29,8 +30,11 @@ Future<void> launchRunner(
   // Time-lock safety net: the catalog UI (login_screen.dart) already blocks
   // navigation into locked tests, this is a second layer in case launchRunner
   // is ever reached through another path.
+  // Server time, not the PC clock: a PC reset to 2000 must not lock every
+  // scheduled test, a clock running ahead must not open one early. (The lock
+  // comes from TestCatalogService.refresh, which already loaded the offset.)
   final lockedUntil = TestCatalogService.lockedUntilFor(session.testKey);
-  if (lockedUntil != null && lockedUntil.isAfter(DateTime.now())) {
+  if (ServerClock.isFuture(lockedUntil)) {
     if (context.mounted) {
       ToastService.showError(context, AppLocalizations.of(context)!.testLocked);
     }
@@ -177,15 +181,47 @@ Future<int?> _savedVariantToResume(String testKey, String studentId) async {
 /// caller already drew and prepared), else a fresh random draw. The caller
 /// must remember a fresh draw and pass it back as [drawn] / `preferredVariant`
 /// so the variant prepared (images downloaded) is the variant launched.
+///
+/// A FRESH draw whose images are not all on disk is swapped for another
+/// variant that is complete (variants are interchangeable forms of the same
+/// test): offline that is the difference between starting and being blocked
+/// by one missing picture. A resumed attempt keeps its variant, and when no
+/// variant is complete the draw stays (the caller downloads it).
 Future<int> previewAttemptVariant(
   Map<String, dynamic> cached, {
   required String testKey,
   required String studentId,
   int? drawn,
-}) async =>
-    await _savedVariantToResume(testKey, studentId) ??
-    drawn ??
-    _pickRandomVariant(cached);
+  TestCatalogService? catalog,
+}) async {
+  final saved = await _savedVariantToResume(testKey, studentId);
+  if (saved != null) return saved;
+  final first = drawn ?? _pickRandomVariant(cached);
+  final svc = catalog ?? testCatalogService;
+  try {
+    if (await svc.variantImagesComplete(cached, first)) return first;
+    final others = _variantNumbers(cached)..remove(first);
+    others.shuffle();
+    for (final v in others) {
+      if (await svc.variantImagesComplete(cached, v)) return v;
+    }
+  } catch (e) {
+    debugPrint('previewAttemptVariant: completeness check failed: $e');
+  }
+  return first;
+}
+
+List<int> _variantNumbers(Map<String, dynamic> cached) {
+  final blob = (cached['test_data'] is Map)
+      ? Map<String, dynamic>.from(cached['test_data'] as Map)
+      : cached;
+  final variants = blob['variants'];
+  if (variants is! Map) return [];
+  return variants.keys
+      .map((k) => int.tryParse(k.toString()))
+      .whereType<int>()
+      .toList();
+}
 
 @visibleForTesting
 Future<int> resolveAttemptVariant(

@@ -1,4 +1,5 @@
 // lib/core/db/offline_queue.dart
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -7,6 +8,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/models.dart';
 import '../api/api_client.dart';
+import '../diagnostics/error_log.dart';
+import '../sync/server_backoff.dart';
 import 'db_migrate.dart';
 import 'local_students_db.dart';
 import 'pack_local_students_db.dart';
@@ -22,7 +25,8 @@ class OfflineQueue {
       databaseFactory = databaseFactoryFfi;
     }
     final dir = await getApplicationSupportDirectory();
-    _db = await _open(join(dir.path, 'monitoring_queue.db'));
+    _db = await _openRecovering(join(dir.path, 'monitoring_queue.db'));
+    changes.value++; // a recovery notice may be waiting
     return _db!;
   }
 
@@ -30,13 +34,92 @@ class OfflineQueue {
   @visibleForTesting
   static Future<void> openAtPath(String path) async {
     await resetForTest();
-    _db = await _open(path);
+    _db = await _openRecovering(path);
+    changes.value++;
+  }
+
+  static bool _recoveryNotice = false;
+
+  /// Bumped whenever rows are added to / removed from the result queues (or
+  /// the queue file is opened), so UI that shows the pending count refreshes
+  /// on the event instead of polling with a timer.
+  static final ValueNotifier<int> changes = ValueNotifier<int>(0);
+
+  /// Latest known size of the result queues and the age of the oldest row,
+  /// published by the queue operations themselves (PendingResultsChip reads
+  /// this and never queries the file on its own).
+  static final ValueNotifier<({int count, Duration? oldest})> pending =
+      ValueNotifier<({int count, Duration? oldest})>((count: 0, oldest: null));
+
+  static void _changed() {
+    changes.value++;
+    unawaited(refreshPending());
+  }
+
+  /// Re-reads [pending] from the queue. Never throws.
+  static Future<({int count, Duration? oldest})> refreshPending() async {
+    try {
+      final count = await _countAll();
+      final oldest = count > 0 ? await oldestPendingAge() : null;
+      return pending.value = (count: count, oldest: oldest);
+    } catch (e) {
+      debugPrint('OfflineQueue.refreshPending: $e');
+      return pending.value;
+    }
+  }
+
+  /// True once after a corrupt queue file was replaced: the screens that
+  /// already poll the queue show ONE teacher-visible notice (the results that
+  /// were inside are in the `.corrupt-<ts>` file next to it, for support).
+  static bool takeRecoveryNotice() {
+    final v = _recoveryNotice;
+    _recoveryNotice = false;
+    return v;
+  }
+
+  /// Unreadable file (not a database / malformed) - as opposed to a merely
+  /// locked or busy one, whose results must never be moved away.
+  static bool _isCorrupt(Object e) {
+    if (e is! DatabaseException) return false;
+    final m = e.toString().toLowerCase();
+    if (m.contains('locked') || m.contains('busy')) return false;
+    return m.contains('not a database') ||
+        m.contains('malformed') ||
+        m.contains('corrupt') ||
+        m.contains('notadb') ||
+        m.contains('disk image');
+  }
+
+  /// [_open], but a corrupt file never crashes the app: it is moved aside as
+  /// `<name>.corrupt-<ts>` (with -wal / -shm), a fresh queue is created and
+  /// [takeRecoveryNotice] raises the teacher notice.
+  static Future<Database> _openRecovering(String path) async {
+    try {
+      return await _open(path);
+    } catch (e) {
+      if (!_isCorrupt(e)) rethrow;
+      debugPrint('OfflineQueue: $path is corrupt ($e), moving it aside');
+      unawaited(ErrorLog.record(e, 'queue_db'));
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      for (final suffix in ['', '-wal', '-shm']) {
+        final f = File('$path$suffix');
+        try {
+          if (await f.exists()) await f.rename('$path.corrupt-$ts$suffix');
+        } catch (err) {
+          debugPrint('OfflineQueue: could not move ${f.path} aside: $err');
+        }
+      }
+      final db = await _open(path);
+      _recoveryNotice = true;
+      return db;
+    }
   }
 
   @visibleForTesting
   static Future<void> resetForTest() async {
     await _db?.close();
     _db = null;
+    pending.value = (count: 0, oldest: null);
   }
 
   // Schema v9 adds `local_students` (local_students_db.dart): children a
@@ -172,6 +255,7 @@ class OfflineQueue {
       },
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
+    _changed();
   }
 
   static Future<int> flush(
@@ -208,12 +292,24 @@ class OfflineQueue {
         } else {
           await d.update('queue', {'attempts': (row['attempts'] as int) + 1},
               where: 'id = ?', whereArgs: [row['id']]);
+          // 429 / 503 with Retry-After: the server asked us to wait, so the
+          // remaining rows would only be refused too.
+          if (_noteRetryAfter(r)) break;
         }
       } catch (e) {
         debugPrint('OfflineQueue.flush error (id=${row['id']}): $e');
       }
     }
+    _changed();
     return synced;
+  }
+
+  /// Records a `retry_after_s` hint of a submit reply; true = stop flushing.
+  static bool _noteRetryAfter(Map<String, dynamic> reply) {
+    final ra = reply['retry_after_s'];
+    if (ra is! num || ra <= 0) return false;
+    ServerBackoff.note(Duration(seconds: ra.toInt()));
+    return true;
   }
 
   static Future<int> pendingCount() async {
@@ -236,6 +332,7 @@ class OfflineQueue {
       },
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
+    _changed();
   }
 
   static Future<int> flushLocal(
@@ -265,11 +362,13 @@ class OfflineQueue {
           await d.update(
               'local_queue', {'attempts': (row['attempts'] as int) + 1},
               where: 'id = ?', whereArgs: [row['id']]);
+          if (_noteRetryAfter(r)) break;
         }
       } catch (e) {
         debugPrint('OfflineQueue.flushLocal error (id=${row['id']}): $e');
       }
     }
+    _changed();
     return synced;
   }
 
@@ -308,10 +407,36 @@ class OfflineQueue {
     return (res.first['c'] as int?) ?? 0;
   }
 
+  /// Age of the oldest result still waiting in either queue (null = none):
+  /// the teacher chip says how long a result has been stuck.
+  static Future<Duration?> oldestPendingAge({int? nowMs}) async {
+    final d = await db;
+    final rows = await Future.wait([
+      d.rawQuery('SELECT MIN(created) AS m FROM queue'),
+      d.rawQuery('SELECT MIN(created) AS m FROM local_queue'),
+    ]);
+    int? oldest;
+    for (final r in rows) {
+      final m = r.first['m'] as int?;
+      if (m != null && (oldest == null || m < oldest)) oldest = m;
+    }
+    if (oldest == null) return null;
+    final age = (nowMs ?? DateTime.now().millisecondsSinceEpoch) - oldest;
+    return Duration(milliseconds: age < 0 ? 0 : age);
+  }
+
   /// Combined queue + local_queue pending count, run concurrently (see
   /// SyncService._flushAll and SyncStatusBadge._refreshPending, the two
   /// former call sites that used to compute this separately/sequentially).
   static Future<int> totalPendingCount() async {
+    final total = await _countAll();
+    // SyncService polls this every few seconds: keep [pending] in step with
+    // what it sees (e.g. the queue left over from the previous run).
+    if (total != pending.value.count) unawaited(refreshPending());
+    return total;
+  }
+
+  static Future<int> _countAll() async {
     final counts = await Future.wait([pendingCount(), pendingLocalCount()]);
     return counts[0] + counts[1];
   }
@@ -357,6 +482,7 @@ class OfflineQueue {
     if (removed > 0) {
       debugPrint(
           'OfflineQueue.purgeStale: $removed eski qator o\'chirildi');
+      _changed();
     }
     return removed;
   }

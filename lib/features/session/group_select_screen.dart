@@ -20,12 +20,14 @@ import 'package:intl/intl.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
 import '../../core/services/groups_cache.dart';
+import '../../core/services/server_clock.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../core/services/toast_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../diagnostic/widgets/school_picker_body.dart'
     show SchoolPickerErrorBanner;
 import '../../shared/widgets/new_badge.dart';
+import '../../shared/widgets/pending_results_chip.dart';
 import 'student_entry_screen.dart';
 import 'test_session.dart';
 
@@ -85,6 +87,10 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
   List<Map<String, dynamic>> _groups = [];
   Map<String, dynamic>? _selectedGroup;
 
+  /// [_groups] is the last good list from this PC (server unreachable):
+  /// shown with the "Oflayn ro'yxat" banner + Retry.
+  bool _groupsFromCache = false;
+
   bool _loadingCatalog = false;
   List<CatalogEntry> _catalog = [];
   GroupSelectError? _err;
@@ -98,10 +104,39 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
   /// further taps are ignored (double-tap would stack two routes).
   bool _pushing = false;
 
+  /// Re-evaluates the time locks while a test is still locked: the card
+  /// opens by itself when `locked_until` passes (server time).
+  Timer? _lockTimer;
+
   @override
   void initState() {
     super.initState();
     _loadGroups();
+  }
+
+  @override
+  void dispose() {
+    _lockTimer?.cancel();
+    super.dispose();
+  }
+
+  void _armLockTimer() {
+    _lockTimer?.cancel();
+    Duration? soonest;
+    for (final e in _catalog) {
+      if (!ServerClock.isFuture(e.lockedUntil)) continue;
+      final left = ServerClock.until(e.lockedUntil);
+      if (soonest == null || left < soonest) soonest = left;
+    }
+    if (soonest == null) return;
+    // At most a minute: the learned clock offset may change meanwhile.
+    var wait = soonest + const Duration(seconds: 1);
+    if (wait > const Duration(minutes: 1)) wait = const Duration(minutes: 1);
+    _lockTimer = Timer(wait, () {
+      if (!mounted) return;
+      setState(() {});
+      _armLockTimer();
+    });
   }
 
   String _errText(AppLocalizations l10n, GroupSelectError e) => switch (e) {
@@ -111,10 +146,11 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       };
 
   Future<void> _loadGroups() async {
-    if (!_loadingGroups || _err != null) {
+    if (!_loadingGroups || _err != null || _groupsFromCache) {
       setState(() {
         _loadingGroups = true;
         _err = null;
+        _groupsFromCache = false;
       });
     }
     try {
@@ -145,18 +181,22 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       setState(() {
         _groups = g;
         _loadingGroups = false;
+        _groupsFromCache = false;
       });
     } catch (e) {
       debugPrint('GroupSelectScreen: fetchGroups failed: $e');
       // Offline / flaky server: the last good list still lets the proctor
-      // reach the tests that are already downloaded.
-      final cached =
-          await GroupsCache.load(widget.schoolCode, widget.schoolId);
+      // reach the tests that are already downloaded. A real "no" from the
+      // server (401/403/404 ...) is not answered with stale data.
+      final cached = isOfflineLikeError(e)
+          ? await GroupsCache.load(widget.schoolCode, widget.schoolId)
+          : const <Map<String, dynamic>>[];
       if (!mounted) return;
       setState(() {
         _loadingGroups = false;
         if (cached.isNotEmpty) {
           _groups = cached;
+          _groupsFromCache = true;
         } else {
           _err = GroupSelectError.groupsLoadFailed;
         }
@@ -201,6 +241,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
         _catalog = entries;
         _loadingCatalog = false;
       });
+      _armLockTimer();
     } catch (e) {
       if (!mounted || token != _selectToken) return;
       setState(() {
@@ -348,6 +389,15 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                               ),
                               const SizedBox(height: 24),
                             ],
+                            if (_groupsFromCache && _groups.isNotEmpty) ...[
+                              SchoolPickerErrorBanner(
+                                key: const Key('offlineRosterBanner'),
+                                message: AppLocalizations.of(context)!
+                                    .offlineRosterBanner,
+                                onRetry: _loadGroups,
+                              ),
+                              const SizedBox(height: 24),
+                            ],
                             if (_groups.isEmpty)
                               // _err != null bo'lsa, yuqoridagi xato bandida
                               // sabab allaqachon ko'rsatilgan — ikkinchi marta
@@ -480,6 +530,13 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
               ),
             ),
           ),
+
+          // Teacher chip: results still only on this PC (hidden at 0).
+          Positioned(
+            right: 16,
+            bottom: MediaQuery.of(context).padding.bottom + 12,
+            child: const PendingResultsChip(),
+          ),
         ],
       ),
     );
@@ -571,8 +628,8 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
     final downloaded = entry.status == CatalogStatus.cached ||
         entry.status == CatalogStatus.cachedOnly ||
         entry.status == CatalogStatus.updatable;
-    final isLocked =
-        entry.lockedUntil != null && entry.lockedUntil!.isAfter(DateTime.now());
+    // Server time (ServerClock), not the PC clock.
+    final isLocked = ServerClock.isFuture(entry.lockedUntil);
     final isDownloading = _downloadingKeys.contains(entry.testKey);
 
     if (!downloaded) {

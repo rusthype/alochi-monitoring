@@ -1576,5 +1576,51 @@
   },
   "groupSelectNoTestsForSchool": "Для этой школы тесты не найдены",
   "groupSelectGroupsLoadFailed": "Не удалось загрузить группы",
-  "groupSelectTestsLoadFailed": "Не удалось загрузить список тестов"
+  "groupSelectTestsLoadFailed": "Не удалось загрузить список тестов",
+  "pendingResultsChip": "Не отправлено результатов: {count}",
+  "@pendingResultsChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingResultsOldestMinutes": "самый старый — {n} мин. назад",
+  "@pendingResultsOldestMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingResultsOldestHours": "самый старый — {n} ч. назад",
+  "@pendingResultsOldestHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingResultsOldestDays": "самый старый — {n} дн. назад",
+  "@pendingResultsOldestDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingResultsSendNow": "Отправить сейчас",
+  "pendingResultsSentToast": "Отправлено результатов: {count}",
+  "@pendingResultsSentToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pendingResultsFailedToast": "Не удалось отправить. Результаты сохранены на устройстве.",
+  "pendingResultsNoNetworkToast": "Нет интернета. Результаты сохранены на устройстве.",
+  "diagnosticFinishedSavedPill": "Сохранено",
+  "offlineRosterBanner": "Офлайн-список",
+  "queueDbRecoveredToast": "База результатов была повреждена и создана заново. Старый файл сохранён."
 }

@@ -12,6 +12,8 @@ import '../models/test_catalog.dart';
 import '../db/offline_queue.dart';
 import '../db/local_students_db.dart';
 import '../db/diagnostic_history_db.dart';
+import '../services/server_clock.dart';
+import '../sync/server_backoff.dart';
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart'
     show diagnosticKioskApi;
 
@@ -41,6 +43,62 @@ bool _looksLikeHtml(http.Response r) {
   return head.startsWith('<');
 }
 
+/// A 2xx whose body is a JSON object - the only shape our server answers a
+/// write with. A 3xx, a captive-portal / proxy HTML page or any other body is
+/// NOT an acknowledgement, whatever the status says.
+bool isJsonObjectReply(http.Response r) {
+  if (r.statusCode < 200 || r.statusCode >= 300) return false;
+  if (_looksLikeHtml(r)) return false;
+  try {
+    return jsonDecode(utf8.decode(r.bodyBytes)) is Map;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// [isJsonObjectReply] that also carries the server's receipt: `ok: true`, an
+/// `id`, or `duplicate: true` (monitoring result / question-report shapes,
+/// apps/monitoring/views.py).
+bool isSubmitAck(http.Response r) {
+  if (!isJsonObjectReply(r)) return false;
+  final d = jsonDecode(utf8.decode(r.bodyBytes)) as Map;
+  return _hasReceipt(d);
+}
+
+bool _hasReceipt(Map d) =>
+    d['ok'] == true || d['id'] != null || d['duplicate'] == true;
+
+/// Seconds the server asked us to wait (`Retry-After` on 429 / 503), else null.
+int? retryAfterSecondsOf(http.Response r) {
+  if (r.statusCode != 429 && r.statusCode != 503) return null;
+  DateTime? serverNow;
+  try {
+    final date = r.headers['date'];
+    if (date != null) serverNow = HttpDate.parse(date);
+  } catch (_) {}
+  final d = ServerBackoff.parse(r.headers['retry-after'], now: serverNow);
+  return d == null ? null : (d.inMilliseconds / 1000).ceil();
+}
+
+/// A failure of the connection or the server (network / timeout / TLS / HTML
+/// page / 5xx / 408 / 429) - as opposed to the server answering "no" (401, 403,
+/// 404 ...). Only these may be answered with a cached copy of the data.
+bool isOfflineLikeError(Object e) {
+  if (e is ApiException) {
+    switch (e.code) {
+      case kApiTimeout:
+      case kApiNetwork:
+      case kApiTls:
+      case kApiBadResponse:
+        return true;
+    }
+    final s = e.statusCode;
+    return s == 0 || s == 408 || s == 429 || s >= 500;
+  }
+  // Anything that is not a server verdict (socket, timeout, parse ...).
+  return true;
+}
+
 class ApiException implements Exception {
   final int statusCode;
   final String message;
@@ -48,7 +106,11 @@ class ApiException implements Exception {
   /// Machine-readable `code` from the error body (e.g. `stale_generation`),
   /// when the backend sends one — null otherwise.
   final String? code;
-  const ApiException(this.statusCode, this.message, {this.code});
+
+  /// The server's `Retry-After` (429 / 503), capped at 5 min.
+  final Duration? retryAfter;
+  const ApiException(this.statusCode, this.message,
+      {this.code, this.retryAfter});
   // UI da to'g'ridan-to'g'ri ko'rsatish uchun toString faqat tushunarli matnni qaytaradi.
   @override
   String toString() => message;
@@ -172,7 +234,15 @@ class MonitoringApi {
   Future<http.Response> _send(Future<http.Response> Function() req) async {
     // `message` is a debug string only; the UI shows text by `code`.
     try {
-      return await req().timeout(_timeout);
+      final resp = await req().timeout(_timeout);
+      // Time-lock checks use server time: learn the offset from any real
+      // (non-portal) answer.
+      if (resp.statusCode >= 200 &&
+          resp.statusCode < 300 &&
+          !_looksLikeHtml(resp)) {
+        ServerClock.observe(resp.headers['date']);
+      }
+      return resp;
     } on TimeoutException catch (e) {
       ErrorLog.record(e, 'api');
       throw const ApiException(
@@ -213,10 +283,12 @@ class MonitoringApi {
     try {
       return jsonDecode(utf8.decode(resp.bodyBytes));
     } catch (_) {
+      final wait = retryAfterSecondsOf(resp);
       throw ApiException(
           resp.statusCode,
           resp.statusCode >= 500 ? 'Server xatosi' : "Noto'g'ri javob",
-          code: kApiBadResponse);
+          code: kApiBadResponse,
+          retryAfter: wait == null ? null : Duration(seconds: wait));
     }
   }
 
@@ -238,7 +310,14 @@ class MonitoringApi {
       final msg = raw.toString().isNotEmpty
           ? raw.toString()
           : _statusMessage(resp.statusCode);
-      throw ApiException(resp.statusCode, msg);
+      final wait = retryAfterSecondsOf(resp);
+      throw ApiException(resp.statusCode, msg,
+          retryAfter: wait == null ? null : Duration(seconds: wait));
+    }
+    // 1xx / 3xx are never our server's answer to a write (portal redirect).
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      throw ApiException(resp.statusCode, "Noto'g'ri javob",
+          code: kApiBadResponse);
     }
     return data;
   }
@@ -674,9 +753,13 @@ class MonitoringApi {
               : const <String, String>{};
       final resp = await _post('/results/', result.toJson(detail: detail),
           extraHeaders: extraHeaders);
+      // Only the server's receipt (ok / id / duplicate) counts as synced.
+      if (!_hasReceipt(resp)) {
+        throw const ApiException(200, "Noto'g'ri javob", code: kApiBadResponse);
+      }
       // Natija saqlangandan keyin wrong answers yuklaymiz
       final wrongAnswers =
-          await _fetchResultDetail(resp['id'] as String? ?? '');
+          await _fetchResultDetail(resp['id']?.toString() ?? '');
       return {'synced': true, ...resp, 'wrong_answers': wrongAnswers};
     } on ApiException catch (e) {
       if (e.statusCode == 409 && e.code != kApiBadResponse) {
@@ -697,6 +780,7 @@ class MonitoringApi {
       return {
         'synced': false,
         'retryable': true,
+        if (e.retryAfter != null) 'retry_after_s': e.retryAfter!.inSeconds,
         'xp_earned': 0,
         'wrong_answers': <dynamic>[]
       };
@@ -1061,13 +1145,7 @@ class MonitoringApi {
             headers: {..._headers, 'Idempotency-Key': token},
             body: jsonEncode(payload),
           ));
-      if (resp.statusCode >= 400) {
-        debugPrint('submitLocalResultFull non-2xx: ${resp.statusCode}');
-        return {'synced': false, 'permanent': _permanentReply(resp)};
-      }
-      // A 2xx HTML page is a captive portal, not our server's acknowledgement.
-      if (_looksLikeHtml(resp)) return {'synced': false, 'permanent': false};
-      return {'synced': true};
+      return _submitVerdict(resp, 'submitLocalResultFull');
     } on ApiException {
       // Network/timeout — always retryable, never permanent.
       return {'synced': false, 'permanent': false};
@@ -1075,6 +1153,27 @@ class MonitoringApi {
       debugPrint('submitLocalResultFull error: $e');
       return {'synced': false, 'permanent': false};
     }
+  }
+
+  /// `{synced, permanent[, retry_after_s]}` for a write answered with [resp].
+  /// Synced ONLY for [isSubmitAck]; a 3xx / portal HTML / odd 2xx body is
+  /// retryable; 4xx-5xx split by [_permanentReply]; 429 / 503 hand the
+  /// server's Retry-After to the sync scheduler.
+  Map<String, dynamic> _submitVerdict(http.Response resp, String what) {
+    if (resp.statusCode >= 400) {
+      debugPrint('$what non-2xx: ${resp.statusCode}');
+      final wait = retryAfterSecondsOf(resp);
+      return {
+        'synced': false,
+        'permanent': _permanentReply(resp),
+        if (wait != null) 'retry_after_s': wait,
+      };
+    }
+    if (!isSubmitAck(resp)) {
+      debugPrint('$what: ${resp.statusCode} without a receipt, keeping queued');
+      return {'synced': false, 'permanent': false};
+    }
+    return {'synced': true};
   }
 
   /// Permanent only for a real 400/409/422 from OUR server - an HTML error
@@ -1086,10 +1185,17 @@ class MonitoringApi {
   /// Offline navbatdagi (online + lokal) natijalarni qayta yuborishga urinadi.
   /// Qaytaradi: muvaffaqiyatli yuborilgan jami yozuvlar soni.
   Future<int> flushOfflineQueue() async {
+    // Whoever calls this decided to flush now (SyncService gates the automatic
+    // ticks on the server's Retry-After itself); a fresh answer re-arms it.
+    ServerBackoff.clear();
     final online = await OfflineQueue.flush(
       (r, token) => submitResultFull(r, idempotencyToken: token),
     );
-    final local = await OfflineQueue.flushLocal(_dispatchLocalQueueItem);
+    // The server just asked us to wait: the local queue would only hit the
+    // same 429 / 503.
+    final local = ServerBackoff.active
+        ? 0
+        : await OfflineQueue.flushLocal(_dispatchLocalQueueItem);
     await OfflineQueue.purgeStale();
     return online + local;
   }
@@ -1107,12 +1213,7 @@ class MonitoringApi {
             headers: {..._headers, 'Idempotency-Key': token},
             body: jsonEncode(payload),
           ));
-      if (resp.statusCode >= 400) {
-        debugPrint('submitQuestionReport non-2xx: ${resp.statusCode}');
-        return {'synced': false, 'permanent': _permanentReply(resp)};
-      }
-      if (_looksLikeHtml(resp)) return {'synced': false, 'permanent': false};
-      return {'synced': true};
+      return _submitVerdict(resp, 'submitQuestionReport');
     } on ApiException {
       // Network/timeout — always retryable, never permanent.
       return {'synced': false, 'permanent': false};
