@@ -14,6 +14,7 @@ import 'core/services/heartbeat_service.dart';
 import 'core/network/connectivity_service.dart';
 import 'core/locale/locale_provider.dart';
 import 'core/db/attempt_store.dart';
+import 'core/services/attempt_recovery_service.dart';
 import 'core/storage/prefs_loader.dart';
 import 'core/theme/app_prefs_provider.dart';
 import 'l10n/app_localizations.dart';
@@ -147,6 +148,9 @@ void main(List<String> args) {
       );
       if (!kIsWeb) {
         SyncService.instance.start();
+        // Queue results a power cut left behind (finished-but-unsent, or time
+        // ran out while the PC was down). Background; errors are logged only.
+        AttemptRecoveryService.instance.start();
         unawaited(HeartbeatService.instance.start());
         ConnectivityService.instance.start();
         unawaited(CrashReporterService.uploadPending());
