@@ -1,12 +1,14 @@
 // lib/core/sync/sync_service.dart
 // Oflayn navbatlarni internet paydo bo'lganda avtomatik yuboruvchi xizmat.
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import '../api/api_client.dart';
 import '../db/offline_queue.dart';
 import '../db/diagnostic_answer_store.dart';
 import '../network/connectivity_service.dart';
+import 'server_backoff.dart';
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart';
 
 /// Outcome of a single flush attempt — lets a manual "Yuborish" button (e.g.
@@ -56,14 +58,14 @@ class SyncService {
         // anyway, but this avoids the redundant attempt entirely.
         _timer?.cancel();
         resetBackoff();
-        _flushAll().then((_) => _scheduleNext());
+        flushAutomatic().then((_) => _scheduleNext());
       }
     });
     // The latency probe knows about REAL internet (the interface-level stream
     // above does not): flush immediately on its offline -> online edge.
     _probeSub =
         ConnectivityService.instance.readings.listen(handleProbeReading);
-    _flushAll().then((_) => _scheduleNext());
+    flushAutomatic().then((_) => _scheduleNext());
   }
 
   /// Offline -> online edge detector for [ConnectivityService] readings.
@@ -79,16 +81,44 @@ class SyncService {
     _probeDebounce = Timer(probeDebounce, () {
       _timer?.cancel();
       resetBackoff();
-      (probeFlushOverride ?? _flushAll)().then((_) => _scheduleNext());
+      (probeFlushOverride ?? flushAutomatic)().then((_) => _scheduleNext());
     });
   }
 
   void _scheduleNext() {
     if (!_started) return;
     _timer?.cancel();
-    _timer = Timer(_currentInterval(), () {
-      _flushAll().then((_) => _scheduleNext());
+    _timer = Timer(nextDelay(), () {
+      flushAutomatic().then((_) => _scheduleNext());
     });
+  }
+
+  /// Test seam: replaces the random 0-5 s tick jitter.
+  @visibleForTesting
+  Duration Function()? jitterOverride;
+  static final math.Random _rng = math.Random();
+
+  Duration _jitter() =>
+      jitterOverride?.call() ??
+      Duration(milliseconds: _rng.nextInt(5000));
+
+  /// Delay before the next automatic flush: the (backed-off) interval, but
+  /// never earlier than the server's Retry-After, plus 0-5 s of jitter so a
+  /// lab of PCs coming back together does not flush in lockstep.
+  @visibleForTesting
+  Duration nextDelay() {
+    final base = _currentInterval();
+    final wait = ServerBackoff.remaining();
+    return (wait > base ? wait : base) + _jitter();
+  }
+
+  /// Timer / connectivity / probe driven flush: honours the server's
+  /// Retry-After ([SyncFlushOutcome.busy] = "not now"). A teacher's explicit
+  /// "send now" ([flushNow]) does not wait.
+  @visibleForTesting
+  Future<SyncFlushOutcome> flushAutomatic() async {
+    if (ServerBackoff.active) return SyncFlushOutcome.busy;
+    return _flushAll();
   }
 
   /// Connectivity came back: the next flush runs at the base interval again.

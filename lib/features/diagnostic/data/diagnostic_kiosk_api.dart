@@ -11,7 +11,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../../../core/diagnostics/error_log.dart';
-import '../../../core/api/api_client.dart' show ApiException;
+import '../../../core/api/api_client.dart'
+    show ApiException, isJsonObjectReply, retryAfterSecondsOf;
 import '../../../core/models/add_student.dart';
 import '../../../core/db/diagnostic_kiosk_cache.dart';
 
@@ -418,14 +419,15 @@ class DiagnosticKioskApi {
             return withRecoveredScore(classified, peek);
           }
         }
-        return classified;
+        final wait = retryAfterSecondsOf(resp);
+        return wait == null ? classified : {...classified, 'retry_after_s': wait};
       }
-      Map<String, dynamic> data = const {};
-      try {
-        data = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-      } catch (_) {
-        // Non-JSON success body — still synced, just no score backfill.
+      // Only a 2xx JSON object is the server's acknowledgement; a redirect or
+      // a captive-portal page must stay queued.
+      if (!isJsonObjectReply(resp)) {
+        return {'synced': false, 'permanent': false};
       }
+      final data = jsonDecode(utf8.decode(resp.bodyBytes)) as Map;
       return {
         'synced': true,
         'score_math': data['score_math'],

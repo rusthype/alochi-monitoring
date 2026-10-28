@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/models.dart';
 import '../api/api_client.dart';
+import '../sync/server_backoff.dart';
 import 'db_migrate.dart';
 import 'local_students_db.dart';
 import 'pack_local_students_db.dart';
@@ -208,12 +209,23 @@ class OfflineQueue {
         } else {
           await d.update('queue', {'attempts': (row['attempts'] as int) + 1},
               where: 'id = ?', whereArgs: [row['id']]);
+          // 429 / 503 with Retry-After: the server asked us to wait, so the
+          // remaining rows would only be refused too.
+          if (_noteRetryAfter(r)) break;
         }
       } catch (e) {
         debugPrint('OfflineQueue.flush error (id=${row['id']}): $e');
       }
     }
     return synced;
+  }
+
+  /// Records a `retry_after_s` hint of a submit reply; true = stop flushing.
+  static bool _noteRetryAfter(Map<String, dynamic> reply) {
+    final ra = reply['retry_after_s'];
+    if (ra is! num || ra <= 0) return false;
+    ServerBackoff.note(Duration(seconds: ra.toInt()));
+    return true;
   }
 
   static Future<int> pendingCount() async {
@@ -265,6 +277,7 @@ class OfflineQueue {
           await d.update(
               'local_queue', {'attempts': (row['attempts'] as int) + 1},
               where: 'id = ?', whereArgs: [row['id']]);
+          if (_noteRetryAfter(r)) break;
         }
       } catch (e) {
         debugPrint('OfflineQueue.flushLocal error (id=${row['id']}): $e');
