@@ -8,6 +8,7 @@ import '../../core/diagnostics/active_test_gate.dart';
 import '../../core/engine/test_models.dart' show pickVariantNumber;
 import '../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
 import '../../core/security/monitored_clock.dart';
+import '../../core/services/attempt_recovery_service.dart';
 import '../../core/services/heartbeat_service.dart';
 import '../../core/services/server_clock.dart';
 import '../../core/services/test_catalog_service.dart';
@@ -34,6 +35,9 @@ Future<void> launchRunner(
   // read, image check, session start) run before the engine screen mounts.
   final releaseGate = ActiveTestGate.enter();
   try {
+    // A recovery of this student's record already in flight finishes first.
+    await AttemptRecoveryService.instance.waitForRecovery(studentId);
+    if (!context.mounted) return;
     await _launchRunner(
       context,
       session: session,

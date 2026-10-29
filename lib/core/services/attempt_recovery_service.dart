@@ -28,6 +28,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../features/test/engine_host_screen.dart'
     show buildResultToken, tokenForStoredAttempt;
+import '../api/api_client.dart' show api;
 import '../diagnostics/active_test_gate.dart';
 import '../db/attempt_store.dart';
 import '../db/offline_queue.dart';
@@ -47,15 +48,26 @@ class AttemptRecoveryService {
     Future<void> Function(Map<String, dynamic> payload, String token)? enqueue,
     Future<void> Function(String testKey, String studentId)? markDone,
     Future<int?> Function(String testKey)? currentVersion,
+    Future<int?> Function(AttemptEntry entry)? serverRemainingSeconds,
+    Future<void> Function(AttemptEntry entry, Map<String, dynamic> record)?
+        extendEntry,
     MonitoredClock? clock,
     bool Function()? testScreenActive,
     bool Function()? offlineSessionActive,
+    ValueListenable<bool>? gate,
+    this.scanEvery = const Duration(minutes: 10),
+    this.gateDebounce = const Duration(seconds: 5),
+    this.retryAfter = const Duration(minutes: 1),
+    this.startWait = const Duration(seconds: 5),
   })  : _listAll = listAll ?? AttemptStore.listAll,
         _clearEntry = clearEntry ?? AttemptStore.clearEntry,
         _enqueue = enqueue ?? OfflineQueue.enqueueLocal,
         _markDone = markDone ?? RosterDoneStore.add,
         _currentVersion = currentVersion ?? TestCache.versionOf,
+        _serverRemaining = serverRemainingSeconds ?? _serverRemainingDefault,
+        _extendEntry = extendEntry ?? _extendEntryDefault,
         _clock = clock,
+        _gate = gate ?? ActiveTestGate.active,
         _testScreenActive = testScreenActive ??
             // The gate is held from the Start tap (before the engine screen
             // exists), the heartbeat flag only once the engine is mounted.
@@ -69,12 +81,31 @@ class AttemptRecoveryService {
 
   static final AttemptRecoveryService instance = AttemptRecoveryService();
 
+  /// Slow safety-net rescan while the app runs (an always-online kiosk has no
+  /// restart and no offline -> online edge).
+  final Duration scanEvery;
+
+  /// Delay between the active-test gate releasing and the rescan.
+  final Duration gateDebounce;
+
+  /// Delay before a scan that was aborted / had a failure is repeated.
+  final Duration retryAfter;
+
+  /// Longest a Start tap waits for a recovery of the same student in flight.
+  final Duration startWait;
+
+  /// How long the hub is asked for the remaining time of an expired attempt.
+  static const Duration _serverTimeout = Duration(seconds: 3);
+
   final Future<List<AttemptEntry>> Function() _listAll;
   final Future<void> Function(AttemptEntry) _clearEntry;
   final Future<void> Function(Map<String, dynamic>, String) _enqueue;
   final Future<void> Function(String, String) _markDone;
   final Future<int?> Function(String) _currentVersion;
+  final Future<int?> Function(AttemptEntry) _serverRemaining;
+  final Future<void> Function(AttemptEntry, Map<String, dynamic>) _extendEntry;
   final MonitoredClock? _clock;
+  final ValueListenable<bool> _gate;
   final bool Function() _testScreenActive;
 
   /// An offline pack / LAN session routes results through its own chain, not
@@ -84,12 +115,25 @@ class AttemptRecoveryService {
   MonitoredClock get _c => _clock ?? MonitoredClock.instance;
 
   bool _running = false;
+  bool _rerun = false;
+  bool _retryNeeded = false;
+  bool _serverDown = false;
+  bool _disposed = false;
+  bool _started = false;
   StreamSubscription<SignalReading>? _sub;
+  Timer? _periodic;
+  Timer? _pending;
+  bool _gateWasActive = false;
 
-  /// Scans once now (in the background) and again on every offline -> online
-  /// edge. Idempotent; never throws.
+  /// Students whose record is being queued/cleared right now.
+  final Map<String, Completer<void>> _recovering = {};
+
+  /// Scans once now (in the background), again on every offline -> online
+  /// edge, when the active-test gate releases (debounced) and every
+  /// [scanEvery]. Idempotent; never throws.
   void start() {
-    if (_sub != null) return;
+    if (_started || _disposed) return;
+    _started = true;
     unawaited(run());
     var wasOffline = false;
     _sub = ConnectivityService.instance.readings.listen((r) {
@@ -98,34 +142,92 @@ class AttemptRecoveryService {
       if (online && wasOffline) unawaited(run());
       wasOffline = !online;
     });
+    _periodic = Timer.periodic(scanEvery, (_) => unawaited(run()));
+    _gate.addListener(_onGate);
   }
 
-  /// One scan. Returns how many attempts were queued. Re-entrant calls and
-  /// scans while a test screen is open are no-ops (the open attempt owns its
-  /// own completion; the record stays and the next scan picks it up).
+  /// Cancels every timer / subscription; no scan starts afterwards.
+  void dispose() {
+    _disposed = true;
+    _periodic?.cancel();
+    _pending?.cancel();
+    _periodic = _pending = null;
+    unawaited(_sub?.cancel());
+    _sub = null;
+    if (_started) _gate.removeListener(_onGate);
+  }
+
+  void _onGate() {
+    final active = _gate.value;
+    if (_gateWasActive && !active) _scheduleRun(gateDebounce);
+    _gateWasActive = active;
+  }
+
+  void _scheduleRun(Duration after) {
+    if (_disposed) return;
+    _pending?.cancel();
+    _pending = Timer(after, () => unawaited(run()));
+  }
+
+  /// The Start path calls this (holding the active-test gate) before it reads
+  /// the student's stored attempt: a recovery of the same student that is
+  /// already queueing / clearing it finishes first, so the engine never reads
+  /// a record that is being cleared. Bounded; never throws.
+  Future<void> waitForRecovery(String studentId) async {
+    final c = _recovering[studentId];
+    if (c == null) return;
+    try {
+      await c.future.timeout(startWait);
+    } on TimeoutException {
+      debugPrint('AttemptRecovery: gave up waiting for $studentId');
+    }
+  }
+
+  /// One scan. Returns how many attempts were queued. Overlapping calls never
+  /// run concurrently (one more scan follows the running one); scans while a
+  /// test screen is open are no-ops (the open attempt owns its own
+  /// completion). An aborted scan or a failed record schedules a retry.
   Future<int> run() async {
-    if (_running) return 0;
+    if (_disposed) return 0;
+    if (_running) {
+      _rerun = true;
+      return 0;
+    }
     if (_testScreenActive() || _offlineSessionActive()) return 0;
     _running = true;
+    _retryNeeded = false;
+    _serverDown = false;
     var recovered = 0;
     try {
       for (final entry in await _listAll()) {
-        if (_testScreenActive()) break;
+        if (_disposed) break;
+        if (_testScreenActive()) {
+          _retryNeeded = true;
+          break;
+        }
         try {
           if (await _recover(entry)) recovered++;
         } catch (e, st) {
+          _retryNeeded = true;
           debugPrint(
               'AttemptRecovery: ${entry.slotKey} failed, kept for later: '
               '$e\n$st');
         }
       }
     } catch (e, st) {
+      _retryNeeded = true;
       debugPrint('AttemptRecovery: scan failed: $e\n$st');
     } finally {
       _running = false;
     }
     if (recovered > 0) {
       debugPrint('AttemptRecovery: queued $recovered attempt(s)');
+    }
+    if (_rerun) {
+      _rerun = false;
+      _scheduleRun(gateDebounce);
+    } else if (_retryNeeded) {
+      _scheduleRun(retryAfter);
     }
     return recovered;
   }
@@ -187,17 +289,99 @@ class AttemptRecoveryService {
         buildResultToken(testKey, studentId, 'rec-');
 
     // The student may have tapped Start while this scan was reading: the open
-    // attempt owns its completion (same token), so leave it alone.
-    if (_testScreenActive()) return false;
-    await _enqueue(_payload(rec, testKey, reason, durationS), token);
-    // Queued: from here the result is safe; bookkeeping must not undo that.
-    try {
-      await _markDone(testKey, studentId);
-    } catch (e) {
-      debugPrint('AttemptRecovery: roster mark failed: $e');
+    // attempt owns its completion (same token), so leave it alone. Nothing
+    // awaits between this check and the flag, so a Start tap either sees the
+    // gate here or finds the flag in [waitForRecovery].
+    if (_testScreenActive()) {
+      _retryNeeded = true;
+      return false;
     }
-    await _clearEntry(entry);
+    final busy = Completer<void>();
+    _recovering[studentId] = busy;
+    try {
+      if (reason == 'deadline_passed' && await _serverGrantsTime(entry)) {
+        return false; // the hub says time remains: not ours to submit
+      }
+      if (_testScreenActive()) {
+        _retryNeeded = true;
+        return false;
+      }
+      await _enqueue(_payload(rec, testKey, reason, durationS), token);
+      // Queued: from here the result is safe; bookkeeping must not undo that.
+      try {
+        await _markDone(testKey, studentId);
+      } catch (e) {
+        debugPrint('AttemptRecovery: roster mark failed: $e');
+      }
+      // A Start tap in the window above may already have the engine reading
+      // this record: keep it (same token -> the engine's own completion is
+      // deduplicated) rather than clear it under the engine. clearEntry itself
+      // only deletes a record that is still unchanged.
+      if (_testScreenActive()) {
+        _retryNeeded = true;
+        return true;
+      }
+      await _clearEntry(entry);
+      return true;
+    } finally {
+      _recovering.remove(studentId);
+      busy.complete();
+    }
+  }
+
+  /// Local deadline passed: ask the hub (it knows teacher pause / extra time)
+  /// for the session's remaining time. True = time remains, the stored
+  /// deadline was moved accordingly and the attempt is NOT submitted. Offline,
+  /// error, timeout or no such session = false (the local deadline stands).
+  Future<bool> _serverGrantsTime(AttemptEntry entry) async {
+    if (_serverDown) return false;
+    int? remainingS;
+    try {
+      remainingS = await _serverRemaining(entry);
+    } catch (e) {
+      _serverDown = true; // do not make every further record wait again
+      debugPrint('AttemptRecovery: hub remaining-time check failed: $e');
+      return false;
+    }
+    if (remainingS == null || remainingS <= 0) return false;
+    final c = _c;
+    try {
+      await _extendEntry(entry, {
+        ...entry.record,
+        'deadline_epoch_ms': c.nowMs + remainingS * 1000,
+        ...c.snapshot(),
+      });
+    } catch (e) {
+      // Could not persist the extension: still do not submit what the hub
+      // says is live; the next scan asks again.
+      _retryNeeded = true;
+      debugPrint('AttemptRecovery: could not store hub extension: $e');
+    }
     return true;
+  }
+
+  /// Production hub lookup: the engine's own session-resume call, bounded by
+  /// [_serverTimeout]. Null = unknown (no login, no session, other variant).
+  static Future<int?> _serverRemainingDefault(AttemptEntry entry) async {
+    if (!api.isLan && !api.hasAuthToken) return null;
+    final resp =
+        await api.sessionResume(entry.testKey).timeout(_serverTimeout);
+    if (resp['exists'] != true) return null;
+    final rec = entry.record;
+    final sv = int.tryParse(resp['variant']?.toString() ?? '');
+    final lv = int.tryParse(rec['variant']?.toString() ?? '');
+    if (sv != null && lv != null && sv != lv) return null;
+    final sid = resp['student_id']?.toString() ?? '';
+    if (sid.isNotEmpty && sid != (rec['student_id']?.toString() ?? '')) {
+      return null;
+    }
+    final r = resp['remaining_seconds'];
+    return r is num ? r.toInt() : null;
+  }
+
+  static Future<void> _extendEntryDefault(
+      AttemptEntry entry, Map<String, dynamic> record) async {
+    await AttemptStore.replaceEntry(entry, record);
   }
 
   /// Same shape as the engine host's minimal payload (the backend re-scores

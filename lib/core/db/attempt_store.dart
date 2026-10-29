@@ -418,6 +418,26 @@ class AttemptStore {
         }
       });
 
+  /// Rewrites exactly the slot [e] was listed from with [rec], and only while
+  /// it still holds the record that was listed (a student who continued the
+  /// attempt meanwhile has newer answers). True when written.
+  static Future<bool> replaceEntry(
+          AttemptEntry e, Map<String, dynamic> rec) =>
+      _serial(() async {
+        try {
+          final cur = await _readSlot(e.slotKey);
+          if (cur == null || jsonEncode(cur.rec) != jsonEncode(e.record)) {
+            return false;
+          }
+          final enc = await QueueCrypto.encryptPayload(jsonEncode(rec));
+          await _writeSlot(e.slotKey, enc);
+          return true;
+        } catch (err) {
+          debugPrint('AttemptStore.replaceEntry(${e.slotKey}) error: $err');
+          return false;
+        }
+      });
+
   /// Every stored record, main and parked, across all tests (crash recovery
   /// scan). Unreadable records are skipped. Never throws.
   static Future<List<AttemptEntry>> listAll() => _serial(() async {

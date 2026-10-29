@@ -1,5 +1,6 @@
 // Audit wave 2 #4: startup recovery of attempts left by a power cut / crash.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:alochi_monitoring/core/db/attempt_store.dart';
@@ -9,6 +10,8 @@ import 'package:alochi_monitoring/core/security/monitored_clock.dart';
 import 'package:alochi_monitoring/core/services/attempt_recovery_service.dart';
 import 'package:alochi_monitoring/features/test/engine_host_screen.dart'
     show buildResultToken, tokenForStoredAttempt;
+import 'package:alochi_monitoring/core/models/test_version.dart';
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -334,5 +337,260 @@ void main() {
     expect(await AttemptStore.loadForStudent('math_bob1', 'S-1'), isNull);
     expect(await AttemptStore.loadForStudent('math_bob1', 'S-2'), isNotNull);
     expect(await s.run(), 0); // nothing left to do
+  });
+
+  // ── wave 5 ────────────────────────────────────────────────────────────────
+
+  AttemptRecoveryService svc(
+    _Harness h, {
+    ValueNotifier<bool>? gate,
+    Future<int?> Function(AttemptEntry)? remaining,
+    Future<void> Function(AttemptEntry, Map<String, dynamic>)? extend,
+    Future<void> Function(Map<String, dynamic>, String)? enqueue,
+    Future<List<AttemptEntry>> Function()? listAll,
+    bool Function()? busy,
+    Duration scanEvery = const Duration(hours: 1),
+    Duration gateDebounce = const Duration(milliseconds: 20),
+    Duration retryAfter = const Duration(milliseconds: 20),
+  }) =>
+      AttemptRecoveryService(
+        listAll: listAll ?? () async => h.entries,
+        clearEntry: (e) async => h.cleared.add(e.slotKey),
+        enqueue: enqueue ??
+            (p, t) async {
+              if (h.enqueueError != null) throw h.enqueueError!;
+              h.queued.add((p, t));
+            },
+        markDone: (k, s) async => h.done.add('$k|$s'),
+        currentVersion: (_) async => h.currentVersion,
+        serverRemainingSeconds: remaining ?? (_) async => null,
+        extendEntry: extend ?? (e, r) async {},
+        clock: h.clock,
+        testScreenActive: busy ?? () => gate?.value ?? h.screenActive,
+        offlineSessionActive: () => false,
+        gate: gate,
+        scanEvery: scanEvery,
+        gateDebounce: gateDebounce,
+        retryAfter: retryAfter,
+      );
+
+  Future<void> settle([int ms = 120]) =>
+      Future<void>.delayed(Duration(milliseconds: ms));
+
+  group('F3 version defaults', () {
+    test('missing version is 0 everywhere and never counts as a change', () {
+      expect(parseTestVersion(null), 0);
+      expect(parseTestVersion('x'), 0);
+      expect(parseTestVersion('7'), 7);
+      expect(parseTestVersion(3.0), 3);
+      expect(testVersionChanged(1, 0), isFalse); // spec default vs cache 0
+      expect(testVersionChanged(0, 4), isFalse);
+      expect(testVersionChanged(null, 4), isFalse);
+      expect(testVersionChanged(2, 2), isFalse);
+      expect(testVersionChanged(2, 3), isTrue);
+    });
+
+    test('live attempt of a package with no version is not queued', () async {
+      // Cache stores 0 for a package without `version`; the record carries the
+      // spec's value.
+      final h = _Harness([_entry(_rec(deadlineInMs: 10 * _min, version: 1))])
+        ..currentVersion = 0;
+      expect(await h.service.run(), 0);
+      expect(h.queued, isEmpty);
+      expect(h.cleared, isEmpty);
+    });
+  });
+
+  group('F4 scheduling', () {
+    test('rescans when the active-test gate releases (debounced)', () async {
+      final gate = ValueNotifier<bool>(false);
+      final h = _Harness([]);
+      var scans = 0;
+      final s = svc(h, gate: gate, listAll: () async {
+        scans++;
+        return h.entries;
+      });
+      s.start();
+      await settle(); // startup scan
+      expect(scans, 1);
+      gate.value = true;
+      gate.value = false;
+      await settle();
+      expect(scans, 2);
+      s.dispose();
+    });
+
+    test('slow periodic rescan runs while the app is up; dispose stops it',
+        () async {
+      final h = _Harness([]);
+      var scans = 0;
+      final s = svc(h,
+          scanEvery: const Duration(milliseconds: 30),
+          listAll: () async {
+        scans++;
+        return h.entries;
+      });
+      s.start();
+      await settle(200);
+      expect(scans, greaterThanOrEqualTo(3));
+      s.dispose();
+      final at = scans;
+      await settle(150);
+      expect(scans, at);
+    });
+
+    test('a failed enqueue is retried without waiting for a restart',
+        () async {
+      final h = _Harness([_entry(_rec(completed: true))])
+        ..enqueueError = StateError('db locked');
+      final s = svc(h);
+      expect(await s.run(), 0);
+      h.enqueueError = null;
+      await settle();
+      expect(h.queued, hasLength(1));
+      expect(h.cleared, hasLength(1));
+      s.dispose();
+    });
+
+    test('a scan aborted by a starting test is retried later', () async {
+      final h = _Harness([_entry(_rec(completed: true))]);
+      var calls = 0;
+      // free at the entry check, busy at the loop check, free afterwards
+      final s = svc(h, busy: () => ++calls == 2);
+      expect(await s.run(), 0);
+      await settle();
+      expect(h.queued, hasLength(1));
+      s.dispose();
+    });
+
+    test('overlapping runs never scan concurrently', () async {
+      final h = _Harness([]);
+      var inFlight = 0, maxInFlight = 0, scans = 0;
+      final s = svc(h, listAll: () async {
+        scans++;
+        maxInFlight = ++inFlight > maxInFlight ? inFlight : maxInFlight;
+        await settle(40);
+        inFlight--;
+        return h.entries;
+      });
+      await Future.wait([s.run(), s.run(), s.run()]);
+      await settle(200);
+      expect(maxInFlight, 1);
+      expect(scans, 2); // the running one + exactly one follow-up
+      s.dispose();
+    });
+  });
+
+  group('F5 start vs recovery race', () {
+    test('Start waits for the same student\'s recovery in flight', () async {
+      final h = _Harness([_entry(_rec(completed: true))]);
+      final release = Completer<void>();
+      final enqueued = Completer<void>();
+      final s = svc(h, enqueue: (p, t) async {
+        enqueued.complete();
+        await release.future;
+        h.queued.add((p, t));
+      });
+      final scan = s.run();
+      await enqueued.future;
+      var waited = false;
+      final w = s.waitForRecovery('S-1').then((_) => waited = true);
+      await settle(30);
+      expect(waited, isFalse);
+      expect(h.cleared, isEmpty);
+      release.complete();
+      await Future.wait([scan, w]);
+      expect(h.cleared, hasLength(1)); // cleared BEFORE Start resumed
+      expect(waited, isTrue);
+      // Another student is not held up.
+      await s.waitForRecovery('S-2');
+      s.dispose();
+    });
+
+    test('a Start tap between enqueue and clear keeps the record', () async {
+      final h = _Harness([_entry(_rec(completed: true))]);
+      final s = svc(h, enqueue: (p, t) async {
+        h.queued.add((p, t));
+        h.screenActive = true; // Start tapped while the enqueue ran
+      });
+      await s.run();
+      expect(h.queued, hasLength(1)); // same token as the engine's: deduped
+      expect(h.cleared, isEmpty); // not cleared under the engine
+      s.dispose();
+    });
+  });
+
+  group('F6 hub remaining time', () {
+    test('hub says time remains: not submitted, deadline moved', () async {
+      final h = _Harness([_entry(_rec(deadlineInMs: -3 * _min))]);
+      AttemptEntry? extended;
+      Map<String, dynamic>? stored;
+      final s = svc(h,
+          remaining: (_) async => 300,
+          extend: (e, r) async {
+            extended = e;
+            stored = r;
+          });
+      expect(await s.run(), 0);
+      expect(h.queued, isEmpty);
+      expect(h.cleared, isEmpty);
+      expect(extended, isNotNull);
+      expect(stored!['deadline_epoch_ms'], h.clock.nowMs + 300 * 1000);
+      expect(stored!['epoch_at_save'], isNotNull);
+      expect(stored!['ticks_at_save'], isNotNull);
+      expect(stored!['answers'], {'Math/0': 1, 'Math/1': 'x'});
+      s.dispose();
+    });
+
+    test('offline / error / timeout / zero left: local deadline decides',
+        () async {
+      for (final r in <Future<int?> Function(AttemptEntry)>[
+        (_) async => null,
+        (_) async => 0,
+        (_) async => throw StateError('offline'),
+        (_) => Future<int?>.delayed(const Duration(milliseconds: 10))
+            .then((_) => throw TimeoutException('3s')),
+      ]) {
+        final h = _Harness([_entry(_rec(deadlineInMs: -3 * _min))]);
+        final s = svc(h, remaining: r);
+        expect(await s.run(), 1);
+        expect((h.queued.single.$1['detail'] as Map)['recovered'],
+            'deadline_passed');
+        s.dispose();
+      }
+    });
+
+    test('after one hub failure the rest of the scan does not ask again',
+        () async {
+      final h = _Harness([
+        _entry(_rec(deadlineInMs: -3 * _min), testKey: 'a'),
+        _entry(_rec(deadlineInMs: -3 * _min, student: 'S-2'), testKey: 'b'),
+      ]);
+      var asked = 0;
+      final s = svc(h, remaining: (_) async {
+        asked++;
+        throw StateError('offline');
+      });
+      expect(await s.run(), 2);
+      expect(asked, 1);
+      s.dispose();
+    });
+
+    test('completed and other-version attempts are queued without the hub',
+        () async {
+      final h = _Harness([
+        _entry(_rec(completed: true), testKey: 'a'),
+        _entry(_rec(deadlineInMs: 10 * _min, version: 1), testKey: 'b'),
+      ])
+        ..currentVersion = 2;
+      var asked = 0;
+      final s = svc(h, remaining: (_) async {
+        asked++;
+        return 600;
+      });
+      expect(await s.run(), 2);
+      expect(asked, 0);
+      s.dispose();
+    });
   });
 }

@@ -13,6 +13,7 @@ import '../../core/models/add_student.dart';
 import '../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
 import '../../core/offline/offline_session.dart';
 import '../../core/services/add_student_service.dart';
+import '../../core/services/attempt_recovery_service.dart';
 import '../../core/services/roster_done_store.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../core/services/toast_service.dart';
@@ -528,6 +529,8 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       _launching = true;
     });
     try {
+      // A recovery of this student's record already in flight finishes first.
+      await AttemptRecoveryService.instance.waitForRecovery(studentId);
       // Normally already prepared when the student was tapped; manual-name
       // entry (no roster) prepares here, with progress on the start button.
       if (_preparedFor != studentId && !await _prepareFor(studentId)) return;
