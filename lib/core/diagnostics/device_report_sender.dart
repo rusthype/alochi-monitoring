@@ -83,7 +83,13 @@ class DeviceReportSender {
 
   Future<void> _onError() async {
     final since = await _sinceLastSent();
-    final wait = since == null ? Duration.zero : errorInterval - since;
+    var wait = since == null ? Duration.zero : errorInterval - since;
+    // Failed POSTs don't record last-sent: throttle retries by attempt time.
+    final at = _lastAttempt;
+    if (at != null) {
+      final w = errorInterval - DateTime.now().difference(at);
+      if (w > wait) wait = w;
+    }
     if (wait <= Duration.zero) {
       await send();
     } else {
@@ -94,10 +100,17 @@ class DeviceReportSender {
     }
   }
 
+  bool _inFlight = false;
+  DateTime? _lastAttempt; // in-memory: throttles error retries after failures
+
+  /// Records last-sent only after a 2xx, so an offline start doesn't block
+  /// the next attempt for a full interval. [_inFlight] stops double POSTs.
   Future<void> send() async {
+    if (_inFlight) return;
+    _inFlight = true;
+    _lastAttempt = DateTime.now();
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_lastSentKey, DateTime.now().millisecondsSinceEpoch);
       final payload = buildDeviceReportPayload(
         info: await DeviceInfoCollector.collect(),
         deviceId: await DeviceInfoCollector.deviceId(),
@@ -105,15 +118,20 @@ class DeviceReportSender {
         errors: await ErrorLog.snapshot(),
       );
       if ((payload['device_id'] as String).isEmpty) return; // backend: 400
-      await http
+      final res = await http
           .post(
             Uri.parse('$_host/api/v1/diagnostic/kiosk/device-report/'),
             headers: const {'Content-Type': 'application/json'},
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 10));
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        await prefs.setInt(_lastSentKey, DateTime.now().millisecondsSinceEpoch);
+      }
     } catch (_) {
       // Guest telemetry: offline/server errors must stay invisible.
+    } finally {
+      _inFlight = false;
     }
   }
 }
