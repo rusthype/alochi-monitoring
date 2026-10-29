@@ -2,6 +2,7 @@
 // writes (temp + flush + rename, previous good copy kept as .bak) instead of
 // the single non-atomic shared_preferences.json a power cut can tear.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:alochi_monitoring/core/db/attempt_store.dart';
@@ -143,6 +144,99 @@ void main() {
     expect(((await AttemptStore.load('a_b'))!['answers'] as Map)['S/0'], 2);
     final all = await AttemptStore.listAll();
     expect(all.map((e) => e.testKey).toSet(), {'a/b', 'a_b'});
+  });
+
+  group('wave 3', () {
+    Future<void> writeRaw(String path, Map<String, dynamic> rec) async =>
+        File(path).writeAsStringSync(
+            await QueueCrypto.encryptPayload(jsonEncode(rec)));
+
+    test('a crash between the two renames still loads the newest save',
+        () async {
+      await AttemptStore.save('k6', _rec('A', answers: {'S/0': 1}));
+      await AttemptStore.save('k6', _rec('A', answers: {'S/0': 1, 'S/1': 2}));
+      final main = mainFile('k6');
+      // main -> .bak happened, tmp -> main did not: the newest copy (here the
+      // `completed` marker) only exists as .tmp.
+      main.renameSync('${main.path}.bak');
+      await writeRaw('${main.path}.tmp',
+          _rec('A', answers: {'S/0': 1, 'S/1': 2}, completed: true));
+
+      final back = await AttemptStore.load('k6');
+      expect(back!['completed'], isTrue);
+      final all = await AttemptStore.listAll();
+      expect(all.single.record['completed'], isTrue);
+    });
+
+    test('a torn .tmp is ignored in favour of the main file', () async {
+      await AttemptStore.save('k7', _rec('A', answers: {'S/0': 5}));
+      File('${mainFile('k7').path}.tmp').writeAsStringSync('ENC1:garbage');
+      expect(((await AttemptStore.load('k7'))!['answers'] as Map)['S/0'], 5);
+    });
+
+    test('the displaced student\'s parked copy survives a failed main write',
+        () async {
+      await AttemptStore.save('k8', _rec('A', answers: {'S/0': 1}));
+      await AttemptStore.save('k8', _rec('B', answers: {'S/0': 2})); // parks A
+      // Block the temp file so the next main write throws.
+      Directory('${tmp.path}/attempt_k8.json.tmp').createSync();
+      await AttemptStore.save('k8', _rec('A', answers: {'S/0': 1, 'S/1': 1}));
+      Directory('${tmp.path}/attempt_k8.json.tmp').deleteSync();
+
+      final a = await AttemptStore.loadForStudent('k8', 'A');
+      expect(a, isNotNull, reason: 'the only copy of A must not be deleted');
+    });
+
+    test('clearEntry keeps a record that changed since it was listed',
+        () async {
+      await AttemptStore.save('k9', _rec('A', answers: {'S/0': 1}));
+      final listed = (await AttemptStore.listAll()).single;
+      await AttemptStore.save('k9', _rec('A', answers: {'S/0': 1, 'S/1': 2}));
+      await AttemptStore.clearEntry(listed);
+      expect(((await AttemptStore.load('k9'))!['answers'] as Map).length, 2);
+
+      final fresh = (await AttemptStore.listAll()).single;
+      await AttemptStore.clearEntry(fresh);
+      expect(await AttemptStore.load('k9'), isNull);
+    });
+
+    test(
+        'a new attempt of the same student parks unsent answers of another '
+        'test version instead of overwriting them', () async {
+      await AttemptStore.save('k10', {
+        ..._rec('A', answers: {'S/0': 1}),
+        'attempt_id': 'old',
+        'test_version': 1,
+      });
+      AttemptStore.useDirectoryForTest(
+          tmp); // "restart": forget in-memory owner
+      await AttemptStore.save('k10', {
+        ..._rec('A', answers: {}),
+        'attempt_id': 'new',
+        'test_version': 2,
+      });
+      final all = await AttemptStore.listAll();
+      expect(all, hasLength(2));
+      final parked = all.singleWhere((e) => e.isParked);
+      expect(parked.record['attempt_id'], 'old');
+      expect(parked.record['answers'], {'S/0': 1});
+      // The student's normal resume still finds the NEW attempt.
+      expect((await AttemptStore.loadForStudent('k10', 'A'))!['attempt_id'],
+          'new');
+    });
+
+    test('a transient legacy-migration failure is retried, not remembered',
+        () async {
+      final raw = await QueueCrypto.encryptPayload(
+          jsonEncode(_rec('A', answers: {'S/0': 9})));
+      SharedPreferences.setMockInitialValues({'attempt_k11': raw});
+      final blocker = Directory('${tmp.path}/attempt_k11.json.tmp')
+        ..createSync();
+      expect(await AttemptStore.loadForStudent('k11', 'A'), isNull);
+      blocker.deleteSync();
+      final back = await AttemptStore.loadForStudent('k11', 'A');
+      expect((back!['answers'] as Map)['S/0'], 9);
+    });
   });
 }
 

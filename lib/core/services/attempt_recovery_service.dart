@@ -12,8 +12,11 @@
 //  * unfinished, deadline passed (trusted clock, see MonitoredClock) ->
 //    queue the saved answers as the result (the server re-scores from
 //    `raw_answers`), product decision: the child loses nothing;
-//  * unfinished with time left, paused, empty, or of another test version ->
-//    left alone (the student resumes through the normal flow).
+//  * unfinished attempt saved under ANOTHER test version -> queued right away
+//    (reason `test_version_changed`): the engine cannot resume it, and the
+//    first save of a new attempt would otherwise bury it;
+//  * unfinished with time left, paused or empty -> left alone (the student
+//    resumes through the normal flow).
 //
 // The queue token is the one the engine host would derive for the same
 // attempt (buildResultToken), so a later normal completion or a second scan
@@ -23,7 +26,9 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../features/test/engine_host_screen.dart' show buildResultToken;
+import '../../features/test/engine_host_screen.dart'
+    show buildResultToken, tokenForStoredAttempt;
+import '../diagnostics/active_test_gate.dart';
 import '../db/attempt_store.dart';
 import '../db/offline_queue.dart';
 import '../db/test_cache.dart';
@@ -51,7 +56,11 @@ class AttemptRecoveryService {
         _currentVersion = currentVersion ?? TestCache.versionOf,
         _clock = clock,
         _testScreenActive = testScreenActive ??
-            (() => HeartbeatService.instance.testScreenActive),
+            // The gate is held from the Start tap (before the engine screen
+            // exists), the heartbeat flag only once the engine is mounted.
+            (() =>
+                HeartbeatService.instance.testScreenActive ||
+                ActiveTestGate.active.value),
         _offlineSessionActive = offlineSessionActive ??
             (() =>
                 OfflinePackSession.current != null ||
@@ -136,23 +145,30 @@ class AttemptRecoveryService {
       reason = 'completed';
     } else {
       if (answers.isEmpty) return false; // nothing worth submitting
-      if (rec['paused_remaining_ms'] is num) return false; // frozen, not over
       final deadlineRaw = rec['deadline_epoch_ms'];
       if (deadlineRaw is! num) return false; // seeded, never started
       final savedVersion = rec['test_version'];
+      var versionChanged = false;
       if (savedVersion is num) {
         final now = await _currentVersion(testKey);
-        // Another version maps the saved keys to different questions.
-        if (now != null && now != savedVersion.toInt()) return false;
+        versionChanged = now != null && now != savedVersion.toInt();
       }
-      final c = _c;
-      final deadline = c.rebaseSavedDeadline(
-        deadlineEpochMs: deadlineRaw.toInt(),
-        epochAtSaveMs: (rec['epoch_at_save'] as num?)?.toInt(),
-        ticksAtSaveMs: (rec['ticks_at_save'] as num?)?.toInt(),
-      );
-      if (deadline > c.nowMs) return false; // time left: the student resumes
-      reason = 'deadline_passed';
+      if (versionChanged) {
+        // The engine drops an attempt of another version (its keys map to
+        // different questions), so it will never be resumed: submit what the
+        // child answered instead of letting a new attempt bury it.
+        reason = 'test_version_changed';
+      } else {
+        if (rec['paused_remaining_ms'] is num) return false; // frozen
+        final c = _c;
+        final deadline = c.rebaseSavedDeadline(
+          deadlineEpochMs: deadlineRaw.toInt(),
+          epochAtSaveMs: (rec['epoch_at_save'] as num?)?.toInt(),
+          ticksAtSaveMs: (rec['ticks_at_save'] as num?)?.toInt(),
+        );
+        if (deadline > c.nowMs) return false; // time left: student resumes
+        reason = 'deadline_passed';
+      }
       final startedAt = rec['started_at'];
       if (startedAt is num) {
         final s = ((deadlineRaw.toInt() - startedAt.toInt()) / 1000).round();
@@ -166,13 +182,12 @@ class AttemptRecoveryService {
     if (school == null) return false;
 
     final studentId = rec['student_id']?.toString() ?? '';
-    final attemptId = rec['attempt_id']?.toString() ?? '';
-    final token = buildResultToken(
-      testKey,
-      studentId,
-      attemptId.isNotEmpty ? attemptId : 'rec-${rec['started_at'] ?? ''}',
-    );
+    final token = tokenForStoredAttempt(testKey, rec) ??
+        buildResultToken(testKey, studentId, 'rec-');
 
+    // The student may have tapped Start while this scan was reading: the open
+    // attempt owns its completion (same token), so leave it alone.
+    if (_testScreenActive()) return false;
     await _enqueue(_payload(rec, testKey, reason, durationS), token);
     // Queued: from here the result is safe; bookkeeping must not undo that.
     try {

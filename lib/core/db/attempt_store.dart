@@ -75,6 +75,9 @@ class AttemptStore {
   /// read-and-compare on every keystroke-driven save.
   static final Map<String, String> _mainOwner = {};
 
+  /// `attempt_id` of the record last written to each main slot (same purpose).
+  static final Map<String, String> _mainAttempt = {};
+
   // ── backend selection ──────────────────────────────────────────────────────
 
   static Directory? _dir;
@@ -101,6 +104,7 @@ class AttemptStore {
   static void useDirectoryForTest(Directory? dir) {
     _dir = dir;
     _mainOwner.clear();
+    _mainAttempt.clear();
     _legacyChecked.clear();
   }
 
@@ -176,7 +180,13 @@ class AttemptStore {
       return rec == null ? null : (raw: raw!, rec: rec);
     }
     final path = _path(dir, slot);
-    final hit = await _readFile(path) ?? await _readFile('$path.bak');
+    // Newest valid copy wins. A complete `.tmp` is always newer than the main
+    // file (a crash between "write tmp" and "rename tmp -> main" leaves it
+    // beside the old main or beside `.bak`; a torn one fails to decode and is
+    // skipped), so it comes first - it may hold the `completed` marker.
+    final hit = await _readFile('$path.tmp') ??
+        await _readFile(path) ??
+        await _readFile('$path.bak');
     if (hit != null) return hit;
     return _migrateLegacy(dir, slot);
   }
@@ -184,14 +194,20 @@ class AttemptStore {
   /// Moves a record still stored in shared_preferences into its own file.
   static Future<({String raw, Map<String, dynamic> rec})?> _migrateLegacy(
       Directory dir, String slot) async {
-    if (!_legacyChecked.add(slot)) return null;
+    if (_legacyChecked.contains(slot)) return null;
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(slot);
       final rec = await _decode(raw);
-      if (rec == null) return null;
+      if (rec == null) {
+        _legacyChecked.add(slot);
+        return null;
+      }
       await _writeSlot(slot, raw!);
       await prefs.remove(slot);
+      // Only now: after a transient failure the next read must retry, or the
+      // legacy record would stay invisible for the rest of the process.
+      _legacyChecked.add(slot);
       return (raw: raw, rec: rec);
     } catch (e) {
       debugPrint('AttemptStore: legacy migration of $slot failed: $e');
@@ -312,20 +328,35 @@ class AttemptStore {
         final prefs =
             _dir == null ? await SharedPreferences.getInstance() : null;
         final sid = data['student_id']?.toString() ?? '';
-        if (_mainOwner[testKey] != sid) {
+        final aid = data['attempt_id']?.toString() ?? '';
+        var supersedeOwnParked = false;
+        if (_mainOwner[testKey] != sid || _mainAttempt[testKey] != aid) {
           final existing = await _readSlot(_key(testKey));
           final oldSid = existing?.rec['student_id']?.toString() ?? '';
-          if (existing != null &&
-              oldSid.isNotEmpty &&
-              oldSid != sid &&
-              _worthParking(existing.rec)) {
-            await _writeSlot(_parkKey(testKey, oldSid), existing.raw);
+          final oldAid = existing?.rec['attempt_id']?.toString() ?? '';
+          if (existing != null && _worthParking(existing.rec)) {
+            if (oldSid.isNotEmpty && oldSid != sid) {
+              await _writeSlot(_parkKey(testKey, oldSid), existing.raw);
+            } else if (oldSid.isNotEmpty &&
+                oldAid.isNotEmpty &&
+                aid.isNotEmpty &&
+                oldAid != aid) {
+              // The same student starts a DIFFERENT attempt over unsent
+              // answers (the engine drops a record of another test version):
+              // keep the old one under its own slot for the recovery scan.
+              await _writeSlot(
+                  _parkKey(testKey, '$oldSid#$oldAid'), existing.raw);
+            }
           }
-          if (sid.isNotEmpty) await _deleteSlot(_parkKey(testKey, sid));
+          supersedeOwnParked = sid.isNotEmpty;
         }
         final encrypted = await QueueCrypto.encryptPayload(encoded);
         await _writeSlot(_key(testKey), encrypted, prefs: prefs);
         _mainOwner[testKey] = sid;
+        _mainAttempt[testKey] = aid;
+        // Only after the new main slot is safely on disk: the parked copy may
+        // be the sole copy until then.
+        if (supersedeOwnParked) await _deleteSlot(_parkKey(testKey, sid));
       } catch (e) {
         debugPrint('AttemptStore.save($testKey) error: $e');
       }
@@ -338,16 +369,29 @@ class AttemptStore {
         try {
           await _deleteSlot(_key(testKey));
           _mainOwner.remove(testKey);
+          _mainAttempt.remove(testKey);
         } catch (e) {
           debugPrint('AttemptStore.clear($testKey) error: $e');
         }
       });
 
-  /// Removes exactly the slot [e] was listed from (main or parked).
+  /// Removes exactly the slot [e] was listed from (main or parked), and only
+  /// while it still holds the record that was listed: a student who started
+  /// the attempt again meanwhile has newer answers in that slot, and deleting
+  /// it would lose them.
   static Future<void> clearEntry(AttemptEntry e) => _serial(() async {
         try {
+          final cur = await _readSlot(e.slotKey);
+          if (cur != null && jsonEncode(cur.rec) != jsonEncode(e.record)) {
+            debugPrint('AttemptStore.clearEntry(${e.slotKey}): record changed '
+                'since it was listed, kept');
+            return;
+          }
           await _deleteSlot(e.slotKey);
-          if (!e.isParked) _mainOwner.remove(e.testKey);
+          if (!e.isParked) {
+            _mainOwner.remove(e.testKey);
+            _mainAttempt.remove(e.testKey);
+          }
         } catch (err) {
           debugPrint('AttemptStore.clearEntry(${e.slotKey}) error: $err');
         }
@@ -364,7 +408,7 @@ class AttemptStore {
               final name = p.basename(f.path);
               final stem = name.endsWith('.json')
                   ? name.substring(0, name.length - 5)
-                  : name.endsWith('.json.bak')
+                  : (name.endsWith('.json.bak') || name.endsWith('.json.tmp'))
                       ? name.substring(0, name.length - 9)
                       : null;
               if (stem != null) slots.add(_slotFromStem(stem));

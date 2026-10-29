@@ -4,8 +4,10 @@ import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart' show newIdempotencyToken;
 import '../../core/db/attempt_store.dart';
 import '../../core/db/test_cache.dart';
+import '../../core/diagnostics/active_test_gate.dart';
 import '../../core/engine/test_models.dart' show pickVariantNumber;
 import '../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
+import '../../core/security/monitored_clock.dart';
 import '../../core/services/heartbeat_service.dart';
 import '../../core/services/server_clock.dart';
 import '../../core/services/test_catalog_service.dart';
@@ -25,6 +27,38 @@ Future<void> launchRunner(
 
   /// Variant the student-entry screen already prepared (images downloaded).
   /// Used only when the student has no saved attempt to resume.
+  int? preparedVariant,
+}) async {
+  // "A test is starting" from the very first line: the startup recovery scan
+  // must not touch this student's stored attempt while the awaits below (cache
+  // read, image check, session start) run before the engine screen mounts.
+  final releaseGate = ActiveTestGate.enter();
+  try {
+    await _launchRunner(
+      context,
+      session: session,
+      firstName: firstName,
+      lastName: lastName,
+      studentGrade: studentGrade,
+      groupName: groupName,
+      groupId: groupId,
+      studentId: studentId,
+      preparedVariant: preparedVariant,
+    );
+  } finally {
+    releaseGate();
+  }
+}
+
+Future<void> _launchRunner(
+  BuildContext context, {
+  required TestSession session,
+  required String firstName,
+  required String lastName,
+  required int studentGrade,
+  required String groupName,
+  required String groupId,
+  required String studentId,
   int? preparedVariant,
 }) async {
   // Time-lock safety net: the catalog UI (login_screen.dart) already blocks
@@ -155,25 +189,34 @@ const _staleAttemptMs = 12 * 60 * 60 * 1000;
 /// (same rules), or null when a fresh variant has to be picked. Read-only.
 Future<int?> _savedVariantToResume(String testKey, String studentId) async {
   final saved = await AttemptStore.loadForStudent(testKey, studentId);
-  final nowMs = DateTime.now().millisecondsSinceEpoch;
   if (saved == null) return null;
   final savedVariant = int.tryParse(saved['variant']?.toString() ?? '');
-  final deadlineRaw = saved['deadline_epoch_ms'];
-  final deadlineMs = deadlineRaw is num ? deadlineRaw.toInt() : null;
-  final notExpired = deadlineMs == null || deadlineMs > nowMs;
+  if (savedVariant == null) return null;
   // A record already marked completed was (or is about to be) submitted:
   // it must be resumed even past its deadline so the engine can replay the
   // identical submission instead of silently dropping it.
-  final completed = saved['completed'] == true;
-  // An unfinished attempt is resumed even when its deadline has passed: the
-  // engine then auto-submits what the student had. Starting a fresh attempt
-  // here would hand out a full timer again. Only a record from another
-  // day (long abandoned) is dropped.
-  final stale = deadlineMs != null && nowMs - deadlineMs > _staleAttemptMs;
-  if (savedVariant != null && (notExpired || completed || !stale)) {
-    return savedVariant;
-  }
-  return null;
+  if (saved['completed'] == true) return savedVariant;
+  // A record holding answers is never replaced by a fresh seed, however old:
+  // the engine resumes it and (deadline passed) auto-submits what the student
+  // had. Starting over here would destroy those answers AND hand out a full
+  // timer again.
+  final answers = saved['answers'];
+  if (answers is Map && answers.isNotEmpty) return savedVariant;
+  // Only an empty seed can be dropped, and only once it is long abandoned.
+  // Judged on the engine's own (trusted, rebased) timeline: raw
+  // DateTime.now() disagrees with it after an RTC reset / NTP step and made a
+  // live attempt look decades stale.
+  final deadlineRaw = saved['deadline_epoch_ms'];
+  if (deadlineRaw is! num) return savedVariant;
+  if (saved['paused_remaining_ms'] is num) return savedVariant;
+  final clock = MonitoredClock.instance;
+  final deadlineMs = clock.rebaseSavedDeadline(
+    deadlineEpochMs: deadlineRaw.toInt(),
+    epochAtSaveMs: (saved['epoch_at_save'] as num?)?.toInt(),
+    ticksAtSaveMs: (saved['ticks_at_save'] as num?)?.toInt(),
+  );
+  final stale = clock.nowMs - deadlineMs > _staleAttemptMs;
+  return stale ? null : savedVariant;
 }
 
 /// The variant this student will get, WITHOUT persisting anything: the saved

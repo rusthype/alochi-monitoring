@@ -413,7 +413,9 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                                 const SizedBox.shrink()
                             else ...[
                               // Section 1: Guruhni tanlang
-                              _buildStepIndicator('Qadam 1', active: true),
+                              _buildStepIndicator(
+                                  AppLocalizations.of(context)!.diagnosticStep(1),
+                                  active: true),
                               const SizedBox(height: 12),
                               Text(
                                 AppLocalizations.of(context)!.selectGroup,
@@ -434,7 +436,9 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
                             if (_selectedGroup != null) ...[
                               const SizedBox(height: 48),
                               // Section 2: Testni tanlang
-                              _buildStepIndicator('Qadam 2', active: false),
+                              _buildStepIndicator(
+                                  AppLocalizations.of(context)!.diagnosticStep(2),
+                                  active: false),
                               const SizedBox(height: 12),
                               Text(
                                 AppLocalizations.of(context)!.selectTest,

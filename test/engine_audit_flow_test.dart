@@ -226,6 +226,9 @@ void main() {
     await _io(tester);
 
     expect(find.text('YN-QUESTION'), findsOneWidget);
+    // The fresh attempt (new attempt_id) first checks the slot it replaces
+    // (one more async hop than a plain re-save), so let the save finish.
+    await _io(tester);
     final saved = await tester.runAsync(() => AttemptStore.load(_testKey));
     expect(saved!['deadline_epoch_ms'], isA<num>());
     expect(saved['answers'], isA<Map>());
@@ -240,10 +243,17 @@ void main() {
     await tester.pumpWidget(_engine(onComplete: (_, __) {}, version: 2));
     addTearDown(() => tester.pumpWidget(const SizedBox()));
     await _io(tester);
+    await _io(tester); // the new attempt first parks the one it replaces
 
     final saved = await tester.runAsync(() => AttemptStore.load(_testKey));
     expect((saved!['answers'] as Map), isEmpty);
     expect(saved['test_version'], 2);
+
+    // The discarded answers are parked for the recovery scan, not overwritten.
+    final all = await tester.runAsync(() => AttemptStore.listAll());
+    final parked = all!.singleWhere((e) => e.isParked);
+    expect(parked.record['test_version'], 9);
+    expect(parked.record['answers'], {'SecA/1': 1});
   });
 
   testWidgets('E-08: same version resumes its answers', (tester) async {

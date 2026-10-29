@@ -103,7 +103,9 @@ class MonitoredClock {
   /// A saved attempt older than this (in ticks) is treated as "different boot".
   static const int _maxRebaseElapsedMs = 12 * 60 * 60 * 1000;
   static const int _clockBackTolerance = 60 * 1000;
-  static const int _oneDayMs = 24 * 60 * 60 * 1000;
+  /// Trusted-clock vs tick elapsed time may differ by this much (NTP step or
+  /// drift between two processes) before the larger one is believed.
+  static const int _wallAgreeTolerance = 5 * 60 * 1000;
 
   MonitoredClock({
     TicksFn? ticks,
@@ -173,39 +175,41 @@ class MonitoredClock {
   /// Re-expresses a deadline that was persisted by an earlier process in THIS
   /// process's trusted timeline.
   ///
-  /// Same boot (ticks did not go backwards): remaining time is the saved
-  /// remaining minus the monotonic time that passed, immune to a date change
-  /// while the app was closed. Otherwise (reboot, or a legacy record without
-  /// a snapshot) the stored epoch deadline is used unchanged, with two guards
-  /// against a PC whose RTC is wrong after a power cut:
-  ///  * (a) the clock reads EARLIER than the save time by more than
-  ///    [_clockBackTolerance] (reset to 1970/2000, or moved back): granting
-  ///    `deadline - now` would hand out decades, so the REMAINING time that
-  ///    was recorded at save is kept instead;
-  ///  * (b) the clock is AHEAD of the save time by more than the remaining
-  ///    time plus a day: an absence that long is indistinguishable from a
-  ///    bogus forward jump (dead CMOS battery, NTP fixing a stale save), and
-  ///    expiring instantly would cost the child the whole attempt, so the
-  ///    remaining time recorded at save is kept too. Shorter absences expire
-  ///    honestly (power-off time counts, the engine auto-submits).
+  /// There is no boot id, so "same boot" is inferred from the monotonic ticks
+  /// not having gone backwards (and not being absurdly far apart). Because a
+  /// reboot can leave the ticks looking continuous (saved 30 min after boot 1,
+  /// returned 45 min after boot 2), the elapsed time is the LARGER of the tick
+  /// delta and the trusted-clock delta whenever those disagree by more than
+  /// [_wallAgreeTolerance]: the student is never granted more time than the
+  /// larger of the two says has passed. (A date moved BACK is therefore
+  /// ignored; a date moved forward while the app was closed shortens the
+  /// attempt - self-inflicted, and the answers are submitted, not lost.)
+  ///
+  /// Ticks unusable (reboot with smaller uptime, > 12 h apart, or a legacy
+  /// record without a snapshot): the stored epoch deadline is used, so
+  /// power-off time counts and a long abandonment is expired (the recovery
+  /// sweep / engine then auto-submits the saved answers). One guard remains
+  /// for a PC whose RTC is wrong after a power cut: the clock reads EARLIER
+  /// than the save time by more than [_clockBackTolerance] (reset to 1970/2000
+  /// or moved back) - granting `deadline - now` would hand out decades, so the
+  /// REMAINING time recorded at save is kept instead.
   int rebaseSavedDeadline({
     required int deadlineEpochMs,
     int? epochAtSaveMs,
     int? ticksAtSaveMs,
   }) {
     if (epochAtSaveMs == null || ticksAtSaveMs == null) return deadlineEpochMs;
-    final elapsed = ticksMs - ticksAtSaveMs;
-    if (elapsed < 0 || elapsed > _maxRebaseElapsedMs) {
-      final remainingAtSave = deadlineEpochMs - epochAtSaveMs;
-      final sinceSave = nowMs - epochAtSaveMs;
-      if (sinceSave < -_clockBackTolerance ||
-          sinceSave > (remainingAtSave < 0 ? 0 : remainingAtSave) + _oneDayMs) {
-        return nowMs + remainingAtSave;
-      }
-      return deadlineEpochMs;
+    final remainingAtSave = deadlineEpochMs - epochAtSaveMs;
+    final tickElapsed = ticksMs - ticksAtSaveMs;
+    final sinceSave = nowMs - epochAtSaveMs;
+    if (tickElapsed >= 0 && tickElapsed <= _maxRebaseElapsedMs) {
+      final elapsed = sinceSave > tickElapsed + _wallAgreeTolerance
+          ? sinceSave
+          : tickElapsed;
+      return nowMs + remainingAtSave - elapsed;
     }
-    final remaining = deadlineEpochMs - epochAtSaveMs - elapsed;
-    return nowMs + remaining;
+    if (sinceSave < -_clockBackTolerance) return nowMs + remainingAtSave;
+    return deadlineEpochMs;
   }
 
   // ── skew / high-water-mark monitoring ──────────────────────────────────────

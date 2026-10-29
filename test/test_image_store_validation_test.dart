@@ -167,6 +167,33 @@ void main() {
       expect(files().where((f) => f.endsWith('.img')), isEmpty);
     });
 
+    test('a timed-out download aborts only its own request', () async {
+      final aborted = <String, bool>{};
+      final client = MockClient.streaming((req, _) async {
+        final path = req.url.path;
+        aborted[path] = false;
+        if (req is http.Abortable) {
+          req.abortTrigger?.then((_) => aborted[path] = true);
+        }
+        if (path == '/stall.png') {
+          return http.StreamedResponse(
+              (StreamController<List<int>>()..add(_png)).stream, 200);
+        }
+        // A healthy download that outlives the stalled one's timeout.
+        return http.StreamedResponse(
+            trickle([_png, [4], [5], [6]], const Duration(milliseconds: 80)),
+            200);
+      });
+      final s = store(client, idle: const Duration(milliseconds: 150));
+      await s.init();
+      final stalled = s.fetch('https://img.test/stall.png');
+      final healthy = s.fetch('https://img.test/ok.png');
+      await expectLater(stalled, throwsA(isA<TimeoutException>()));
+      expect(await healthy, StoreFetch.stored);
+      expect(aborted['/stall.png'], isTrue);
+      expect(aborted['/ok.png'], isFalse);
+    });
+
     test('truncated body (content-length mismatch) is rejected', () async {
       final s = store(streaming(() => Stream.value(_png),
           contentLength: _png.length + 100));

@@ -75,6 +75,34 @@ void main() {
     expect(ServerClock.offset, Duration.zero);
   });
 
+  test('a cached answer with an old Date does not shift the clock', () {
+    var mono = 0;
+    ServerClock.monotonicMs = () => mono;
+    ServerClock.deviceNow = () => _serverNow;
+    ServerClock.observe(HttpDate.format(_serverNow));
+    final good = ServerClock.offset;
+
+    mono = 60 * 1000; // a minute later a proxy replays a 3 h old response
+    ServerClock.observe(
+        HttpDate.format(_serverNow.subtract(const Duration(hours: 3))));
+    expect(ServerClock.offset, good);
+
+    // A normal, newer answer is still taken.
+    ServerClock.deviceNow = () => _serverNow.add(const Duration(minutes: 5));
+    mono = 120 * 1000;
+    ServerClock.observe(
+        HttpDate.format(_serverNow.add(const Duration(minutes: 2))));
+    expect(ServerClock.offset, isNot(good));
+  });
+
+  test('Age is added to a replayed Date', () {
+    ServerClock.deviceNow = () => _serverNow;
+    ServerClock.observe(
+        HttpDate.format(_serverNow.subtract(const Duration(hours: 2))),
+        ageHeader: '7200');
+    expect(ServerClock.offset, Duration.zero);
+  });
+
   test('the offset survives a restart (persisted in prefs)', () async {
     ServerClock.deviceNow = () => DateTime.utc(2000, 1, 1);
     ServerClock.observe(HttpDate.format(_serverNow));

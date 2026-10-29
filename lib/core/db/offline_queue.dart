@@ -442,39 +442,25 @@ class OfflineQueue {
   }
 
   // ── Cleanup ────────────────────────────────────────────────────────────────
-  // Result rows (queue / local_queue) are deleted by AGE only. They used to
-  // also be dropped at attempts >= 10, but SyncService flushes every 10 s, so
-  // ~100 s of 5xx / 429 / timeouts silently destroyed finished exams. The
-  // attempts column is still incremented, for diagnostics only.
-  static const int _resultMaxAgeMs = 30 * 24 * 60 * 60 * 1000; // 30 kun
+  // Result rows (queue / local_queue) are NEVER deleted by age or by attempt
+  // count: only a server receipt or a permanent rejection removes them (see
+  // flush). `created` is the PC wall clock, which a dead-CMOS reset (2000), an
+  // NTP step or a manual change makes meaningless, and an age rule on it wiped
+  // finished exams right after a failed flush. A result row is a few KB; keeping
+  // an undeliverable one is cheaper than losing a child's exam. The attempts
+  // column is still incremented, for diagnostics only.
   static const int _maxAgeMs = 7 * 24 * 60 * 60 * 1000; // 7 kun
 
-  /// Eski qatorlarni tozalaydi. Natija qatorlari (queue, local_queue) faqat
-  /// 30 kundan eski bo'lsa o'chiriladi — urinishlar soni HECH QACHON sabab
-  /// emas; har bir o'chirish oldidan log yoziladi. tg_queue va
-  /// local_students 7 kun qoidasida qoladi. Muvaffaqiyatli yuborilgan
-  /// qatorlar flush paytida allaqachon o'chiriladi.
+  /// Eski qatorlarni tozalaydi. Natija qatorlari (queue, local_queue)
+  /// HECH QACHON yosh yoki urinishlar soni bo'yicha o'chirilmaydi — faqat
+  /// server tasdig'i yoki doimiy rad etish (flush) ularni olib tashlaydi.
+  /// tg_queue va local_students 7 kun qoidasida qoladi.
   /// Qaytaradi: o'chirilgan jami qatorlar soni.
   static Future<int> purgeStale({int? nowMs}) async {
     final d = await db;
     final now = nowMs ?? DateTime.now().millisecondsSinceEpoch;
-    final resultCutoff = now - _resultMaxAgeMs;
     final cutoff = now - _maxAgeMs;
     int removed = 0;
-    for (final table in ['queue', 'local_queue']) {
-      final stale = await d.query(table,
-          columns: ['id', 'created', 'attempts', 'token'],
-          where: 'created < ?',
-          whereArgs: [resultCutoff]);
-      for (final row in stale) {
-        debugPrint('OfflineQueue.purgeStale: deleting $table row '
-            'id=${row['id']} token=${row['token']} '
-            'created=${row['created']} attempts=${row['attempts']} '
-            '(older than 30 days)');
-        removed += await d
-            .delete(table, where: 'id = ?', whereArgs: [row['id']]);
-      }
-    }
     // legacy tg_queue: attempts ustuni yo'q — faqat yosh bo'yicha
     removed +=
         await d.delete('tg_queue', where: 'created < ?', whereArgs: [cutoff]);

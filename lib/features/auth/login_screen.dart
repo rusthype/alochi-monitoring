@@ -146,8 +146,11 @@ class _NetworkBgState extends State<_NetworkBg>
 
   void _tick() {
     if (!_initialized) return;
-    final size = context.size;
-    if (size == null) return;
+    // The first warm-up frame can tick before the first layout: `context.size`
+    // would throw "RenderBox was not laid out".
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final size = box.size;
     for (final dot in _dots) {
       dot.update(size);
     }

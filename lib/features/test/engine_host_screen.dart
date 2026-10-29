@@ -488,16 +488,27 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
 String buildResultToken(String testKey, String studentId, String attemptId) =>
     'mw-${OfflineCrypto.sha256Hex(utf8.encode('$testKey|$studentId|$attemptId')).substring(0, 40)}';
 
-/// Token for the attempt currently saved for [testKey]/[studentId]. Records
-/// without an `attempt_id` (written by builds before it existed) or a missing
-/// record fall back to a random token, i.e. the previous behaviour.
+/// Token of a stored attempt record, shared by the host and the startup
+/// recovery scan so a crash between enqueue and clear can never submit twice.
+/// Records written before `attempt_id` existed are identified by `started_at`;
+/// null when the record carries neither (nothing stable to derive from).
+String? tokenForStoredAttempt(String testKey, Map<String, dynamic> rec) {
+  final attemptId = rec['attempt_id']?.toString() ?? '';
+  final startedAt = rec['started_at'];
+  if (attemptId.isEmpty && startedAt == null) return null;
+  return buildResultToken(
+      testKey,
+      rec['student_id']?.toString() ?? '',
+      attemptId.isNotEmpty ? attemptId : 'rec-$startedAt');
+}
+
+/// Token for the attempt currently saved for [testKey]/[studentId]. A missing
+/// record (or one with no stable identity) falls back to a random token.
 Future<String> resolveResultToken(String testKey, String studentId) async {
   final saved = await AttemptStore.load(testKey);
-  final attemptId = saved?['attempt_id']?.toString() ?? '';
-  if (saved != null &&
-      attemptId.isNotEmpty &&
-      (saved['student_id']?.toString() ?? '') == studentId) {
-    return buildResultToken(testKey, studentId, attemptId);
+  if (saved != null && (saved['student_id']?.toString() ?? '') == studentId) {
+    final token = tokenForStoredAttempt(testKey, saved);
+    if (token != null) return token;
   }
   return newIdempotencyToken();
 }
