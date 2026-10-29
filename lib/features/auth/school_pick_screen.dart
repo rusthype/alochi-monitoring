@@ -4,6 +4,8 @@
 // (replaces the old catalog bottom sheet). Same UI as the diagnostic picker
 // ([SchoolPickerBody]); a tap hands the school to /session_setup, which asks
 // for the PIN and continues to /group_select/<code>.
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,27 +30,97 @@ typedef MonitoringSchoolSources = ({
   List<Map<String, String>> schools,
 });
 
-Future<MonitoringSchoolSources> _loadLive() async {
-  // Each source may fail on its own; the screen only fails when NOTHING could
-  // be loaded (an empty list must mean "no schools", not "no network").
+/// SharedPreferences key of the last successfully loaded school list (JSON
+/// array of `{school_code, school_id, label}`), shown only when the live load
+/// fails. Fully replaced on every successful live load.
+const kCachedMonitoringSchoolsKey = 'cached_monitoring_schools';
+
+Future<MonitoringSchoolSources> _loadLive() => loadMonitoringSchoolSources(
+      fetchEntries: testCatalogService.refresh,
+      fetchSchools: () => api.fetchCatalogSchools(strict: true),
+    );
+
+/// Live-first load. The list always comes from the live responses when they
+/// succeed (and then REPLACES the persisted copy, so a removed school cannot
+/// come back). The persisted copy is used only when the live schools list
+/// fails (offline / 5xx / timeout); an empty successful live list is a real
+/// "no schools" and is never refilled from it.
+///
+/// `fetchEntries` degrades to the disk cache offline, but cached entries carry
+/// no `schoolButtons`, so offline the persisted copy is the only school source.
+@visibleForTesting
+Future<MonitoringSchoolSources> loadMonitoringSchoolSources({
+  required Future<List<CatalogEntry>> Function() fetchEntries,
+  required Future<List<Map<String, String>>> Function() fetchSchools,
+}) async {
   Future<Object> settle<T>(Future<T> f) =>
       f.then<Object>((v) => v as Object, onError: (Object e) => _Failed(e));
   final results = await Future.wait([
-    settle(testCatalogService.refresh()),
-    settle(api.fetchCatalogSchools(strict: true)),
+    settle(fetchEntries()),
+    settle(fetchSchools()),
   ]);
-  final entries =
-      results[0] is _Failed ? <CatalogEntry>[] : results[0] as List<CatalogEntry>;
-  final schools = results[1] is _Failed
-      ? <Map<String, String>>[]
-      : results[1] as List<Map<String, String>>;
-  final anySchool =
-      schools.isNotEmpty || entries.any((e) => e.schoolButtons.isNotEmpty);
-  if (!anySchool) {
-    final failure = results.whereType<_Failed>().firstOrNull;
-    if (failure != null) throw failure.error;
+  final entries = results[0] is _Failed
+      ? <CatalogEntry>[]
+      : results[0] as List<CatalogEntry>;
+  final entriesOk = results[0] is! _Failed;
+  final schoolsOk = results[1] is! _Failed;
+  final schools = schoolsOk
+      ? results[1] as List<Map<String, String>>
+      : <Map<String, String>>[];
+
+  // An empty list is "no schools" only when nothing failed alongside it.
+  if (schoolsOk && (entriesOk || schools.isNotEmpty)) {
+    await _persistSchools(entries, schools);
+    return (entries: entries, schools: schools);
   }
-  return (entries: entries, schools: schools);
+
+  final saved = await _readPersistedSchools();
+  if (saved.isNotEmpty || entries.any((e) => e.schoolButtons.isNotEmpty)) {
+    return (entries: entries, schools: saved);
+  }
+  throw results.whereType<_Failed>().first.error;
+}
+
+Future<void> _persistSchools(
+  List<CatalogEntry> entries,
+  List<Map<String, String>> schools,
+) async {
+  try {
+    final rows =
+        mergeMonitoringSchools(entries, schools, fallbackLabel: (_) => '');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      kCachedMonitoringSchoolsKey,
+      jsonEncode([
+        for (final r in rows)
+          {'school_code': r.code, 'school_id': r.id, 'label': r.label},
+      ]),
+    );
+  } catch (e) {
+    debugPrint('SchoolPickScreen: persist schools failed: $e');
+  }
+}
+
+Future<List<Map<String, String>>> _readPersistedSchools() async {
+  try {
+    final raw = (await SharedPreferences.getInstance())
+        .getString(kCachedMonitoringSchoolsKey);
+    if (raw == null || raw.isEmpty) return [];
+    final data = jsonDecode(raw);
+    if (data is! List) return [];
+    return [
+      for (final e in data.whereType<Map>())
+        if ((e['school_code']?.toString() ?? '').isNotEmpty)
+          {
+            'school_code': e['school_code'].toString(),
+            'school_id': e['school_id']?.toString() ?? '',
+            'label': e['label']?.toString() ?? '',
+          },
+    ];
+  } catch (e) {
+    debugPrint('SchoolPickScreen: read persisted schools failed: $e');
+    return [];
+  }
 }
 
 class _Failed {
