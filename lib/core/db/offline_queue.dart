@@ -18,8 +18,17 @@ import 'queue_crypto.dart';
 class OfflineQueue {
   static Database? _db;
 
+  /// The one in-flight open: racing first callers share it instead of each
+  /// opening (and recovering) the file.
+  static Future<Database>? _opening;
+
   static Future<Database> get db async {
-    if (_db != null) return _db!;
+    final open = _db;
+    if (open != null) return open;
+    return _opening ??= _openDefault().whenComplete(() => _opening = null);
+  }
+
+  static Future<Database> _openDefault() async {
     if (Platform.isWindows || Platform.isLinux) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
@@ -125,6 +134,7 @@ class OfflineQueue {
   static Future<void> resetForTest() async {
     await _db?.close();
     _db = null;
+    _opening = null;
     pending.value = (count: 0, oldest: null);
     rejected.value = 0;
   }
