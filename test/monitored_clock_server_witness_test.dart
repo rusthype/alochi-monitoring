@@ -374,7 +374,6 @@ void main() {
             currentVersion: (_) async => null,
             clock: w.clock(),
             testScreenActive: () => false,
-            offlineSessionActive: () => false,
           ).run();
       expect(await sweep(), 1, reason: 'server says the attempt expired');
       expect(queued, hasLength(1));
@@ -630,7 +629,6 @@ void main() {
         extendEntry: (e, r) async => stored = r,
         clock: clock,
         testScreenActive: () => false,
-        offlineSessionActive: () => false,
       ).run();
       return stored!;
     }

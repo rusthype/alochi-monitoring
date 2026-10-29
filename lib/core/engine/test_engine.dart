@@ -21,6 +21,7 @@ import 'question_widgets.dart';
 import '../services/heartbeat_service.dart';
 import '../services/proctor_service.dart';
 import '../security/monitored_clock.dart';
+import '../offline/lan_client_session.dart' show currentResultScope;
 import '../../features/test/question_report_sheet.dart';
 import '../../shared/widgets/exit_error_scaffold.dart';
 
@@ -713,6 +714,9 @@ class _TestEngineState extends State<TestEngine>
       'school': widget.school,
       'grade': widget.grade ?? widget.spec.grade,
       'group_id': widget.groupId ?? '',
+      // Which result channel (cloud queue / USB pack chain / LAN outbox) this
+      // attempt belongs to: the recovery sweep finalises it through the same.
+      'result_scope': currentResultScope(),
     });
   }
 

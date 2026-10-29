@@ -113,6 +113,18 @@ class LanJoinException implements Exception {
 bool get isOfflineModeOpen =>
     OfflinePackSession.isActive || LanClientSession.isActive;
 
+/// Which channel a result produced right now travels through: `cloud` (the
+/// online queue), `pack:<uuid>` (the USB pack's HMAC chain) or `lan:<uuid>`
+/// (the hub outbox). Stored with every in-progress attempt so a later recovery
+/// sweep can finalise it through the SAME channel and never mix them.
+String currentResultScope() {
+  final pack = OfflinePackSession.current;
+  if (pack != null) return 'pack:${pack.packUuid}';
+  final lan = LanClientSession.current;
+  if (lan != null) return 'lan:${lan.packUuid}';
+  return 'cloud';
+}
+
 /// Leaves whichever offline session is open: restores the real `api`, exits
 /// TestCache memory mode, drops the session. The one exit used by both the
 /// control center and the login-screen banner.

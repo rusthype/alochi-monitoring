@@ -18,6 +18,22 @@
 //  * unfinished with time left, paused or empty -> left alone (the student
 //    resumes through the normal flow).
 //
+// Offline modes (wave 8a). A scan used to be a no-op while a USB pack or a LAN
+// session was open. Every stored attempt now carries `result_scope`
+// (`cloud` | `pack:<uuid>` | `lan:<uuid>`, see currentResultScope), and during
+// a session the sweep only finalises attempts of THAT session, through the
+// channel the session itself uses for results (pack HMAC chain /
+// hub outbox) - never the online queue. Everything else is left parked on
+// disk, untouched, and counted in [deferred]:
+//  * an attempt of another scope (a cloud attempt while a pack is open, another
+//    pack, a record from before `result_scope` existed) - submitting it into
+//    the wrong chain would misattribute it;
+//  * anything the student is still taking, paused, or with time left.
+// With no session open the scan behaves as before (online queue, every scope):
+// the result then has no other way to reach anyone.
+// KNOWN GAP: an attempt of a session that is never reopened is only delivered
+// by the next cloud-mode scan, i.e. through the online queue.
+//
 // The queue token is the one the engine host would derive for the same
 // attempt (buildResultToken), so a later normal completion or a second scan
 // can never create a duplicate: the queue's unique token index ignores it and
@@ -53,7 +69,9 @@ class AttemptRecoveryService {
         extendEntry,
     MonitoredClock? clock,
     bool Function()? testScreenActive,
-    bool Function()? offlineSessionActive,
+    String Function()? resultScope,
+    Future<void> Function(Map<String, dynamic> payload, String token)?
+        recordInSession,
     ValueListenable<bool>? gate,
     this.scanEvery = const Duration(minutes: 10),
     this.gateDebounce = const Duration(seconds: 5),
@@ -74,10 +92,8 @@ class AttemptRecoveryService {
             (() =>
                 HeartbeatService.instance.testScreenActive ||
                 ActiveTestGate.active.value),
-        _offlineSessionActive = offlineSessionActive ??
-            (() =>
-                OfflinePackSession.current != null ||
-                LanClientSession.current != null);
+        _scope = resultScope ?? currentResultScope,
+        _recordInSession = recordInSession ?? _recordInSessionDefault;
 
   static final AttemptRecoveryService instance = AttemptRecoveryService();
 
@@ -108,9 +124,19 @@ class AttemptRecoveryService {
   final ValueListenable<bool> _gate;
   final bool Function() _testScreenActive;
 
-  /// An offline pack / LAN session routes results through its own chain, not
-  /// the online queue, so nothing is recovered into the queue meanwhile.
-  final bool Function() _offlineSessionActive;
+  /// `cloud` with no session open, else the scope of the open pack / LAN
+  /// session (see [currentResultScope]).
+  final String Function() _scope;
+
+  /// An open pack / LAN session routes results through its own chain / outbox,
+  /// never the online queue: this is that channel.
+  final Future<void> Function(Map<String, dynamic>, String) _recordInSession;
+
+  /// Attempts the last scan left parked because they belong to another result
+  /// channel than the open session (see the file header). Never lost: they are
+  /// swept in the matching mode.
+  int get deferred => _deferred;
+  int _deferred = 0;
 
   MonitoredClock get _c => _clock ?? MonitoredClock.instance;
 
@@ -193,10 +219,11 @@ class AttemptRecoveryService {
       _rerun = true;
       return 0;
     }
-    if (_testScreenActive() || _offlineSessionActive()) return 0;
+    if (_testScreenActive()) return 0;
     _running = true;
     _retryNeeded = false;
     _serverDown = false;
+    _deferred = 0;
     var recovered = 0;
     try {
       for (final entry in await _listAll()) {
@@ -286,6 +313,15 @@ class AttemptRecoveryService {
     final school = rec['school'];
     if (school == null) return false;
 
+    // During a pack / LAN session only that session's own attempts are
+    // finalised, and through its own channel. Anything else stays parked.
+    final scope = _scope();
+    final inSession = scope != 'cloud';
+    if (inSession && rec['result_scope']?.toString() != scope) {
+      _deferred++;
+      return false;
+    }
+
     final studentId = rec['student_id']?.toString() ?? '';
     final token = tokenForStoredAttempt(testKey, rec) ??
         buildResultToken(testKey, studentId, 'rec-');
@@ -304,14 +340,24 @@ class AttemptRecoveryService {
       if (reason == 'deadline_passed' && await _serverGrantsTime(entry)) {
         return false; // the hub says time remains: not ours to submit
       }
-      if (_testScreenActive()) {
+      // The hub lookup above awaited: a session may have opened / closed since
+      // the channel was chosen. Never write into a different one.
+      if (_testScreenActive() || _scope() != scope) {
         _retryNeeded = true;
         return false;
       }
-      await _enqueue(_payload(rec, testKey, reason, durationS), token);
+      final payload = _payload(rec, testKey, reason, durationS);
+      if (inSession) {
+        // Same token as the engine host: a second record is a no-op.
+        await _recordInSession(payload, token);
+      } else {
+        await _enqueue(payload, token);
+      }
       // Queued: from here the result is safe; bookkeeping must not undo that.
       try {
-        await _markDone(testKey, studentId);
+        // The engine host marks the roster for the online queue and the LAN
+        // client only - a pack roster reads its own chain.
+        if (!scope.startsWith('pack:')) await _markDone(testKey, studentId);
       } catch (e) {
         debugPrint('AttemptRecovery: roster mark failed: $e');
       }
@@ -363,6 +409,18 @@ class AttemptRecoveryService {
       debugPrint('AttemptRecovery: could not store hub extension: $e');
     }
     return true;
+  }
+
+  static Future<void> _recordInSessionDefault(
+      Map<String, dynamic> payload, String token) async {
+    final pack = OfflinePackSession.current;
+    if (pack != null) {
+      await pack.recordResult(payload, token: token);
+      return;
+    }
+    final lan = LanClientSession.current;
+    if (lan == null) throw StateError('offline session closed during recovery');
+    await lan.recordResult(payload, token: token);
   }
 
   /// Production hub lookup: the engine's own session-resume call, bounded by
