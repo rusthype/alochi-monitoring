@@ -58,12 +58,10 @@ typedef ServerSampleFn = ServerSample? Function();
 
 /// Null until the server was actually heard from in THIS process (an offset
 /// loaded from disk may be stale and is no witness).
-ServerSample? _serverClockSample() {
-  final n = ServerClock.observationCount;
-  return n == 0
-      ? null
-      : (offsetMs: ServerClock.offset.inMilliseconds, seq: n);
-}
+///
+/// Which clock this is (cloud API vs the LAN hub) follows the active session
+/// ([ServerClock.source]); the two offsets are never mixed.
+ServerSample? _serverClockSample() => ServerClock.activeSample();
 
 /// Persistence for the wall-clock high-water mark.
 abstract class HighWaterStore {
@@ -130,6 +128,11 @@ class MonitoredClock {
   final HighWaterStore _hwm;
   final ServerSampleFn _server;
 
+  /// Which server clock [_server] reads right now: `cloud` or `hub`. A server
+  /// witness is only comparable with one of the SAME source.
+  final String Function() _source;
+  late String _lastSource;
+
   /// Worst-case error (ms) of a device-to-server offset measurement: the
   /// `Date` header has 1 s resolution and arrives a round trip late.
   final int Function() _uncertainty;
@@ -174,6 +177,7 @@ class MonitoredClock {
     WallFn? wall,
     HighWaterStore? highWaterStore,
     ServerSampleFn? serverSample,
+    String Function()? serverSource,
     int Function()? offsetUncertaintyMs,
     this.probeServer,
     this.skewThresholdMs = 5000,
@@ -182,7 +186,9 @@ class MonitoredClock {
         _wall = wall ?? (() => DateTime.now().millisecondsSinceEpoch),
         _hwm = highWaterStore ?? const SecureHighWaterStore(),
         _server = serverSample ?? _serverClockSample,
-        _uncertainty = offsetUncertaintyMs ?? (() => ServerClock.uncertaintyMs) {
+        _source = serverSource ?? (() => ServerClock.source),
+        _uncertainty =
+            offsetUncertaintyMs ?? (() => ServerClock.activeUncertaintyMs) {
     _anchorWall = _wall();
     _anchorTicks = _ticks();
     _lastCheckWall = _anchorWall;
@@ -191,6 +197,7 @@ class MonitoredClock {
     _syncTicks = _anchorTicks;
     _baseline = _server();
     _baselineTicks = _anchorTicks;
+    _lastSource = _source();
   }
 
   /// Production singleton. Tests replace it with a fake-driven instance.
@@ -280,6 +287,18 @@ class MonitoredClock {
     };
   }
 
+  /// [snapshot] plus `server_source` (`cloud` | `hub`) whenever a server witness
+  /// is stored: the engine / recovery records persist this one, so a restart
+  /// never compares a hub timestamp with a cloud offset. A record without
+  /// `server_source` is a cloud witness (written before hub offsets existed).
+  Map<String, Object> snapshotRecord() {
+    final snap = snapshot();
+    return {
+      ...snap,
+      if (snap.containsKey('server_epoch_at_save_ms')) 'server_source': _source(),
+    };
+  }
+
   /// Re-expresses a deadline that was persisted by an earlier process in THIS
   /// process's trusted timeline.
   ///
@@ -315,10 +334,15 @@ class MonitoredClock {
     int? epochAtSaveMs,
     int? ticksAtSaveMs,
     int? serverEpochAtSaveMs,
+    String? serverSourceAtSave,
   }) {
     if (epochAtSaveMs == null || ticksAtSaveMs == null) return deadlineEpochMs;
     final remainingAtSave = deadlineEpochMs - epochAtSaveMs;
-    final server = serverEpochAtSaveMs == null ? null : _witness();
+    // A witness saved against the cloud clock says nothing about the hub's (and
+    // vice versa): ignored on a source mismatch, the tick rule applies.
+    final sameSource = (serverSourceAtSave ?? 'cloud') == _source();
+    final server =
+        serverEpochAtSaveMs == null || !sameSource ? null : _witness();
     if (serverEpochAtSaveMs != null && server != null) {
       final elapsed = _wall() + server.offsetMs - serverEpochAtSaveMs;
       return nowMs + remainingAtSave - (elapsed < 0 ? 0 : elapsed);
@@ -350,6 +374,24 @@ class MonitoredClock {
   /// A small gap (NTP slew, a few seconds) is left to accumulate until it is
   /// big enough to be believed, then credited in full.
   int absorbSuspend() {
+    // The active server clock changed (a LAN session opened / closed): the
+    // baseline and a verdict waiting for a measurement belong to the OTHER
+    // clock and are not comparable with the next one.
+    var carried = 0;
+    final source = _source();
+    if (source != _lastSource) {
+      _lastSource = source;
+      _baseline = null;
+      _baselineTicks = _ticks();
+      final held = _pending;
+      _pending = null;
+      // No verdict can arrive any more: the offline rule applies.
+      if (held != null) carried = _creditSuspend(held.skew);
+    }
+    return carried + _absorbSuspend();
+  }
+
+  int _absorbSuspend() {
     final wall = _wall();
     final ticks = _ticks();
     final skew = (wall - _syncWall) - (ticks - _syncTicks);

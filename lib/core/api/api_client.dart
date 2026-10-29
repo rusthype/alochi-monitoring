@@ -57,6 +57,36 @@ String conflictReason(Map<String, dynamic>? body) {
   return err is String && err.isNotEmpty ? err : 'conflict';
 }
 
+/// Short, secret-free reason a 400 / 422 rejected a RESULT payload. Machine
+/// `error` / `code` first, then a truncated `detail` / `message`, then the
+/// field names of a DRF validation error (never their values - they echo the
+/// student's answers), else `http_<status>`. Tolerates absent / odd bodies.
+String resultRejectionReason(int status, Map<String, dynamic>? body) {
+  String? text(Object? v) =>
+      v is String && v.trim().isNotEmpty ? v.trim() : null;
+  String cut(String v) => v.length > 80 ? v.substring(0, 80) : v;
+  if (body != null) {
+    final machine = text(body['error']) ?? text(body['code']);
+    if (machine != null) return cut(machine);
+    final detail = text(body['detail']) ?? text(body['message']);
+    if (detail != null) return cut(detail);
+    final fields = [
+      for (final e in body.entries)
+        if (e.value is List || e.value is Map) e.key
+    ];
+    if (fields.isNotEmpty) return cut('invalid:${fields.join(',')}');
+  }
+  return 'http_$status';
+}
+
+/// A direct (online) result submit that did not sync must still be kept - in
+/// the queue - when the failure is retryable OR the server rejected it
+/// (`rejected: true` -> the queue re-submits it once and holds it in
+/// `rejected_results`). Only a non-result style permanent drop is discarded.
+bool keepUnsyncedResult(Map<String, dynamic> reply) =>
+    reply['synced'] != true &&
+    (reply['permanent'] != true || reply['rejected'] == true);
+
 bool _looksLikeHtml(http.Response r) {
   final ct = (r.headers['content-type'] ?? '').toLowerCase();
   if (ct.contains('text/html')) return true;
@@ -812,10 +842,13 @@ class MonitoringApi {
       }
       if (isPermanentResultRejection(e.statusCode, code: e.code)) {
         // Server definitively rejected the payload (400 / 422) - retrying
-        // can never help.
+        // can never help, but the finished exam is HELD for the teacher
+        // (OfflineQueue `rejected_results`), never silently dropped.
         return {
           'synced': false,
           'permanent': true,
+          'rejected': true,
+          'reject_reason': resultRejectionReason(e.statusCode, e.body),
           'xp_earned': 0,
           'wrong_answers': <dynamic>[]
         };
@@ -1207,23 +1240,37 @@ class MonitoringApi {
   /// server's Retry-After to the sync scheduler.
   ///
   /// [holdRejected] (result payloads only): a 409 is split into "already
-  /// stored" (synced) and a rejection (`rejected: true` - the queue keeps it).
+  /// stored" (synced) and a rejection; a 400 / 422 is a rejection
+  /// (`rejected: true` - the queue keeps it in `rejected_results`).
   Map<String, dynamic> _submitVerdict(http.Response resp, String what,
       {bool holdRejected = false}) {
     if (resp.statusCode >= 400) {
       debugPrint('$what non-2xx: ${resp.statusCode}');
-      if (holdRejected && resp.statusCode == 409 && !_looksLikeHtml(resp)) {
+      if (holdRejected &&
+          (resp.statusCode == 409 ||
+              resp.statusCode == 400 ||
+              resp.statusCode == 422) &&
+          !_looksLikeHtml(resp)) {
         var body = <String, dynamic>{};
         try {
           final d = jsonDecode(utf8.decode(resp.bodyBytes));
           if (d is Map) body = Map<String, dynamic>.from(d);
         } catch (_) {}
-        if (isDuplicateConflict(body)) return {'synced': true};
+        if (resp.statusCode == 409) {
+          if (isDuplicateConflict(body)) return {'synced': true};
+          return {
+            'synced': false,
+            'permanent': true,
+            'rejected': true,
+            'reject_reason': conflictReason(body),
+          };
+        }
+        // 400 / 422 on a result payload: held too, never dropped.
         return {
           'synced': false,
           'permanent': true,
           'rejected': true,
-          'reject_reason': conflictReason(body),
+          'reject_reason': resultRejectionReason(resp.statusCode, body),
         };
       }
       final wait = retryAfterSecondsOf(resp);

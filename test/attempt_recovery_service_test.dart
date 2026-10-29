@@ -11,6 +11,8 @@ import 'package:alochi_monitoring/core/services/attempt_recovery_service.dart';
 import 'package:alochi_monitoring/features/test/engine_host_screen.dart'
     show buildResultToken, tokenForStoredAttempt;
 import 'package:alochi_monitoring/core/models/test_version.dart';
+import 'package:alochi_monitoring/core/offline/lan_client_session.dart'
+    show currentResultScope;
 import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,7 +38,10 @@ class _Harness {
   final List<AttemptEntry> entries;
   final MonitoredClock clock;
   bool screenActive;
-  bool offlineSession = false;
+  String scope = 'cloud';
+  Object? recordError;
+  final recorded = <(Map<String, dynamic>, String)>[];
+  Future<int?> Function(AttemptEntry)? remaining;
   Object? enqueueError;
   int? currentVersion;
   final queued = <(Map<String, dynamic>, String)>[];
@@ -54,7 +59,12 @@ class _Harness {
         currentVersion: (_) async => currentVersion,
         clock: clock,
         testScreenActive: () => screenActive,
-        offlineSessionActive: () => offlineSession,
+        resultScope: () => scope,
+        recordInSession: (p, t) async {
+          if (recordError != null) throw recordError!;
+          recorded.add((p, t));
+        },
+        serverRemainingSeconds: remaining,
       );
 }
 
@@ -212,7 +222,6 @@ void main() {
       clock: h.clock,
       // free at the scan start and the loop check, busy at the last check
       testScreenActive: () => ++calls >= 3,
-      offlineSessionActive: () => false,
     );
     expect(await s.run(), 0);
     expect(h.queued, isEmpty);
@@ -282,7 +291,6 @@ void main() {
       markDone: (_, __) async {},
       currentVersion: (_) async => null,
       clock: h.clock,
-      offlineSessionActive: () => false,
     );
     final release = ActiveTestGate.enter();
     addTearDown(ActiveTestGate.resetForTest);
@@ -294,16 +302,130 @@ void main() {
 
   test('nothing is queued online during an offline pack / LAN session',
       () async {
-    final h = _Harness([_entry(_rec(completed: true))])..offlineSession = true;
+    final h = _Harness([_entry(_rec(completed: true))])..scope = 'pack:p1';
     expect(await h.service.run(), 0);
     expect(h.queued, isEmpty);
+  });
+
+  // ── wave 8a: recovery inside a pack / LAN session ─────────────────────────
+
+  group('offline session recovery', () {
+    Map<String, dynamic> scoped(String scope, {int deadlineInMs = -3 * _min}) =>
+        {..._rec(deadlineInMs: deadlineInMs), 'result_scope': scope};
+
+    test('pack: an expired attempt of THIS pack goes into the pack chain',
+        () async {
+      final h = _Harness([_entry(scoped('pack:p1'))])..scope = 'pack:p1';
+      expect(await h.service.run(), 1);
+      expect(h.queued, isEmpty, reason: 'never the online queue');
+      final (payload, token) = h.recorded.single;
+      expect(token, buildResultToken('math_bob1', 'S-1', 'nonce-1'));
+      expect(payload['raw_answers'], {'Math/0': 1, 'Math/1': 'x'});
+      expect((payload['detail'] as Map)['recovered'], 'deadline_passed');
+      expect(h.cleared, hasLength(1));
+      expect(h.done, isEmpty, reason: 'a pack roster reads its own chain');
+    });
+
+    test('LAN: an expired attempt of THIS hub pack goes into the outbox and '
+        'marks the roster', () async {
+      final h = _Harness([_entry(scoped('lan:p1'))])..scope = 'lan:p1';
+      expect(await h.service.run(), 1);
+      expect(h.queued, isEmpty);
+      expect(h.recorded, hasLength(1));
+      expect(h.done, ['math_bob1|S-1']);
+      expect(h.cleared, hasLength(1));
+    });
+
+    test('a completed-never-recorded attempt of this session is recorded too',
+        () async {
+      final h = _Harness([
+        _entry({...scoped('pack:p1', deadlineInMs: 5 * _min), 'completed': true})
+      ])
+        ..scope = 'pack:p1';
+      expect(await h.service.run(), 1);
+      expect(h.recorded, hasLength(1));
+    });
+
+    test('other scope / legacy record (no scope) stays parked and is counted',
+        () async {
+      final h = _Harness([
+        _entry(scoped('cloud')),
+        _entry(scoped('pack:other'), parked: true),
+        _entry(_rec(deadlineInMs: -3 * _min), testKey: 'math_bob2'), // legacy
+      ])
+        ..scope = 'pack:p1';
+      final s = h.service;
+      expect(await s.run(), 0);
+      expect(h.recorded, isEmpty);
+      expect(h.queued, isEmpty);
+      expect(h.cleared, isEmpty);
+      expect(s.deferred, 3);
+    });
+
+    test('time left, or a test on screen: nothing happens', () async {
+      final live = _Harness([_entry(scoped('lan:p1', deadlineInMs: 9 * _min))])
+        ..scope = 'lan:p1';
+      expect(await live.service.run(), 0);
+      expect(live.recorded, isEmpty);
+
+      final busy = _Harness([_entry(scoped('lan:p1'))], screenActive: true)
+        ..scope = 'lan:p1';
+      expect(await busy.service.run(), 0);
+      expect(busy.recorded, isEmpty);
+    });
+
+    test('the hub still says time remains: not submitted (resume check kept)',
+        () async {
+      final h = _Harness([_entry(scoped('lan:p1'))])
+        ..scope = 'lan:p1'
+        ..remaining = (_) async => 300;
+      expect(await h.service.run(), 0);
+      expect(h.recorded, isEmpty);
+      expect(h.cleared, isEmpty);
+    });
+
+    test('a failing session write keeps the attempt and retries later',
+        () async {
+      final h = _Harness([_entry(scoped('pack:p1'))])
+        ..scope = 'pack:p1'
+        ..recordError = StateError('chain locked');
+      expect(await h.service.run(), 0);
+      expect(h.cleared, isEmpty);
+      h.recordError = null;
+      expect(await h.service.run(), 1);
+      expect(h.recorded, hasLength(1));
+    });
+
+    test('the session changing during the hub lookup aborts the write',
+        () async {
+      final h = _Harness([_entry(scoped('lan:p1'))])..scope = 'lan:p1';
+      h.remaining = (_) async {
+        h.scope = 'cloud'; // the LAN session closed meanwhile
+        return null;
+      };
+      expect(await h.service.run(), 0);
+      expect(h.recorded, isEmpty);
+      expect(h.queued, isEmpty);
+      expect(h.cleared, isEmpty);
+    });
+
+    test('cloud mode still sweeps a pack / LAN scoped record online (no other '
+        'channel left)', () async {
+      final h = _Harness([_entry(scoped('pack:p1'))]);
+      expect(await h.service.run(), 1);
+      expect(h.queued, hasLength(1));
+      expect(h.recorded, isEmpty);
+    });
+
+    test('with no session open the scope is cloud', () {
+      expect(currentResultScope(), 'cloud');
+    });
   });
 
   test('a list failure is swallowed', () async {
     final s = AttemptRecoveryService(
         listAll: () async => throw StateError('disk'),
-        testScreenActive: () => false,
-        offlineSessionActive: () => false);
+        testScreenActive: () => false);
     expect(await s.run(), 0);
   });
 
@@ -329,7 +451,6 @@ void main() {
       markDone: (_, __) async {},
       currentVersion: (_) async => null,
       testScreenActive: () => false,
-      offlineSessionActive: () => false,
       clock: _Harness([]).clock,
     );
     expect(await s.run(), 1);
@@ -367,7 +488,6 @@ void main() {
         extendEntry: extend ?? (e, r) async {},
         clock: h.clock,
         testScreenActive: busy ?? () => gate?.value ?? h.screenActive,
-        offlineSessionActive: () => false,
         gate: gate,
         scanEvery: scanEvery,
         gateDebounce: gateDebounce,

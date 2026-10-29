@@ -264,17 +264,27 @@ class ShelfHub extends ChangeNotifier {
   // ── middleware / helpers ───────────────────────────────────────────────────
 
   Middleware get _guard => (Handler inner) => (Request req) async {
+        final Response res;
         try {
-          return await inner(req);
+          res = await inner(req);
         } on HubHttpError catch (e) {
-          return _json(e.status, {'error': e.code, ...e.extra},
-              headers: e.headers);
+          return _dated(_json(e.status, {'error': e.code, ...e.extra},
+              headers: e.headers));
         } catch (e) {
           // Never echo anything about the failure to the peer.
           debugPrint('ShelfHub: request failed (${e.runtimeType})');
-          return _json(500, {'error': 'internal'});
+          return _dated(_json(500, {'error': 'internal'}));
         }
+        return _dated(res);
       };
+
+  /// The hub's own trusted time as a standard `Date` header on EVERY answer:
+  /// student PCs learn the hub-vs-device offset from it (ServerClock.hub), the
+  /// hub PC's system clock being as untrustworthy as any other. Clients that
+  /// do not read it are unaffected.
+  Response _dated(Response r) => r.change(headers: {
+        HttpHeaders.dateHeader: HttpDate.format(clock.nowUtc),
+      });
 
   static const Map<String, String> _baseHeaders = {
     'cache-control': 'no-store',

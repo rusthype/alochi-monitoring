@@ -1,5 +1,5 @@
 // A finished exam is only ever dropped from the offline queue when the server
-// DEFINITIVELY rejected the payload (400 / 409 / 422). Everything else - auth
+// DEFINITIVELY rejected the payload (400 / 409 / 422) and then it is HELD, not dropped (wave 8a). Everything else - auth
 // glitches, proxies, 404 during a deploy, 413, 429, 5xx, captive-portal HTML,
 // no network - must stay retryable.
 import 'dart:convert';
@@ -49,6 +49,10 @@ void main() {
         final r = await _with(() => _json(s), () => a.submitResultFull(_result));
         expect(r['synced'], false);
         expect(r['permanent'], true);
+        // Wave 8a: a rejected finished exam is HELD (rejected_results), not
+        // dropped.
+        expect(r['rejected'], true);
+        expect(r['reject_reason'], isA<String>());
       });
     }
     test('409 means the server already has it -> synced', () async {
@@ -78,6 +82,59 @@ void main() {
     });
   });
 
+  group('rejection reason (400 / 422 result payloads)', () {
+    http.Response body(int status, Object? b) => http.Response.bytes(
+        utf8.encode(b is String ? b : jsonEncode(b)), status,
+        headers: {'content-type': 'application/json'});
+
+    test('machine error / code wins over free text', () {
+      expect(
+          resultRejectionReason(400, {'error': 'bad_answers', 'detail': 'x'}),
+          'bad_answers');
+      expect(resultRejectionReason(422, {'code': 'invalid'}), 'invalid');
+    });
+    test('free-text detail is truncated', () {
+      final r = resultRejectionReason(400, {'detail': 'a' * 500});
+      expect(r.length, lessThanOrEqualTo(80));
+    });
+    test('DRF field errors name only the fields, never the values', () {
+      final r = resultRejectionReason(
+          400, {'answers': ['secret-token-123'], 'total_pct': ['bad']});
+      expect(r, contains('answers'));
+      expect(r, isNot(contains('secret')));
+    });
+    test('absent / odd bodies fall back to http_<status>', () {
+      expect(resultRejectionReason(422, null), 'http_422');
+      expect(resultRejectionReason(400, {}), 'http_400');
+      expect(resultRejectionReason(400, {'error': 42}), 'http_400');
+    });
+    test('online and local paths use the same reason', () async {
+      final b = {'error': 'invalid_payload'};
+      final on = await _with(
+          () => body(400, b), () => a.submitResultFull(_result));
+      final loc = await _with(
+          () => body(422, b), () => a.submitLocalResultFull({'x': 1}, 't'));
+      expect(on['reject_reason'], 'invalid_payload');
+      expect(loc['reject_reason'], 'invalid_payload');
+    });
+    test('a non-JSON 400 body from our server is still held', () async {
+      final r = await _with(() => body(400, 'oops'),
+          () => a.submitLocalResultFull({'x': 1}, 't'));
+      expect(r['rejected'], true);
+      expect(r['reject_reason'], 'http_400');
+    });
+    test('keepUnsyncedResult: kept when retryable or rejected, not when dropped',
+        () {
+      expect(keepUnsyncedResult({'synced': false, 'retryable': true}), true);
+      expect(
+          keepUnsyncedResult(
+              {'synced': false, 'permanent': true, 'rejected': true}),
+          true);
+      expect(keepUnsyncedResult({'synced': false, 'permanent': true}), false);
+      expect(keepUnsyncedResult({'synced': true}), false);
+    });
+  });
+
   group('submitLocalResultFull / submitQuestionReport', () {
     final calls = <String, Future<Map<String, dynamic>> Function()>{
       'local': () => a.submitLocalResultFull({'x': 1}, 't'),
@@ -91,6 +148,10 @@ void main() {
           final r = await _with(() => _json(s), e.value);
           expect(r['synced'], false);
           expect(r['permanent'], true);
+          // Result payloads are held on 400/422 (wave 8a); the question
+          // report is not a result and keeps drop-on-permanent.
+          expect(r['rejected'], e.key == 'local' ? true : isNull,
+              reason: '${e.key} $s');
         });
       }
       for (final s in _retryable) {
