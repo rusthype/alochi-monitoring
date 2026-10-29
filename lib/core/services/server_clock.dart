@@ -75,6 +75,12 @@ class ServerClock {
   static int? _lastServerMs;
   static int _lastMono = 0;
 
+  /// Accepted server observations in this process (0 = the offset, if any,
+  /// was only loaded from disk). Lets a caller wait for a MEASUREMENT taken
+  /// after some event, e.g. [MonitoredClock] verifying a clock jump.
+  static int _seq = 0;
+  static int get observationCount => _seq;
+
   /// A `Date` older than the last accepted one (plus the time that passed
   /// since) by more than this is a cached answer, not "now".
   static const _staleTolerance = Duration(minutes: 1);
@@ -112,6 +118,7 @@ class ServerClock {
     _lastMono = mono;
     _offset = server.difference(deviceNow().toUtc());
     _known = true;
+    _seq++;
     final ms = _offset.inMilliseconds;
     final last = _persistedMs;
     if (last != null && (ms - last).abs() < _persistThreshold.inMilliseconds) {
@@ -137,6 +144,7 @@ class ServerClock {
     _persistedMs = null;
     _loaded = false;
     _lastServerMs = null;
+    _seq = 0;
     deviceNow = DateTime.now;
     monotonicMs = () => _watch.elapsedMilliseconds;
   }

@@ -218,6 +218,8 @@ Future<int?> _savedVariantToResume(String testKey, String studentId) async {
     deadlineEpochMs: deadlineRaw.toInt(),
     epochAtSaveMs: (saved['epoch_at_save'] as num?)?.toInt(),
     ticksAtSaveMs: (saved['ticks_at_save'] as num?)?.toInt(),
+    serverEpochAtSaveMs:
+        (saved['server_epoch_at_save_ms'] as num?)?.toInt(),
   );
   final stale = clock.nowMs - deadlineMs > _staleAttemptMs;
   return stale ? null : savedVariant;

@@ -317,10 +317,20 @@ class _TestEngineState extends State<TestEngine>
     // Clock-change resistance (monitored_clock.dart): deadlines below are in
     // the clock's trusted timeline, and a periodic check records (never
     // blocks on) wall-clock jumps.
+    _clock.probeServer ??= _probeServerClock;
     _clock.startMonitoring();
     unawaited(_clock.checkHighWaterMark());
 
     _restoreAttempt();
+  }
+
+  /// Fresh server measurement for MonitoredClock's jump check: any successful
+  /// answer teaches ServerClock the offset from its `Date` header. Never
+  /// awaited by the timer; offline it fails fast and the old rule applies.
+  static void _probeServerClock() {
+    unawaited(api
+        .ping()
+        .timeout(const Duration(seconds: 5), onTimeout: () => false));
   }
 
   // ── Crash-recovery (attempt_store.dart) ─────────────────────────────────────
@@ -504,6 +514,8 @@ class _TestEngineState extends State<TestEngine>
         deadlineEpochMs: savedDeadline,
         epochAtSaveMs: (localAnswers?['epoch_at_save'] as num?)?.toInt(),
         ticksAtSaveMs: (localAnswers?['ticks_at_save'] as num?)?.toInt(),
+        serverEpochAtSaveMs:
+            (localAnswers?['server_epoch_at_save_ms'] as num?)?.toInt(),
       );
       // Saved while paused: the deadline on disk went stale (the pause froze
       // the countdown). Rebuild it from the frozen remaining time so neither

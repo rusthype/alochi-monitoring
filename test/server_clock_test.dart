@@ -67,6 +67,19 @@ void main() {
     expect(ServerClock.until(lockedUntil), const Duration(hours: 1));
   });
 
+  test('observationCount counts accepted observations only', () {
+    ServerClock.deviceNow = () => _serverNow;
+    expect(ServerClock.observationCount, 0);
+    ServerClock.observe('not a date');
+    expect(ServerClock.observationCount, 0);
+    ServerClock.observe(HttpDate.format(_serverNow));
+    expect(ServerClock.observationCount, 1);
+    // A replayed (stale) answer is rejected and does not count.
+    ServerClock.observe(
+        HttpDate.format(_serverNow.subtract(const Duration(hours: 1))));
+    expect(ServerClock.observationCount, 1);
+  });
+
   test('garbage Date headers are ignored', () {
     ServerClock.deviceNow = () => _serverNow;
     ServerClock.observe('not a date');
