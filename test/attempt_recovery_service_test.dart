@@ -7,7 +7,7 @@ import 'package:alochi_monitoring/core/db/queue_crypto.dart';
 import 'package:alochi_monitoring/core/security/monitored_clock.dart';
 import 'package:alochi_monitoring/core/services/attempt_recovery_service.dart';
 import 'package:alochi_monitoring/features/test/engine_host_screen.dart'
-    show buildResultToken;
+    show buildResultToken, tokenForStoredAttempt;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -150,16 +150,67 @@ void main() {
     expect(h.cleared, isEmpty);
   });
 
-  test('paused, empty, never-started and other-version records are left alone',
-      () async {
+  test('paused, empty and never-started records are left alone', () async {
     final h = _Harness([
       _entry(_rec(deadlineInMs: -9 * _min, pausedMs: 120000)),
       _entry(_rec(deadlineInMs: -9 * _min, answers: {}), testKey: 't2'),
       _entry(_rec(), testKey: 't3'), // deadline null: seeded by dispatch
-      _entry(_rec(deadlineInMs: -9 * _min, version: 1), testKey: 't4'),
     ])
       ..currentVersion = 2;
     expect(await h.service.run(), 0);
+    expect(h.queued, isEmpty);
+    expect(h.cleared, isEmpty);
+  });
+
+  test(
+      'an attempt of another test version is submitted as recovered (the '
+      'engine would drop it), even with time left', () async {
+    // Contract change (audit wave 3): it used to be skipped and then buried
+    // by the new attempt's first save.
+    final h = _Harness([
+      _entry(_rec(deadlineInMs: 10 * _min, version: 1), testKey: 't4'),
+      _entry(_rec(deadlineInMs: -9 * _min, version: 1), testKey: 't5'),
+      _entry(_rec(deadlineInMs: 10 * _min, version: 2), testKey: 't6'),
+    ])
+      ..currentVersion = 2;
+    expect(await h.service.run(), 2);
+    expect(h.queued.map((q) => (q.$1['detail'] as Map)['recovered']),
+        everyElement('test_version_changed'));
+    expect(h.cleared, ['attempt_t4', 'attempt_t5']);
+  });
+
+  test('abandoned for a week across a reboot: auto-submitted with its answers',
+      () async {
+    // Saved with 10 min left on boot 1 (ticks 90 min); a week later boot 2.
+    final saved = _rec(deadlineInMs: 10 * _min)
+      ..['epoch_at_save'] = _Harness._now - 7 * 24 * 60 * _min
+      ..['deadline_epoch_ms'] =
+          _Harness._now - 7 * 24 * 60 * _min + 10 * _min
+      ..['ticks_at_save'] = 90 * 60 * _min;
+    final h = _Harness([_entry(saved)], ticks: 5000);
+    expect(await h.service.run(), 1);
+    expect(h.queued.single.$1['raw_answers'], {'Math/0': 1, 'Math/1': 'x'});
+    expect((h.queued.single.$1['detail'] as Map)['recovered'],
+        'deadline_passed');
+    expect(h.cleared, hasLength(1));
+  });
+
+  test('a scan that notices a starting test just before enqueue backs off',
+      () async {
+    final h = _Harness([_entry(_rec(completed: true))]);
+    var calls = 0;
+    final s = AttemptRecoveryService(
+      listAll: () async => h.entries,
+      clearEntry: (e) async => h.cleared.add(e.slotKey),
+      enqueue: (p, t) async => h.queued.add((p, t)),
+      markDone: (_, __) async {},
+      currentVersion: (_) async => null,
+      clock: h.clock,
+      // free at the scan start and the loop check, busy at the last check
+      testScreenActive: () => ++calls >= 3,
+      offlineSessionActive: () => false,
+    );
+    expect(await s.run(), 0);
     expect(h.queued, isEmpty);
     expect(h.cleared, isEmpty);
   });
@@ -183,12 +234,14 @@ void main() {
     expect(h.cleared, isEmpty);
   });
 
-  test('a record without attempt_id still gets a stable token', () async {
-    final a = _Harness([_entry(_rec(completed: true, attemptId: null))]);
-    final b = _Harness([_entry(_rec(completed: true, attemptId: null))]);
+  test('a record without attempt_id gets the same token as the engine host',
+      () async {
+    final rec = _rec(completed: true, attemptId: null);
+    final a = _Harness([_entry(rec)]);
     await a.service.run();
-    await b.service.run();
-    expect(a.queued.single.$2, b.queued.single.$2);
+    expect(a.queued.single.$2, tokenForStoredAttempt('math_bob1', rec));
+    expect(a.queued.single.$2,
+        buildResultToken('math_bob1', 'S-1', 'rec-${rec['started_at']}'));
   });
 
   test('a failing enqueue keeps the record and does not stop the scan',

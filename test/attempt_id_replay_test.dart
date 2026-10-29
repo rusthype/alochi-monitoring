@@ -158,14 +158,25 @@ void main() {
   });
 
   test(
-      'old-format record (no attempt_id), missing record or another '
+      'old-format record (no attempt_id) uses the SAME token as the recovery '
+      'scan; a record with no identity, a missing record or another '
       "student's record fall back to a random token without crashing",
       () async {
-    await AttemptStore.save(_testKey, _record());
+    // Contract change (audit wave 3): a legacy record used to get a random
+    // token here while the startup scan derived `rec-<started_at>` - a crash
+    // between enqueue and clear then submitted twice.
+    final legacy = _record();
+    await AttemptStore.save(_testKey, legacy);
     final old1 = await resolveResultToken(_testKey, _student);
     final old2 = await resolveResultToken(_testKey, _student);
-    expect(old1.startsWith('mw-'), isFalse);
-    expect(old1, isNot(old2));
+    expect(old1, old2);
+    expect(old1, tokenForStoredAttempt(_testKey, legacy));
+
+    await AttemptStore.save(_testKey, _record()..remove('started_at'));
+    final anon1 = await resolveResultToken(_testKey, _student);
+    final anon2 = await resolveResultToken(_testKey, _student);
+    expect(anon1.startsWith('mw-'), isFalse);
+    expect(anon1, isNot(anon2));
 
     await AttemptStore.clear(_testKey);
     expect((await resolveResultToken(_testKey, _student)).isNotEmpty, isTrue);
