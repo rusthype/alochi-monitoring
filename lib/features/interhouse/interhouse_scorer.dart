@@ -76,11 +76,8 @@ class IhScorer {
     // ── Spelling ────────────────────────────────────────────────────
     int cntSp = 0;
     for (int i = 0; i < variant.spelling.length; i++) {
-      final typed =
-          i < spAns.length ? spAns[i].trim().toLowerCase() : '';
-      final expected =
-          (variant.spelling[i].ans as String).toLowerCase();
-      if (typed == expected) cntSp++;
+      final typed = i < spAns.length ? spAns[i] : '';
+      if (sameTextAnswer(typed, variant.spelling[i].ans as String)) cntSp++;
     }
 
     // ── Reading ─────────────────────────────────────────────────────
@@ -90,13 +87,11 @@ class IhScorer {
       final q = rQs[i];
       final a = i < rAns.length ? rAns[i] : null;
       if (q.type == 'yn') {
-        if (a is String && a == (q.ans as String)) cntR++;
+        if (a is String && sameYesNoAnswer(a, q.ans as String)) cntR++;
       } else if (q.type == 'mc') {
         if (a is int && a == (q.ans as int)) cntR++;
       } else if (q.type == 'fill') {
-        final typed = (a is String) ? a.trim().toLowerCase() : '';
-        final expected = (q.ans as String).toLowerCase();
-        if (typed == expected) cntR++;
+        if (a is String && sameTextAnswer(a, q.ans as String)) cntR++;
       }
     }
 
