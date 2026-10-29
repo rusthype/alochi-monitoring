@@ -93,7 +93,8 @@ class ServerClock {
   /// this process already learned is ignored instead of shifting every
   /// `locked_until` check by hours. (The device clock is deliberately not a
   /// reference: a PC reset to 2000 is exactly what this class corrects.)
-  static void observe(String? dateHeader, {String? ageHeader}) {
+  static void observe(String? dateHeader,
+      {String? ageHeader, int? roundTripMs}) {
     final raw = dateHeader?.trim() ?? '';
     if (raw.isEmpty) return;
     DateTime server;
@@ -119,6 +120,7 @@ class ServerClock {
     _offset = server.difference(deviceNow().toUtc());
     _known = true;
     _seq++;
+    _recordUncertainty(roundTripMs);
     final ms = _offset.inMilliseconds;
     final last = _persistedMs;
     if (last != null && (ms - last).abs() < _persistThreshold.inMilliseconds) {
@@ -127,6 +129,29 @@ class ServerClock {
     _persistedMs = ms;
     _persist(ms);
   }
+
+  /// Error margin (ms) of the `Date`-based offset: the header has 1 s
+  /// resolution and reflects the server's send time, so the offset is low by up
+  /// to the one-way latency (bounded by the round trip) plus a second. An
+  /// unknown round trip counts as [_unknownUncertaintyMs].
+  static const _unknownUncertaintyMs = 10 * 1000;
+  static const _uncertaintyWindow = 4;
+  static final List<int> _recentUncertainty = [];
+
+  static void _recordUncertainty(int? roundTripMs) {
+    _recentUncertainty.add(roundTripMs == null || roundTripMs < 0
+        ? _unknownUncertaintyMs
+        : roundTripMs + 1000);
+    if (_recentUncertainty.length > _uncertaintyWindow) {
+      _recentUncertainty.removeAt(0);
+    }
+  }
+
+  /// Worst error margin among the latest observations (comparing two offsets
+  /// can be off by the larger of their errors); the unknown default when none.
+  static int get uncertaintyMs => _recentUncertainty.isEmpty
+      ? _unknownUncertaintyMs
+      : _recentUncertainty.reduce((a, b) => a > b ? a : b);
 
   static Future<void> _persist(int ms) async {
     try {
@@ -145,6 +170,7 @@ class ServerClock {
     _loaded = false;
     _lastServerMs = null;
     _seq = 0;
+    _recentUncertainty.clear();
     deviceNow = DateTime.now;
     monotonicMs = () => _watch.elapsedMilliseconds;
   }

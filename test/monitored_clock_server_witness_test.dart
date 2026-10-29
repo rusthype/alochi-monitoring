@@ -32,6 +32,12 @@ class _World {
   int? offset;
   int probes = 0;
 
+  /// The PC slept [ms]: ticks frozen, wall and server moved on.
+  void sleep(int ms) {
+    wall += ms;
+    server += ms;
+  }
+
   /// Real time passes on every clock.
   void advance(int ms) {
     ticks += ms;
@@ -40,12 +46,14 @@ class _World {
   }
 
   /// The server was heard from now (an API answer's Date header).
-  void observe() {
-    offset = server - wall;
+  void observe({int bias = 0}) {
+    offset = server - wall + bias;
     seq++;
   }
 
-  MonitoredClock clock({bool probeAnswers = false}) => MonitoredClock(
+  MonitoredClock clock({bool probeAnswers = false, int Function()? slack}) =>
+      MonitoredClock(
+        offsetUncertaintyMs: slack,
         ticks: () => ticks,
         wall: () => wall,
         highWaterStore: _NoHwm(),
@@ -370,6 +378,277 @@ void main() {
           ).run();
       expect(await sweep(), 1, reason: 'server says the attempt expired');
       expect(queued, hasLength(1));
+    });
+  });
+
+  // ── wave 7 ───────────────────────────────────────────────────────────────
+
+  group('W7 P2-1 discardPending', () {
+    test('drops a held verdict so a late server answer credits nothing', () {
+      final w = _World()..observe();
+      final c = w.clock();
+      w.advance(_s);
+      c.absorbSuspend();
+      w.sleep(10 * _min);
+      expect(c.absorbSuspend(), 0);
+      c.discardPending();
+      final before = c.nowMs;
+      w.advance(_s);
+      w.observe();
+      expect(c.absorbSuspend(), 0);
+      expect(c.nowMs - before, _s);
+      expect(_flagged(c), isFalse);
+    });
+  });
+
+  group('W7 P2-2 stale server offset', () {
+    const remainingAtSave = 20 * _min;
+
+    test('wall set back after the first observation: no time handed back', () {
+      final w = _World()..observe();
+      final saver = w.clock();
+      final snap = saver.snapshot();
+      final deadline = snap['epoch_at_save']! + remainingAtSave;
+      w.advance(25 * _min); // the attempt really expired
+      final c = w.clock(); // app restarted
+      w.observe(); // first observation of this process
+      w.wall -= 1 * _h; // date moved back before the restore
+      final r = c.rebaseSavedDeadline(
+        deadlineEpochMs: deadline,
+        epochAtSaveMs: snap['epoch_at_save'],
+        ticksAtSaveMs: snap['ticks_at_save'],
+        serverEpochAtSaveMs: snap['server_epoch_at_save_ms'],
+      );
+      expect(r, lessThan(c.nowMs), reason: 'the tick rule still expires it');
+    });
+
+    test('wall moved forward just before a save: no late server epoch', () {
+      final w = _World()..observe();
+      final c = w.clock();
+      w.advance(_s);
+      expect(c.snapshot().containsKey('server_epoch_at_save_ms'), isTrue);
+      w.wall += 1 * _h;
+      expect(c.snapshot().containsKey('server_epoch_at_save_ms'), isFalse);
+    });
+
+    test('after a settled jump the witness is trusted again', () {
+      final w = _World()..observe();
+      final c = w.clock();
+      w.advance(_s);
+      c.absorbSuspend();
+      w.wall += 1 * _h;
+      c.absorbSuspend();
+      w.advance(_s);
+      w.observe();
+      c.absorbSuspend(); // verdict
+      expect(c.snapshot()['server_epoch_at_save_ms'], w.server);
+    });
+  });
+
+  group('W7 P3-4 confirmed gaps are not capped at 12 h', () {
+    test('14 h suspend confirmed by the server is credited', () {
+      final w = _World()..observe();
+      final c = w.clock();
+      w.advance(30 * _s);
+      c.absorbSuspend();
+      final before = c.nowMs;
+      w.sleep(14 * _h);
+      c.absorbSuspend();
+      w.advance(_s);
+      w.observe();
+      expect(c.absorbSuspend(), closeTo(14 * _h, 5 * _s));
+      expect(c.nowMs - before, closeTo(14 * _h, 5 * _s));
+      expect(_flagged(c), isFalse);
+    });
+
+    test('offline: a 14 h gap keeps the 12 h cap and credits nothing', () {
+      final w = _World()..online = false;
+      final c = w.clock();
+      w.advance(30 * _s);
+      c.absorbSuspend();
+      final before = c.nowMs;
+      w.wall += 14 * _h;
+      expect(c.absorbSuspend(), 0);
+      expect(c.nowMs, before);
+    });
+
+    test('even a confirmed gap above the 7 day ceiling is not credited', () {
+      final w = _World()..observe();
+      final c = w.clock();
+      w.advance(30 * _s);
+      c.absorbSuspend();
+      final before = c.nowMs;
+      w.sleep(8 * 24 * _h);
+      c.absorbSuspend();
+      w.advance(_s);
+      w.observe();
+      expect(c.absorbSuspend(), 0);
+      expect(c.nowMs - before, _s);
+    });
+  });
+
+  group('W7 P3-5 sleep hidden by a wall reset', () {
+    // Lid closed (ticks frozen, server moved on) and the wall clock put back by
+    // the same amount before the next tick: wall and ticks agree, only the
+    // device-to-server offset moved.
+    MonitoredClock slept(_World w, int ms) {
+      final c = w.clock();
+      w.advance(30 * _s);
+      c.absorbSuspend();
+      w.server += ms;
+      return c;
+    }
+
+    test('a fresh observation shows the offset moved: the gap is credited', () {
+      final w = _World()..observe();
+      final c = slept(w, 10 * _min);
+      final before = c.nowMs;
+      expect(c.absorbSuspend(), 0, reason: 'no observation yet');
+      w.observe();
+      expect(c.absorbSuspend(), closeTo(10 * _min, 5 * _s));
+      expect(c.nowMs - before, closeTo(10 * _min, 5 * _s));
+      expect(_flagged(c), isTrue);
+      expect(c.absorbSuspend(), 0, reason: 'credited once');
+    });
+
+    test('server offset moving the other way credits nothing', () {
+      final w = _World()..observe();
+      final c = slept(w, -10 * _min);
+      final before = c.nowMs;
+      w.observe();
+      expect(c.absorbSuspend(), 0);
+      expect(c.nowMs, before);
+    });
+
+    test('an offset within the tolerance credits nothing', () {
+      final w = _World()..observe();
+      final c = slept(w, 3 * _s);
+      final before = c.nowMs;
+      w.observe();
+      expect(c.absorbSuspend(), 0);
+      expect(c.nowMs, before);
+      expect(_flagged(c), isFalse);
+    });
+
+    test('offline / no new observation: nothing happens', () {
+      final w = _World()..observe();
+      final c = slept(w, 10 * _min);
+      final before = c.nowMs;
+      w.online = false;
+      expect(c.absorbSuspend(), 0);
+      w.online = true;
+      expect(c.absorbSuspend(), 0, reason: 'same seq as the baseline');
+      expect(c.nowMs, before);
+    });
+  });
+
+  group('W7 P3-6 observation latency bias', () {
+    test('slow ping on a real suspend still credits in full, unflagged', () {
+      final w = _World()..observe();
+      final c = w.clock(slack: () => 9 * _s); // 8 s round trip + 1 s
+      w.advance(30 * _s);
+      c.absorbSuspend();
+      final before = c.nowMs;
+      w.sleep(10 * _min);
+      c.absorbSuspend();
+      w.advance(_s);
+      w.observe(bias: -8 * _s); // the Date header was 8 s old on arrival
+      expect(c.absorbSuspend(), 10 * _min);
+      expect(c.nowMs - before, 10 * _min + _s);
+      expect(_flagged(c), isFalse);
+    });
+
+    test('unknown round trip widens the tolerance to 10 s', () {
+      final w = _World()..observe();
+      final c = w.clock();
+      w.advance(30 * _s);
+      c.absorbSuspend();
+      w.sleep(10 * _min);
+      c.absorbSuspend();
+      w.advance(_s);
+      w.observe(bias: -8 * _s);
+      expect(c.absorbSuspend(), 10 * _min);
+      expect(_flagged(c), isFalse);
+    });
+
+    test('a 10 minute manual date change is still detected', () {
+      final w = _World()..observe();
+      final c = w.clock(slack: () => 9 * _s);
+      w.advance(30 * _s);
+      c.absorbSuspend();
+      final before = c.nowMs;
+      w.wall += 10 * _min;
+      c.absorbSuspend();
+      w.advance(_s);
+      w.observe(bias: -8 * _s);
+      expect(c.absorbSuspend(), 0);
+      expect(c.nowMs - before, _s);
+      expect(_flagged(c), isTrue);
+    });
+  });
+
+  group('W7 P2-3 hub extension drops the stale server epoch', () {
+    AttemptEntry entry(_World w, Map<String, int> snap, int deadline) =>
+        AttemptEntry(
+          slotKey: 'attempt_math_bob1',
+          testKey: 'math_bob1',
+          isParked: false,
+          record: {
+            'variant': 2,
+            'answers': {'Math/0': 1},
+            'started_at': snap['epoch_at_save']! - 10 * _min,
+            'attempt_id': 'n1',
+            'deadline_epoch_ms': deadline,
+            'epoch_at_save': snap['epoch_at_save'],
+            'ticks_at_save': snap['ticks_at_save'],
+            'server_epoch_at_save_ms': snap['server_epoch_at_save_ms'],
+            'student_name': 'A',
+            'student_id': 'S-1',
+            'group_name': '5-A',
+            'school': '56',
+            'grade': 5,
+            'group_id': 'g',
+            'test_key': 'math_bob1',
+          },
+        );
+
+    Future<Map<String, dynamic>> extend(_World w, MonitoredClock clock,
+        {bool offlineAfterSave = false}) async {
+      final snap = w.clock().snapshot();
+      expect(snap.containsKey('server_epoch_at_save_ms'), isTrue);
+      final deadline = snap['epoch_at_save']! + 20 * _min;
+      w.advance(25 * _min); // local deadline passed
+      if (offlineAfterSave) w.online = false;
+      Map<String, dynamic>? stored;
+      await AttemptRecoveryService(
+        listAll: () async => [entry(w, snap, deadline)],
+        clearEntry: (e) async {},
+        enqueue: (p, t) async {},
+        markDone: (k, st) async {},
+        currentVersion: (_) async => null,
+        serverRemainingSeconds: (_) async => 300,
+        extendEntry: (e, r) async => stored = r,
+        clock: clock,
+        testScreenActive: () => false,
+        offlineSessionActive: () => false,
+      ).run();
+      return stored!;
+    }
+
+    test('server unknown at the extension: the old epoch is not kept', () async {
+      final w = _World()..observe();
+      final clock = w.clock();
+      // The new snapshot cannot carry a server epoch.
+      final stored = await extend(w, clock, offlineAfterSave: true);
+      expect(stored.containsKey('server_epoch_at_save_ms'), isFalse);
+      expect(stored['epoch_at_save'], isNotNull);
+    });
+
+    test('server known: the fresh epoch replaces the old one', () async {
+      final w = _World()..observe();
+      final clock = w.clock();
+      final stored = await extend(w, clock);
+      expect(stored['server_epoch_at_save_ms'], w.server);
     });
   });
 }

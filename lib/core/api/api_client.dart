@@ -259,6 +259,7 @@ class MonitoringApi {
   Future<http.Response> _send(Future<http.Response> Function() req) async {
     // `message` is a debug string only; the UI shows text by `code`.
     try {
+      final sent = Stopwatch()..start();
       final resp = await req().timeout(_timeout);
       // Time-lock checks use server time: learn the offset from any real
       // (non-portal) answer.
@@ -266,7 +267,8 @@ class MonitoringApi {
           resp.statusCode < 300 &&
           !_looksLikeHtml(resp)) {
         ServerClock.observe(resp.headers['date'],
-            ageHeader: resp.headers['age']);
+            ageHeader: resp.headers['age'],
+            roundTripMs: sent.elapsedMilliseconds);
       }
       return resp;
     } on TimeoutException catch (e) {

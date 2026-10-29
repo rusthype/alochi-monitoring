@@ -33,10 +33,15 @@
 // [absorbSuspend] then holds the credit back until a server measurement taken
 // AFTER the jump arrives (it triggers [probeServer]) and credits only the part
 // the server confirms as elapsed. Offline / no measurement within
-// [_serverWaitMs]: the behaviour above, unchanged.
+// [_serverWaitMs]: the behaviour above, unchanged. A gap the server confirms
+// (offset unchanged) may be longer than the offline cap, up to
+// [_maxConfirmedSuspendMs]. A suspend hidden by a wall clock reset (wall and
+// ticks agree, so no jump is seen) shows only as a fresh server observation
+// whose offset moved: [absorbSuspend] credits that movement too.
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -125,13 +130,27 @@ class MonitoredClock {
   final HighWaterStore _hwm;
   final ServerSampleFn _server;
 
+  /// Worst-case error (ms) of a device-to-server offset measurement: the
+  /// `Date` header has 1 s resolution and arrives a round trip late.
+  final int Function() _uncertainty;
+
   /// Asks for a fresh server measurement (a cheap ping whose `Date` header
   /// ServerClock reads). Fire-and-forget; wired by the test engine.
   void Function()? probeServer;
 
   /// Device-to-server offset movement that counts as the clock having been
-  /// changed (the `Date` header has 1 s resolution).
+  /// changed (the `Date` header has 1 s resolution). Widened per measurement
+  /// by the observation's own uncertainty, see [_offsetToleranceMs].
   static const int _offsetAgreeToleranceMs = 5 * 1000;
+
+  /// A server-confirmed suspend may exceed [_maxSuspendCreditMs]; this is the
+  /// sanity ceiling.
+  static const int _maxConfirmedSuspendMs = 7 * 24 * 60 * 60 * 1000;
+
+  /// A baseline server sample older than this (monotonic ms) is not compared
+  /// with a new observation: slow device-vs-server drift would look like a
+  /// clock change.
+  static const int _baselineMaxAgeMs = 60 * 1000;
 
   /// How long a jump waits for a server measurement before the offline rule
   /// applies.
@@ -155,13 +174,15 @@ class MonitoredClock {
     WallFn? wall,
     HighWaterStore? highWaterStore,
     ServerSampleFn? serverSample,
+    int Function()? offsetUncertaintyMs,
     this.probeServer,
     this.skewThresholdMs = 5000,
     this.checkEvery = const Duration(seconds: 5),
   })  : _ticks = ticks ?? platformTicksMs,
         _wall = wall ?? (() => DateTime.now().millisecondsSinceEpoch),
         _hwm = highWaterStore ?? const SecureHighWaterStore(),
-        _server = serverSample ?? _serverClockSample {
+        _server = serverSample ?? _serverClockSample,
+        _uncertainty = offsetUncertaintyMs ?? (() => ServerClock.uncertaintyMs) {
     _anchorWall = _wall();
     _anchorTicks = _ticks();
     _lastCheckWall = _anchorWall;
@@ -169,6 +190,7 @@ class MonitoredClock {
     _syncWall = _anchorWall;
     _syncTicks = _anchorTicks;
     _baseline = _server();
+    _baselineTicks = _anchorTicks;
   }
 
   /// Production singleton. Tests replace it with a fake-driven instance.
@@ -186,6 +208,7 @@ class MonitoredClock {
   // Server offset at the last tick without a jump, and the jump (if any) still
   // waiting for a post-jump server measurement.
   ServerSample? _baseline;
+  late int _baselineTicks;
   ({int skew, ServerSample base, int seq, int sinceTicks})? _pending;
   int? _lastHwmWriteTicks;
   Timer? _timer;
@@ -226,6 +249,22 @@ class MonitoredClock {
 
   // ── resume across a process restart ────────────────────────────────────────
 
+  /// The wall clock still agrees with the ticks since the last agreement. The
+  /// server offset was learned from an earlier wall reading, so it is only
+  /// valid for `wall + offset` while the wall clock has not moved since.
+  bool get _wallConsistent =>
+      ((_wall() - _syncWall) - (_ticks() - _syncTicks)).abs() <=
+      skewThresholdMs;
+
+  /// The server sample, only while it is a usable witness: heard from in this
+  /// process, no jump awaiting its verdict, and the wall clock not moved since.
+  ServerSample? _witness() =>
+      _pending == null && _wallConsistent ? _server() : null;
+
+  /// Offset movement that still counts as "unchanged".
+  int get _offsetToleranceMs =>
+      math.max(_offsetAgreeToleranceMs, _uncertainty());
+
   /// Values to persist next to a deadline so a restart can rebase it.
   ///
   /// `server_epoch_at_save_ms` (server time at the save, when the server was
@@ -233,7 +272,7 @@ class MonitoredClock {
   /// is the independent witness [rebaseSavedDeadline] uses while online;
   /// records without it use the tick / trusted-clock rule.
   Map<String, int> snapshot() {
-    final s = _pending == null ? _server() : null;
+    final s = _witness();
     return {
       'epoch_at_save': nowMs,
       'ticks_at_save': ticksMs,
@@ -279,9 +318,7 @@ class MonitoredClock {
   }) {
     if (epochAtSaveMs == null || ticksAtSaveMs == null) return deadlineEpochMs;
     final remainingAtSave = deadlineEpochMs - epochAtSaveMs;
-    final server = serverEpochAtSaveMs == null || _pending != null
-        ? null
-        : _server();
+    final server = serverEpochAtSaveMs == null ? null : _witness();
     if (serverEpochAtSaveMs != null && server != null) {
       final elapsed = _wall() + server.offsetMs - serverEpochAtSaveMs;
       return nowMs + remainingAtSave - (elapsed < 0 ? 0 : elapsed);
@@ -325,7 +362,20 @@ class MonitoredClock {
     final pending = _pending;
     if (pending == null) {
       if (!jump) {
+        final base = _baseline;
+        final baseTicks = _baselineTicks;
         _baseline = sample;
+        _baselineTicks = ticks;
+        // Wall and ticks agree, yet a NEW measurement says the offset moved
+        // up: the PC slept (ticks frozen) and the wall was put back. Only a
+        // positive move counts - a negative one cannot be a sleep.
+        if (base != null &&
+            sample != null &&
+            sample.seq > base.seq &&
+            ticks - baseTicks <= _baselineMaxAgeMs) {
+          final moved = sample.offsetMs - base.offsetMs;
+          if (moved > _offsetToleranceMs) return _settleJump(skew, moved);
+        }
         return 0;
       }
       final base = _baseline;
@@ -347,6 +397,7 @@ class MonitoredClock {
     if (sample != null && sample.seq > pending.seq) {
       _pending = null;
       _baseline = sample;
+      _baselineTicks = ticks;
       return _settleJump(pending.skew, sample.offsetMs - pending.base.offsetMs);
     }
     if (ticks - pending.sinceTicks >= _serverWaitMs) {
@@ -371,8 +422,9 @@ class MonitoredClock {
 
   /// The pre-witness rule: wall ahead of the ticks by a suspend-sized amount
   /// is slept time; wall behind, or a year-sized step, credits nothing.
-  int _creditSuspend(int skew) {
-    if (skew < 0 || skew > _maxSuspendCreditMs) return 0;
+  int _creditSuspend(int skew, {bool confirmed = false}) {
+    final cap = confirmed ? _maxConfirmedSuspendMs : _maxSuspendCreditMs;
+    if (skew < 0 || skew > cap) return 0;
     _suspendCreditMs += skew;
     return skew;
   }
@@ -382,8 +434,8 @@ class MonitoredClock {
   /// only what the server says really elapsed ([skew] + [offsetDelta], 0 for a
   /// pure date change) is credited, and the change is flagged.
   int _settleJump(int skew, int offsetDelta) {
-    if (offsetDelta.abs() <= _offsetAgreeToleranceMs) {
-      return _creditSuspend(skew);
+    if (offsetDelta.abs() <= _offsetToleranceMs) {
+      return _creditSuspend(skew, confirmed: true);
     }
     final real = skew + offsetDelta;
     _addFlag({
@@ -392,8 +444,15 @@ class MonitoredClock {
       'offset_delta_ms': offsetDelta,
       'trusted_utc': _iso(nowMs),
     });
-    return real > skewThresholdMs ? _creditSuspend(real) : 0;
+    return real > skewThresholdMs ? _creditSuspend(real, confirmed: true) : 0;
   }
+
+  /// Drops a clock-jump verdict still waiting for its server measurement.
+  /// For callers that rebuild their deadline from [nowMs] right after
+  /// [absorbSuspend] (screen start, lock pause / resume): the held time is not
+  /// theirs to lose or gain, and a late verdict would land inside the rebuilt
+  /// deadline.
+  void discardPending() => _pending = null;
 
   /// Starts the periodic check (reference counted so nested screens are safe).
   void startMonitoring() {
@@ -403,7 +462,7 @@ class MonitoredClock {
       absorbSuspend();
       // A verdict still pending from before this screen would land inside the
       // test: that time is not the test's.
-      _pending = null;
+      discardPending();
     }
     _monitors++;
     if (_timer != null) return;

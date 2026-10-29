@@ -784,6 +784,9 @@ class _TestEngineState extends State<TestEngine>
   void _pauseForLock() {
     if (_lockShieldVisible) return;
     _clock.absorbSuspend();
+    // The remaining time below is frozen from the credited clock; a verdict
+    // still waiting for the server would land in it later.
+    _clock.discardPending();
     _timer?.cancel();
     final deadlineMs = _deadlineMs;
     _pausedRemainingMs =
@@ -801,6 +804,9 @@ class _TestEngineState extends State<TestEngine>
     // Slept while paused: that time is not the student's either way, but it
     // must be absorbed BEFORE the new deadline is built from nowMs.
     _clock.absorbSuspend();
+    // A jump held back during the pause must not be charged to the deadline
+    // built next: the paused remaining time stays exactly what it was.
+    _clock.discardPending();
     final remaining = _pausedRemainingMs;
     _pausedRemainingMs = null;
     if (remaining != null) {

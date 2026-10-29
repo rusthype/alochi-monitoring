@@ -36,6 +36,19 @@ void main() {
     TestCache.exitMemoryMode();
   });
 
+  test('offset uncertainty follows the round trips of recent observations', () {
+    ServerClock.deviceNow = () => _serverNow;
+    expect(ServerClock.uncertaintyMs, 10000, reason: 'nothing measured');
+    ServerClock.observe(HttpDate.format(_serverNow));
+    expect(ServerClock.uncertaintyMs, 10000, reason: 'round trip unknown');
+    for (var i = 0; i < 4; i++) {
+      ServerClock.observe(HttpDate.format(_serverNow), roundTripMs: 300);
+    }
+    expect(ServerClock.uncertaintyMs, 1300);
+    ServerClock.observe(HttpDate.format(_serverNow), roundTripMs: 8000);
+    expect(ServerClock.uncertaintyMs, 9000, reason: 'slowest of the latest');
+  });
+
   test('without any observation it is the device clock', () {
     final dev = DateTime.utc(2026, 10, 29, 9, 0, 0);
     ServerClock.deviceNow = () => dev;
