@@ -174,8 +174,6 @@
     }
   },
   "aiImagePromptHint": "AI rasm taklifi (saqlanmaydi):",
-  "mathSubject": "Math",
-  "englishSubject": "Ingliz",
   "selectPdfBook": "PDF kitob tanlang",
   "pdfFileHint": ".pdf fayl, max 10MB, 50 bet",
   "subjectLabel": "Fan",
@@ -226,7 +224,6 @@
   "studentInfoTitle": "O'quvchi ma'lumotlari",
   "groupGradeLabel": "Guruh / Sinf",
   "startTest": "Testni boshlash",
-  "confirmLogout": "Hisobdan chiqmoqchimisiz?",
   "cancel": "Bekor qilish",
   "noActiveExamOrExpired": "Faol imtihon topilmadi yoki muddati tugagan",
   "loadFailed": "Yuklanmadi. Qayta urinib ko'ring.",
@@ -247,12 +244,7 @@
     }
   },
   "selectTest": "Testni tanlang",
-  "selectMonitoringTest": "Mavjud monitoring testlaridan birini tanlang",
   "retry": "Qayta urinish",
-  "noActiveExam": "Aktiv imtihon yo'q",
-  "noExamAssignedOrExpired": "Sizga hali imtihon biriktirilmagan\nyoki muddati tugagan",
-  "testsNotLoadedYet": "Testlar hali yuklanmagan",
-  "tryAgainAfterTeacherUploads": "O'qituvchingiz test yuklagandan so'ng\nqayta urinib ko'ring",
   "refresh": "Yangilash",
   "totalLabel": "Jami",
   "helloGreeting": "Salom!",
@@ -415,10 +407,6 @@
   "monitoringTestResult": "Monitoring test natijasi",
   "alochiMonitoringSystem": "Alochi Monitoring tizimi",
   "homePage": "Bosh sahifa",
-  "savePdf": "PDF Saqlash",
-  "printPdf": "Chop etish",
-  "sharePdf": "Ulashish",
-  "errorLater": "Xatolik. Keyinroq yuboriladi.",
   "gradeAndVariant": "Sinf va Variant",
   "overallResult": "Umumiy Natija",
   "topicAnalysisTitle": "Mavzular bo'yicha tahlil",
@@ -565,13 +553,6 @@
   "controlTestPlan": "Nazorat testi — natijani solishtirish",
   "plan14DaysTitle": "14 kunlik reja",
   "sending": "Yuborilmoqda...",
-  "savedSuccess": "Saqlandi!",
-  "savedOfflineLater": "Saqlandi (offline — keyinroq yuboriladi)",
-  "savedSending": "Saqlandi, yuborilmoqda...",
-  "interhouseGrade2": "Interhouse Grade 2",
-  "sectionsBreakdown": "Bo'limlar bo'yicha",
-  "nextStudentBtn": "Keyingi o'quvchi",
-  "finishBtn": "Tugatish",
   "generalTests": "Umumiy testlar",
   "loadingGroups": "Guruhlar yuklanmoqda...",
   "selectGroup": "Guruhni tanlang",
@@ -672,13 +653,11 @@
   "appNameTitle": "Alochi Monitoring",
   "bobEmptySectionMsg": "Bu bo'lim bo'sh.",
   "arrangeLettersPrompt": "Harflarni to'g'ri joylashtiring",
-  "arrangeSentencePrompt": "Jumlani to'g'ri tartibga soling",
   "arrangeEventsPrompt": "Voqealarni to'g'ri tartibda belgilang",
   "selectVariantsInOrderPrompt": "Quyidagi variantlarni to'g'ri ketma-ketlikda tanlang",
   "clearSelectionBtn": "Tozalash",
   "variantsSectionHeader": "VARIANTLAR",
   "answerHintText": "Javob...",
-  "fullSentenceHintText": "To'liq jumlani yozing...",
   "sessionGradeVariantLabel": "{grade}-sinf · Variant {variant}",
   "@sessionGradeVariantLabel": {
     "placeholders": {
@@ -707,14 +686,6 @@
   "monitoringTestHeader": "MONITORING TEST",
   "testDataNotFoundMsg": "Test ma'lumotlari topilmadi",
   "updateUpToDateMessage": "Sizda dasturning eng so'nggi versiyasi o'rnatilgan.",
-  "shieldsProgressLabel": "{count}/25 shields",
-  "@shieldsProgressLabel": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "diagnosticPassportHeader": "A'LOCHI — DIAGNOSTIK PASPORT",
   "totalQuestionsCountLabel": "Jami savol",
   "correctAnswerLabelPdf": "To'g'ri javob",
@@ -753,7 +724,6 @@
   "goodResultLabel": "Yaxshi natija",
   "searchOrCommandHint": "Izlash yoki buyruq kiriting...",
   "commandHistoryTitle": "Oflayn tarix",
-  "interhousePillLabel": "Interhouse G2",
   "mathEngCountSummary": "Matematika: {math} ta  Ingliz tili: {eng} ta",
   "@mathEngCountSummary": {
     "placeholders": {

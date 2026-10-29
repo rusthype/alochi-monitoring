@@ -23,7 +23,6 @@ import '../../shared/widgets/student_shell.dart';
 import '../models/models.dart';
 
 // Test screens
-import '../../features/test/package_screen.dart';
 import '../../features/offline/offline_history_hub_screen.dart';
 import '../../features/offline/teacher_lan_monitoring_screen.dart';
 import '../../features/test/engine_host_screen.dart';
@@ -112,16 +111,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           }),
 
       // Additional screens mapped properly
-      GoRoute(
-          path: '/package',
-          redirect: _requireExtra(['session']),
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {};
-            return PackageScreen(
-              session: extra['session'],
-              offline: extra['offline'] ?? false,
-            );
-          }),
       // The 5 student-cabinet screens (kStudentBranchPaths order —
       // student_shell.dart/student_sidebar.dart index into this by path).
       // IndexedStack branches: switching tabs no longer rebuilds the shell

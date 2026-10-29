@@ -174,8 +174,6 @@
     }
   },
   "aiImagePromptHint": "Подсказка ИИ (не сохраняется):",
-  "mathSubject": "Мат.",
-  "englishSubject": "Англ.",
   "selectPdfBook": "Выберите PDF книгу",
   "pdfFileHint": ".pdf файл, макс 10МБ, 50 страниц",
   "subjectLabel": "Предмет",
@@ -226,7 +224,6 @@
   "studentInfoTitle": "Данные ученика",
   "groupGradeLabel": "Группа / Класс",
   "startTest": "Начать тест",
-  "confirmLogout": "Вы хотите выйти из аккаунта?",
   "cancel": "Отмена",
   "noActiveExamOrExpired": "Активный экзамен не найден или срок его действия истек",
   "loadFailed": "Не удалось загрузить. Повторите попытку.",
@@ -247,12 +244,7 @@
     }
   },
   "selectTest": "Выберите тест",
-  "selectMonitoringTest": "Выберите один из доступных тестов мониторинга",
   "retry": "Повторить",
-  "noActiveExam": "Нет активного экзамена",
-  "noExamAssignedOrExpired": "Экзамен еще не назначен\nили срок его действия истек",
-  "testsNotLoadedYet": "Тесты еще не загружены",
-  "tryAgainAfterTeacherUploads": "Пожалуйста, повторите попытку после того,\nкак ваш учитель загрузит тесты",
   "refresh": "Обновить",
   "totalLabel": "Всего",
   "helloGreeting": "Привет!",
@@ -370,10 +362,6 @@
   "monitoringTestResult": "Результат мониторингового теста",
   "alochiMonitoringSystem": "Система Alochi Monitoring",
   "homePage": "Главная",
-  "savePdf": "Сохранить PDF",
-  "printPdf": "Распечатать",
-  "sharePdf": "Поделиться",
-  "errorLater": "Ошибка. Будет отправлено позже.",
   "gradeAndVariant": "Класс и Вариант",
   "overallResult": "Общий результат",
   "topicAnalysisTitle": "Анализ по темам",
@@ -520,13 +508,6 @@
   "controlTestPlan": "Контрольный тест — сравнение результата",
   "plan14DaysTitle": "План на 14 дней",
   "sending": "Отправка...",
-  "savedSuccess": "Сохранено!",
-  "savedOfflineLater": "Сохранено (офлайн — будет отправлено позже)",
-  "savedSending": "Сохранено, отправка...",
-  "interhouseGrade2": "Interhouse Grade 2",
-  "sectionsBreakdown": "По разделам",
-  "nextStudentBtn": "Следующий ученик",
-  "finishBtn": "Завершить",
   "generalTests": "Общие тесты",
   "loadingGroups": "Загрузка групп...",
   "selectGroup": "Выберите группу",
@@ -627,13 +608,11 @@
   "appNameTitle": "Мониторинг Alochi",
   "bobEmptySectionMsg": "Этот раздел пуст.",
   "arrangeLettersPrompt": "Расположите буквы в правильном порядке",
-  "arrangeSentencePrompt": "Расставьте предложение в правильном порядке",
   "arrangeEventsPrompt": "Отметьте события в правильном порядке",
   "selectVariantsInOrderPrompt": "Выберите варианты ниже в правильном порядке",
   "clearSelectionBtn": "Очистить",
   "variantsSectionHeader": "ВАРИАНТЫ",
   "answerHintText": "Ответ...",
-  "fullSentenceHintText": "Напишите полное предложение...",
   "sessionGradeVariantLabel": "{grade} класс · Вариант {variant}",
   "@sessionGradeVariantLabel": {
     "placeholders": {
@@ -662,14 +641,6 @@
   "monitoringTestHeader": "МОНИТОРИНГ ТЕСТ",
   "testDataNotFoundMsg": "Данные теста не найдены",
   "updateUpToDateMessage": "У вас установлена последняя версия программы.",
-  "shieldsProgressLabel": "{count}/25 щитов",
-  "@shieldsProgressLabel": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "diagnosticPassportHeader": "A'LOCHI — ДИАГНОСТИЧЕСКИЙ ПАСПОРТ",
   "totalQuestionsCountLabel": "Всего вопросов",
   "correctAnswerLabelPdf": "Правильный ответ",
@@ -708,7 +679,6 @@
   "goodResultLabel": "Хороший результат",
   "searchOrCommandHint": "Введите поиск или команду...",
   "commandHistoryTitle": "Оффлайн история",
-  "interhousePillLabel": "Interhouse G2",
   "mathEngCountSummary": "Математика: {math}  Английский язык: {eng}",
   "@mathEngCountSummary": {
     "placeholders": {
