@@ -1585,6 +1585,14 @@
       }
     }
   },
+  "pendingResultsRejected": "Не принято сервером результатов: {count}",
+  "@pendingResultsRejected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "pendingResultsOldestMinutes": "самый старый — {n} мин. назад",
   "@pendingResultsOldestMinutes": {
     "placeholders": {

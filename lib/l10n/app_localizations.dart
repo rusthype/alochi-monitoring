@@ -5625,6 +5625,12 @@ abstract class AppLocalizations {
   /// **'{count} natija yuborilmagan'**
   String pendingResultsChip(int count);
 
+  /// No description provided for @pendingResultsRejected.
+  ///
+  /// In uz, this message translates to:
+  /// **'{count} natija qabul qilinmadi'**
+  String pendingResultsRejected(int count);
+
   /// No description provided for @pendingResultsOldestMinutes.
   ///
   /// In uz, this message translates to:

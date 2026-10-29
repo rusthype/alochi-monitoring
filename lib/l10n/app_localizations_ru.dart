@@ -3094,6 +3094,11 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String pendingResultsRejected(int count) {
+    return 'Не принято сервером результатов: $count';
+  }
+
+  @override
   String pendingResultsOldestMinutes(int n) {
     return 'самый старый — $n мин. назад';
   }

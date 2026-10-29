@@ -19,12 +19,14 @@ class PendingResultsChip extends StatefulWidget {
     this.pendingCountOverride,
     this.oldestAgeOverride,
     this.flushNowOverride,
+    this.rejectedCountOverride,
   });
 
   /// Test-only overrides (same convention as SyncStatusBadge).
   final Future<int> Function()? pendingCountOverride;
   final Future<Duration?> Function()? oldestAgeOverride;
   final Future<SyncFlushOutcome> Function()? flushNowOverride;
+  final Future<int> Function()? rejectedCountOverride;
 
   @override
   State<PendingResultsChip> createState() => _PendingResultsChipState();
@@ -32,6 +34,7 @@ class PendingResultsChip extends StatefulWidget {
 
 class _PendingResultsChipState extends State<PendingResultsChip> {
   int _pending = 0;
+  int _rejected = 0; // server refused them (attempt limit): kept, never retried
   Duration? _oldest;
   bool _sending = false;
 
@@ -44,6 +47,7 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
     // publishes its size (OfflineQueue.pending) whenever rows are added /
     // sent / dropped, and SyncService keeps it in step every few seconds.
     OfflineQueue.pending.addListener(_onChanged);
+    OfflineQueue.rejected.addListener(_onChanged);
     OfflineQueue.changes.addListener(_onChanged);
     SyncService.instance.flushing.addListener(_onChanged);
     if (_overridden) {
@@ -52,6 +56,7 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
       final v = OfflineQueue.pending.value;
       _pending = v.count;
       _oldest = v.oldest;
+      _rejected = OfflineQueue.rejected.value;
     }
     // The overlay for the toast exists after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) => _noticeIfAny());
@@ -60,6 +65,7 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
   @override
   void dispose() {
     OfflineQueue.pending.removeListener(_onChanged);
+    OfflineQueue.rejected.removeListener(_onChanged);
     OfflineQueue.changes.removeListener(_onChanged);
     SyncService.instance.flushing.removeListener(_onChanged);
     super.dispose();
@@ -84,7 +90,9 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
     try {
       final int pending;
       final Duration? oldest;
+      var rejected = 0;
       if (_overridden) {
+        rejected = await widget.rejectedCountOverride?.call() ?? 0;
         pending = await widget.pendingCountOverride!();
         oldest = pending <= 0 || widget.oldestAgeOverride == null
             ? null
@@ -93,9 +101,11 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
         final v = OfflineQueue.pending.value;
         pending = v.count;
         oldest = v.oldest;
+        rejected = OfflineQueue.rejected.value;
       }
       if (mounted) {
         setState(() {
+          _rejected = rejected;
           _pending = pending;
           _oldest = oldest;
         });
@@ -114,6 +124,9 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
     setState(() => _sending = true);
     SyncFlushOutcome? outcome;
     try {
+      // The teacher acts (e.g. granted another attempt): rejected results get
+      // one more chance; a result the server still refuses is held again.
+      if (!_overridden) await OfflineQueue.requeueRejected();
       outcome = await (widget.flushNowOverride ??
           SyncService.instance.flushNowWithResult)();
     } catch (e) {
@@ -147,7 +160,7 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
 
   @override
   Widget build(BuildContext context) {
-    if (_pending <= 0) return const SizedBox.shrink();
+    if (_pending <= 0 && _rejected <= 0) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context)!;
     final age = _ageText(l10n);
     return Semantics(
@@ -171,14 +184,26 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    l10n.pendingResultsChip(_pending),
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.amberInk),
-                  ),
-                  if (age != null)
+                  if (_pending > 0)
+                    Text(
+                      l10n.pendingResultsChip(_pending),
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.amberInk),
+                    ),
+                  if (_rejected > 0)
+                    Text(
+                      l10n.pendingResultsRejected(_rejected),
+                      style: TextStyle(
+                          fontSize: _pending > 0 ? 11 : 13,
+                          fontWeight:
+                              _pending > 0 ? FontWeight.w400 : FontWeight.w700,
+                          color: _pending > 0
+                              ? AppColors.amberDark
+                              : AppColors.amberInk),
+                    ),
+                  if (age != null && _pending > 0)
                     Text(
                       age,
                       style: const TextStyle(
