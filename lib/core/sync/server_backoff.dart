@@ -50,7 +50,15 @@ class ServerBackoff {
     final u = _until;
     if (u == null) return Duration.zero;
     final left = u.difference(clock());
-    return left > Duration.zero ? left : Duration.zero;
+    if (left <= Duration.zero) return Duration.zero;
+    // [note] never schedules further out than [maxWait]; more left than that
+    // means the device clock stepped backwards. Waiting it out could block
+    // flushes for hours, so the (at most 5 min) backoff is dropped instead.
+    if (left > maxWait) {
+      _until = null;
+      return Duration.zero;
+    }
+    return left;
   }
 
   static bool get active => remaining() > Duration.zero;

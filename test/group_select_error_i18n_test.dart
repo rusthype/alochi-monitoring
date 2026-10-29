@@ -13,6 +13,15 @@ class _NoGroupsApi extends MonitoringApi {
       [];
 }
 
+class _OneGroupApi extends MonitoringApi {
+  @override
+  Future<List<Map<String, dynamic>>> fetchGroups(String schoolCode,
+          {String? schoolId}) async =>
+      [
+        {'id': 'g1', 'name': '5-A'}
+      ];
+}
+
 class _FailingGroupsApi extends MonitoringApi {
   @override
   Future<List<Map<String, dynamic>>> fetchGroups(String schoolCode,
@@ -82,5 +91,17 @@ void main() {
     await tester.pumpWidget(_app(const Locale('ru')));
     await tester.pumpAndSettle();
     expect(find.text('Для этой школы тесты не найдены'), findsOneWidget);
+  });
+
+  testWidgets('step labels are localized (no hardcoded Uzbek on ru)',
+      (tester) async {
+    api = _OneGroupApi();
+    await tester.pumpWidget(_app(const Locale('ru')));
+    await tester.pumpAndSettle();
+    expect(find.text('ШАГ 1'), findsOneWidget);
+    expect(find.text('QADAM 1'), findsNothing);
+    await tester.pumpWidget(_app(const Locale('uz')));
+    await tester.pumpAndSettle();
+    expect(find.text('QADAM 1'), findsOneWidget);
   });
 }

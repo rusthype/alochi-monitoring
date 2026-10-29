@@ -85,6 +85,17 @@ void main() {
     expect(svc.nextDelay(), const Duration(seconds: 10));
   });
 
+  test('a backward device-clock step cannot block flushes for hours',
+      () {
+    var now = DateTime.utc(2026, 10, 29, 12);
+    ServerBackoff.clock = () => now;
+    addTearDown(() => ServerBackoff.clock = DateTime.now);
+    ServerBackoff.note(const Duration(minutes: 1));
+    now = now.subtract(const Duration(hours: 6)); // RTC reset / manual change
+    expect(ServerBackoff.remaining(), lessThanOrEqualTo(ServerBackoff.maxWait));
+    expect(ServerBackoff.active, isFalse);
+  });
+
   test('automatic flushes wait out Retry-After, a manual one does not',
       () async {
     final fake = _CountingApi();

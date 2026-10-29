@@ -240,7 +240,8 @@ class MonitoringApi {
       if (resp.statusCode >= 200 &&
           resp.statusCode < 300 &&
           !_looksLikeHtml(resp)) {
-        ServerClock.observe(resp.headers['date']);
+        ServerClock.observe(resp.headers['date'],
+            ageHeader: resp.headers['age']);
       }
       return resp;
     } on TimeoutException catch (e) {

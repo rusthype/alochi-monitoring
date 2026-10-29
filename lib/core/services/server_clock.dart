@@ -65,17 +65,51 @@ class ServerClock {
     }
   }
 
+  /// Test seam: monotonic milliseconds (immune to device clock changes).
+  @visibleForTesting
+  static int Function() monotonicMs = () => _watch.elapsedMilliseconds;
+  static final Stopwatch _watch = Stopwatch()..start();
+
+  /// Server time (epoch ms) of the last accepted observation and the
+  /// monotonic reading it was taken at.
+  static int? _lastServerMs;
+  static int _lastMono = 0;
+
+  /// A `Date` older than the last accepted one (plus the time that passed
+  /// since) by more than this is a cached answer, not "now".
+  static const _staleTolerance = Duration(minutes: 1);
+
   /// Learn the offset from a response's `Date` header value. Unparsable or
   /// missing headers are ignored. Fire-and-forget persist.
-  static void observe(String? dateHeader) {
+  ///
+  /// A caching proxy can replay an old response: its `Age` header is added to
+  /// the `Date` (RFC 9111), and a time that went BACKWARDS compared with what
+  /// this process already learned is ignored instead of shifting every
+  /// `locked_until` check by hours. (The device clock is deliberately not a
+  /// reference: a PC reset to 2000 is exactly what this class corrects.)
+  static void observe(String? dateHeader, {String? ageHeader}) {
     final raw = dateHeader?.trim() ?? '';
     if (raw.isEmpty) return;
-    final DateTime server;
+    DateTime server;
     try {
       server = HttpDate.parse(raw);
     } catch (_) {
       return;
     }
+    final age = int.tryParse(ageHeader?.trim() ?? '');
+    if (age != null && age > 0) server = server.add(Duration(seconds: age));
+    final mono = monotonicMs();
+    final prev = _lastServerMs;
+    if (prev != null) {
+      final expected = prev + (mono - _lastMono);
+      if (server.millisecondsSinceEpoch <
+          expected - _staleTolerance.inMilliseconds) {
+        debugPrint('ServerClock: ignoring a stale Date header ($raw)');
+        return;
+      }
+    }
+    _lastServerMs = server.millisecondsSinceEpoch;
+    _lastMono = mono;
     _offset = server.difference(deviceNow().toUtc());
     _known = true;
     final ms = _offset.inMilliseconds;
@@ -102,6 +136,8 @@ class ServerClock {
     _known = false;
     _persistedMs = null;
     _loaded = false;
+    _lastServerMs = null;
     deviceNow = DateTime.now;
+    monotonicMs = () => _watch.elapsedMilliseconds;
   }
 }

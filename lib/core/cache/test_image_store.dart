@@ -215,11 +215,15 @@ class TestImageStore {
     if (dest == null) throw StateError('TestImageStore not initialised');
     final tmp =
         File('${dest.path}.${DateTime.now().microsecondsSinceEpoch}.tmp');
+    // Aborts THIS request only (the client is shared by every in-flight
+    // download, so it must never be closed on one transfer's timeout).
+    final abort = Completer<void>();
     try {
-      return await _download(url, dest, tmp).timeout(maxDuration);
+      return await _download(url, dest, tmp, abort.future)
+          .timeout(maxDuration);
     } on TimeoutException {
       // Stop the stalled transfer instead of letting it hold the socket.
-      _abortClient();
+      if (!abort.isCompleted) abort.complete();
       rethrow;
     } finally {
       try {
@@ -230,18 +234,10 @@ class TestImageStore {
     }
   }
 
-  /// Closes the process-owned client (a test-injected one is left alone); the
-  /// next download opens a fresh one.
-  void _abortClient() {
-    final c = _lazyClient;
-    _lazyClient = null;
-    try {
-      c?.close();
-    } catch (_) {}
-  }
-
-  Future<StoreFetch> _download(String url, File dest, File tmp) async {
-    final req = http.Request('GET', Uri.parse(url))
+  Future<StoreFetch> _download(
+      String url, File dest, File tmp, Future<void> abortTrigger) async {
+    final req = http.AbortableRequest('GET', Uri.parse(url),
+        abortTrigger: abortTrigger)
       ..headers['User-Agent'] = 'AlochiMonitoring/1.0';
     final resp = await _client.send(req).timeout(timeout);
     if (isMissingStatus(resp.statusCode)) {
