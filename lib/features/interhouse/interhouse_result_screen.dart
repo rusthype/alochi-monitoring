@@ -19,6 +19,15 @@ import '../../core/offline/asset_test_keys.dart';
 import '../../core/offline/offline_asset_results.dart';
 import '../offline/offline_asset_ui.dart';
 
+/// Queues a result that did not sync (retryable, or rejected by the server so
+/// the queue holds it in `rejected_results`). Returns whether it synced.
+@visibleForTesting
+Future<bool> queueUnsyncedInterhouseResult(
+    Map<String, dynamic> resp, TestResult result) async {
+  if (keepUnsyncedResult(resp)) await OfflineQueue.enqueue(result);
+  return resp['synced'] as bool? ?? false;
+}
+
 class InterhouseResultScreen extends StatefulWidget {
   final IhResult result;
   final IhTestData testData;
@@ -178,13 +187,7 @@ class _InterhouseResultScreenState extends State<InterhouseResultScreen>
     );
 
     final resp = await api.submitResultFull(testResult, detail: detail);
-    final synced = resp['synced'] as bool? ?? false;
-    final permanent = resp['permanent'] as bool? ?? false;
-
-    if (!synced && !permanent) {
-      // Queue for retry (transient errors only — permanent 4xx are dropped)
-      await OfflineQueue.enqueue(testResult);
-    }
+    final synced = await queueUnsyncedInterhouseResult(resp, testResult);
 
     if (mounted) {
       setState(() {
