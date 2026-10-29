@@ -517,6 +517,7 @@ class _TestEngineState extends State<TestEngine>
         ticksAtSaveMs: (localAnswers?['ticks_at_save'] as num?)?.toInt(),
         serverEpochAtSaveMs:
             (localAnswers?['server_epoch_at_save_ms'] as num?)?.toInt(),
+        serverSourceAtSave: localAnswers?['server_source']?.toString(),
       );
       // Saved while paused: the deadline on disk went stale (the pause froze
       // the countdown). Rebuild it from the frozen remaining time so neither
@@ -705,7 +706,7 @@ class _TestEngineState extends State<TestEngine>
       'deadline_epoch_ms': _deadlineMs,
       if (_pausedRemainingMs != null) 'paused_remaining_ms': _pausedRemainingMs,
       'extra_applied_s': _extraAppliedS,
-      ..._clock.snapshot(),
+      ..._clock.snapshotRecord(),
       'student_name': _studentName(),
       'student_id': widget.studentId,
       'group_name': widget.group ?? '',

@@ -32,6 +32,7 @@ import '../models/add_student.dart';
 import '../local_server/hub_guard.dart' show HubLimits, packFingerprint;
 import '../security/incident_log.dart';
 import '../security/monitored_clock.dart';
+import '../services/server_clock.dart';
 import 'lan_client_api.dart';
 import 'lan_diagnostic_api.dart';
 import 'offline_content_source.dart';
@@ -362,6 +363,8 @@ class LanClientSession implements OfflineContentSource {
     OfflineMedia.root = mediaDir;
     current = this;
     notifier.value = this;
+    // The hub is its own clock: MonitoredClock reads its offset from here on.
+    ServerClock.useHub(true);
     await OfflinePackSession.cleanupMedia(keepPackUuid: _packUuid);
     await _refreshPending();
     _timer = Timer.periodic(_tick, (_) => unawaited(_housekeeping()));
@@ -387,6 +390,7 @@ class LanClientSession implements OfflineContentSource {
     if (onlineDiag != null) diagnosticKioskApi = onlineDiag;
     parkedOnlineApi = null;
     _onlineDiagnosticApi = null;
+    ServerClock.useHub(false);
     TestCache.exitMemoryMode();
     OfflineMedia.root = null;
     current = null;
@@ -438,6 +442,7 @@ class LanClientSession implements OfflineContentSource {
       ..headers.addAll(headers);
     if (body != null) req.bodyBytes = body;
     final http.Response resp;
+    final sent = Stopwatch()..start();
     try {
       final streamed = await _http.send(req).timeout(timeout);
       resp = await readCapped(streamed, maxBytes).timeout(timeout);
@@ -460,7 +465,17 @@ class LanClientSession implements OfflineContentSource {
       throw const ApiException(401, 'lan: session expired',
           code: kLanSessionExpired);
     }
+    _observeHubTime(resp, sent.elapsedMilliseconds);
     return resp;
+  }
+
+  /// The hub's `Date` header teaches the HUB offset (ServerClock.hub) - never
+  /// the cloud one. Only while this is the active session, and only for a real
+  /// answer (2xx), like the cloud client.
+  void _observeHubTime(http.Response resp, int roundTripMs) {
+    if (!identical(current, this)) return;
+    if (resp.statusCode < 200 || resp.statusCode >= 300) return;
+    ServerClock.hub.observe(resp.headers['date'], roundTripMs: roundTripMs);
   }
 
   /// GET that must succeed and return JSON.
@@ -482,9 +497,11 @@ class LanClientSession implements OfflineContentSource {
   /// Unauthenticated reachability probe (drives the connectivity indicator).
   Future<bool> health() async {
     try {
+      final sent = Stopwatch()..start();
       final resp = await _http
           .get(base.replace(path: '/health'))
           .timeout(const Duration(seconds: 2));
+      _observeHubTime(resp, sent.elapsedMilliseconds);
       return resp.statusCode == 200;
     } catch (_) {
       return false;

@@ -297,6 +297,7 @@ class AttemptRecoveryService {
           ticksAtSaveMs: (rec['ticks_at_save'] as num?)?.toInt(),
           serverEpochAtSaveMs:
               (rec['server_epoch_at_save_ms'] as num?)?.toInt(),
+          serverSourceAtSave: rec['server_source']?.toString(),
         );
         if (deadline > c.nowMs) return false; // time left: student resumes
         reason = 'deadline_passed';
@@ -398,9 +399,11 @@ class AttemptRecoveryService {
         // The old server epoch belongs to the old save: a snapshot without
         // one (server unknown now) must not leave it next to the new
         // epoch_at_save / ticks_at_save.
-        ...({...entry.record}..remove('server_epoch_at_save_ms')),
+        ...({...entry.record}
+          ..remove('server_epoch_at_save_ms')
+          ..remove('server_source')),
         'deadline_epoch_ms': c.nowMs + remainingS * 1000,
-        ...c.snapshot(),
+        ...c.snapshotRecord(),
       });
     } catch (e) {
       // Could not persist the extension: still do not submit what the hub
