@@ -349,7 +349,10 @@ class AttemptRecoveryService {
     final c = _c;
     try {
       await _extendEntry(entry, {
-        ...entry.record,
+        // The old server epoch belongs to the old save: a snapshot without
+        // one (server unknown now) must not leave it next to the new
+        // epoch_at_save / ticks_at_save.
+        ...({...entry.record}..remove('server_epoch_at_save_ms')),
         'deadline_epoch_ms': c.nowMs + remainingS * 1000,
         ...c.snapshot(),
       });
