@@ -28,7 +28,7 @@ const _result = TestResult(
   deviceId: 'dev',
 );
 
-http.Response _409(Map<String, dynamic> body) => http.Response.bytes(
+http.Response _conflict(Map<String, dynamic> body) => http.Response.bytes(
     utf8.encode(jsonEncode(body)), 409,
     headers: {'content-type': 'application/json'});
 
@@ -49,14 +49,14 @@ void main() {
   group('API verdicts', () {
     test('/results/ 409 already_submitted is an ack', () async {
       final r = await _with(
-          _409({'status': 'already_submitted', 'result_id': 'r1'}),
+          _conflict({'status': 'already_submitted', 'result_id': 'r1'}),
           () => a.submitResultFull(_result));
       expect(r['synced'], true);
       expect(r['rejected'], isNull);
     });
     test('/results/ 409 max_attempts_exceeded is a rejection', () async {
       final r = await _with(
-          _409(_maxAttempts), () => a.submitResultFull(_result));
+          _conflict(_maxAttempts), () => a.submitResultFull(_result));
       expect(r['synced'], false);
       expect(r['rejected'], true);
       expect(r['reject_reason'], 'max_attempts_exceeded');
@@ -64,17 +64,17 @@ void main() {
     test('/results/ 409 with an unknown body is a rejection, not an ack',
         () async {
       final r = await _with(
-          _409({'detail': 'nope'}), () => a.submitResultFull(_result));
+          _conflict({'detail': 'nope'}), () => a.submitResultFull(_result));
       expect(r['synced'], false);
       expect(r['rejected'], true);
     });
     test('/result/ 409: duplicate is synced, max_attempts is rejected',
         () async {
-      var r = await _with(_409({'ok': true, 'id': 'x', 'duplicate': true}),
+      var r = await _with(_conflict({'ok': true, 'id': 'x', 'duplicate': true}),
           () => a.submitLocalResultFull({'x': 1}, 't'));
       expect(r['synced'], true);
       r = await _with(
-          _409(_maxAttempts), () => a.submitLocalResultFull({'x': 1}, 't'));
+          _conflict(_maxAttempts), () => a.submitLocalResultFull({'x': 1}, 't'));
       expect(r['synced'], false);
       expect(r['rejected'], true);
       expect(r['reject_reason'], 'max_attempts_exceeded');
