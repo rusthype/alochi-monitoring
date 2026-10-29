@@ -6,12 +6,53 @@
 // and offers "Hozir yuborish" (SyncService.flushNowWithResult) with progress
 // and a toast with the outcome. Same pill language as SyncStatusBadge, but a
 // teacher-facing message instead of a student-facing badge.
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/db/offline_queue.dart';
 import '../../core/services/toast_service.dart';
 import '../../core/sync/sync_service.dart';
 import '../theme/app_theme.dart';
+
+/// Resends held (server-refused) and still-pending results: the teacher
+/// acted (e.g. granted another attempt), so rejected results get one more
+/// chance; a result the server still refuses is held again. Shared by
+/// [PendingResultsChip] and the login screen's sync chip. [requeue] / [flush]
+/// are test seams. Returns null when the flush threw.
+Future<SyncFlushOutcome?> resendHeldResults({
+  Future<int> Function()? requeue,
+  Future<SyncFlushOutcome> Function()? flush,
+}) async {
+  try {
+    await (requeue ?? OfflineQueue.requeueRejected)();
+    return await (flush ?? SyncService.instance.flushNowWithResult)();
+  } catch (e) {
+    debugPrint('resendHeldResults: flush failed: $e');
+    return null;
+  }
+}
+
+/// Toast for the outcome of [resendHeldResults]; [before] / [left] are the
+/// pending counts around the flush.
+void showResendOutcome(
+  BuildContext context,
+  SyncFlushOutcome? outcome, {
+  required int before,
+  required int left,
+}) {
+  final l10n = AppLocalizations.of(context)!;
+  final sent = before - left;
+  if (outcome == SyncFlushOutcome.noNetwork) {
+    ToastService.showError(context, l10n.pendingResultsNoNetworkToast);
+  } else if (outcome == SyncFlushOutcome.busy) {
+    ToastService.showInfo(context, l10n.syncStatusSyncing);
+  } else if (sent > 0) {
+    ToastService.showSuccess(context, l10n.pendingResultsSentToast(sent));
+  } else if (left > 0) {
+    // Nothing left the queue (server error / 429): results are safe, retry.
+    ToastService.showError(context, l10n.pendingResultsFailedToast);
+  }
+}
 
 class PendingResultsChip extends StatefulWidget {
   const PendingResultsChip({
@@ -37,6 +78,12 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
   int _rejected = 0; // server refused them (attempt limit): kept, never retried
   Duration? _oldest;
   bool _sending = false;
+  // Rejected-only banner is transient: shown once per distinct count, then
+  // auto-hidden. Unsent results (_pending > 0) keep it pinned.
+  static const _rejectedAutoHide = Duration(seconds: 10);
+  final Set<int> _shownRejectedCounts = {};
+  bool _rejectedVisible = false;
+  Timer? _hideTimer;
 
   bool get _overridden => widget.pendingCountOverride != null;
 
@@ -57,6 +104,7 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
       _pending = v.count;
       _oldest = v.oldest;
       _rejected = OfflineQueue.rejected.value;
+      _updateRejectedBanner();
     }
     // The overlay for the toast exists after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) => _noticeIfAny());
@@ -64,11 +112,26 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
 
   @override
   void dispose() {
+    _hideTimer?.cancel();
     OfflineQueue.pending.removeListener(_onChanged);
     OfflineQueue.rejected.removeListener(_onChanged);
     OfflineQueue.changes.removeListener(_onChanged);
     SyncService.instance.flushing.removeListener(_onChanged);
     super.dispose();
+  }
+
+  /// Call after [_pending] / [_rejected] changed (inside setState or initState).
+  void _updateRejectedBanner() {
+    if (_pending > 0 || _rejected <= 0) {
+      _hideTimer?.cancel();
+      _rejectedVisible = false;
+    } else if (_shownRejectedCounts.add(_rejected)) {
+      _rejectedVisible = true;
+      _hideTimer?.cancel();
+      _hideTimer = Timer(_rejectedAutoHide, () {
+        if (mounted) setState(() => _rejectedVisible = false);
+      });
+    }
   }
 
   void _onChanged() {
@@ -108,6 +171,7 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
           _rejected = rejected;
           _pending = pending;
           _oldest = oldest;
+          _updateRejectedBanner();
         });
       }
       return pending;
@@ -122,32 +186,15 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
     if (_sending) return;
     final before = _pending;
     setState(() => _sending = true);
-    SyncFlushOutcome? outcome;
-    try {
-      // The teacher acts (e.g. granted another attempt): rejected results get
-      // one more chance; a result the server still refuses is held again.
-      if (!_overridden) await OfflineQueue.requeueRejected();
-      outcome = await (widget.flushNowOverride ??
-          SyncService.instance.flushNowWithResult)();
-    } catch (e) {
-      debugPrint('PendingResultsChip: flush failed: $e');
-    }
+    final outcome = await resendHeldResults(
+      requeue: _overridden ? () async => 0 : null,
+      flush: widget.flushNowOverride,
+    );
     if (!_overridden) await OfflineQueue.refreshPending();
     final left = await _refresh();
     if (!mounted) return;
     setState(() => _sending = false);
-    final l10n = AppLocalizations.of(context)!;
-    final sent = before - left;
-    if (outcome == SyncFlushOutcome.noNetwork) {
-      ToastService.showError(context, l10n.pendingResultsNoNetworkToast);
-    } else if (outcome == SyncFlushOutcome.busy) {
-      ToastService.showInfo(context, l10n.syncStatusSyncing);
-    } else if (sent > 0) {
-      ToastService.showSuccess(context, l10n.pendingResultsSentToast(sent));
-    } else if (left > 0) {
-      // Nothing left the queue (server error / 429): results are safe, retry.
-      ToastService.showError(context, l10n.pendingResultsFailedToast);
-    }
+    showResendOutcome(context, outcome, before: before, left: left);
   }
 
   String? _ageText(AppLocalizations l10n) {
@@ -160,7 +207,9 @@ class _PendingResultsChipState extends State<PendingResultsChip> {
 
   @override
   Widget build(BuildContext context) {
-    if (_pending <= 0 && _rejected <= 0) return const SizedBox.shrink();
+    if (_pending <= 0 && !(_rejected > 0 && _rejectedVisible)) {
+      return const SizedBox.shrink();
+    }
     final l10n = AppLocalizations.of(context)!;
     final age = _ageText(l10n);
     return Semantics(
