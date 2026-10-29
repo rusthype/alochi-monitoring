@@ -7,6 +7,7 @@
 
 import 'package:alochi_monitoring/core/diagnostics/active_test_gate.dart';
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 import 'package:flutter/material.dart';
@@ -524,13 +525,22 @@ class _TestEngineState extends State<TestEngine>
       // the pause nor a long absence eats or resets the student's time.
       final pausedMs = localAnswers?['paused_remaining_ms'];
       if (pausedMs is num && !localCompleted) {
-        _deadlineMs = nowMs + pausedMs.toInt();
+        _deadlineMs = nowMs + math.max(0, pausedMs.toInt());
         _pausedRestoreNeedsSave = true;
       }
+      // The attempt file is student-writable: never trust it for MORE time
+      // than the test's duration plus the extension it records (that
+      // extension is itself capped at one extra duration; larger grants
+      // re-arrive from the server via the heartbeat baseline).
+      final savedExtraS =
+          ((localAnswers?['extra_applied_s'] as num?)?.toInt() ?? 0)
+              .clamp(0, widget.duration.inSeconds);
+      _deadlineMs = math.min(_deadlineMs!,
+          nowMs + widget.duration.inMilliseconds + savedExtraS * 1000);
       final shift = _deadlineMs! - savedDeadline;
       _startedAtMs = startedRaw is num ? startedRaw.toInt() + shift : nowMs;
       resumed = true;
-      _applyRestoredExtra((localAnswers?['extra_applied_s'] as num?)?.toInt());
+      _applyRestoredExtra(savedExtraS);
       _markRestored();
     }
 

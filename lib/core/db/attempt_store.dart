@@ -152,6 +152,9 @@ class AttemptStore {
 
   static Future<Map<String, dynamic>?> _decode(String? raw) async {
     if (raw == null || raw.isEmpty) return null;
+    // Attempt records have been written encrypted since v1.0.106; a bare-JSON
+    // row can only be hand-written (e.g. an edited deadline), never trusted.
+    if (!QueueCrypto.isEncrypted(raw)) return null;
     final decrypted = await QueueCrypto.decryptPayload(raw);
     final decoded = jsonDecode(decrypted);
     if (decoded is Map) return Map<String, dynamic>.from(decoded);

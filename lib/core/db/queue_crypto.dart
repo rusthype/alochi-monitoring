@@ -147,6 +147,11 @@ class QueueCrypto {
     return encrypter.decrypt64(parts[1], iv: iv);
   }
 
+  /// True for a row produced by [encryptWithKey]. Readers of student-writable
+  /// files that were always encrypted (attempt records) use this to refuse a
+  /// bare-JSON file instead of trusting it.
+  static bool isEncrypted(String stored) => stored.startsWith(_prefix);
+
   static Future<String> encryptPayload(String plainJson) async =>
       encryptWithKey(plainJson, (await _getKeys()).primary);
 

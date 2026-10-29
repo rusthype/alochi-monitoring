@@ -254,6 +254,23 @@ void main() {
       expect(File('$path.bak').existsSync(), isFalse);
     });
   });
+  test('F1: a plaintext (hand-written, no ENC1:) attempt file is rejected',
+      () async {
+    await AttemptStore.save('k9', _rec('A', answers: {'S/0': 1}));
+    mainFile('k9').writeAsStringSync(jsonEncode(
+        {..._rec('A'), 'deadline_epoch_ms': 4102444800000}));
+    expect(await AttemptStore.load('k9'), isNull);
+    expect(await AttemptStore.listAll(), isEmpty);
+  });
+
+  test('F1: a plaintext legacy shared_preferences row is rejected too',
+      () async {
+    AttemptStore.useDirectoryForTest(null);
+    SharedPreferences.setMockInitialValues(
+        {'attempt_k10': jsonEncode(_rec('A'))});
+    expect(await AttemptStore.load('k10'), isNull);
+  });
+
 }
 
 void unawaited2(Future<void> f) {}
