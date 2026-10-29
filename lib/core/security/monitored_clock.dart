@@ -587,9 +587,64 @@ class MonitoredClock {
   Future<void> _raiseHighWaterMark(int wall) async {
     _lastHwmWriteTicks = _ticks();
     final seen = await _hwm.read();
-    if (seen == null || wall > seen.millisecondsSinceEpoch) {
-      await _hwm.write(DateTime.fromMillisecondsSinceEpoch(wall, isUtc: true));
+    final seenMs = seen?.millisecondsSinceEpoch;
+    final target = _hwmCandidate(wall, seenMs);
+    if (seenMs == null || target > seenMs) {
+      await _hwm.write(DateTime.fromMillisecondsSinceEpoch(target, isUtc: true));
+      _hwmBaseMs ??= target;
     }
+  }
+
+  // Ceiling anchor for UNCONFIRMED forward jumps: the mark as first read in
+  // this process, and the ticks at that moment.
+  int? _hwmBaseMs;
+  int _hwmBaseTicks = 0;
+  bool _flaggedUnconfirmed = false;
+
+  /// An unconfirmed forward wall jump may not move the persisted mark further
+  /// than this beyond what elapsed ticks explain (honest app-closed gaps).
+  static const int _hwmColdStartWindowMs = 30 * 24 * 60 * 60 * 1000;
+
+  /// What the mark may be raised to for wall time [wall]. The mark is only
+  /// ever read to REJECT a date set back (pack expiry), so a student pushing
+  /// the date forward must not be able to park it in the future:
+  ///  * a server/hub witness that agrees with the wall confirms it; one that
+  ///    disagrees makes the server's time the limit (it can only lower);
+  ///  * otherwise the wall is capped at the trusted timeline ([nowMs], which
+  ///    ignores date edits after the process started) plus slack, and at the
+  ///    mark first seen in this process + [_hwmColdStartWindowMs] + elapsed
+  ///    ticks (the date edited BEFORE the process started). Beyond that a
+  ///    `clock_forward_unconfirmed` flag is recorded and the mark stays put.
+  /// A mark left stale by an honest gap beyond the window is harmless:
+  /// [trustedNowUtc] then falls back to the (later) clock; it catches up by
+  /// one window per launch.
+  int _hwmCandidate(int wall, int? seenMs) {
+    final w = _witness();
+    if (w != null) {
+      if (w.offsetMs.abs() <= _wallAgreeTolerance) return wall;
+      return math.min(wall, wall + w.offsetMs + _wallAgreeTolerance);
+    }
+    var cand = math.min(wall, nowMs + _wallAgreeTolerance);
+    if (seenMs != null) {
+      if (_hwmBaseMs == null) {
+        _hwmBaseMs = seenMs;
+        _hwmBaseTicks = _ticks();
+      }
+      final ceiling =
+          _hwmBaseMs! + _hwmColdStartWindowMs + (_ticks() - _hwmBaseTicks);
+      if (cand > ceiling) {
+        if (!_flaggedUnconfirmed) {
+          _flaggedUnconfirmed = true;
+          _addFlag({
+            'type': 'clock_forward_unconfirmed',
+            'wall_utc': _iso(wall),
+            'high_water_utc': _iso(seenMs),
+          });
+        }
+        cand = ceiling;
+      }
+    }
+    return cand;
   }
 
   /// Returns the flags recorded since the last call and clears them.
