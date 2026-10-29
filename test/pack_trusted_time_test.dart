@@ -32,7 +32,7 @@ void main() {
     signingPem: File('$_dir/test_signing_public.pem').readAsStringSync(),
     resultsPem: File('$_dir/test_results_public.pem').readAsStringSync(),
   );
-  final goldenPath = '$_dir/golden.alochipack'; // expires 2099-01-01Z
+  const goldenPath = '$_dir/golden.alochipack'; // expires 2099-01-01Z
   final saved = MonitoredClock.instance;
   tearDown(() => MonitoredClock.instance = saved);
 
