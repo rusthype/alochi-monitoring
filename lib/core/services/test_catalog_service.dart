@@ -683,6 +683,9 @@ class TestCatalogService {
   /// ishlamaydi).
   Future<void> gcStore({Duration minAge = const Duration(days: 1)}) async {
     if (_activeDownloads > 0) return;
+    // Pack mode: TestCache holds only the pack's tests, so `keep` would miss
+    // every persistent download and the GC would delete their images.
+    if (TestCache.isMemoryMode) return;
     try {
       final keep = <String>{};
       for (final row in await TestCache.all()) {
@@ -742,6 +745,12 @@ class TestCatalogService {
   Future<bool> ensureVariantImages(Map<String, dynamic> cached, int variant,
           {void Function(int done, int total)? onProgress}) =>
       ensureUrls(variantImageUrls(cached, variant), onProgress: onProgress);
+
+  /// ALL images of [data] (every variant) into the store - the whole-test
+  /// counterpart of [ensureVariantImages] for flows that do not pick a variant
+  /// up front (legacy unit1 / bob1_4 / math_gN loaders).
+  Future<bool> ensureTestImages(Map<String, dynamic> data) =>
+      ensureUrls(_imageUrls(data));
 
   /// Berilgan (fixImageUrl'dan o'tgan) url'lar ro'yxatini do'konga yuklaydi.
   Future<bool> ensureUrls(List<String> urls,
@@ -936,11 +945,14 @@ class TestCatalogService {
   /// Oflayn rejimda bunday rasm testni bloklamasligi uchun kerak: do'konda
   /// hech qachon bo'lmaydi, lekin "tarmoq yo'q" bilan "serverda yo'q" farqlanadi.
   static final Set<String> _knownMissing = {};
-  static bool _missingLoaded = false;
 
-  static Future<void> _loadMissing() async {
-    if (_missingLoaded) return;
-    _missingLoaded = true;
+  /// The one in-flight/finished load: every caller awaits the SAME future, so
+  /// a gate check racing the first load never sees a half-empty set.
+  static Future<void>? _missingLoad;
+
+  static Future<void> _loadMissing() => _missingLoad ??= _readMissing();
+
+  static Future<void> _readMissing() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _knownMissing.addAll(prefs.getStringList(_missingPrefsKey) ?? const []);
@@ -963,7 +975,7 @@ class TestCatalogService {
   @visibleForTesting
   static void resetKnownMissingForTest() {
     _knownMissing.clear();
-    _missingLoaded = false;
+    _missingLoad = null;
   }
 
   /// Renderer ishlatadigan kalit bilan bir xil (fixImageUrl) bo'lishi shart.

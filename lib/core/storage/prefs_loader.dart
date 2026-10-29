@@ -60,26 +60,70 @@ Future<SharedPreferences> loadPrefsWithFallback({
 Future<File> _defaultPrefsFile() async => File(p.join(
     (await getApplicationSupportDirectory()).path, 'shared_preferences.json'));
 
-/// Renames the prefs file aside when its content is not a JSON object.
-/// Returns true only when a torn file was actually moved. A healthy file that
-/// failed to load for another reason (locked, permissions) is never touched.
+/// Newest corrupt-file backups kept next to the prefs file.
+const _keepBackups = 3;
+
+/// Repairs a prefs file the plugin cannot load. Returns true only when the
+/// file was actually changed. A healthy file that failed to load for another
+/// reason (locked, permissions) is never touched.
+///
+/// * Not a JSON object (torn / NUL-filled by a power cut): renamed aside as
+///   `<file>.corrupt-<ts>`; the plugin then starts a fresh file.
+/// * A JSON object with unreadable (null) values: the original is copied to
+///   `<file>.corrupt-<ts>` and the file is rewritten with every readable entry
+///   (temp file + rename), so nothing we could still read is lost.
+///
+/// Only the newest [_keepBackups] backups are kept.
 Future<bool> _quarantineIfTorn(Future<File> Function() locate) async {
   try {
     final file = await locate();
     if (!await file.exists()) return false;
     final bytes = await file.readAsBytes();
     if (bytes.isEmpty) return false; // the plugin treats empty as no prefs
+    Object? decoded;
     try {
-      if (jsonDecode(utf8.decode(bytes)) is Map) return false;
+      decoded = jsonDecode(utf8.decode(bytes));
     } catch (_) {
       // not valid JSON -> torn
     }
     final stamp = DateTime.now().millisecondsSinceEpoch;
-    await file.rename('${file.path}.corrupt-$stamp');
-    debugPrint('Corrupt shared_preferences.json moved aside (.corrupt-$stamp)');
+    final backup = '${file.path}.corrupt-$stamp';
+    if (decoded is Map) {
+      final clean = <String, Object?>{
+        for (final e in decoded.entries)
+          if (e.value != null) e.key.toString(): e.value,
+      };
+      if (clean.length == decoded.length) return false; // healthy file
+      await file.copy(backup);
+      final tmp = File('${file.path}.tmp');
+      await tmp.writeAsString(jsonEncode(clean), flush: true);
+      await tmp.rename(file.path);
+      debugPrint('shared_preferences.json had unreadable entries; readable '
+          'ones kept, original saved as .corrupt-$stamp');
+    } else {
+      await file.rename(backup);
+      debugPrint('Corrupt shared_preferences.json moved aside (.corrupt-$stamp)');
+    }
+    await _pruneBackups(file);
     return true;
   } catch (e) {
     debugPrint('Could not quarantine shared_preferences.json: $e');
     return false;
+  }
+}
+
+Future<void> _pruneBackups(File prefs) async {
+  try {
+    final prefix = '${p.basename(prefs.path)}.corrupt-';
+    final backups = <(int, File)>[
+      for (final f in prefs.parent.listSync().whereType<File>())
+        if (p.basename(f.path).startsWith(prefix))
+          (int.tryParse(p.basename(f.path).substring(prefix.length)) ?? 0, f),
+    ]..sort((a, b) => b.$1.compareTo(a.$1));
+    for (final old in backups.skip(_keepBackups)) {
+      await old.$2.delete();
+    }
+  } catch (e) {
+    debugPrint('Could not prune shared_preferences backups: $e');
   }
 }

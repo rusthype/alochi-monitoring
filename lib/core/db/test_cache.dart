@@ -31,6 +31,7 @@ class TestCache {
       await _db?.close();
     } catch (_) {}
     _db = null;
+    _opening = null;
     pathOverride = null;
   }
 
@@ -41,7 +42,12 @@ class TestCache {
     return join(dir.path, 'test_cache.db');
   }
 
+  /// Counts real file opens (test seam for the single-open guarantee).
+  @visibleForTesting
+  static int opensForTest = 0;
+
   static Future<Database> _open(String path) {
+    opensForTest++;
     // One idempotent ensure-schema for create AND every open (same pattern as
     // OfflineQueue): older files get the additive columns / tables, nothing is
     // dropped or rewritten.
@@ -76,9 +82,17 @@ class TestCache {
     ''');
   }
 
+  /// The one in-flight open: racing first callers share it instead of each
+  /// opening the file.
+  static Future<Database>? _opening;
+
   static Future<Database> get _database async {
     final open = _db;
     if (open != null) return open;
+    return _opening ??= _openDefault().whenComplete(() => _opening = null);
+  }
+
+  static Future<Database> _openDefault() async {
     if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
@@ -400,11 +414,8 @@ class TestCache {
     // Bo'sh to'plam hech qachon "hammasini o'chir" degani emas (2026-10-28:
     // bo'sh/qisman katalog javobi butun keshni o'chirgan).
     if (keepKeys.isEmpty) return;
-    final mem = _memory;
-    if (mem != null) {
-      mem.removeWhere((k, _) => !keepKeys.contains(k));
-      return;
-    }
+    // Pack mode: only the pack's tests are visible here, never prune from it.
+    if (_memory != null) return;
     final placeholders = List.filled(keepKeys.length, '?').join(',');
     await _run((db) => db.delete(
           'cached_tests',

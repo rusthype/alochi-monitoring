@@ -2,19 +2,37 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../api/api_client.dart';
-import '../cache/image_cache_manager.dart';
 import '../db/test_cache_db.dart';
 import '../models/test_catalog.dart';
+import '../services/test_catalog_service.dart' as engine;
 
+/// Legacy (guest-flow) cache: unit1 / bob1_4 / math_gN loaders. Images go
+/// through the SAME readiness gate the engine uses
+/// ([engine.TestCatalogService.ensureTestImages] -> persistent TestImageStore),
+/// not a fire-and-forget precache.
 class TestCatalogService {
-  TestCatalogService._();
+  TestCatalogService._()
+      : _apiOf = (() => api),
+        _imagesOf = (() => engine.testCatalogService);
   static final TestCatalogService instance = TestCatalogService._();
 
-  /// Online yo'l: catalog'dan version solishtiradi; keshdan eski bo'lsa yuklab oladi va rasmlarni precache qiladi.
+  @visibleForTesting
+  TestCatalogService.forTest(this._apiOf, this._imagesOf);
+
+  final MonitoringApi Function() _apiOf;
+  final engine.TestCatalogService Function() _imagesOf;
+
+  /// How long a loader waits for the images; the download itself keeps going
+  /// in the background past this and fills the store for the next run.
+  static const _imageWait = Duration(seconds: 60);
+
+  /// Online yo'l: catalog'dan version solishtiradi; keshdan eski bo'lsa yuklab oladi.
+  /// Versiya keshga FAQAT rasmlari do'konga to'liq tushgandan keyin yoziladi
+  /// (aks holda keyingi ishga tushishda qayta uriniladi).
   /// Tarmoq xatosida keshdan qaytaradi.
   Future<Map<String, dynamic>?> ensureDownloaded(String testKey) async {
     try {
-      final catalog = await api.getTestCatalog();
+      final catalog = await _apiOf().getTestCatalog();
       TestCatalogEntry? entry;
       for (final e in catalog) {
         if (e.testKey == testKey) {
@@ -24,14 +42,18 @@ class TestCatalogService {
       }
       final serverVersion = entry?.version ?? 0;
       final cachedVer = await TestCacheDb.cachedVersion(testKey);
+      // A row that no longer decodes comes back null (and is dropped).
+      final cached = cachedVer == null ? null : await TestCacheDb.get(testKey);
 
-      if (cachedVer == null || cachedVer < serverVersion) {
-        final detail = await api.getTestDetail(testKey);
-        await TestCacheDb.put(testKey, serverVersion, detail);
-        _precacheImages(detail);
+      if (cached == null || cachedVer == null || cachedVer < serverVersion) {
+        final detail = await _apiOf().getTestDetail(testKey);
+        if (await _imagesReady(testKey, detail)) {
+          await TestCacheDb.put(testKey, serverVersion, detail);
+        }
         return detail;
       }
-      return await TestCacheDb.get(testKey);
+      await _imagesReady(testKey, cached); // top-up only; data is returned anyway
+      return cached;
     } catch (e) {
       debugPrint('TestCatalogService.ensureDownloaded: tarmoq xatosi — keshdan qaytarildi ($e)');
       return TestCacheDb.get(testKey);
@@ -42,46 +64,14 @@ class TestCatalogService {
   Future<Map<String, dynamic>?> cached(String testKey) =>
       TestCacheDb.get(testKey);
 
-  void _precacheImages(Map<String, dynamic> data) {
-    final urls = _extractImageUrls(data);
-    final manager = AlochiImageCacheManager();
-    for (final url in urls) {
-      final fixed = MonitoringApi.fixImageUrl(url);
-      if (fixed.isEmpty) continue;
-      unawaited(_downloadFile(manager, fixed));
-    }
-  }
-
-  Future<void> _downloadFile(AlochiImageCacheManager manager, String url) async {
+  Future<bool> _imagesReady(String testKey, Map<String, dynamic> data) async {
     try {
-      await manager.downloadFile(url);
-    } catch (_) {}
-  }
-
-  List<String> _extractImageUrls(dynamic data) {
-    final urls = <String>[];
-    if (data is Map) {
-      for (final value in data.values) {
-        urls.addAll(_extractImageUrls(value));
-      }
-    } else if (data is List) {
-      for (final item in data) {
-        urls.addAll(_extractImageUrls(item));
-      }
-    } else if (data is String && _looksLikeImageUrl(data)) {
-      urls.add(data);
+      final ok = await _imagesOf().ensureTestImages(data).timeout(_imageWait);
+      if (!ok) debugPrint('TestCatalogService($testKey): images incomplete');
+      return ok;
+    } catch (e) {
+      debugPrint('TestCatalogService($testKey): image gate failed: $e');
+      return false;
     }
-    return urls;
-  }
-
-  bool _looksLikeImageUrl(String s) {
-    if (s.isEmpty) return false;
-    final lower = s.toLowerCase();
-    return lower.contains('/media/') ||
-        lower.endsWith('.jpg') ||
-        lower.endsWith('.jpeg') ||
-        lower.endsWith('.png') ||
-        lower.endsWith('.webp') ||
-        lower.endsWith('.gif');
   }
 }

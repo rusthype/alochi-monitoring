@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../diagnostics/error_log.dart';
+import 'api_host.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../models/add_student.dart';
@@ -177,12 +178,12 @@ class MonitoringApi {
 
   // ponytail: one env var overrides the whole app's backend host; see
   // diagnostic_kiosk_api.dart which reads the same API_BASE_URL.
-  static const String _host = String.fromEnvironment(
+  static final String _host = normalizeApiHost(const String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'https://api.alochi.org',
-  );
-  static const String _base = '$_host/api/v1/monitoring';
-  static const String _media = _host;
+  ));
+  static final String _base = '$_host/api/v1/monitoring';
+  static final String _media = _host;
 
   /// Relative URL'ni absolute'ga o'giradi (rasm URL'lari uchun)
   static String fixImageUrl(String? url) {

@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'device_info_collector.dart';
 import 'error_log.dart';
+import '../api/api_host.dart';
 
 /// Same key the school picker writes; school_id is only sent once known.
 const _lastSchoolKey = 'last_diag_school_id';
@@ -45,10 +46,10 @@ class DeviceReportSender {
   DeviceReportSender._();
   static final instance = DeviceReportSender._();
 
-  static const String _host = String.fromEnvironment(
+  static final String _host = normalizeApiHost(const String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'https://api.alochi.org',
-  );
+  ));
   // Backend throttle is 60/hour per IP (shared school NAT): start report at
   // most once per 24h, error-triggered at most once per 60 min.
   static const Duration startInterval = Duration(hours: 24);

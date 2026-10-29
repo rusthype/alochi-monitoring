@@ -90,4 +90,50 @@ void main() {
     );
     expect(prefs, isNotNull);
   });
+
+  List<File> backups() => tmp
+      .listSync()
+      .whereType<File>()
+      .where((f) => f.path.contains('shared_preferences.json.corrupt-'))
+      .toList();
+
+  test('F35: at most 3 .corrupt backups are kept, the newest ones', () async {
+    for (final ts in [1000, 2000, 3000]) {
+      File('${file.path}.corrupt-$ts').writeAsStringSync('old $ts');
+    }
+    file.writeAsStringSync('{"app_locale": "ru", "x": ["A'); // torn
+
+    await loadPrefsWithFallback(
+      load: pluginLoad,
+      retryDelay: Duration.zero,
+      locatePrefsFile: () async => file,
+    );
+
+    final names = backups().map((f) => f.path.split('.corrupt-').last).toSet();
+    expect(names.length, 3);
+    expect(names.contains('1000'), isFalse, reason: 'oldest dropped');
+    expect(names.containsAll(['2000', '3000']), isTrue);
+    // The just-quarantined torn file is one of the three.
+    expect(backups().any((f) => f.readAsStringSync().contains('"x"')), isTrue);
+  });
+
+  test('F35: valid JSON with unreadable (null) values keeps the readable '
+      'entries, backs up the original and loads', () async {
+    file.writeAsStringSync(
+        '{"app_locale": "ru", "bad": null, "roster_done_x": ["A"]}');
+
+    final prefs = await loadPrefsWithFallback(
+      load: pluginLoad,
+      retryDelay: Duration.zero,
+      locatePrefsFile: () async => file,
+    );
+
+    expect(prefs.getString('app_locale'), 'ru'); // not lost
+    expect(prefs.getStringList('roster_done_x'), ['A']);
+    expect(backups(), hasLength(1));
+    expect(backups().single.readAsStringSync(), contains('"bad": null'));
+    final onDisk = jsonDecode(file.readAsStringSync()) as Map;
+    expect(onDisk.containsKey('bad'), isFalse);
+    expect(onDisk['app_locale'], 'ru');
+  });
 }
