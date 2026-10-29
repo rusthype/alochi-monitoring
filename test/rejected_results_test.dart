@@ -156,6 +156,49 @@ void main() {
       expect((n, seen), (1, 't1'));
     });
 
+    test('a real 400 / 422 from the API is held, re-queued, and held again',
+        () async {
+      await OfflineQueue.enqueue(_result, token: 't1');
+      await OfflineQueue.enqueueLocal({'student_id': 's'}, 't2');
+      var online = 0, local = 0;
+      final bad = http.Response.bytes(
+          utf8.encode(jsonEncode({'error': 'invalid_payload'})), 400,
+          headers: {'content-type': 'application/json'});
+      Future<void> flushBoth() async {
+        await http.runWithClient(() async {
+          await OfflineQueue.flush((r, t) async {
+            online++;
+            return a.submitResultFull(r, idempotencyToken: t);
+          });
+          await OfflineQueue.flushLocal((m, t) async {
+            local++;
+            return a.submitLocalResultFull(m, t);
+          });
+        }, () => MockClient((_) async => bad));
+      }
+
+      await flushBoth();
+      expect(await OfflineQueue.totalPendingCount(), 0);
+      expect(await OfflineQueue.rejectedCount(), 2);
+
+      // "Hozir yuborish": re-queue, then the server says 400 again. One
+      // submit per row per flush - never a loop - and back in rejected.
+      expect(await OfflineQueue.requeueRejected(), 2);
+      await flushBoth();
+      expect((online, local), (2, 2));
+      expect(await OfflineQueue.totalPendingCount(), 0);
+      expect(await OfflineQueue.rejectedCount(), 2);
+    });
+
+    test('a non-result permanent reply (no rejected flag) is still dropped',
+        () async {
+      await OfflineQueue.enqueueLocal({'_offlineKind': 'question_report'}, 'q');
+      await OfflineQueue.flushLocal(
+          (m, t) async => {'synced': false, 'permanent': true});
+      expect(await OfflineQueue.totalPendingCount(), 0);
+      expect(await OfflineQueue.rejectedCount(), 0);
+    });
+
     test('opening a pre-change queue file keeps its rows (safe migration)',
         () async {
       await OfflineQueue.resetForTest();

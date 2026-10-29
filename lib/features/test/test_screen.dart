@@ -267,8 +267,9 @@ class _TestScreenState extends State<TestScreen>
       );
     }
 
-    final permanent = resp['permanent'] as bool? ?? false;
-    if (!synced && !permanent) await OfflineQueue.enqueue(result);
+    // Retryable failures AND server rejections are kept (a rejection is held
+    // for the teacher by the queue instead of being silently dropped).
+    if (keepUnsyncedResult(resp)) await OfflineQueue.enqueue(result);
     if (!mounted) return;
     Navigator.pushReplacement(
         context,
