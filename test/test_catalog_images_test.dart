@@ -489,6 +489,76 @@ void main() {
     expect(store.cachedFile('https://img.test/c2.png'), isNull);
   });
 
+  Map<String, dynamic> bgTest(String prefix, int n) => {
+        'title': 'T',
+        'grade': 5,
+        'version': 1,
+        'cover': 'https://img.test/$prefix-cover.png',
+        'parts': ['Math'],
+        'variants': {
+          '1': {
+            'Math': [
+              for (var i = 0; i < n; i++)
+                {'image_url': 'https://img.test/$prefix$i.png'},
+            ],
+          },
+        },
+      };
+
+  test('fair prefetch: a test with permanently failing URLs does not starve '
+      'the next test, and gives up after its failure budget', () async {
+    final bad = bgTest('bad', 8);
+    final good = bgTest('good', 4);
+    for (final u in [
+      'https://img.test/bad-cover.png',
+      for (var i = 0; i < 8; i++) 'https://img.test/bad$i.png',
+    ]) {
+      behaviour[u] = (_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        throw const SocketException('unreachable');
+      };
+    }
+    final (store, svc) = await makeBg(bad);
+    final a = svc.backgroundPrefetch('bad', bad);
+    final b = svc.backgroundPrefetch('good', good);
+    await Future.wait([a, b]).timeout(const Duration(seconds: 20));
+    for (final u in svc.variantImageUrls(good, 1) +
+        ['https://img.test/good-cover.png']) {
+      expect(store.cachedFile(u), isNotNull, reason: u);
+    }
+    // gave up: far fewer than all 9 bad URLs were tried (3 in a row + the
+    // attempts already in flight), each at most 1 + 3 backoff steps.
+    final badTried =
+        requested.where((u) => u.contains('/bad')).toSet().length;
+    expect(badTried, lessThan(9));
+    expect(maxInFlight, lessThanOrEqualTo(2));
+    // the good test was served before the bad one finished giving up
+    final firstGood = requested.indexWhere((u) => u.contains('/good'));
+    final lastBad = requested.lastIndexWhere((u) => u.contains('/bad'));
+    expect(firstGood, lessThan(lastBad));
+  });
+
+  test('fair prefetch: successful tests are interleaved and all complete',
+      () async {
+    final x = bgTest('x', 5);
+    final y = bgTest('y', 5);
+    final (store, svc) = await makeBg(x);
+    await Future.wait([
+      svc.backgroundPrefetch('x', x),
+      svc.backgroundPrefetch('y', y),
+    ]);
+    for (final d in [x, y]) {
+      for (final u in svc.variantImageUrls(d, 1)) {
+        expect(store.cachedFile(u), isNotNull, reason: u);
+      }
+    }
+    expect(maxInFlight, lessThanOrEqualTo(2));
+    expect(requested.toSet().length, requested.length);
+    final firstY = requested.indexWhere((u) => u.contains('/y'));
+    final lastX = requested.lastIndexWhere((u) => u.contains('/x'));
+    expect(firstY, lessThan(lastX)); // round-robin, not x-then-y
+  });
+
   test('background: 404 skipped and remembered', () async {
     final data = _test(2, variants: 1);
     behaviour[_u(101)] = (_) async => http.Response('', 404);

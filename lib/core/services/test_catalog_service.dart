@@ -134,6 +134,17 @@ class CatalogEntry {
   });
 }
 
+/// One test's background image prefetch (see [TestCatalogService.backgroundPrefetch]).
+class _BgJob {
+  _BgJob(this.urls);
+  final List<String> urls;
+  List<String> queue = const [];
+  int next = 0, inFlight = 0, failStreak = 0;
+  bool ready = false, preparing = false, aborted = false, counted = false;
+  final done = Completer<void>();
+  bool get exhausted => aborted || next >= queue.length;
+}
+
 /// Backend test katalogini boshqaradi: yuklash, kesh solishtirish, offline.
 class TestCatalogService {
   final MonitoringApi Function() _apiOf;
@@ -807,31 +818,144 @@ class TestCatalogService {
 
   static const _bgConcurrency = 2;
 
-  /// One job at a time (global concurrency 2) and one job per testKey.
-  Future<void> _bgTail = Future<void>.value();
+  /// A job gives up after this many CONSECUTIVE images that still failed
+  /// after the whole backoff ladder (unreachable host, stale QA URLs), so one
+  /// broken test can't hold the workers; the heal run retries it later.
+  static const _bgFailBudget = 3;
+
+  /// Active jobs, served round-robin by [_bgConcurrency] shared workers (one
+  /// image at a time per worker) and one job per testKey.
+  final List<_BgJob> _bgQueue = [];
   final Map<String, Future<void>> _bgJobs = {};
+  int _bgWorkers = 0;
+  int _bgRr = 0;
 
   /// Downloads every missing unique image of [json] (all variants) into the
-  /// store in the background: gentle (2 at a time, random start jitter,
-  /// 2s/8s/30s backoff per URL), single-flight per [testKey] (a call while
-  /// one is queued/running returns that job), de-duplicated with the
-  /// foreground prepare through the store's in-flight map, and yielding to
-  /// it. Never throws; a URL that still fails is left for the next heal run
-  /// or the student-tap prepare.
+  /// store in the background: gentle (2 at a time overall, round-robin across
+  /// tests, random start jitter, 2s/8s/30s backoff per URL, bounded failure
+  /// budget per test), single-flight per [testKey] (a call while one is
+  /// queued/running returns that job), de-duplicated with the foreground
+  /// prepare through the store's in-flight map, and yielding to it. Never
+  /// throws; a URL that still fails is left for the next heal run or the
+  /// student-tap prepare.
   Future<void> backgroundPrefetch(String testKey, Map<String, dynamic> json) {
     final running = _bgJobs[testKey];
     if (running != null) return running;
     final urls = _imageUrls(json);
     if (urls.isEmpty) return Future<void>.value();
-    final job = _bgTail.then((_) => _runBackground(urls)).catchError((Object e) {
-      debugPrint('Background prefetch($testKey) failed: $e');
+    final job = _BgJob(urls);
+    final future = job.done.future;
+    _bgJobs[testKey] = future;
+    future.whenComplete(() {
+      if (identical(_bgJobs[testKey], future)) _bgJobs.remove(testKey);
     });
-    _bgTail = job;
-    _bgJobs[testKey] = job;
-    job.whenComplete(() {
-      if (identical(_bgJobs[testKey], job)) _bgJobs.remove(testKey);
-    });
-    return job;
+    _bgQueue.add(job);
+    _bgKick();
+    return future;
+  }
+
+  void _bgKick() {
+    while (_bgWorkers < _bgConcurrency && _bgQueue.isNotEmpty) {
+      _bgWorkers++;
+      _bgWorker()
+          .catchError((Object e) => debugPrint('Background worker: $e'))
+          .whenComplete(() => _bgWorkers--);
+    }
+  }
+
+  void _bgFinish(_BgJob j) {
+    _bgQueue.remove(j);
+    if (j.counted) {
+      j.counted = false;
+      _activeDownloads--;
+    }
+    if (!j.done.isCompleted) j.done.complete();
+  }
+
+  void _bgMaybeFinish(_BgJob j) {
+    if (j.ready && j.exhausted && j.inFlight == 0) _bgFinish(j);
+  }
+
+  Future<void> _bgWorker() async {
+    while (_bgQueue.isNotEmpty) {
+      // The student-tap prepare has priority, and a running test must
+      // never share bandwidth/CPU with a background download.
+      while (_foreground > 0 || isTestRunning()) {
+        await Future<void>.delayed(_bgYield);
+      }
+      final fresh = _bgQueue.where((j) => !j.ready && !j.preparing);
+      if (fresh.isNotEmpty) {
+        await _bgPrepare(fresh.first);
+        _bgKick(); // its images can now use the other worker too
+        continue;
+      }
+      final picked = _bgPick();
+      if (picked == null) return;
+      final (job, url) = picked;
+      var ok = false;
+      try {
+        ok = await _backgroundOne(url);
+      } catch (e) {
+        debugPrint('Background image error for $url: $e');
+      }
+      job.inFlight--;
+      if (ok) {
+        job.failStreak = 0;
+      } else if (++job.failStreak >= _bgFailBudget && !job.exhausted) {
+        job.aborted = true;
+        debugPrint('Background prefetch: $_bgFailBudget images in a row '
+            'failed, test deferred to the next heal run');
+      }
+      _bgMaybeFinish(job);
+    }
+  }
+
+  /// Next missing URL, round-robin across ready jobs; null if none right now.
+  (_BgJob, String)? _bgPick() {
+    final n = _bgQueue.length;
+    for (var i = 0; i < n; i++) {
+      final idx = (_bgRr + i) % n;
+      final j = _bgQueue[idx];
+      if (!j.ready) continue;
+      while (!j.exhausted) {
+        final url = j.queue[j.next++];
+        if (_store.cachedFile(url) != null) continue;
+        j.inFlight++;
+        _bgRr = idx + 1;
+        return (j, url);
+      }
+      _bgMaybeFinish(j);
+      if (n != _bgQueue.length) return _bgPick(); // job removed: restart scan
+    }
+    return null;
+  }
+
+  Future<void> _bgPrepare(_BgJob j) async {
+    j.preparing = true;
+    try {
+      await _loadMissing();
+      try {
+        await _store.init();
+      } catch (e) {
+        debugPrint('Background prefetch: store init failed: $e');
+        _bgFinish(j);
+        return;
+      }
+      List<String> todo() => [
+            for (final u in j.urls)
+              if (_store.cachedFile(u) == null && !_knownMissing.contains(u)) u,
+          ];
+      if (todo().isEmpty) return _bgFinish(j);
+      await Future<void>.delayed(_bgJitter());
+      j.queue = todo();
+      j.counted = true;
+      _activeDownloads++;
+      j.ready = true;
+      _bgMaybeFinish(j);
+    } catch (e) {
+      debugPrint('Background prefetch failed: $e');
+      _bgFinish(j);
+    }
   }
 
   /// The queued/running background prefetch of [testKey], or null. Roster
@@ -842,48 +966,12 @@ class TestCatalogService {
   Future<bool> testImagesComplete(Map<String, dynamic> cached) =>
       _allPresent(_imageUrls(cached));
 
-  Future<void> _runBackground(List<String> urls) async {
-    await _loadMissing();
-    try {
-      await _store.init();
-    } catch (e) {
-      debugPrint('Background prefetch: store init failed: $e');
-      return;
-    }
-    List<String> todo() => [
-          for (final u in urls)
-            if (_store.cachedFile(u) == null && !_knownMissing.contains(u)) u,
-        ];
-    if (todo().isEmpty) return;
-    await Future<void>.delayed(_bgJitter());
-    final queue = todo();
-    var next = 0;
-    _activeDownloads++;
-    try {
-      Future<void> worker() async {
-        while (next < queue.length) {
-          // The student-tap prepare has priority, and a running test must
-          // never share bandwidth/CPU with a background download.
-          while (_foreground > 0 || isTestRunning()) {
-            await Future<void>.delayed(_bgYield);
-          }
-          final url = queue[next++];
-          if (_store.cachedFile(url) != null) continue;
-          await _backgroundOne(url);
-        }
-      }
-
-      await Future.wait(List.generate(_bgConcurrency, (_) => worker()));
-    } finally {
-      _activeDownloads--;
-    }
-  }
-
-  Future<void> _backgroundOne(String url) async {
+  /// True once fetched (or known missing); false after the whole backoff.
+  Future<bool> _backgroundOne(String url) async {
     for (var attempt = 0; attempt <= _bgBackoff.length; attempt++) {
       try {
         await _recordFetch(url, await _store.fetch(url));
-        return;
+        return true;
       } catch (e) {
         debugPrint('Background image failed for $url (attempt ${attempt + 1}): $e');
       }
@@ -891,6 +979,7 @@ class TestCatalogService {
         await Future<void>.delayed(_bgBackoff[attempt]);
       }
     }
+    return false;
   }
 
   /// Updates the remembered-404 set after a successful round-trip.
