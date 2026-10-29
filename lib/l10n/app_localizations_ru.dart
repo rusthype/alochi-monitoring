@@ -1609,16 +1609,16 @@ class AppLocalizationsRu extends AppLocalizations {
   String get footerBrandTagline => 'Образование A\'lochi · alochi.uz';
 
   @override
-  String get dayRange1_3 => '1–3 ДЕНЬ';
+  String get dayRange1_3 => '1–3 ДНЯ';
 
   @override
-  String get dayRange4_7 => '4–7 ДЕНЬ';
+  String get dayRange4_7 => '4–7 ДНЕЙ';
 
   @override
-  String get dayRange8_11 => '8–11 ДЕНЬ';
+  String get dayRange8_11 => '8–11 ДНЕЙ';
 
   @override
-  String get dayRange12_14 => '12–14 ДЕНЬ';
+  String get dayRange12_14 => '12–14 ДНЕЙ';
 
   @override
   String get dailyPractice15MinMsg => 'Каждый день 15 минут практики';
@@ -3138,4 +3138,78 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get queueDbRecoveredToast =>
       'База результатов была повреждена и создана заново. Старый файл сохранён.';
+
+  @override
+  String get pdfPassportTitle => 'Паспорт';
+
+  @override
+  String pdfCertificateTitle(String name) {
+    return 'Сертификат - $name';
+  }
+
+  @override
+  String get htmlMathPercentLabel => 'Математика, %';
+
+  @override
+  String get htmlEnglishPercentLabel => 'Английский, %';
+
+  @override
+  String get exportPendingTitle => 'Результат ещё не отправлен на сервер';
+
+  @override
+  String get exportPendingBody =>
+      'Во время прохождения теста не было подключения к интернету. Как только устройство подключится к сети, результат автоматически отправится на сервер и будет пересчитан с официальным баллом.';
+
+  @override
+  String get exportVerdictExcellent => 'Отлично';
+
+  @override
+  String get exportVerdictGood => 'Хорошо';
+
+  @override
+  String get exportVerdictNeedsPractice => 'Нужно ещё потренироваться';
+
+  @override
+  String exportSummaryHigh(String name, int pct) {
+    return '$name показал(а) очень хороший результат ($pct%). Чтобы сохранить этот уровень, продолжайте регулярно заниматься.';
+  }
+
+  @override
+  String exportSummaryMid(String name, int pct) {
+    return '$name показал(а) хороший результат ($pct%). Повторив некоторые темы, результат можно улучшить ещё больше.';
+  }
+
+  @override
+  String exportSummaryLow(String name, int pct) {
+    return '$name показал(а) результат $pct%. Рекомендуются дополнительные занятия и регулярное повторение.';
+  }
+
+  @override
+  String get exportLocalEstimateBanner =>
+      'Предварительный результат — рассчитан на устройстве, ещё не подтверждён сервером';
+
+  @override
+  String get exportMathExercises => 'Упражнения по математике';
+
+  @override
+  String get exportEnglishExercises => 'Упражнения по английскому языку';
+
+  @override
+  String get exportDays1to4 => '1–4 ДНЯ';
+
+  @override
+  String get exportDays5to7 => '5–7 ДНЕЙ';
+
+  @override
+  String get exportDailyPractice1520Msg => 'Каждый день 15–20 минут практики';
+
+  @override
+  String get exportReviewBothSubjectsMsg => 'Повторять оба предмета вместе';
+
+  @override
+  String get exportParentTipsText =>
+      '• Ежедневно уделяйте 20–30 минут чтению\n• Повторяйте слабый предмет вместе\n• Поощряйте и обучайте с терпением';
+
+  @override
+  String get exportFooterBrand => 'Образование A\'lochi · alochi.org';
 }

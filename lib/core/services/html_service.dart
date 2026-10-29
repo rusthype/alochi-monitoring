@@ -1,6 +1,8 @@
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 class HtmlService {
   static String generateResultHtml({
+    required AppLocalizations l10n,
     required String firstName,
     required String lastName,
     required String group,
@@ -23,7 +25,7 @@ class HtmlService {
     final totalErr = totalQ - totalOk;
     final initial = firstName.isNotEmpty ? firstName[0].toLowerCase() : '';
 
-    String statusText = pct < 60 ? "Qo'shimcha mashq kerak" : "Yaxshi natija";
+    String statusText = pct < 60 ? l10n.gradeNeedsPractice : l10n.goodResultLabel;
     String pctColor = pct < 60 ? "#EF4444" : "#10B981";
 
     final mathPct = mathTotal > 0 ? (mathOk * 100 ~/ mathTotal) : 0;
@@ -32,10 +34,10 @@ class HtmlService {
     final engPctColor = engPct < 60 ? "#EF4444" : "#10B981";
     final subjectRow = (mathTotal == 0 && engTotal == 0) ? '' : '''
   <div style='display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px'>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#111'>$mathOk/$mathTotal</div><div style='font-size:11px;color:#888;margin-top:2px'>Matematika</div></div>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#111'>$engOk/$engTotal</div><div style='font-size:11px;color:#888;margin-top:2px'>Ingliz tili</div></div>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:$mathPctColor'>$mathPct%</div><div style='font-size:11px;color:#888;margin-top:2px'>Math %</div></div>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:$engPctColor'>$engPct%</div><div style='font-size:11px;color:#888;margin-top:2px'>English %</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#111'>$mathOk/$mathTotal</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.mathSubjectFull}</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#111'>$engOk/$engTotal</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.englishSubjectFull}</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:$mathPctColor'>$mathPct%</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.htmlMathPercentLabel}</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:$engPctColor'>$engPct%</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.htmlEnglishPercentLabel}</div></div>
   </div>
 ''';
 
@@ -51,7 +53,7 @@ class HtmlService {
     }
     
     final summaryStr = aiSummary != null ? sanitize(aiSummary['summary']?.toString() ?? '') : '';
-    final finalSummary = summaryStr.isNotEmpty ? summaryStr : "$firstName $pct% natija ko'rsatdi. O'zlashtirish darajasiga qarab 14 kunlik reja bilan ishlash tavsiya etiladi.";
+    final finalSummary = summaryStr.isNotEmpty ? summaryStr : l10n.aiSummaryFallbackMsg(firstName, pct);
 
     String buildTopics(List<MapEntry<String, ({int ok, int tot})>> topics, String title) {
       if (topics.isEmpty) return '';
@@ -62,7 +64,7 @@ class HtmlService {
         final isGood = pctVal >= 60;
         final color = isGood ? "#10B981" : "#EF4444";
         final bgColor = isGood ? "#10B98122" : "#EF444422";
-        final badgeText = isGood ? "Yaxshi o'zlashtirilgan" : "Qayta o'rganish";
+        final badgeText = isGood ? l10n.wellMasteredBadge : l10n.needsReviewBadge;
 
         rows += '''
 <tr>
@@ -89,7 +91,10 @@ $rows
     }
 
     String getTopicName(int index) {
-      if (combinedTopics.isEmpty) return "Zaif mavzu";
+      if (combinedTopics.isEmpty) {
+        final w = l10n.weakTopicFallback;
+        return w.isEmpty ? w : w[0].toUpperCase() + w.substring(1);
+      }
       final sorted = List<MapEntry<String, ({int ok, int tot})>>.from(combinedTopics)
         ..sort((a, b) {
           final pa = a.value.tot > 0 ? a.value.ok / a.value.tot : 0.0;
@@ -101,16 +106,16 @@ $rows
     }
 
     return '''
-<!DOCTYPE html><html lang='uz'><head><meta charset='UTF-8'><title>Pasport</title><link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap' rel='stylesheet'><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Inter,sans-serif;background:#fff;color:#111;font-size:13px;line-height:1.5;padding:24px}@media print{@page{margin:12mm 14mm}body{padding:0}}</style></head><body><div style='max-width:760px;margin:0 auto'>
+<!DOCTYPE html><html lang='${l10n.localeName}'><head><meta charset='UTF-8'><title>${l10n.pdfPassportTitle}</title><link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap' rel='stylesheet'><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Inter,sans-serif;background:#fff;color:#111;font-size:13px;line-height:1.5;padding:24px}@media print{@page{margin:12mm 14mm}body{padding:0}}</style></head><body><div style='max-width:760px;margin:0 auto'>
   <div style='display:flex;align-items:center;justify-content:space-between;border-bottom:2.5px solid #111;padding-bottom:10px;margin-bottom:16px'>
-    <div style='font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555'>A'lochi — Diagnostik Pasport</div>
-    <div style='font-size:10px;color:#888'>$dateStr · Variant $variant</div>
+    <div style='font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555'>${l10n.diagnosticPassportHeader}</div>
+    <div style='font-size:10px;color:#888'>$dateStr · ${l10n.variantBadge(variant)}</div>
   </div>
   <div style='display:flex;align-items:center;gap:18px;background:#f7f7f7;border-radius:12px;padding:16px 20px;margin-bottom:16px'>
     <div style='width:54px;height:54px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0'>$initial</div>
     <div style='flex:1'>
       <div style='font-size:20px;font-weight:800;margin-bottom:5px'>$firstName $lastName</div>
-      <div style='display:flex;gap:16px;font-size:12px;color:#555'><span>$grade-sinf</span><span>$group</span><span>Variant $variant</span></div>
+      <div style='display:flex;gap:16px;font-size:12px;color:#555'><span>$grade-${l10n.gradeShort}</span><span>$group</span><span>${l10n.variantBadge(variant)}</span></div>
     </div>
     <div style='background:#111;color:#fff;border-radius:12px;padding:14px 22px;text-align:center'>
       <div style='font-size:32px;font-weight:900;line-height:1;margin-bottom:3px;color:$pctColor'>$pct%</div>
@@ -118,39 +123,39 @@ $rows
     </div>
   </div>
   <div style='display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px'>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#10B981'>$totalOk</div><div style='font-size:11px;color:#888;margin-top:2px'>To'g'ri javob</div></div>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#EF4444'>$totalErr</div><div style='font-size:11px;color:#888;margin-top:2px'>Xato javob</div></div>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#FF8A00'>$totalQ</div><div style='font-size:11px;color:#888;margin-top:2px'>Jami savol</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#10B981'>$totalOk</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.correctAnswerLabelPdf}</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#EF4444'>$totalErr</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.wrongAnswerLabelPdf}</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#FF8A00'>$totalQ</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.totalQuestionsCountLabel}</div></div>
   </div>
   $subjectRow
-  ${buildTopics(combinedTopics, "Mavzu bo'yicha tahlil")}
-  ${buildTopics(unitScores, "Unit bo'yicha tahlil")}
+  ${buildTopics(combinedTopics, l10n.topicAnalysisHeader)}
+  ${buildTopics(unitScores, l10n.unitAnalysisHeader)}
 
   <div style='display:grid;grid-template-columns:1fr 1fr;gap:14px'>
     <div>
-      <div style='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:5px'>14 Kunlik reja</div>
+      <div style='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:5px'>${l10n.fourteenDayPlanHeader}</div>
       <div style='padding-left:14px;border-left:2.5px solid #eee'>
-        <div style='margin-bottom:10px'><div style='font-size:9px;font-weight:700;color:#FF8A00;text-transform:uppercase'>1–3 KUN</div><div style='font-size:12px;font-weight:700;margin-top:2px'>${getTopicName(0)}</div><div style='font-size:11px;color:#888'>Har kuni 15 daqiqa mashq</div></div>
-        <div style='margin-bottom:10px'><div style='font-size:9px;font-weight:700;color:#2563EB;text-transform:uppercase'>4–7 KUN</div><div style='font-size:12px;font-weight:700;margin-top:2px'>${getTopicName(1)}</div><div style='font-size:11px;color:#888'>Har kuni 5 ta misol yechish</div></div>
-        <div style='margin-bottom:10px'><div style='font-size:9px;font-weight:700;color:#10B981;text-transform:uppercase'>8–11 KUN</div><div style='font-size:12px;font-weight:700;margin-top:2px'>Aralash mashqlar</div><div style='font-size:11px;color:#888'>Barcha mavzularni takrorlash</div></div>
-        <div><div style='font-size:9px;font-weight:700;color:#888;text-transform:uppercase'>12–14 KUN</div><div style='font-size:12px;font-weight:700;margin-top:2px'>Nazorat testi</div><div style='font-size:11px;color:#888'>Natijalarni solishtirish</div></div>
+        <div style='margin-bottom:10px'><div style='font-size:9px;font-weight:700;color:#FF8A00;text-transform:uppercase'>${l10n.dayRange1_3}</div><div style='font-size:12px;font-weight:700;margin-top:2px'>${getTopicName(0)}</div><div style='font-size:11px;color:#888'>${l10n.dailyPractice15MinMsg}</div></div>
+        <div style='margin-bottom:10px'><div style='font-size:9px;font-weight:700;color:#2563EB;text-transform:uppercase'>${l10n.dayRange4_7}</div><div style='font-size:12px;font-weight:700;margin-top:2px'>${getTopicName(1)}</div><div style='font-size:11px;color:#888'>${l10n.dailyExamples5Msg}</div></div>
+        <div style='margin-bottom:10px'><div style='font-size:9px;font-weight:700;color:#10B981;text-transform:uppercase'>${l10n.dayRange8_11}</div><div style='font-size:12px;font-weight:700;margin-top:2px'>${l10n.mixedExercisesTopic}</div><div style='font-size:11px;color:#888'>${l10n.reviewAllTopicsMsg}</div></div>
+        <div><div style='font-size:9px;font-weight:700;color:#888;text-transform:uppercase'>${l10n.dayRange12_14}</div><div style='font-size:12px;font-weight:700;margin-top:2px'>${l10n.controlTestTopic}</div><div style='font-size:11px;color:#888'>${l10n.compareResultsMsg}</div></div>
       </div>
     </div>
     <div>
-      <div style='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:5px'>AI xulosa</div>
+      <div style='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:5px'>${l10n.aiSummaryHeader}</div>
       <div style='background:#111;color:#fff;border-radius:10px;padding:13px 15px;margin-bottom:12px'>
-        <div style='font-size:9px;opacity:.4;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px'>A'lochi AI</div>
+        <div style='font-size:9px;opacity:.4;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px'>${l10n.alochiAiLabel}</div>
         <div style='font-size:12px;line-height:1.75;opacity:.88'>$finalSummary</div>
       </div>
       <div style='background:#f7f7f7;border-radius:10px;padding:12px 14px'>
-        <div style='font-size:11px;font-weight:700;margin-bottom:5px'>Ota-onaga</div>
-        <div style='font-size:11px;color:#444;line-height:1.8'>• Har kuni 20–30 daqiqa o'qish vaqti<br>• Zaif mavzularni birgalikda takrorlang<br>• Rag'batlantiring va sabr bilan o'rgating</div>
+        <div style='font-size:11px;font-weight:700;margin-bottom:5px'>${l10n.forParentsLabel}</div>
+        <div style='font-size:11px;color:#444;line-height:1.8'>${l10n.parentTipsText.replaceAll('\n', '<br>')}</div>
       </div>
     </div>
   </div>
   <div style='border-top:1px solid #eee;padding-top:8px;margin-top:18px;display:flex;justify-content:space-between;font-size:10px;color:#bbb'>
-    <span>A'lochi Ta'lim · alochi.uz</span>
-    <span>$group · $grade-sinf · $dateStr</span>
+    <span>${l10n.footerBrandTagline}</span>
+    <span>$group · $grade-${l10n.gradeShort} · $dateStr</span>
   </div>
 </div>
 </body></html>

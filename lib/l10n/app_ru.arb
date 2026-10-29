@@ -740,10 +740,10 @@
   "forParentsLabel": "Родителям",
   "parentTipsText": "• Ежедневно уделяйте 20–30 минут чтению\n• Повторяйте слабые темы вместе\n• Поощряйте и обучайте с терпением",
   "footerBrandTagline": "Образование A'lochi · alochi.uz",
-  "dayRange1_3": "1–3 ДЕНЬ",
-  "dayRange4_7": "4–7 ДЕНЬ",
-  "dayRange8_11": "8–11 ДЕНЬ",
-  "dayRange12_14": "12–14 ДЕНЬ",
+  "dayRange1_3": "1–3 ДНЯ",
+  "dayRange4_7": "4–7 ДНЕЙ",
+  "dayRange8_11": "8–11 ДНЕЙ",
+  "dayRange12_14": "12–14 ДНЕЙ",
   "dailyPractice15MinMsg": "Каждый день 15 минут практики",
   "dailyExamples5Msg": "Каждый день решать 5 примеров",
   "mixedExercisesTopic": "Смешанные упражнения",
@@ -1630,5 +1630,63 @@
   "pendingResultsNoNetworkToast": "Нет интернета. Результаты сохранены на устройстве.",
   "diagnosticFinishedSavedPill": "Сохранено",
   "offlineRosterBanner": "Офлайн-список",
-  "queueDbRecoveredToast": "База результатов была повреждена и создана заново. Старый файл сохранён."
+  "queueDbRecoveredToast": "База результатов была повреждена и создана заново. Старый файл сохранён.",
+  "pdfPassportTitle": "Паспорт",
+  "pdfCertificateTitle": "Сертификат - {name}",
+  "@pdfCertificateTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "htmlMathPercentLabel": "Математика, %",
+  "htmlEnglishPercentLabel": "Английский, %",
+  "exportPendingTitle": "Результат ещё не отправлен на сервер",
+  "exportPendingBody": "Во время прохождения теста не было подключения к интернету. Как только устройство подключится к сети, результат автоматически отправится на сервер и будет пересчитан с официальным баллом.",
+  "exportVerdictExcellent": "Отлично",
+  "exportVerdictGood": "Хорошо",
+  "exportVerdictNeedsPractice": "Нужно ещё потренироваться",
+  "exportSummaryHigh": "{name} показал(а) очень хороший результат ({pct}%). Чтобы сохранить этот уровень, продолжайте регулярно заниматься.",
+  "@exportSummaryHigh": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "exportSummaryMid": "{name} показал(а) хороший результат ({pct}%). Повторив некоторые темы, результат можно улучшить ещё больше.",
+  "@exportSummaryMid": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "exportSummaryLow": "{name} показал(а) результат {pct}%. Рекомендуются дополнительные занятия и регулярное повторение.",
+  "@exportSummaryLow": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "exportLocalEstimateBanner": "Предварительный результат — рассчитан на устройстве, ещё не подтверждён сервером",
+  "exportMathExercises": "Упражнения по математике",
+  "exportEnglishExercises": "Упражнения по английскому языку",
+  "exportDays1to4": "1–4 ДНЯ",
+  "exportDays5to7": "5–7 ДНЕЙ",
+  "exportDailyPractice1520Msg": "Каждый день 15–20 минут практики",
+  "exportReviewBothSubjectsMsg": "Повторять оба предмета вместе",
+  "exportParentTipsText": "• Ежедневно уделяйте 20–30 минут чтению\n• Повторяйте слабый предмет вместе\n• Поощряйте и обучайте с терпением",
+  "exportFooterBrand": "Образование A'lochi · alochi.org"
 }

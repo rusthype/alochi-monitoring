@@ -953,7 +953,7 @@ class _DiplomaPdf {
     required RecentResult result,
     required AppLocalizations l10n,
   }) async {
-    final doc = pw.Document(title: 'Sertifikat - ${session.studentName}');
+    final doc = pw.Document(title: l10n.pdfCertificateTitle(session.studentName));
 
     final baseFontData =
         await rootBundle.load('assets/fonts/Inter-Regular.ttf');

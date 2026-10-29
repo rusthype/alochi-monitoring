@@ -117,3 +117,22 @@ String? canonicalYesNo(String s) {
   }
   return null;
 }
+
+/// Legacy runners (Unit1 / Combined / Interhouse) text check: trimmed and
+/// case-insensitive, or the same plain number (`"3"` == `"3.0"` == `"3,0"`).
+/// Mirrors the generic engine's spelling / fill-blank number rule.
+bool sameTextAnswer(String typed, String expected) {
+  final t = typed.trim().toLowerCase();
+  final e = expected.trim().toLowerCase();
+  return t == e || sameNumber(t, e);
+}
+
+/// Legacy runners yes/no check: language-independent (`yes`, ` YES `, `ДА`
+/// are all YES). When either side is not a yes/no word it falls back to
+/// trimmed case-insensitive equality. The stored value is not changed.
+bool sameYesNoAnswer(String given, String expected) {
+  final g = canonicalYesNo(given);
+  final e = canonicalYesNo(expected);
+  if (g != null && e != null) return g == e;
+  return given.trim().toLowerCase() == expected.trim().toLowerCase();
+}

@@ -1335,7 +1335,7 @@ class _ResultPdf {
     required RecentResult result,
     required AppLocalizations l10n,
   }) async {
-    final doc = pw.Document(title: 'Natija - ${result.title}');
+    final doc = pw.Document(title: l10n.pdfTitle(result.title));
     final baseFontData = await rootBundle.load('assets/fonts/Inter-Regular.ttf');
     final boldFontData = await rootBundle.load('assets/fonts/Inter-Bold.ttf');
     final theme = pw.ThemeData.withFont(

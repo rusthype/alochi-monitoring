@@ -5690,6 +5690,132 @@ abstract class AppLocalizations {
   /// In uz, this message translates to:
   /// **'Natijalar bazasi buzilgan edi va qayta yaratildi. Eski fayl saqlab qo\'yildi.'**
   String get queueDbRecoveredToast;
+
+  /// No description provided for @pdfPassportTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Pasport'**
+  String get pdfPassportTitle;
+
+  /// No description provided for @pdfCertificateTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Sertifikat - {name}'**
+  String pdfCertificateTitle(String name);
+
+  /// No description provided for @htmlMathPercentLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'Math %'**
+  String get htmlMathPercentLabel;
+
+  /// No description provided for @htmlEnglishPercentLabel.
+  ///
+  /// In uz, this message translates to:
+  /// **'English %'**
+  String get htmlEnglishPercentLabel;
+
+  /// No description provided for @exportPendingTitle.
+  ///
+  /// In uz, this message translates to:
+  /// **'Natija hali serverga yuborilmagan'**
+  String get exportPendingTitle;
+
+  /// No description provided for @exportPendingBody.
+  ///
+  /// In uz, this message translates to:
+  /// **'Bu urinish test topshirilgan payt internet aloqasi yo\'q edi. Qurilma internetga ulanishi bilan natija avtomatik serverga yuboriladi va rasmiy ball bilan qayta shakllantiriladi.'**
+  String get exportPendingBody;
+
+  /// No description provided for @exportVerdictExcellent.
+  ///
+  /// In uz, this message translates to:
+  /// **'A\'lo'**
+  String get exportVerdictExcellent;
+
+  /// No description provided for @exportVerdictGood.
+  ///
+  /// In uz, this message translates to:
+  /// **'Yaxshi'**
+  String get exportVerdictGood;
+
+  /// No description provided for @exportVerdictNeedsPractice.
+  ///
+  /// In uz, this message translates to:
+  /// **'Qayta mashq kerak'**
+  String get exportVerdictNeedsPractice;
+
+  /// No description provided for @exportSummaryHigh.
+  ///
+  /// In uz, this message translates to:
+  /// **'{name} juda yaxshi natija ko\'rsatdi ({pct}%). Shu darajani saqlab qolish uchun muntazam mashq qilishni davom ettiring.'**
+  String exportSummaryHigh(String name, int pct);
+
+  /// No description provided for @exportSummaryMid.
+  ///
+  /// In uz, this message translates to:
+  /// **'{name} yaxshi natija ko\'rsatdi ({pct}%). Ba\'zi mavzularni takrorlash orqali natijani yanada oshirish mumkin.'**
+  String exportSummaryMid(String name, int pct);
+
+  /// No description provided for @exportSummaryLow.
+  ///
+  /// In uz, this message translates to:
+  /// **'{name} {pct}% natija ko\'rsatdi. Qo\'shimcha mashq va muntazam takrorlash tavsiya etiladi.'**
+  String exportSummaryLow(String name, int pct);
+
+  /// No description provided for @exportLocalEstimateBanner.
+  ///
+  /// In uz, this message translates to:
+  /// **'Taxminiy natija — qurilmada hisoblangan, hali serverga tasdiqlanmagan'**
+  String get exportLocalEstimateBanner;
+
+  /// No description provided for @exportMathExercises.
+  ///
+  /// In uz, this message translates to:
+  /// **'Matematika mashqlari'**
+  String get exportMathExercises;
+
+  /// No description provided for @exportEnglishExercises.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ingliz tili mashqlari'**
+  String get exportEnglishExercises;
+
+  /// No description provided for @exportDays1to4.
+  ///
+  /// In uz, this message translates to:
+  /// **'1–4 KUN'**
+  String get exportDays1to4;
+
+  /// No description provided for @exportDays5to7.
+  ///
+  /// In uz, this message translates to:
+  /// **'5–7 KUN'**
+  String get exportDays5to7;
+
+  /// No description provided for @exportDailyPractice1520Msg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Har kuni 15–20 daqiqa mashq'**
+  String get exportDailyPractice1520Msg;
+
+  /// No description provided for @exportReviewBothSubjectsMsg.
+  ///
+  /// In uz, this message translates to:
+  /// **'Ikkala fanni birga takrorlash'**
+  String get exportReviewBothSubjectsMsg;
+
+  /// No description provided for @exportParentTipsText.
+  ///
+  /// In uz, this message translates to:
+  /// **'• Har kuni 20–30 daqiqa o\'qish vaqti\n• Zaif fanni birgalikda takrorlang\n• Rag\'batlantiring va sabr bilan o\'rgating'**
+  String get exportParentTipsText;
+
+  /// No description provided for @exportFooterBrand.
+  ///
+  /// In uz, this message translates to:
+  /// **'A\'lochi Ta\'lim · alochi.org'**
+  String get exportFooterBrand;
 }
 
 class _AppLocalizationsDelegate

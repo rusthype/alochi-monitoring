@@ -663,6 +663,16 @@ class _EngineResultScreenState extends State<EngineResultScreen> {
   // _autoUploadPdfForBot uploads for the parent/teacher Telegram report.
   Map<String, dynamic>? _aiSummary;
 
+  // App-language strings for the bot HTML report. Cached here (not read from
+  // `context` later) because the upload outlives a quick "next student" pop.
+  AppLocalizations? _l10n;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _l10n = AppLocalizations.of(context);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -807,8 +817,11 @@ class _EngineResultScreenState extends State<EngineResultScreen> {
   /// user-facing "PDF hisobot" button never touches this — see _generatePdf,
   /// which builds a real PDF via PdfService so it never downloads raw HTML.
   Future<String> _buildHtmlString() async {
+    final l10n = _l10n;
+    if (l10n == null) throw StateError('localizations not resolved yet');
     final s = _buildReportSections();
     return HtmlService.generateResultHtml(
+      l10n: l10n,
       firstName: widget.firstName,
       lastName: widget.lastName,
       group: widget.group ?? '',

@@ -352,8 +352,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
     int spellingOk = 0;
     for (int i = 0; i < eng.spelling.length; i++) {
       final typed = i < _spellingAns.length ? _spellingAns[i].trim() : '';
-      final bool ok =
-          typed.toLowerCase() == eng.spelling[i].ans.trim().toLowerCase();
+      final bool ok = sameTextAnswer(typed, eng.spelling[i].ans);
       if (ok) spellingOk++;
       answers.add({
         'section': 'Spelling',
@@ -399,8 +398,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
       if (q.type == 'yn') {
         correct = (q.ans as String).toUpperCase();
         chosen = (ans is String) ? ans.trim().toUpperCase() : '';
-        ok = ans is String &&
-            ans.trim().toLowerCase() == (q.ans as String).trim().toLowerCase();
+        ok = ans is String && sameYesNoAnswer(ans, q.ans as String);
         if (ok) readingOk++;
       } else if (q.type == 'mc') {
         final correctIdx = q.ans as int;
@@ -415,8 +413,7 @@ class _CombinedRunnerState extends State<CombinedRunner>
         // fill
         correct = (q.ans as String);
         chosen = (ans is String) ? ans.trim() : '';
-        ok = ans is String &&
-            ans.trim().toLowerCase() == (q.ans as String).trim().toLowerCase();
+        ok = ans is String && sameTextAnswer(ans, q.ans as String);
         if (ok) readingOk++;
       }
       answers.add({
@@ -2098,14 +2095,16 @@ class _CYnQuestion extends StatelessWidget {
         const SizedBox(width: 10),
         Row(mainAxisSize: MainAxisSize.min, children: [
           _CYnButton(
-            label: AppLocalizations.of(context)!.yesOption,
+            // English test: YES/NO in any UI language, like the generic engine
+            // (YesNoLabelScope); the stored value is 'YES'/'NO' either way.
+            label: 'YES',
             color: AppColors.ok,
             selected: selected == 'YES',
             onTap: () => onSelect('YES'),
           ),
           const SizedBox(width: 8),
           _CYnButton(
-            label: AppLocalizations.of(context)!.noOption,
+            label: 'NO',
             color: AppColors.err,
             selected: selected == 'NO',
             onTap: () => onSelect('NO'),
