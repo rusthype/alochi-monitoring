@@ -32,6 +32,7 @@ import '../../../core/services/heartbeat_service.dart';
 import '../../../core/services/proctor_service.dart';
 import '../../../core/services/window_kiosk_win.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/proctor_toast.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../data/diagnostic_option_item.dart';
 import '../utils/diagnostic_image_prefetch.dart';
@@ -224,6 +225,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
 
 class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     with WidgetsBindingObserver, ActiveTestGateHold {
+  final ProctorToastController _toasts = ProctorToastController();
   bool _loading = true;
   bool _submitting = false;
   String? _error;
@@ -897,17 +899,18 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         unawaited(_saveProgressIfFixed());
         var minutes = (secs / 60).round();
         if (minutes < 1) minutes = 1;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.timeAdded(minutes)),
-            duration: const Duration(seconds: 5),
-          ),
+        _toasts.push(
+          ProctorToastKind.extended,
+          AppLocalizations.of(context)!.timeAdded(minutes),
+          const Duration(seconds: 5),
         );
       }
       ..onWarning = (msg) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(msg), backgroundColor: Colors.amber[900]),
+          _toasts.push(
+            ProctorToastKind.warning,
+            msg,
+            const Duration(seconds: 10),
           );
         }
       };
@@ -922,6 +925,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     _autoAdvance?.cancel();
     _proctorInitTimeout?.cancel();
     _bootstrapRetrySub?.cancel();
+    _toasts.dispose();
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
     HeartbeatService.instance.onTerminated = null;
@@ -2081,6 +2085,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                     : q == null
                     ? Center(child: Text(l10n.diagnosticNoStudents))
                     : _buildQuestionView(l10n, q),
+                // Panel notices (admin warning / time added), top-right just
+                // below the header bar so the timer stays visible.
+                ProctorToastStack(controller: _toasts, top: 76),
                 // ── Admin-lock pause overlay ─────────────────────────────
                 if (_paused) _buildPauseOverlay(l10n),
               ],

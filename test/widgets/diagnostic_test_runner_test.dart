@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:alochi_monitoring/core/api/api_client.dart' show ApiException;
 import 'package:alochi_monitoring/core/db/attempt_store.dart';
 import 'package:alochi_monitoring/core/db/diagnostic_answer_store.dart';
+import 'package:alochi_monitoring/core/services/heartbeat_service.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_bottom_nav.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_option_card.dart';
@@ -213,6 +214,54 @@ void main() {
       // Multiple-choice-only contract: never a free-text input for math.
       expect(find.byType(TextField), findsNothing);
       expect(find.byType(TextFormField), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('panel warning and time-added notices show as top-right '
+        'toasts, not SnackBars', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          DiagnosticTestRunnerScreen(
+            attemptId: 'att-1',
+            studentName: 'Aliyev Ali',
+            grade: 3,
+            language: 'uz',
+            availableSubjectsOverride:
+                (grade, {String language = 'uz'}) async => {
+                  'subjects': ['math'],
+                },
+            startAttemptOverride:
+                ({required attemptId, required subject}) async => {
+                  'position': 1,
+                  'total_questions': 5,
+                  'subject': subject,
+                  'question': _question(),
+                },
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+      final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold).first))!;
+
+      HeartbeatService.instance.onWarning!('Diqqat qiling');
+      HeartbeatService.instance.onExtendSeconds!(120);
+      await tester.pump();
+
+      expect(find.text('${l10n.adminWarning}: Diqqat qiling'), findsOneWidget);
+      expect(find.text(l10n.timeAdded(2)), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      final screenW = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+      expect(
+        tester.getRect(find.text(l10n.timeAdded(2))).right,
+        lessThanOrEqualTo(screenW - 12),
+      );
+
+      await tester.pump(const Duration(seconds: 11));
+      expect(find.text('${l10n.adminWarning}: Diqqat qiling'), findsNothing);
+      expect(find.text(l10n.timeAdded(2)), findsNothing);
       await unmount(tester);
     });
 

@@ -25,6 +25,7 @@ import '../security/monitored_clock.dart';
 import '../offline/lan_client_session.dart' show currentResultScope;
 import '../../features/test/question_report_sheet.dart';
 import '../../shared/widgets/exit_error_scaffold.dart';
+import '../../shared/widgets/proctor_toast.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TestEngine
@@ -88,17 +89,6 @@ class TestEngine extends StatefulWidget {
   State<TestEngine> createState() => _TestEngineState();
 }
 
-enum _ToastKind { warning, extended }
-
-/// Transient proctor-notification banner (admin warning / time-extend).
-/// Self-removes from `_toasts` via [timer] after its display duration.
-class _ToastEntry {
-  final _ToastKind kind;
-  final String message;
-  Timer? timer;
-  _ToastEntry(this.kind, this.message);
-}
-
 class _TestEngineState extends State<TestEngine>
     with TickerProviderStateMixin, WidgetsBindingObserver, ActiveTestGateHold {
   // ── State ──────────────────────────────────────────────────────────────────
@@ -108,7 +98,7 @@ class _TestEngineState extends State<TestEngine>
   Timer? _timer;
 
   /// Active proctor-notification toasts (top-right overlay).
-  final List<_ToastEntry> _toasts = [];
+  final ProctorToastController _toasts = ProctorToastController();
 
   /// True while the admin-lock pause overlay is shown — the countdown is
   /// frozen and input is blocked underneath it, resuming (not finishing)
@@ -277,7 +267,11 @@ class _TestEngineState extends State<TestEngine>
       }
       ..onWarning = (msg) {
         if (mounted) {
-          _pushToast(_ToastKind.warning, msg, const Duration(seconds: 10));
+          _toasts.push(
+            ProctorToastKind.warning,
+            msg,
+            const Duration(seconds: 10),
+          );
         }
       }
       ..onExtendSeconds = (secs) {
@@ -306,8 +300,8 @@ class _TestEngineState extends State<TestEngine>
           if (secs > 0) {
             var minutes = (secs / 60).round();
             if (minutes < 1) minutes = 1;
-            _pushToast(
-              _ToastKind.extended,
+            _toasts.push(
+              ProctorToastKind.extended,
               AppLocalizations.of(context)!.timeAdded(minutes),
               const Duration(seconds: 5),
             );
@@ -783,16 +777,6 @@ class _TestEngineState extends State<TestEngine>
 
   // ── Proctor notification overlays ───────────────────────────────────────────
 
-  /// Adds a transient toast (admin warning / time-extend) and schedules its
-  /// own removal after [duration].
-  void _pushToast(_ToastKind kind, String message, Duration duration) {
-    final entry = _ToastEntry(kind, message);
-    entry.timer = Timer(duration, () {
-      if (mounted) setState(() => _toasts.remove(entry));
-    });
-    setState(() => _toasts.add(entry));
-  }
-
   /// Freezes the countdown and shows the full-screen pause overlay (which
   /// also blocks input, being on top of everything in the Stack). Idempotent
   /// — a duplicate `locked: true` from a replayed ping/frame is a no-op.
@@ -851,9 +835,7 @@ class _TestEngineState extends State<TestEngine>
     }
     _saveDebounce?.cancel();
     _activeStopwatch.stop();
-    for (final t in _toasts) {
-      t.timer?.cancel();
-    }
+    _toasts.dispose();
     ProctorService.instance.stop();
     _clock.stopMonitoring();
     for (final c in _controllers.values) {
@@ -1222,15 +1204,7 @@ class _TestEngineState extends State<TestEngine>
         ]),
 
         // ── Proctor toasts (admin warning / time-extend) ─────────────────────
-        if (_toasts.isNotEmpty)
-          Positioned(
-            top: 12,
-            right: 12,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: _toasts.map(_buildToastBanner).toList(),
-            ),
-          ),
+        ProctorToastStack(controller: _toasts),
 
         // ── Admin-lock shield ─────────────────────────────────────────────────
         if (_lockShieldVisible) _buildLockShield(),
@@ -1262,50 +1236,6 @@ class _TestEngineState extends State<TestEngine>
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildToastBanner(_ToastEntry entry) {
-    final isWarning = entry.kind == _ToastKind.warning;
-    final l10n = AppLocalizations.of(context)!;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      constraints: const BoxConstraints(maxWidth: 320),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: isWarning ? AppColors.secondaryMuted : AppColors.successMuted,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isWarning ? AppColors.amberBorder : AppColors.emerald,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: .08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(
-          isWarning ? Icons.warning_amber_rounded : Icons.alarm_add_rounded,
-          color: isWarning ? AppColors.amberDark : AppColors.success,
-          size: 20,
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            isWarning
-                ? '${l10n.adminWarning}: ${entry.message}'
-                : entry.message,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              color: isWarning ? AppColors.amberInk : AppColors.emeraldInk,
-            ),
-          ),
-        ),
-      ]),
     );
   }
 
