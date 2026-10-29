@@ -1024,7 +1024,7 @@ class _LoginScreenState extends State<LoginScreen>
               Expanded(
                 child: _routeButton(
                   key: const ValueKey('login-tab-diagnostic'),
-                  icon: Icons.fact_check_outlined,
+                  icon: Icons.task_alt_rounded,
                   label: l10n.diagnosticTabLabel,
                   active: _selectedTab == 1,
                   palette: palette,
@@ -1378,7 +1378,7 @@ class _LoginScreenState extends State<LoginScreen>
               shape: BoxShape.circle,
             ),
             child: const Icon(
-              Icons.fact_check_outlined,
+              Icons.task_alt_rounded,
               color: AppColors.flame,
               size: 28,
             ),
