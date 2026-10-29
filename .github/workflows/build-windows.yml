@@ -52,12 +52,23 @@ jobs:
             done
           done
 
+      - name: Guard kiosk command public key
+        shell: bash
+        run: |
+          f=kiosk_keys/command_public.pem
+          [ -f "$f" ] || { echo "::error::missing $f"; exit 1; }
+          if grep -q PRIVATE "$f"; then echo "::error::$f contains a PRIVATE key"; exit 1; fi
+          openssl pkey -pubin -in "$f" -noout || { echo "::error::$f is not a public key"; exit 1; }
+          txt=$(openssl pkey -pubin -in "$f" -text -noout)
+          case "$txt" in ED25519*) ;; *) echo "::error::$f is not an Ed25519 key"; exit 1 ;; esac
+
       - name: Build Windows (Release)
         shell: pwsh
         run: |
           $sig = [Convert]::ToBase64String([IO.File]::ReadAllBytes("offline_keys/signing_public.pem"))
           $res = [Convert]::ToBase64String([IO.File]::ReadAllBytes("offline_keys/results_public.pem"))
-          flutter build windows --release "--dart-define=OFFLINE_SIGNING_PUBKEY_B64=$sig" "--dart-define=OFFLINE_RESULTS_PUBKEY_B64=$res"
+          $kiosk = [Convert]::ToBase64String([IO.File]::ReadAllBytes("kiosk_keys/command_public.pem"))
+          flutter build windows --release "--dart-define=OFFLINE_SIGNING_PUBKEY_B64=$sig" "--dart-define=OFFLINE_RESULTS_PUBKEY_B64=$res" "--dart-define=KIOSK_COMMAND_PUBKEY_B64=$kiosk"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Sign app EXE (Authenticode)
@@ -240,6 +251,10 @@ jobs:
               pub_date = $pubDate
               url      = $url
             }
+            # Installer digest (update_service.dart verifies it before the
+            # elevated launch). Setup.exe was signed BEFORE 'Calculate SHA256'.
+            $setupHash = "${{ steps.hashes.outputs.setup_sha256 }}"
+            if ($setupHash) { $manifest['sha256'] = $setupHash.ToLowerInvariant() }
             $json = ($manifest | ConvertTo-Json -Compress)
             # Write WITHOUT a BOM — Out-File -Encoding utf8 prepends one on
             # some pwsh versions, which breaks Dart's jsonDecode client-side

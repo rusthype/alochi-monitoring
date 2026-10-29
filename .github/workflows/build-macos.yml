@@ -55,13 +55,25 @@ jobs:
             done
           done
 
+      - name: Guard kiosk command public key
+        shell: bash
+        run: |
+          f=kiosk_keys/command_public.pem
+          [ -f "$f" ] || { echo "::error::missing $f"; exit 1; }
+          if grep -q PRIVATE "$f"; then echo "::error::$f contains a PRIVATE key"; exit 1; fi
+          openssl pkey -pubin -in "$f" -noout || { echo "::error::$f is not a public key"; exit 1; }
+          txt=$(openssl pkey -pubin -in "$f" -text -noout)
+          case "$txt" in ED25519*) ;; *) echo "::error::$f is not an Ed25519 key"; exit 1 ;; esac
+
       - name: Build macOS release
         run: |
           SIG=$(base64 < offline_keys/signing_public.pem | tr -d '\n')
           RES=$(base64 < offline_keys/results_public.pem | tr -d '\n')
+          KIOSK=$(base64 < kiosk_keys/command_public.pem | tr -d '\n')
           flutter build macos --release \
             "--dart-define=OFFLINE_SIGNING_PUBKEY_B64=$SIG" \
-            "--dart-define=OFFLINE_RESULTS_PUBKEY_B64=$RES"
+            "--dart-define=OFFLINE_RESULTS_PUBKEY_B64=$RES" \
+            "--dart-define=KIOSK_COMMAND_PUBKEY_B64=$KIOSK"
 
       - name: Ad-hoc codesign
         run: |
@@ -111,8 +123,10 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/latest/alochi-monitoring.dmg"
+          # DMG digest: update_service.dart verifies it before installing.
+          SHA256=$(shasum -a 256 alochi-monitoring.dmg | awk '{print $1}')
           cat > latest-macos.json << JSON
-          {"version": "$VERSION", "pub_date": "$PUB_DATE", "url": "$URL"}
+          {"version": "$VERSION", "pub_date": "$PUB_DATE", "url": "$URL", "sha256": "$SHA256"}
           JSON
           echo "latest-macos.json:"
           cat latest-macos.json
