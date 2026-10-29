@@ -9,6 +9,7 @@ import 'package:alochi_monitoring/core/offline/lan_client_session.dart';
 import 'package:alochi_monitoring/core/offline/offline_keys.dart';
 import 'package:alochi_monitoring/core/offline/offline_session.dart';
 import 'package:alochi_monitoring/core/offline/pack_loader.dart';
+import 'package:alochi_monitoring/core/security/monitored_clock.dart';
 import 'package:alochi_monitoring/features/offline/offline_control_center_dialog.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:file_picker/file_picker.dart';
@@ -62,16 +63,32 @@ class _FakePicker extends FilePicker with MockPlatformInterfaceMixin {
           [PlatformFile(name: 'golden.alochipack', size: 0, path: path)]);
 }
 
+/// Pack expiry now reads the persisted high-water mark (F24). Widget tests
+/// have no flutter_secure_storage plugin: its failing channel call only
+/// completes on fake-zone timers, which would hold back the isolate start.
+class _MemHwm implements HighWaterStore {
+  @override
+  Future<DateTime?> read() async => null;
+  @override
+  Future<void> write(DateTime utc) async {}
+}
+
 void main() {
   late OfflineKeys saved;
+  late MonitoredClock savedClock;
   setUp(() {
+    savedClock = MonitoredClock.instance;
+    MonitoredClock.instance = MonitoredClock(highWaterStore: _MemHwm());
     saved = OfflineKeys.current;
     OfflineKeys.current = OfflineKeys(
       signingPem: File('$_dir/test_signing_public.pem').readAsStringSync(),
       resultsPem: File('$_dir/test_results_public.pem').readAsStringSync(),
     );
   });
-  tearDown(() => OfflineKeys.current = saved);
+  tearDown(() {
+    OfflineKeys.current = saved;
+    MonitoredClock.instance = savedClock;
+  });
 
   testWidgets('golden pack picked in the dialog reaches the PIN prompt',
       (tester) async {
