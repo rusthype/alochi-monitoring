@@ -83,4 +83,29 @@ void main() {
     final a = await AttemptStore.loadForStudent('t5', 'A');
     expect((a!['answers'] as Map).length, 2);
   });
+
+  test(
+      'F2: A returns after a test-version change - the old attempt parked '
+      'under B is kept for recovery, not deleted', () async {
+    Map<String, dynamic> rec(String sid, String aid, Map<String, dynamic> a,
+            {int version = 1}) =>
+        {..._rec(sid, answers: a), 'attempt_id': aid, 'test_version': version};
+    await AttemptStore.save('t6', rec('A', 'a1', {'S/0': 2}));
+    await AttemptStore.save('t6', rec('B', 'b1', {'S/0': 3})); // parks A
+    // Test republished (v2): A returns, the engine discards a1 and starts a
+    // fresh attempt, whose first save would supersede A's parked slot.
+    await AttemptStore.save('t6', rec('A', 'a2', {}, version: 2));
+
+    final all = await AttemptStore.listAll();
+    final old = all.where((e) => e.record['attempt_id'] == 'a1').toList();
+    expect(old, hasLength(1), reason: 'old answers must survive');
+    expect((old.single.record['answers'] as Map)['S/0'], 2);
+    // B is parked and A's fresh attempt owns the main slot.
+    expect((await AttemptStore.load('t6'))!['attempt_id'], 'a2');
+    expect((await AttemptStore.loadForStudent('t6', 'B'))!['attempt_id'], 'b1');
+    // The resumed-same-attempt path still drops the (now redundant) park.
+    await AttemptStore.save('t6', rec('B', 'b1', {'S/0': 3, 'S/1': 1}));
+    final again = await AttemptStore.listAll();
+    expect(again.where((e) => e.record['attempt_id'] == 'b1'), hasLength(1));
+  });
 }
