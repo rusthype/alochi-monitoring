@@ -56,15 +56,45 @@ void main() {
   });
 
   test(
-      '(b) wall clock ahead by more than remaining + 1 day is a bogus jump: '
-      'remaining time recorded at save is kept, no instant expiry', () {
+      'abandoned for more than a day: expired (the saved answers get '
+      'auto-submitted), not extended', () {
+    // Contract change (audit wave 3): this used to keep the remaining time
+    // ("bogus jump" guard), which hid an abandoned attempt from the recovery
+    // sweep and let a later Start overwrite it.
     final c = _rebooted(saveWall + 20 * _min + _day + 1);
-    expect(rebase(c) - c.nowMs, 20 * _min);
+    expect(rebase(c) - c.nowMs, lessThan(0));
+    final week = _rebooted(saveWall + 7 * _day);
+    expect(rebase(week) - week.nowMs, lessThan(0));
   });
 
-  test('(b) exactly at the 1-day margin is still honest expiry', () {
-    final c = _rebooted(saveWall + 20 * _min + _day);
-    expect(rebase(c) - c.nowMs, lessThan(0));
+  test(
+      'reboot whose uptime happens to exceed the saved one: the larger of '
+      'tick delta and wall delta counts (no time regained)', () {
+    // Saved 30 min after boot 1 with 20 min left; power cut for 20 min; the
+    // student re-enters 45 min after boot 2: really 65 min later.
+    final c = MonitoredClock(
+        ticks: () => 45 * _min,
+        wall: () => saveWall + 65 * _min,
+        highWaterStore: _MemHwm());
+    final rebased = c.rebaseSavedDeadline(
+      deadlineEpochMs: deadline,
+      epochAtSaveMs: saveWall,
+      ticksAtSaveMs: 30 * _min,
+    );
+    expect(rebased - c.nowMs, lessThan(0)); // 15 min tick delta would say +5
+  });
+
+  test('same boot: a clock moved BACK while closed grants no extra time', () {
+    final c = MonitoredClock(
+        ticks: () => saveTicks + 10 * _min,
+        wall: () => saveWall - 3 * _day,
+        highWaterStore: _MemHwm());
+    final rebased = c.rebaseSavedDeadline(
+      deadlineEpochMs: deadline,
+      epochAtSaveMs: saveWall,
+      ticksAtSaveMs: saveTicks,
+    );
+    expect(rebased - c.nowMs, 10 * _min); // 20 min - 10 min of ticks
   });
 
   test('legacy record without snapshot is unchanged', () {

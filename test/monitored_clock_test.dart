@@ -167,12 +167,34 @@ void main() {
   });
 
   group('resume rebase', () {
-    test('same boot: date change while closed does not change remaining', () {
+    test('same boot: date moved back while closed does not change remaining',
+        () {
       final f1 = _Fake();
       final c1 = f1.clock();
       final deadline = c1.nowMs + 600000; // 10 min
       final snap = c1.snapshot();
-      // 60s later (real), the process restarts and the user moved the date +5h.
+      // 60s later (real), the process restarts and the user moved the date -5h.
+      final f2 = _Fake()
+        ..ticks = f1.ticks + 60000
+        ..wall = f1.wall - 5 * 3600000;
+      final c2 = f2.clock();
+      final rebased = c2.rebaseSavedDeadline(
+        deadlineEpochMs: deadline,
+        epochAtSaveMs: snap['epoch_at_save'],
+        ticksAtSaveMs: snap['ticks_at_save'],
+      );
+      expect(rebased - c2.nowMs, 540000); // exactly 9 min left
+    });
+
+    test('same boot: date moved forward while closed never adds time', () {
+      // Contract change (audit wave 3): a forward date change used to be
+      // ignored (ticks only). With no boot id that is indistinguishable from
+      // a reboot with a longer uptime, which regained the downtime; the
+      // larger elapsed now wins.
+      final f1 = _Fake();
+      final c1 = f1.clock();
+      final deadline = c1.nowMs + 600000;
+      final snap = c1.snapshot();
       final f2 = _Fake()
         ..ticks = f1.ticks + 60000
         ..wall = f1.wall + 5 * 3600000;
@@ -182,7 +204,7 @@ void main() {
         epochAtSaveMs: snap['epoch_at_save'],
         ticksAtSaveMs: snap['ticks_at_save'],
       );
-      expect(rebased - c2.nowMs, 540000); // exactly 9 min left
+      expect(rebased - c2.nowMs, lessThan(0));
     });
 
     test('reboot (ticks went backwards) falls back to the stored deadline', () {
@@ -307,10 +329,10 @@ void main() {
             'student_id': 'S-CLOCK-2',
             'group_name': '',
           }));
-      // New process, same boot, 30s later; the date was moved +3h meanwhile.
+      // New process, same boot, 30s later; the date was moved -3h meanwhile.
       final f2 = _Fake()
         ..ticks = f1.ticks + 30000
-        ..wall = f1.wall + 3 * 3600000;
+        ..wall = f1.wall - 3 * 3600000;
       final saved = MonitoredClock.instance;
       MonitoredClock.instance = f2.clock();
       addTearDown(() => MonitoredClock.instance = saved);
