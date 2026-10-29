@@ -1,71 +1,39 @@
 // lib/core/services/pdf_tips.dart
-// Online va offline PDF lar uchun umumiy tavsiya matnlari.
+// Online va offline PDF lar uchun umumiy tavsiya matnlari (ARB: mathTip*/engTip*/status*).
+
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 class PdfTips {
-  static List<String> mathTips(double pct) {
+  static List<String> mathTips(double pct, AppLocalizations l10n) {
     if (pct < 0.5) {
-      return [
-        "Asosiy amallar (qo'shish, ayirish, ko'paytirish, bo'lish)ni qayta o'rganing.",
-        'Har kuni 20 daqiqa misollar yeching.',
-        '2-sinf dasturidan boshlang.',
-      ];
+      return [l10n.mathTipLow1, l10n.mathTipLow2, l10n.mathTipLow3];
     }
     if (pct < 0.75) {
-      return [
-        'Jadval va kasr sonlarni mustahkamlang.',
-        "Xato qilgan savollar turini aniqlang va shu mavzuga e'tibor bering.",
-        'Har kuni 2-3 ta test masala yeching.',
-      ];
+      return [l10n.mathTipMed1, l10n.mathTipMed2, l10n.mathTipMed3];
     }
     if (pct < 0.9) {
-      return [
-        'Qiyin masalalar (muammo masalalar) ustida ishlang.',
-        'Vaqtni boshqarishni mashq qiling.',
-        'Har savolga 1-2 daqiqa ajrating.',
-      ];
+      return [l10n.mathTipHigh1, l10n.mathTipHigh2, l10n.mathTipHigh3];
     }
-    return [
-      'Ajoyib!',
-      "Murakkab olimpiada masalalarini hal qilishga o'ting.",
-      'Natijani barqaror saqlash uchun muntazam mashq qiling.',
-    ];
+    return [l10n.mathTipExc1, l10n.mathTipExc2, l10n.mathTipExc3];
   }
 
-  static List<String> englishTips(double pct) {
+  static List<String> englishTips(double pct, AppLocalizations l10n) {
     if (pct < 0.5) {
-      return [
-        "Kunlik 10 ta yangi so'z yodlang (flashcard usuli).",
-        'Asosiy grammatika: to be, present simple, plural nouns.',
-        'BBC Learning English, Duolingo ilovalaridan foydalaning.',
-      ];
+      return [l10n.engTipLow1, l10n.engTipLow2, l10n.engTipLow3];
     }
     if (pct < 0.75) {
-      return [
-        "Past simple va present continuous grammatikasini o'rganing.",
-        "Har kuni inglizcha 1 ta qisqa matn o'qing.",
-        "So'z boyligini mavzu bo'yicha guruhlab yodlang.",
-      ];
+      return [l10n.engTipMed1, l10n.engTipMed2, l10n.engTipMed3];
     }
     if (pct < 0.9) {
-      return [
-        "Tinglash ko'nikmalarini rivojlantiring.",
-        'YouTube ingliz kontentidan foydalaning.',
-        'Esselar va qisqa hikoyalar yozing.',
-      ];
+      return [l10n.engTipHigh1, l10n.engTipHigh2, l10n.engTipHigh3];
     }
-    return [
-      'Ajoyib!',
-      'IELTS/Cambridge sertifikati uchun tayyorlaning.',
-      "Murakkab matnlarni o'qish va tinglashni davom ettiring.",
-    ];
+    return [l10n.engTipExc1, l10n.engTipExc2, l10n.engTipExc3];
   }
 
-  static String overallStatus(int totalPct) {
-    if (totalPct >= 90) return 'Oltin medal darajasi! Davom eting!';
-    if (totalPct >= 75) return 'Yaxshi natija! Yana bir oz harakat kerak.';
-    if (totalPct >= 60) {
-      return "Qoniqarli. Tavsiyalarga amal qiling va qayta sinab ko'ring.";
-    }
-    return "Xafa bo'lmang! Har bir muvaffaqiyatsizlik yangi boshlang'ich.";
+  static String overallStatus(int totalPct, AppLocalizations l10n) {
+    if (totalPct >= 90) return l10n.statusGold;
+    if (totalPct >= 75) return l10n.statusGoodMsg;
+    if (totalPct >= 60) return l10n.statusSatisfactory;
+    return l10n.statusKeepTrying;
   }
 }

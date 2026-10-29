@@ -1,11 +1,15 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:alochi_monitoring/core/services/html_service.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   test('generate dummy html', () async {
+    final l10n = await AppLocalizations.delegate.load(const Locale('uz'));
     final htmlString = HtmlService.generateResultHtml(
+      l10n: l10n,
       firstName: 'Alixon',
       lastName: 'Valiyev',
       group: '56-maktab',
@@ -38,7 +42,9 @@ void main() {
   });
 
   test('renders math/english subject split row when totals are present', () async {
+    final l10n = await AppLocalizations.delegate.load(const Locale('uz'));
     final htmlString = HtmlService.generateResultHtml(
+      l10n: l10n,
       firstName: 'Alixon',
       lastName: 'Valiyev',
       group: '56-maktab',
@@ -58,7 +64,9 @@ void main() {
   });
 
   test('skips subject split row when both math and english totals are zero', () async {
+    final l10n = await AppLocalizations.delegate.load(const Locale('uz'));
     final htmlString = HtmlService.generateResultHtml(
+      l10n: l10n,
       firstName: 'Alixon',
       lastName: 'Valiyev',
       group: '56-maktab',

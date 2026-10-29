@@ -1696,5 +1696,63 @@
   "pendingResultsNoNetworkToast": "Internet yo'q. Natijalar qurilmada saqlangan.",
   "diagnosticFinishedSavedPill": "Saqlandi",
   "offlineRosterBanner": "Oflayn ro'yxat",
-  "queueDbRecoveredToast": "Natijalar bazasi buzilgan edi va qayta yaratildi. Eski fayl saqlab qo'yildi."
+  "queueDbRecoveredToast": "Natijalar bazasi buzilgan edi va qayta yaratildi. Eski fayl saqlab qo'yildi.",
+  "pdfPassportTitle": "Pasport",
+  "pdfCertificateTitle": "Sertifikat - {name}",
+  "@pdfCertificateTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "htmlMathPercentLabel": "Math %",
+  "htmlEnglishPercentLabel": "English %",
+  "exportPendingTitle": "Natija hali serverga yuborilmagan",
+  "exportPendingBody": "Bu urinish test topshirilgan payt internet aloqasi yo'q edi. Qurilma internetga ulanishi bilan natija avtomatik serverga yuboriladi va rasmiy ball bilan qayta shakllantiriladi.",
+  "exportVerdictExcellent": "A'lo",
+  "exportVerdictGood": "Yaxshi",
+  "exportVerdictNeedsPractice": "Qayta mashq kerak",
+  "exportSummaryHigh": "{name} juda yaxshi natija ko'rsatdi ({pct}%). Shu darajani saqlab qolish uchun muntazam mashq qilishni davom ettiring.",
+  "@exportSummaryHigh": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "exportSummaryMid": "{name} yaxshi natija ko'rsatdi ({pct}%). Ba'zi mavzularni takrorlash orqali natijani yanada oshirish mumkin.",
+  "@exportSummaryMid": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "exportSummaryLow": "{name} {pct}% natija ko'rsatdi. Qo'shimcha mashq va muntazam takrorlash tavsiya etiladi.",
+  "@exportSummaryLow": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "exportLocalEstimateBanner": "Taxminiy natija — qurilmada hisoblangan, hali serverga tasdiqlanmagan",
+  "exportMathExercises": "Matematika mashqlari",
+  "exportEnglishExercises": "Ingliz tili mashqlari",
+  "exportDays1to4": "1–4 KUN",
+  "exportDays5to7": "5–7 KUN",
+  "exportDailyPractice1520Msg": "Har kuni 15–20 daqiqa mashq",
+  "exportReviewBothSubjectsMsg": "Ikkala fanni birga takrorlash",
+  "exportParentTipsText": "• Har kuni 20–30 daqiqa o'qish vaqti\n• Zaif fanni birgalikda takrorlang\n• Rag'batlantiring va sabr bilan o'rgating",
+  "exportFooterBrand": "A'lochi Ta'lim · alochi.org"
 }

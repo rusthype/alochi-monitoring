@@ -17,6 +17,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../db/offline_queue.dart';
 
 /// Flat max question count per fixed-variant diagnostic subject (both
@@ -29,7 +30,10 @@ const int kDiagnosticSubjectMax = 30;
 class DiagnosticExportService {
   DiagnosticExportService._();
 
-  static String generateStudentPassportHtml(Map<String, dynamic> record) {
+  static String generateStudentPassportHtml(
+    Map<String, dynamic> record, {
+    required AppLocalizations l10n,
+  }) {
     final studentName = (record['student_name'] ?? '').toString();
     final classLabel = (record['class_label'] ?? '').toString();
     final school = (record['school'] ?? '').toString();
@@ -39,6 +43,7 @@ class DiagnosticExportService {
 
     if (mathScore == null && englishScore == null) {
       return _pendingHtml(
+        l10n: l10n,
         studentName: studentName,
         classLabel: classLabel,
         school: school,
@@ -46,6 +51,7 @@ class DiagnosticExportService {
       );
     }
     return _sentHtml(
+      l10n: l10n,
       studentName: studentName,
       classLabel: classLabel,
       school: school,
@@ -75,18 +81,19 @@ class DiagnosticExportService {
       "<link href='https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap' rel='stylesheet'>";
 
   static String _pendingHtml({
+    required AppLocalizations l10n,
     required String studentName,
     required String classLabel,
     required String school,
     required String dateStr,
   }) {
     return '''
-<!DOCTYPE html><html lang='uz'><head><meta charset='UTF-8'><title>A'lochi — $studentName</title>
+<!DOCTYPE html><html lang='${l10n.localeName}'><head><meta charset='UTF-8'><title>A'lochi — $studentName</title>
 $_fontLink
 $_headStyle
 </head><body><div style='max-width:640px;margin:0 auto'>
   <div style='display:flex;align-items:center;justify-content:space-between;border-bottom:2.5px solid #111;padding-bottom:10px;margin-bottom:16px'>
-    <div style='font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555'>A'lochi — Diagnostik Pasport</div>
+    <div style='font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555'>${l10n.diagnosticPassportHeader}</div>
     <div style='font-size:10px;color:#888'>$dateStr</div>
   </div>
   <div style='display:flex;align-items:center;gap:18px;background:#f7f7f7;border-radius:12px;padding:16px 20px;margin-bottom:16px'>
@@ -97,11 +104,11 @@ $_headStyle
     </div>
   </div>
   <div style='background:#FEF2F2;border:1.5px solid #DC2626;border-radius:12px;padding:18px 20px'>
-    <div style='font-size:13px;font-weight:800;color:#DC2626;margin-bottom:6px'>Natija hali serverga yuborilmagan</div>
-    <div style='font-size:12px;color:#7f1d1d;line-height:1.7'>Bu urinish test topshirilgan payt internet aloqasi yo'q edi. Qurilma internetga ulanishi bilan natija avtomatik serverga yuboriladi va rasmiy ball bilan qayta shakllantiriladi.</div>
+    <div style='font-size:13px;font-weight:800;color:#DC2626;margin-bottom:6px'>${l10n.exportPendingTitle}</div>
+    <div style='font-size:12px;color:#7f1d1d;line-height:1.7'>${l10n.exportPendingBody}</div>
   </div>
   <div style='border-top:1px solid #eee;padding-top:8px;margin-top:18px;display:flex;justify-content:space-between;font-size:10px;color:#bbb'>
-    <span>A'lochi Ta'lim · alochi.org</span>
+    <span>${l10n.exportFooterBrand}</span>
     <span>$school · $classLabel · $dateStr</span>
   </div>
 </div></body></html>
@@ -109,6 +116,7 @@ $_headStyle
   }
 
   static String _sentHtml({
+    required AppLocalizations l10n,
     required String studentName,
     required String classLabel,
     required String school,
@@ -127,13 +135,13 @@ $_headStyle
     String verdict;
     String verdictColor;
     if (pct >= 80) {
-      verdict = "A'lo";
+      verdict = l10n.exportVerdictExcellent;
       verdictColor = '#10B981';
     } else if (pct >= 60) {
-      verdict = 'Yaxshi';
+      verdict = l10n.exportVerdictGood;
       verdictColor = '#F97316';
     } else {
-      verdict = 'Qayta mashq kerak';
+      verdict = l10n.exportVerdictNeedsPractice;
       verdictColor = '#EF4444';
     }
 
@@ -141,14 +149,11 @@ $_headStyle
 
     final String summary;
     if (pct >= 80) {
-      summary =
-          "$studentName juda yaxshi natija ko'rsatdi ($pct%). Shu darajani saqlab qolish uchun muntazam mashq qilishni davom ettiring.";
+      summary = l10n.exportSummaryHigh(studentName, pct);
     } else if (pct >= 60) {
-      summary =
-          "$studentName yaxshi natija ko'rsatdi ($pct%). Ba'zi mavzularni takrorlash orqali natijani yanada oshirish mumkin.";
+      summary = l10n.exportSummaryMid(studentName, pct);
     } else {
-      summary =
-          "$studentName $pct% natija ko'rsatdi. Qo'shimcha mashq va muntazam takrorlash tavsiya etiladi.";
+      summary = l10n.exportSummaryLow(studentName, pct);
     }
 
     // The only real per-subject signal available (no per-topic data exists
@@ -156,20 +161,20 @@ $_headStyle
     // scored lower; the weaker one gets more days in the generic plan.
     final mathIsWeaker = mathPct <= engPct;
     final firstFocus =
-        mathIsWeaker ? 'Matematika mashqlari' : 'Ingliz tili mashqlari';
+        mathIsWeaker ? l10n.exportMathExercises : l10n.exportEnglishExercises;
     final secondFocus =
-        mathIsWeaker ? 'Ingliz tili mashqlari' : 'Matematika mashqlari';
+        mathIsWeaker ? l10n.exportEnglishExercises : l10n.exportMathExercises;
 
     return '''
-<!DOCTYPE html><html lang='uz'><head><meta charset='UTF-8'><title>A'lochi — $studentName</title>
+<!DOCTYPE html><html lang='${l10n.localeName}'><head><meta charset='UTF-8'><title>A'lochi — $studentName</title>
 $_fontLink
 $_headStyle
 </head><body><div style='max-width:720px;margin:0 auto'>
   <div style='display:flex;align-items:center;justify-content:space-between;border-bottom:2.5px solid #111;padding-bottom:10px;margin-bottom:16px'>
-    <div style='font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555'>A'lochi — Diagnostik Pasport</div>
+    <div style='font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#555'>${l10n.diagnosticPassportHeader}</div>
     <div style='font-size:10px;color:#888'>$dateStr</div>
   </div>
-  ${isLocalEstimate ? "<div style='background:#FFF7ED;border:1.5px solid #F97316;border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:11px;font-weight:700;color:#9A3412'>Taxminiy natija — qurilmada hisoblangan, hali serverga tasdiqlanmagan</div>" : ''}
+  ${isLocalEstimate ? "<div style='background:#FFF7ED;border:1.5px solid #F97316;border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:11px;font-weight:700;color:#9A3412'>${l10n.exportLocalEstimateBanner}</div>" : ''}
   <div style='display:flex;align-items:center;gap:18px;background:#f7f7f7;border-radius:12px;padding:16px 20px;margin-bottom:16px'>
     <div style='width:54px;height:54px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0'>${_initial(studentName)}</div>
     <div style='flex:1'>
@@ -182,40 +187,40 @@ $_headStyle
     </div>
   </div>
   <div style='display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px'>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#10B981'>$totalOk</div><div style='font-size:11px;color:#888;margin-top:2px'>To'g'ri javob</div></div>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#EF4444'>$totalErr</div><div style='font-size:11px;color:#888;margin-top:2px'>Xato javob</div></div>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#F97316'>$totalMax</div><div style='font-size:11px;color:#888;margin-top:2px'>Jami savol</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#10B981'>$totalOk</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.correctAnswerLabelPdf}</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#EF4444'>$totalErr</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.wrongAnswerLabelPdf}</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#F97316'>$totalMax</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.totalQuestionsCountLabel}</div></div>
   </div>
   <div style='display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px'>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#111'>$mathScore/$kDiagnosticSubjectMax</div><div style='font-size:11px;color:#888;margin-top:2px'>Matematika</div></div>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#111'>$englishScore/$kDiagnosticSubjectMax</div><div style='font-size:11px;color:#888;margin-top:2px'>Ingliz tili</div></div>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:${subjColor(mathPct)}'>$mathPct%</div><div style='font-size:11px;color:#888;margin-top:2px'>Math %</div></div>
-    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:${subjColor(engPct)}'>$engPct%</div><div style='font-size:11px;color:#888;margin-top:2px'>English %</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#111'>$mathScore/$kDiagnosticSubjectMax</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.mathSubjectFull}</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:#111'>$englishScore/$kDiagnosticSubjectMax</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.englishSubjectFull}</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:${subjColor(mathPct)}'>$mathPct%</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.htmlMathPercentLabel}</div></div>
+    <div style='border:1.5px solid #eee;border-radius:10px;padding:12px;text-align:center'><div style='font-size:26px;font-weight:900;color:${subjColor(engPct)}'>$engPct%</div><div style='font-size:11px;color:#888;margin-top:2px'>${l10n.htmlEnglishPercentLabel}</div></div>
   </div>
   <div style='display:grid;grid-template-columns:1fr 1fr;gap:14px'>
     <div>
-      <div style='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:5px'>14 Kunlik reja</div>
+      <div style='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:5px'>${l10n.fourteenDayPlanHeader}</div>
       <div style='padding-left:14px;border-left:2.5px solid #eee'>
-        <div style='margin-bottom:10px'><div style='font-size:9px;font-weight:700;color:#F97316;text-transform:uppercase'>1–4 KUN</div><div style='font-size:12px;font-weight:700;margin-top:2px'>$firstFocus</div><div style='font-size:11px;color:#888'>Har kuni 15–20 daqiqa mashq</div></div>
-        <div style='margin-bottom:10px'><div style='font-size:9px;font-weight:700;color:#2563EB;text-transform:uppercase'>5–7 KUN</div><div style='font-size:12px;font-weight:700;margin-top:2px'>$secondFocus</div><div style='font-size:11px;color:#888'>Har kuni 15–20 daqiqa mashq</div></div>
-        <div style='margin-bottom:10px'><div style='font-size:9px;font-weight:700;color:#10B981;text-transform:uppercase'>8–11 KUN</div><div style='font-size:12px;font-weight:700;margin-top:2px'>Aralash mashqlar</div><div style='font-size:11px;color:#888'>Ikkala fanni birga takrorlash</div></div>
-        <div><div style='font-size:9px;font-weight:700;color:#888;text-transform:uppercase'>12–14 KUN</div><div style='font-size:12px;font-weight:700;margin-top:2px'>Nazorat testi</div><div style='font-size:11px;color:#888'>Natijalarni solishtirish</div></div>
+        <div style='margin-bottom:10px'><div style='font-size:9px;font-weight:700;color:#F97316;text-transform:uppercase'>${l10n.exportDays1to4}</div><div style='font-size:12px;font-weight:700;margin-top:2px'>$firstFocus</div><div style='font-size:11px;color:#888'>${l10n.exportDailyPractice1520Msg}</div></div>
+        <div style='margin-bottom:10px'><div style='font-size:9px;font-weight:700;color:#2563EB;text-transform:uppercase'>${l10n.exportDays5to7}</div><div style='font-size:12px;font-weight:700;margin-top:2px'>$secondFocus</div><div style='font-size:11px;color:#888'>${l10n.exportDailyPractice1520Msg}</div></div>
+        <div style='margin-bottom:10px'><div style='font-size:9px;font-weight:700;color:#10B981;text-transform:uppercase'>${l10n.dayRange8_11}</div><div style='font-size:12px;font-weight:700;margin-top:2px'>${l10n.mixedExercisesTopic}</div><div style='font-size:11px;color:#888'>${l10n.exportReviewBothSubjectsMsg}</div></div>
+        <div><div style='font-size:9px;font-weight:700;color:#888;text-transform:uppercase'>${l10n.dayRange12_14}</div><div style='font-size:12px;font-weight:700;margin-top:2px'>${l10n.controlTestTopic}</div><div style='font-size:11px;color:#888'>${l10n.compareResultsMsg}</div></div>
       </div>
     </div>
     <div>
-      <div style='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:5px'>AI xulosa</div>
+      <div style='font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#888;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:5px'>${l10n.aiSummaryHeader}</div>
       <div style='background:#111;color:#fff;border-radius:10px;padding:13px 15px;margin-bottom:12px'>
-        <div style='font-size:9px;opacity:.4;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px'>A'lochi AI</div>
+        <div style='font-size:9px;opacity:.4;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px'>${l10n.alochiAiLabel}</div>
         <div style='font-size:12px;line-height:1.75;opacity:.88'>$summary</div>
       </div>
       <div style='background:#f7f7f7;border-radius:10px;padding:12px 14px'>
-        <div style='font-size:11px;font-weight:700;margin-bottom:5px'>Ota-onaga</div>
-        <div style='font-size:11px;color:#444;line-height:1.8'>• Har kuni 20–30 daqiqa o'qish vaqti<br>• Zaif fanni birgalikda takrorlang<br>• Rag'batlantiring va sabr bilan o'rgating</div>
+        <div style='font-size:11px;font-weight:700;margin-bottom:5px'>${l10n.forParentsLabel}</div>
+        <div style='font-size:11px;color:#444;line-height:1.8'>${l10n.exportParentTipsText.replaceAll('\n', '<br>')}</div>
       </div>
     </div>
   </div>
   <div style='border-top:1px solid #eee;padding-top:8px;margin-top:18px;display:flex;justify-content:space-between;font-size:10px;color:#bbb'>
-    <span>A'lochi Ta'lim · alochi.org</span>
+    <span>${l10n.exportFooterBrand}</span>
     <span>$school · $classLabel · $dateStr</span>
   </div>
 </div></body></html>
@@ -307,13 +312,14 @@ $_headStyle
   /// record's HTML has been added to the archive.
   static Uint8List buildZipBytes(
     List<Map<String, dynamic>> records, {
+    required AppLocalizations l10n,
     void Function(int done)? onProgress,
   }) {
     final archive = Archive();
     final usedNames = <String>{};
     for (var i = 0; i < records.length; i++) {
       final record = records[i];
-      final html = generateStudentPassportHtml(record);
+      final html = generateStudentPassportHtml(record, l10n: l10n);
       final attemptId = (record['attempt_id'] ?? '').toString();
       final shortId =
           attemptId.length >= 8 ? attemptId.substring(0, 8) : attemptId;
@@ -342,6 +348,7 @@ $_headStyle
   /// the caller decides whether/when to do that (e.g. a SnackBar action).
   static Future<String> exportResultsToZip(
     List<Map<String, dynamic>> records, {
+    required AppLocalizations l10n,
     void Function(int done)? onProgress,
   }) async {
     final hasPending = records.any((r) => r['status'] == 'pending');
@@ -349,7 +356,8 @@ $_headStyle
         ? await OfflineQueue.peekLocalQueue()
         : const <Map<String, dynamic>>[];
     final enrichedRecords = withLocalEstimates(records, queued);
-    final zipBytes = buildZipBytes(enrichedRecords, onProgress: onProgress);
+    final zipBytes = buildZipBytes(enrichedRecords,
+        l10n: l10n, onProgress: onProgress);
 
     final now = DateTime.now();
     String two(int n) => n.toString().padLeft(2, '0');

@@ -3152,4 +3152,78 @@ class AppLocalizationsUz extends AppLocalizations {
   @override
   String get queueDbRecoveredToast =>
       'Natijalar bazasi buzilgan edi va qayta yaratildi. Eski fayl saqlab qo\'yildi.';
+
+  @override
+  String get pdfPassportTitle => 'Pasport';
+
+  @override
+  String pdfCertificateTitle(String name) {
+    return 'Sertifikat - $name';
+  }
+
+  @override
+  String get htmlMathPercentLabel => 'Math %';
+
+  @override
+  String get htmlEnglishPercentLabel => 'English %';
+
+  @override
+  String get exportPendingTitle => 'Natija hali serverga yuborilmagan';
+
+  @override
+  String get exportPendingBody =>
+      'Bu urinish test topshirilgan payt internet aloqasi yo\'q edi. Qurilma internetga ulanishi bilan natija avtomatik serverga yuboriladi va rasmiy ball bilan qayta shakllantiriladi.';
+
+  @override
+  String get exportVerdictExcellent => 'A\'lo';
+
+  @override
+  String get exportVerdictGood => 'Yaxshi';
+
+  @override
+  String get exportVerdictNeedsPractice => 'Qayta mashq kerak';
+
+  @override
+  String exportSummaryHigh(String name, int pct) {
+    return '$name juda yaxshi natija ko\'rsatdi ($pct%). Shu darajani saqlab qolish uchun muntazam mashq qilishni davom ettiring.';
+  }
+
+  @override
+  String exportSummaryMid(String name, int pct) {
+    return '$name yaxshi natija ko\'rsatdi ($pct%). Ba\'zi mavzularni takrorlash orqali natijani yanada oshirish mumkin.';
+  }
+
+  @override
+  String exportSummaryLow(String name, int pct) {
+    return '$name $pct% natija ko\'rsatdi. Qo\'shimcha mashq va muntazam takrorlash tavsiya etiladi.';
+  }
+
+  @override
+  String get exportLocalEstimateBanner =>
+      'Taxminiy natija — qurilmada hisoblangan, hali serverga tasdiqlanmagan';
+
+  @override
+  String get exportMathExercises => 'Matematika mashqlari';
+
+  @override
+  String get exportEnglishExercises => 'Ingliz tili mashqlari';
+
+  @override
+  String get exportDays1to4 => '1–4 KUN';
+
+  @override
+  String get exportDays5to7 => '5–7 KUN';
+
+  @override
+  String get exportDailyPractice1520Msg => 'Har kuni 15–20 daqiqa mashq';
+
+  @override
+  String get exportReviewBothSubjectsMsg => 'Ikkala fanni birga takrorlash';
+
+  @override
+  String get exportParentTipsText =>
+      '• Har kuni 20–30 daqiqa o\'qish vaqti\n• Zaif fanni birgalikda takrorlang\n• Rag\'batlantiring va sabr bilan o\'rgating';
+
+  @override
+  String get exportFooterBrand => 'A\'lochi Ta\'lim · alochi.org';
 }
