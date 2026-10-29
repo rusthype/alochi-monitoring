@@ -268,6 +268,8 @@ class AttemptRecoveryService {
           deadlineEpochMs: deadlineRaw.toInt(),
           epochAtSaveMs: (rec['epoch_at_save'] as num?)?.toInt(),
           ticksAtSaveMs: (rec['ticks_at_save'] as num?)?.toInt(),
+          serverEpochAtSaveMs:
+              (rec['server_epoch_at_save_ms'] as num?)?.toInt(),
         );
         if (deadline > c.nowMs) return false; // time left: student resumes
         reason = 'deadline_passed';

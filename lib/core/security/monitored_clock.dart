@@ -27,7 +27,13 @@
 // that went back, or a jump above [_maxSuspendCreditMs] (dead-CMOS reset,
 // NTP fixing the year), is never credited, so time is only ever taken, never
 // added. A date moved forward by hand is indistinguishable from a sleep and
-// is credited the same way.
+// is credited the same way - unless SERVER TIME is available as a witness: a
+// real suspend leaves the device-to-server offset unchanged (the server's
+// clock advanced by the same gap), a manual date change moves it by the shift.
+// [absorbSuspend] then holds the credit back until a server measurement taken
+// AFTER the jump arrives (it triggers [probeServer]) and credits only the part
+// the server confirms as elapsed. Offline / no measurement within
+// [_serverWaitMs]: the behaviour above, unchanged.
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io' show Platform;
@@ -35,8 +41,24 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../services/server_clock.dart';
+
 typedef TicksFn = int Function();
 typedef WallFn = int Function();
+
+/// The learned device-to-server offset ([offsetMs] = server - device wall) and
+/// how many server observations this process has made ([seq]).
+typedef ServerSample = ({int offsetMs, int seq});
+typedef ServerSampleFn = ServerSample? Function();
+
+/// Null until the server was actually heard from in THIS process (an offset
+/// loaded from disk may be stale and is no witness).
+ServerSample? _serverClockSample() {
+  final n = ServerClock.observationCount;
+  return n == 0
+      ? null
+      : (offsetMs: ServerClock.offset.inMilliseconds, seq: n);
+}
 
 /// Persistence for the wall-clock high-water mark.
 abstract class HighWaterStore {
@@ -101,6 +123,19 @@ class MonitoredClock {
   final TicksFn _ticks;
   final WallFn _wall;
   final HighWaterStore _hwm;
+  final ServerSampleFn _server;
+
+  /// Asks for a fresh server measurement (a cheap ping whose `Date` header
+  /// ServerClock reads). Fire-and-forget; wired by the test engine.
+  void Function()? probeServer;
+
+  /// Device-to-server offset movement that counts as the clock having been
+  /// changed (the `Date` header has 1 s resolution).
+  static const int _offsetAgreeToleranceMs = 5 * 1000;
+
+  /// How long a jump waits for a server measurement before the offline rule
+  /// applies.
+  static const int _serverWaitMs = 10 * 1000;
 
   /// Persist the high-water mark at most this often (monotonic ms).
   static const int _hwmWriteEveryMs = 60 * 1000;
@@ -119,17 +154,21 @@ class MonitoredClock {
     TicksFn? ticks,
     WallFn? wall,
     HighWaterStore? highWaterStore,
+    ServerSampleFn? serverSample,
+    this.probeServer,
     this.skewThresholdMs = 5000,
     this.checkEvery = const Duration(seconds: 5),
   })  : _ticks = ticks ?? platformTicksMs,
         _wall = wall ?? (() => DateTime.now().millisecondsSinceEpoch),
-        _hwm = highWaterStore ?? const SecureHighWaterStore() {
+        _hwm = highWaterStore ?? const SecureHighWaterStore(),
+        _server = serverSample ?? _serverClockSample {
     _anchorWall = _wall();
     _anchorTicks = _ticks();
     _lastCheckWall = _anchorWall;
     _lastCheckTicks = _anchorTicks;
     _syncWall = _anchorWall;
     _syncTicks = _anchorTicks;
+    _baseline = _server();
   }
 
   /// Production singleton. Tests replace it with a fake-driven instance.
@@ -144,6 +183,10 @@ class MonitoredClock {
   late int _syncWall;
   late int _syncTicks;
   int _suspendCreditMs = 0;
+  // Server offset at the last tick without a jump, and the jump (if any) still
+  // waiting for a post-jump server measurement.
+  ServerSample? _baseline;
+  ({int skew, ServerSample base, int seq, int sinceTicks})? _pending;
   int? _lastHwmWriteTicks;
   Timer? _timer;
   int _monitors = 0;
@@ -184,8 +227,19 @@ class MonitoredClock {
   // ── resume across a process restart ────────────────────────────────────────
 
   /// Values to persist next to a deadline so a restart can rebase it.
-  Map<String, int> snapshot() =>
-      {'epoch_at_save': nowMs, 'ticks_at_save': ticksMs};
+  ///
+  /// `server_epoch_at_save_ms` (server time at the save, when the server was
+  /// heard from in this process and no clock jump is awaiting verification)
+  /// is the independent witness [rebaseSavedDeadline] uses while online;
+  /// records without it use the tick / trusted-clock rule.
+  Map<String, int> snapshot() {
+    final s = _pending == null ? _server() : null;
+    return {
+      'epoch_at_save': nowMs,
+      'ticks_at_save': ticksMs,
+      if (s != null) 'server_epoch_at_save_ms': _wall() + s.offsetMs,
+    };
+  }
 
   /// Re-expresses a deadline that was persisted by an earlier process in THIS
   /// process's trusted timeline.
@@ -203,6 +257,12 @@ class MonitoredClock {
   /// A wall gap above [_maxSuspendCreditMs] on the same boot is ignored (see
   /// the branch below); on a different boot the wall delta always counts.
   ///
+  /// SERVER WITNESS: with [serverEpochAtSaveMs] and a server measurement from
+  /// this process, the elapsed time is server-now minus server-at-save on the
+  /// server's own timeline - authoritative over ticks and wall (an overnight
+  /// same-boot gap, a date change, a reboot all read correctly); negative is
+  /// clamped to 0 so no extra time is ever granted.
+  ///
   /// Ticks unusable (reboot with smaller uptime, > 12 h apart, or a legacy
   /// record without a snapshot): the stored epoch deadline is used, so
   /// power-off time counts and a long abandonment is expired (the recovery
@@ -215,9 +275,17 @@ class MonitoredClock {
     required int deadlineEpochMs,
     int? epochAtSaveMs,
     int? ticksAtSaveMs,
+    int? serverEpochAtSaveMs,
   }) {
     if (epochAtSaveMs == null || ticksAtSaveMs == null) return deadlineEpochMs;
     final remainingAtSave = deadlineEpochMs - epochAtSaveMs;
+    final server = serverEpochAtSaveMs == null || _pending != null
+        ? null
+        : _server();
+    if (serverEpochAtSaveMs != null && server != null) {
+      final elapsed = _wall() + server.offsetMs - serverEpochAtSaveMs;
+      return nowMs + remainingAtSave - (elapsed < 0 ? 0 : elapsed);
+    }
     final tickElapsed = ticksMs - ticksAtSaveMs;
     final sinceSave = nowMs - epochAtSaveMs;
     if (tickElapsed >= 0 && tickElapsed <= _maxRebaseElapsedMs) {
@@ -248,19 +316,95 @@ class MonitoredClock {
     final wall = _wall();
     final ticks = _ticks();
     final skew = (wall - _syncWall) - (ticks - _syncTicks);
-    if (skew.abs() <= skewThresholdMs) return 0;
-    _syncWall = wall;
-    _syncTicks = ticks;
+    final jump = skew.abs() > skewThresholdMs;
+    if (jump) {
+      _syncWall = wall;
+      _syncTicks = ticks;
+    }
+    final sample = _server();
+    final pending = _pending;
+    if (pending == null) {
+      if (!jump) {
+        _baseline = sample;
+        return 0;
+      }
+      final base = _baseline;
+      // No witness (offline, or the server never heard from in this process):
+      // the plain suspend rule.
+      if (base == null || sample == null) return _creditSuspend(skew);
+      _hold(skew: skew, base: base, seq: sample.seq, ticks: ticks);
+      return 0;
+    }
+    if (jump) {
+      // A second jump while waiting: one verdict for both.
+      _hold(
+          skew: pending.skew + skew,
+          base: pending.base,
+          seq: sample?.seq ?? pending.seq,
+          ticks: pending.sinceTicks);
+      return 0;
+    }
+    if (sample != null && sample.seq > pending.seq) {
+      _pending = null;
+      _baseline = sample;
+      return _settleJump(pending.skew, sample.offsetMs - pending.base.offsetMs);
+    }
+    if (ticks - pending.sinceTicks >= _serverWaitMs) {
+      _pending = null;
+      return _creditSuspend(pending.skew);
+    }
+    return 0;
+  }
+
+  void _hold(
+      {required int skew,
+      required ServerSample base,
+      required int seq,
+      required int ticks}) {
+    _pending = (skew: skew, base: base, seq: seq, sinceTicks: ticks);
+    try {
+      probeServer?.call();
+    } catch (e) {
+      debugPrint('MonitoredClock: server probe failed (non-fatal): $e');
+    }
+  }
+
+  /// The pre-witness rule: wall ahead of the ticks by a suspend-sized amount
+  /// is slept time; wall behind, or a year-sized step, credits nothing.
+  int _creditSuspend(int skew) {
     if (skew < 0 || skew > _maxSuspendCreditMs) return 0;
     _suspendCreditMs += skew;
     return skew;
+  }
+
+  /// A jump of [skew] (wall minus ticks) whose device-to-server offset moved by
+  /// [offsetDelta]. Unmoved: real elapsed time. Moved: the clock was changed;
+  /// only what the server says really elapsed ([skew] + [offsetDelta], 0 for a
+  /// pure date change) is credited, and the change is flagged.
+  int _settleJump(int skew, int offsetDelta) {
+    if (offsetDelta.abs() <= _offsetAgreeToleranceMs) {
+      return _creditSuspend(skew);
+    }
+    final real = skew + offsetDelta;
+    _addFlag({
+      'type': 'clock_change_server_confirmed',
+      'skew_ms': skew,
+      'offset_delta_ms': offsetDelta,
+      'trusted_utc': _iso(nowMs),
+    });
+    return real > skewThresholdMs ? _creditSuspend(real) : 0;
   }
 
   /// Starts the periodic check (reference counted so nested screens are safe).
   void startMonitoring() {
     // Whatever happened before this screen opened (an idle laptop that slept on
     // the login screen) is not part of the test: agree the baseline first.
-    if (_monitors == 0) absorbSuspend();
+    if (_monitors == 0) {
+      absorbSuspend();
+      // A verdict still pending from before this screen would land inside the
+      // test: that time is not the test's.
+      _pending = null;
+    }
     _monitors++;
     if (_timer != null) return;
     _lastCheckWall = _wall();
