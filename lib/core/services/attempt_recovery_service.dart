@@ -366,15 +366,26 @@ class AttemptRecoveryService {
     if (!api.isLan && !api.hasAuthToken) return null;
     final resp =
         await api.sessionResume(entry.testKey).timeout(_serverTimeout);
+    return remainingFromResume(resp, entry.record);
+  }
+
+  /// The hub's remaining seconds, honoured only when the answer is about THIS
+  /// attempt: same variant, same student id, and - when the backend sends
+  /// `student_code` (older ones omit it) - the same student code. The stored
+  /// attempt keeps the code in `student_id` (the engine passes the one as the
+  /// other); both sides are compared exactly, as everywhere else in the app.
+  @visibleForTesting
+  static int? remainingFromResume(
+      Map<String, dynamic> resp, Map<String, dynamic> rec) {
     if (resp['exists'] != true) return null;
-    final rec = entry.record;
     final sv = int.tryParse(resp['variant']?.toString() ?? '');
     final lv = int.tryParse(rec['variant']?.toString() ?? '');
     if (sv != null && lv != null && sv != lv) return null;
+    final stored = rec['student_id']?.toString() ?? '';
     final sid = resp['student_id']?.toString() ?? '';
-    if (sid.isNotEmpty && sid != (rec['student_id']?.toString() ?? '')) {
-      return null;
-    }
+    if (sid.isNotEmpty && sid != stored) return null;
+    final code = resp['student_code']?.toString() ?? '';
+    if (code.isNotEmpty && code != stored) return null;
     final r = resp['remaining_seconds'];
     return r is num ? r.toInt() : null;
   }
