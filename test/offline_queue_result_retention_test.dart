@@ -1,5 +1,5 @@
-// Results must never be lost: OfflineQueue.purgeStale deletes result rows by
-// AGE only (never by failed-attempt count), and SyncService backs off instead
+// Results must never be lost: OfflineQueue.purgeStale never deletes result
+// rows (neither by failed-attempt count nor by wall-clock age), and SyncService backs off instead
 // of hammering a failing server every 10 s.
 import 'dart:io';
 
@@ -67,27 +67,25 @@ void main() {
       expect(await OfflineQueue.pendingLocalCount(), 1);
     });
 
-    test('result rows survive a week but not 30 days', () async {
-      await OfflineQueue.enqueue(_result, token: 'young');
+    test('result rows are never deleted by age, whatever the clock says',
+        () async {
+      // Contract change (audit wave 3): the 30-day wall-clock purge is gone.
+      // `created` comes from a PC clock that can be reset to 2000 / stepped by
+      // NTP, which used to wipe unsent exams in the first purge after a
+      // failed flush.
       await OfflineQueue.enqueue(_result, token: 'old');
-      await OfflineQueue.enqueueLocal({'student_id': 'a'}, 'lyoung');
       await OfflineQueue.enqueueLocal({'student_id': 'b'}, 'lold');
       final d = await OfflineQueue.db;
       final now = DateTime.now().millisecondsSinceEpoch;
-      await d.update('queue', {'created': now - 10 * day},
-          where: 'token = ?', whereArgs: ['young']);
-      await d.update('queue', {'created': now - 31 * day},
-          where: 'token = ?', whereArgs: ['old']);
-      await d.update('local_queue', {'created': now - 10 * day},
-          where: 'token = ?', whereArgs: ['lyoung']);
-      await d.update('local_queue', {'created': now - 31 * day},
-          where: 'token = ?', whereArgs: ['lold']);
+      await d.update('queue', {'created': now - 400 * day});
+      await d.update('local_queue', {'created': now - 400 * day});
 
-      final removed = await OfflineQueue.purgeStale();
+      expect(await OfflineQueue.purgeStale(), 0);
+      // The clock jumped years ahead (or `created` was stamped at 2000).
+      expect(await OfflineQueue.purgeStale(nowMs: now + 5000 * day), 0);
 
-      expect(removed, 2);
-      expect((await d.query('queue')).single['token'], 'young');
-      expect((await d.query('local_queue')).single['token'], 'lyoung');
+      expect((await d.query('queue')).single['token'], 'old');
+      expect((await d.query('local_queue')).single['token'], 'lold');
     });
 
     test('flush keeps counting attempts but a failing flush never deletes',
