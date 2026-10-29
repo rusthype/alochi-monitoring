@@ -8,6 +8,7 @@ import '../../core/api/api_client.dart';
 import '../../core/api/api_error_text.dart';
 import '../../core/db/local_students_db.dart';
 import '../../core/db/test_cache.dart';
+import '../../core/diagnostics/active_test_gate.dart';
 import '../../core/models/add_student.dart';
 import '../../core/offline/lan_client_session.dart' show isOfflineModeOpen;
 import '../../core/offline/offline_session.dart';
@@ -519,6 +520,9 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
     if (_selectedStudent != null && _done.contains(studentId)) {
       if (!await _confirmRetake() || !mounted) return;
     }
+    // The Start tap is the earliest moment this attempt is "starting": hold
+    // the gate before the first await so the recovery scan keeps off it.
+    final releaseGate = ActiveTestGate.enter();
     setState(() {
       _err = null;
       _launching = true;
@@ -548,6 +552,7 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
             context, text.replaceFirst(RegExp(r'[:\s]+$'), ''));
       }
     } finally {
+      releaseGate();
       if (mounted) setState(() => _launching = false);
     }
     if (!mounted) return;

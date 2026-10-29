@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:alochi_monitoring/core/db/attempt_store.dart';
 import 'package:alochi_monitoring/core/db/queue_crypto.dart';
+import 'package:alochi_monitoring/core/diagnostics/active_test_gate.dart';
 import 'package:alochi_monitoring/core/security/monitored_clock.dart';
 import 'package:alochi_monitoring/core/services/attempt_recovery_service.dart';
 import 'package:alochi_monitoring/features/test/engine_host_screen.dart'
@@ -265,6 +266,27 @@ void main() {
     expect(h.queued, isEmpty);
     h.screenActive = false;
     expect(await h.service.run(), 1);
+  });
+
+  test(
+      'the default "test is active" check honours the start gate (held from '
+      'the Start tap, before the engine screen exists)', () async {
+    final h = _Harness([_entry(_rec(completed: true))]);
+    final s = AttemptRecoveryService(
+      listAll: () async => h.entries,
+      clearEntry: (e) async => h.cleared.add(e.slotKey),
+      enqueue: (p, t) async => h.queued.add((p, t)),
+      markDone: (_, __) async {},
+      currentVersion: (_) async => null,
+      clock: h.clock,
+      offlineSessionActive: () => false,
+    );
+    final release = ActiveTestGate.enter();
+    addTearDown(ActiveTestGate.resetForTest);
+    expect(await s.run(), 0);
+    expect(h.queued, isEmpty);
+    release();
+    expect(await s.run(), 1);
   });
 
   test('nothing is queued online during an offline pack / LAN session',
