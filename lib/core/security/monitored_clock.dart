@@ -200,6 +200,9 @@ class MonitoredClock {
   /// ignored; a date moved forward while the app was closed shortens the
   /// attempt - self-inflicted, and the answers are submitted, not lost.)
   ///
+  /// A wall gap above [_maxSuspendCreditMs] on the same boot is ignored (see
+  /// the branch below); on a different boot the wall delta always counts.
+  ///
   /// Ticks unusable (reboot with smaller uptime, > 12 h apart, or a legacy
   /// record without a snapshot): the stored epoch deadline is used, so
   /// power-off time counts and a long abandonment is expired (the recovery
@@ -218,7 +221,13 @@ class MonitoredClock {
     final tickElapsed = ticksMs - ticksAtSaveMs;
     final sinceSave = nowMs - epochAtSaveMs;
     if (tickElapsed >= 0 && tickElapsed <= _maxRebaseElapsedMs) {
-      final elapsed = sinceSave > tickElapsed + _wallAgreeTolerance
+      // Same boot: the ticks are authoritative. The wall delta is believed only
+      // while it exceeds them by a suspend-sized amount ([_maxSuspendCreditMs],
+      // as in [absorbSuspend]); a bigger gap is an NTP / dead-CMOS year step
+      // between the save and this process (nowMs is anchored to the wall clock
+      // once, at start) and credits nothing - it must not expire a live attempt.
+      final gap = sinceSave - tickElapsed;
+      final elapsed = gap > _wallAgreeTolerance && gap <= _maxSuspendCreditMs
           ? sinceSave
           : tickElapsed;
       return nowMs + remainingAtSave - elapsed;
