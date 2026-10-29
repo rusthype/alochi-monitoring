@@ -136,8 +136,10 @@ class _TeacherLanMonitoringScreenState
       final out = await ResultsExporter(keys: OfflineKeys.current).exportPack(
           session.pack.packUuid, await defaultExportDir(),
           schoolCode: session.pack.schoolCode);
-      _exportIsError = false;
-      _exportMessage = l10n.usbExportDone(out.count, out.file.path);
+      _exportIsError = out.invalidKeyCount > 0;
+      _exportMessage = out.invalidKeyCount > 0
+          ? l10n.usbExportBadKeys(out.invalidKeyCount)
+          : l10n.usbExportDone(out.count, out.file.path);
     } on ExportException catch (e) {
       _exportIsError = e.code == ExportError.notConfigured;
       _exportMessage = e.code == ExportError.notConfigured

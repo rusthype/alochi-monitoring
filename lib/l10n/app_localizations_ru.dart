@@ -2528,7 +2528,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String usbExportBadKeys(int count) {
-    return 'Внимание: у $count результатов недопустимый ключ, сервер отклонит файл. Пересдайте тест.';
+    return 'Внимание: у $count результатов недопустимый ключ, сервер их не примет. Пересдайте тест.';
   }
 
   @override

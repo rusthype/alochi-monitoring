@@ -29,6 +29,7 @@ import '../db/pack_results_db.dart';
 import '../local_server/hub_guard.dart' show Mutex;
 import '../network/network_info.dart';
 import '../security/monitored_clock.dart';
+import 'atomic_file.dart';
 import 'export_format.dart';
 import 'offline_crypto.dart';
 import 'offline_keys.dart';
@@ -165,10 +166,16 @@ class ExportOutcome {
   final int count;
   final String chainTip;
 
-  /// Entries whose idempotency_key violates the server rule (len 1..64). The
-  /// server rejects the WHOLE file because of them (`bad_meta_json`); they
-  /// cannot be skipped or re-keyed here (the HMAC chain covers the key and
-  /// needs the PIN-derived key), so the UI must warn the teacher.
+  /// Entries whose idempotency_key violates the server rule (len 1..64) and
+  /// that therefore did NOT go into the file: the server rejects the WHOLE file
+  /// (`bad_meta_json`) if one is in it, and a middle entry cannot be dropped
+  /// (the HMAC chain links every entry to the previous one) nor re-keyed (the
+  /// key is inside the chain and needs the PIN). So the file carries the valid
+  /// prefix before the first bad entry; that entry and everything after it
+  /// stay in the local store (unexported, so the pack cannot be archived) and
+  /// are counted here so the UI warns the teacher. When the FIRST entry is bad
+  /// there is no prefix: the whole chain is written as before (the server
+  /// refuses it) and this is the number of bad entries.
   final int invalidKeyCount;
   const ExportOutcome(this.file, this.count, this.chainTip,
       {this.invalidKeyCount = 0});
@@ -204,21 +211,34 @@ class ResultsExporter {
     final rows = await PackResultsDb.rowsForPack(packUuid);
     if (rows.isEmpty) throw const ExportException(ExportError.nothingToExport);
 
+    // The server rejects the whole file for one invalid key, and a chain entry
+    // cannot be dropped from the middle: export the valid prefix only (see
+    // [ExportOutcome.invalidKeyCount]).
+    final firstBad =
+        rows.indexWhere((r) => !PackResultsDb.isValidKey(r.idempotencyKey));
+    var invalid = 0;
+    var out = rows;
+    if (firstBad == 0) {
+      invalid = rows
+          .where((r) => !PackResultsDb.isValidKey(r.idempotencyKey))
+          .length;
+      debugPrint('ResultsExporter: the first entry has an invalid '
+          'idempotency_key; the server will reject this file');
+    } else if (firstBad > 0) {
+      out = rows.sublist(0, firstBad);
+      invalid = rows.length - firstBad;
+      debugPrint('ResultsExporter: $invalid entries from #$firstBad on are '
+          'held back (invalid idempotency_key); they stay in the local store');
+    }
     final entries = [
-      for (final r in rows)
+      for (final r in out)
         exportEntry(
             prevHash: r.prevHash,
             hash: r.hash,
             payloadJson: r.payloadJson,
             metaJson: r.metaJson)
     ];
-    final chainTip = rows.last.hash;
-    final invalid =
-        rows.where((r) => !PackResultsDb.isValidKey(r.idempotencyKey)).length;
-    if (invalid > 0) {
-      debugPrint('ResultsExporter: $invalid entries have an invalid '
-          'idempotency_key; the server will reject this file');
-    }
+    final chainTip = out.last.hash;
 
     final aesKey = OfflineCrypto.randomBytes(OfflineCrypto.keyLen);
     final payloadEnc = OfflineCrypto.encryptBlob(
@@ -235,7 +255,7 @@ class ResultsExporter {
       'mac': await mac(),
       'exported_at': _isoSeconds(clock.nowUtc),
       'monotonic_ms': clock.ticksMs,
-      'count': rows.length,
+      'count': out.length,
       'chain_tip': chainTip,
     };
 
@@ -246,9 +266,9 @@ class ResultsExporter {
     final bytes = Uint8List.fromList(ZipEncoder().encode(archive));
     return (
       bytes: bytes,
-      count: rows.length,
+      count: out.length,
       chainTip: chainTip,
-      maxId: rows.last.id,
+      maxId: out.last.id,
       invalidKeyCount: invalid
     );
   }
@@ -269,7 +289,9 @@ class ResultsExporter {
     for (var n = 2; file.existsSync(); n++) {
       file = File(p.join(target.path, '$base-$n.alochires'));
     }
-    await file.writeAsBytes(built.bytes, flush: true);
+    // Temp + verify + rename: a cut or full USB stick never leaves a
+    // truncated file under its final name (and nothing is stamped exported).
+    await writeFileVerified(file, built.bytes);
     // Trusted (monotonic-anchored) time, same clock purgeExpired compares with.
     await PackResultsDb.markExported(packUuid, clock.nowMs, built.maxId);
     return ExportOutcome(file, built.count, built.chainTip,
@@ -287,23 +309,7 @@ class ResultsExporter {
       final built = await build(packUuid);
       await dir.create(recursive: true);
       final file = File(p.join(dir.path, 'latest.alochires'));
-      final tmp = File('${file.path}.tmp');
-      await tmp.writeAsBytes(built.bytes, flush: true);
-      try {
-        await tmp.rename(file.path);
-      } catch (_) {
-        // Target may be briefly locked (Windows): retry once, else keep the
-        // old file and drop the temp.
-        await Future<void>.delayed(const Duration(milliseconds: 200));
-        try {
-          await tmp.rename(file.path);
-        } catch (_) {
-          try {
-            await tmp.delete();
-          } catch (_) {}
-          rethrow;
-        }
-      }
+      await writeFileVerified(file, built.bytes);
       return ExportOutcome(file, built.count, built.chainTip,
           invalidKeyCount: built.invalidKeyCount);
     });
