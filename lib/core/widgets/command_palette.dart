@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
-import '../../features/combined/combined_screen.dart';
 import '../../features/offline/offline_history_hub_screen.dart';
 import '../../features/local_test/local_grade_screen.dart';
 
@@ -44,8 +43,6 @@ class _CommandPaletteState extends State<CommandPalette> {
         return const OfflineHistoryHubScreen();
       case '/local_grade':
         return const LocalGradeScreen();
-      case '/combined':
-        return const CombinedScreen();
       default:
         return null;
     }
@@ -78,7 +75,6 @@ class _CommandPaletteState extends State<CommandPalette> {
       {'title': l10n.homePage, 'route': '/'},
       {'title': l10n.commandHistoryTitle, 'route': '/history'},
       {'title': l10n.commandLocalGradeTitle, 'route': '/local_grade'},
-      {'title': l10n.commandCombinedTitle, 'route': '/combined'},
     ];
     _applyFilter();
   }

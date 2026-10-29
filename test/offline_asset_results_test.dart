@@ -15,7 +15,6 @@ import 'package:alochi_monitoring/core/offline/lan_client_session.dart';
 import 'package:alochi_monitoring/core/offline/offline_asset_results.dart';
 import 'package:alochi_monitoring/core/offline/offline_session.dart';
 import 'package:alochi_monitoring/core/security/monitored_clock.dart';
-import 'package:alochi_monitoring/features/combined/combined_screen.dart';
 import 'package:alochi_monitoring/features/interhouse/interhouse_data.dart';
 import 'package:alochi_monitoring/features/offline/offline_asset_ui.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
@@ -208,10 +207,8 @@ void main() {
       expect(kMaxAnswerChars, greaterThanOrEqualTo(5 * 40));
     });
 
-    test('every free-text field of the three runners carries the limit', () {
+    test('every free-text field of the remaining runner carries the limit', () {
       for (final f in [
-        'lib/features/unit1/unit1_runner.dart',
-        'lib/features/combined/combined_runner.dart',
         'lib/features/interhouse/interhouse_runner.dart',
       ]) {
         // Windows checkouts convert LF -> CRLF (git autocrlf); the regex below
@@ -584,11 +581,6 @@ void main() {
       Widget Function(OfflineAssetStudent?, IhTestData) build,
       String key
     })>{
-      'unit1': (build: (s, _) => unit1Result(s), key: 'asset:unit1_eng'),
-      'combined': (
-        build: (s, _) => combinedResult(s),
-        key: 'asset:monitoring_unit1'
-      ),
       'interhouse': (
         build: (s, d) => interhouseResult(s, d),
         key: 'asset:interhouse_g2'
@@ -685,48 +677,6 @@ void main() {
       expect(picked?.lastName, 'Valiyev');
       expect(picked?.firstName, 'Ali');
       await close(tester);
-    });
-
-    testWidgets(
-        'pack open: roster picker replaces the name fields and a run '
-        'cannot start without a student', (tester) async {
-      await open(tester);
-      await tester.binding.setSurfaceSize(const Size(1200, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(assetTestApp(const CombinedScreen()));
-      await tester.pump(const Duration(milliseconds: 500));
-      final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
-
-      await tester.tap(find.text('1').first); // variant 1
-      await tester.pump();
-      await tester.tap(find.text(l10n.continueButton));
-      await tester.pump(const Duration(milliseconds: 500));
-
-      expect(find.byType(OfflineStudentPicker), findsOneWidget);
-      expect(find.text(l10n.firstNameLabel), findsNothing);
-
-      await tester.enterText(find.byType(TextField).last, '1234');
-      await tester.tap(find.text(l10n.startTest));
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text(l10n.selectStudent), findsWidgets);
-      expect(find.byType(CombinedScreen), findsOneWidget); // did not start
-      await close(tester);
-    });
-
-    testWidgets('online (no pack): unchanged name fields, no picker',
-        (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1200, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(assetTestApp(const CombinedScreen()));
-      await tester.pump(const Duration(milliseconds: 500));
-      final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
-      await tester.tap(find.text('1').first);
-      await tester.pump();
-      await tester.tap(find.text(l10n.continueButton));
-      await tester.pump(const Duration(milliseconds: 500));
-
-      expect(find.byType(OfflineStudentPicker), findsNothing);
-      expect(find.text(l10n.firstNameLabel), findsWidgets);
     });
   });
 }

@@ -1,13 +1,11 @@
-// The four built-in ("assets") RESULT screens built with realistic data, so the
+// The built-in ("assets") RESULT screens built with realistic data, so the
 // offline tests exercise the real payload builders, not hand-made copies.
 import 'package:alochi_monitoring/core/offline/offline_asset_results.dart';
-import 'package:alochi_monitoring/features/combined/combined_runner.dart';
 import 'package:alochi_monitoring/features/interhouse/interhouse_data.dart';
 import 'package:alochi_monitoring/features/interhouse/interhouse_result_screen.dart';
 import 'package:alochi_monitoring/features/interhouse/interhouse_scorer.dart';
 import 'package:alochi_monitoring/features/local_test/local_data.dart';
 import 'package:alochi_monitoring/features/local_test/local_result_screen.dart';
-import 'package:alochi_monitoring/features/unit1/unit1_runner.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -17,65 +15,6 @@ Widget assetTestApp(Widget child, {Locale locale = const Locale('uz')}) =>
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: child,
-    );
-
-/// 49 answers like Unit1Runner builds them (question TEXT, chosen, correct).
-List<Map<String, dynamic>> _answers(int n) => [
-      for (var i = 0; i < n; i++)
-        {
-          'section': 'Vocabulary',
-          'q': 'What is this? ${'x' * 120} #$i',
-          'chosen': 'a train',
-          'correct': 'a car',
-          'ok': i.isEven,
-        }
-    ];
-
-Widget unit1Result(OfflineAssetStudent? s) => Unit1ResultScreen(
-      studentName: 'Valiyev Ali',
-      firstName: 'Ali',
-      lastName: 'Valiyev',
-      school: '',
-      variant: 3,
-      correct: 30,
-      total: 49,
-      pct: 61,
-      vocabOk: 15,
-      grammarOk: 4,
-      spellingOk: 4,
-      sentenceOk: 4,
-      readingOk: 3,
-      answers: _answers(49),
-      detail: const {
-        'test_key': 'unit1_eng',
-        'topics': [
-          {'name': 'Vocabulary', 'correct': 15, 'total': 25}
-        ],
-      },
-      testStartedAt: DateTime.now().subtract(const Duration(minutes: 20)),
-      offlineStudent: s,
-    );
-
-Widget combinedResult(OfflineAssetStudent? s) => CombinedResultScreen(
-      studentName: 'Valiyev Ali',
-      firstName: 'Ali',
-      lastName: 'Valiyev',
-      school: '',
-      variant: 2,
-      mathOk: 20,
-      engOk: 30,
-      vocabOk: 15,
-      grammarOk: 4,
-      spellingOk: 4,
-      sentenceOk: 4,
-      readingOk: 3,
-      totalOk: 50,
-      pct: 63,
-      timeStr: '10:15',
-      durationSeconds: 2400,
-      answers: _answers(79),
-      detail: const {'test_key': 'monitoring_unit1', 'topics': []},
-      offlineStudent: s,
     );
 
 Widget interhouseResult(OfflineAssetStudent? s, IhTestData data) =>

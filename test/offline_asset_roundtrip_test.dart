@@ -30,6 +30,11 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'helpers/asset_screens.dart';
 
 const _fixtures = 'test/fixtures/offline';
+
+/// Keys of the result screens runAllScreens pumps. The Unit1 / Combined screens
+/// are gone, but their `asset:` keys stay in kAssetTestKeys (results queued by
+/// older app versions must still be admitted).
+const _exercisedKeys = {kAssetKeyInterhouse, kAssetKeyBob14};
 const _defaultBackend =
     '/Users/max/PycharmProjects/AlochiSchool/alochi/.claude/worktrees/agent-ab638607e6e37ee92/alochi_backend';
 
@@ -109,12 +114,10 @@ void main() {
     });
   });
 
-  /// Pumps the four real result screens one after the other and waits until
+  /// Pumps the remaining real result screens one after the other and waits until
   /// each one's result is stored in the chain.
   Future<void> runAllScreens(WidgetTester t) async {
     final builders = <Widget Function()>[
-      () => unit1Result(_student),
-      () => combinedResult(_student),
       () => interhouseResult(_student, ih),
       () => localResult(_student),
     ];
@@ -136,7 +139,7 @@ void main() {
   Future<void> exportAndVerify(WidgetTester t) async {
     final rows =
         (await t.runAsync(() => PackResultsDb.rowsForPack(pack.packUuid)))!;
-    expect(rows, hasLength(4));
+    expect(rows, hasLength(_exercisedKeys.length));
 
     final out = (await t.runAsync(() => ResultsExporter(
           keys: keys,
@@ -148,7 +151,7 @@ void main() {
           machineId: () async => 'TEACHER-PC',
           mac: () async => 'AA:BB:CC:DD:EE:FF',
         ).exportPack(pack.packUuid, tmp, schoolCode: '999')))!;
-    expect(out.count, 4);
+    expect(out.count, _exercisedKeys.length);
 
     final args = [
       '-I',
@@ -173,11 +176,11 @@ void main() {
       for (final e in j['entries'] as List) (e['payload'] as Map)['test_key']
     ]}');
     expect(j['chain_verified'], true);
-    expect((j['meta'] as Map)['count'], 4);
+    expect((j['meta'] as Map)['count'], _exercisedKeys.length);
 
     final entries = (j['entries'] as List).cast<Map<String, dynamic>>();
     expect(entries.map((e) => (e['payload'] as Map)['test_key']).toSet(),
-        kAssetTestKeys);
+        _exercisedKeys);
     for (final e in entries) {
       final payload = e['payload'] as Map;
       expect(payload['student_id'], _student.studentId);
@@ -189,10 +192,10 @@ void main() {
       expect(payload.containsKey('pct'), isTrue);
       expect(payload['variant'], isA<String>());
     }
-    expect(entries.map((e) => e['idempotency_key']).toSet(), hasLength(4));
+    expect(entries.map((e) => e['idempotency_key']).toSet(), hasLength(_exercisedKeys.length));
   }
 
-  testWidgets('USB: four assets runners -> pack chain -> .alochires verifies',
+  testWidgets('USB: assets runners -> pack chain -> .alochires verifies',
       (tester) async {
     await tester.runAsync(() =>
         OfflinePackSession.open(pack, Directory(p.join(tmp.path, 'media'))));
@@ -201,7 +204,7 @@ void main() {
     await exportAndVerify(tester);
   }, skip: skipReason != null);
 
-  testWidgets('LAN: four assets runners -> hub -> chain -> .alochires verifies',
+  testWidgets('LAN: assets runners -> hub -> chain -> .alochires verifies',
       (tester) async {
     late ShelfHub hub;
     late LanClientSession lan;
@@ -237,7 +240,7 @@ void main() {
       LanClientSession.current = null;
       OfflinePackSession.current = teacher;
     }
-    expect(hub.state!.resultsAccepted, 4);
+    expect(hub.state!.resultsAccepted, _exercisedKeys.length);
     expect(await tester.runAsync(OfflineQueue.pendingLocalCount), 0);
     await exportAndVerify(tester);
 
