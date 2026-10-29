@@ -286,6 +286,26 @@ void main() {
       expect(OfflineMedia.fileFor('media/$_mediaSha.jpg')!.path, file.path);
     });
 
+    test('a truncated image left by a crash is re-fetched, not trusted',
+        () async {
+      final s = await connect();
+      final file = File(p.join(s.mediaDir.path, '$_mediaSha.jpg'));
+      file.createSync(recursive: true);
+      file.writeAsBytesSync(lanMediaBytes.sublist(0, 10)); // length > 0
+      await s.ensureMedia({'$_mediaSha.jpg'});
+      expect(file.readAsBytesSync(), lanMediaBytes);
+    });
+
+    test('stray temp files of an interrupted download are removed', () async {
+      final s = await connect();
+      final stray = File(p.join(s.mediaDir.path, 'old.jpg.tmp'))
+        ..createSync(recursive: true);
+      await s.ensureMedia({'$_mediaSha.jpg'});
+      expect(stray.existsSync(), isFalse);
+      expect(File(p.join(s.mediaDir.path, '$_mediaSha.jpg')).readAsBytesSync(),
+          lanMediaBytes);
+    });
+
     test('an image whose bytes do not match its name is refused', () async {
       // Corrupt the file the HUB serves (same name, other bytes).
       final hubFile = File(p.join(tmp.path, 'media', '$_mediaSha.jpg'));
