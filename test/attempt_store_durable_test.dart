@@ -237,6 +237,22 @@ void main() {
       final back = await AttemptStore.loadForStudent('k11', 'A');
       expect((back!['answers'] as Map)['S/0'], 9);
     });
+
+    test(
+        'F7: clear removes .tmp and .bak before the main file, so a cut '
+        'part-way cannot resurrect the cleared record', () async {
+      await AttemptStore.save('k12', _rec('A', answers: {'S/0': 1}));
+      final path = mainFile('k12').path;
+      File('$path.bak').writeAsStringSync('x');
+      File('$path.tmp').writeAsStringSync('x');
+      // Deleting the main path fails (it is a directory) - a stand-in for a
+      // power cut right before the main delete: the rest must already be gone.
+      File(path).deleteSync();
+      Directory(path).createSync();
+      await AttemptStore.clear('k12');
+      expect(File('$path.tmp').existsSync(), isFalse);
+      expect(File('$path.bak').existsSync(), isFalse);
+    });
   });
 }
 

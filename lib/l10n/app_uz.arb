@@ -1651,6 +1651,14 @@
       }
     }
   },
+  "pendingResultsRejected": "{count} natija qabul qilinmadi",
+  "@pendingResultsRejected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "pendingResultsOldestMinutes": "eng eskisi {n} daq. oldin",
   "@pendingResultsOldestMinutes": {
     "placeholders": {

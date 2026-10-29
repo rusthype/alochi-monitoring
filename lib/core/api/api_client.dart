@@ -36,6 +36,27 @@ bool isPermanentResultRejection(int status, {String? code}) =>
     code != kApiBadResponse &&
     (status == 400 || status == 409 || status == 422);
 
+/// A 409 on a result submit is ONLY an acknowledgement when the body says the
+/// server already holds this result (`duplicate: true`, the legacy
+/// `status: already_submitted`, or a receipt `id` / `result_id`) and carries no
+/// `error`. Every other 409 (`max_attempts_exceeded`, an unknown body) is a
+/// REJECTION: the result was not stored and must be kept, not acked.
+bool isDuplicateConflict(Map<String, dynamic>? body) {
+  if (body == null) return false;
+  final err = body['error'];
+  if (err is String && err.isNotEmpty) return false;
+  return body['duplicate'] == true ||
+      body['status'] == 'already_submitted' ||
+      body['result_id'] != null ||
+      _hasReceipt(body);
+}
+
+/// The machine reason of a rejected 409 body (`error`), else `conflict`.
+String conflictReason(Map<String, dynamic>? body) {
+  final err = body?['error'];
+  return err is String && err.isNotEmpty ? err : 'conflict';
+}
+
 bool _looksLikeHtml(http.Response r) {
   final ct = (r.headers['content-type'] ?? '').toLowerCase();
   if (ct.contains('text/html')) return true;
@@ -109,8 +130,12 @@ class ApiException implements Exception {
 
   /// The server's `Retry-After` (429 / 503), capped at 5 min.
   final Duration? retryAfter;
+
+  /// The decoded JSON error body of a 4xx/5xx `_post` reply (null otherwise):
+  /// lets a caller tell a 409 "already stored" from a 409 rejection.
+  final Map<String, dynamic>? body;
   const ApiException(this.statusCode, this.message,
-      {this.code, this.retryAfter});
+      {this.code, this.retryAfter, this.body});
   // UI da to'g'ridan-to'g'ri ko'rsatish uchun toString faqat tushunarli matnni qaytaradi.
   @override
   String toString() => message;
@@ -313,7 +338,8 @@ class MonitoringApi {
           : _statusMessage(resp.statusCode);
       final wait = retryAfterSecondsOf(resp);
       throw ApiException(resp.statusCode, msg,
-          retryAfter: wait == null ? null : Duration(seconds: wait));
+          retryAfter: wait == null ? null : Duration(seconds: wait),
+          body: data);
     }
     // 1xx / 3xx are never our server's answer to a write (portal redirect).
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
@@ -764,7 +790,23 @@ class MonitoringApi {
       return {'synced': true, ...resp, 'wrong_answers': wrongAnswers};
     } on ApiException catch (e) {
       if (e.statusCode == 409 && e.code != kApiBadResponse) {
-        return {'synced': true, 'xp_earned': 0, 'wrong_answers': <dynamic>[]};
+        if (isDuplicateConflict(e.body)) {
+          return {
+            'synced': true,
+            'xp_earned': 0,
+            'wrong_answers': <dynamic>[]
+          };
+        }
+        // Rejected (attempt limit etc.): NOT stored. The queue keeps the row
+        // in its terminal "rejected" state instead of acking or dropping it.
+        return {
+          'synced': false,
+          'permanent': true,
+          'rejected': true,
+          'reject_reason': conflictReason(e.body),
+          'xp_earned': 0,
+          'wrong_answers': <dynamic>[]
+        };
       }
       if (isPermanentResultRejection(e.statusCode, code: e.code)) {
         // Server definitively rejected the payload (400 / 422) - retrying
@@ -1146,7 +1188,8 @@ class MonitoringApi {
             headers: {..._headers, 'Idempotency-Key': token},
             body: jsonEncode(payload),
           ));
-      return _submitVerdict(resp, 'submitLocalResultFull');
+      return _submitVerdict(resp, 'submitLocalResultFull',
+          holdRejected: true);
     } on ApiException {
       // Network/timeout — always retryable, never permanent.
       return {'synced': false, 'permanent': false};
@@ -1160,9 +1203,27 @@ class MonitoringApi {
   /// Synced ONLY for [isSubmitAck]; a 3xx / portal HTML / odd 2xx body is
   /// retryable; 4xx-5xx split by [_permanentReply]; 429 / 503 hand the
   /// server's Retry-After to the sync scheduler.
-  Map<String, dynamic> _submitVerdict(http.Response resp, String what) {
+  ///
+  /// [holdRejected] (result payloads only): a 409 is split into "already
+  /// stored" (synced) and a rejection (`rejected: true` - the queue keeps it).
+  Map<String, dynamic> _submitVerdict(http.Response resp, String what,
+      {bool holdRejected = false}) {
     if (resp.statusCode >= 400) {
       debugPrint('$what non-2xx: ${resp.statusCode}');
+      if (holdRejected && resp.statusCode == 409 && !_looksLikeHtml(resp)) {
+        var body = <String, dynamic>{};
+        try {
+          final d = jsonDecode(utf8.decode(resp.bodyBytes));
+          if (d is Map) body = Map<String, dynamic>.from(d);
+        } catch (_) {}
+        if (isDuplicateConflict(body)) return {'synced': true};
+        return {
+          'synced': false,
+          'permanent': true,
+          'rejected': true,
+          'reject_reason': conflictReason(body),
+        };
+      }
       final wait = retryAfterSecondsOf(resp);
       return {
         'synced': false,

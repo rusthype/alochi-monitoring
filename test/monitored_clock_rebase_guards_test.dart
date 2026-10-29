@@ -97,6 +97,54 @@ void main() {
     expect(rebased - c.nowMs, 10 * _min); // 20 min - 10 min of ticks
   });
 
+  test(
+      'F1: dead-CMOS clock stepped to the real year during the run, crash and '
+      'relaunch on the SAME boot: ticks decide, not expired', () {
+    // Process 1 started with wall ~2009 (dead CMOS); NTP then stepped it to
+    // 2026. epoch_at_save is therefore on the 2009 timeline, the relaunched
+    // process anchors on 2026.
+    final oldWall = DateTime.utc(2009, 1, 1).millisecondsSinceEpoch;
+    final nowWall = DateTime.utc(2026, 10, 17, 9).millisecondsSinceEpoch;
+    final c = MonitoredClock(
+        ticks: () => saveTicks + 3 * _min,
+        wall: () => nowWall,
+        highWaterStore: _MemHwm());
+    final rebased = c.rebaseSavedDeadline(
+      deadlineEpochMs: oldWall + 13 * _min, // 13 min left at save
+      epochAtSaveMs: oldWall,
+      ticksAtSaveMs: saveTicks,
+    );
+    expect(rebased - c.nowMs, 10 * _min); // 13 min - 3 min of ticks
+  });
+
+  test('F1: real long absence across a boot is still expired', () {
+    final c = _rebooted(saveWall + 30 * 60 * _min); // 30 h, ticks restarted
+    expect(rebase(c) - c.nowMs, lessThan(0));
+  });
+
+  test('F1: suspend-sized gap on the same boot counts up to the cap', () {
+    // 4 h asleep (ticks frozen), 5 min of ticks: 4 h 5 min really passed.
+    final c = MonitoredClock(
+        ticks: () => saveTicks + 5 * _min,
+        wall: () => saveWall + 4 * 60 * _min + 5 * _min,
+        highWaterStore: _MemHwm());
+    expect(rebase(c) - c.nowMs, lessThan(0));
+    // A smaller sleep: 8 min asleep + 2 min of ticks -> 10 of 20 min used.
+    final d = MonitoredClock(
+        ticks: () => saveTicks + 2 * _min,
+        wall: () => saveWall + 10 * _min,
+        highWaterStore: _MemHwm());
+    expect(rebase(d) - d.nowMs, 10 * _min);
+  });
+
+  test('F1: same-boot wall gap beyond the cap credits nothing', () {
+    final c = MonitoredClock(
+        ticks: () => saveTicks + 2 * _min,
+        wall: () => saveWall + 13 * 60 * _min, // 13 h > 12 h cap
+        highWaterStore: _MemHwm());
+    expect(rebase(c) - c.nowMs, 18 * _min);
+  });
+
   test('legacy record without snapshot is unchanged', () {
     final c = _rebooted(0);
     expect(c.rebaseSavedDeadline(deadlineEpochMs: deadline), deadline);

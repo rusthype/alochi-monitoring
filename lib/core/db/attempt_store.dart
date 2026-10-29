@@ -240,7 +240,9 @@ class AttemptStore {
     await prefs.remove(slot);
     if (dir == null) return;
     final path = _path(dir, slot);
-    for (final f in [path, '$path.bak', '$path.tmp']) {
+    // Main LAST: a power cut part-way must not leave a `.tmp`/`.bak` that
+    // [_readSlot] would resurrect as the cleared record.
+    for (final f in ['$path.tmp', '$path.bak', path]) {
       try {
         await File(f).delete();
       } on PathNotFoundException {
@@ -356,11 +358,30 @@ class AttemptStore {
         _mainAttempt[testKey] = aid;
         // Only after the new main slot is safely on disk: the parked copy may
         // be the sole copy until then.
-        if (supersedeOwnParked) await _deleteSlot(_parkKey(testKey, sid));
+        if (supersedeOwnParked) await _supersedeParked(testKey, sid, aid);
       } catch (e) {
         debugPrint('AttemptStore.save($testKey) error: $e');
       }
     });
+  }
+
+  /// The student [sid] now owns the main slot with attempt [aid]. Their parked
+  /// copy is dropped only if it is the same attempt (the new main slot carries
+  /// it) or holds nothing; a DIFFERENT attempt with answers (e.g. one of an
+  /// older test version the engine discarded) is moved to its own
+  /// `<sid>#<attempt>` slot for the recovery scan - never deleted while it is
+  /// the only copy of those answers.
+  static Future<void> _supersedeParked(
+      String testKey, String sid, String aid) async {
+    final slot = _parkKey(testKey, sid);
+    final parked = await _readSlot(slot);
+    if (parked != null && _worthParking(parked.rec)) {
+      final pAid = parked.rec['attempt_id']?.toString() ?? '';
+      if (pAid != aid) {
+        await _writeSlot(_parkKey(testKey, '$sid#$pAid'), parked.raw);
+      }
+    }
+    await _deleteSlot(slot);
   }
 
   /// Removes the saved attempt for [testKey]. Called after a successful
@@ -394,6 +415,26 @@ class AttemptStore {
           }
         } catch (err) {
           debugPrint('AttemptStore.clearEntry(${e.slotKey}) error: $err');
+        }
+      });
+
+  /// Rewrites exactly the slot [e] was listed from with [rec], and only while
+  /// it still holds the record that was listed (a student who continued the
+  /// attempt meanwhile has newer answers). True when written.
+  static Future<bool> replaceEntry(
+          AttemptEntry e, Map<String, dynamic> rec) =>
+      _serial(() async {
+        try {
+          final cur = await _readSlot(e.slotKey);
+          if (cur == null || jsonEncode(cur.rec) != jsonEncode(e.record)) {
+            return false;
+          }
+          final enc = await QueueCrypto.encryptPayload(jsonEncode(rec));
+          await _writeSlot(e.slotKey, enc);
+          return true;
+        } catch (err) {
+          debugPrint('AttemptStore.replaceEntry(${e.slotKey}) error: $err');
+          return false;
         }
       });
 

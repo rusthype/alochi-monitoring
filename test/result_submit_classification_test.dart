@@ -84,7 +84,9 @@ void main() {
       'report': () => a.submitQuestionReport({'x': 1}, 't'),
     };
     for (final e in calls.entries) {
-      for (final s in [400, 409, 422]) {
+      // Local results split 409 (already stored vs rejected) - see
+      // rejected_results_test.dart; the question report keeps 409 permanent.
+      for (final s in [400, if (e.key == 'report') 409, 422]) {
         test('${e.key}: $s is permanent', () async {
           final r = await _with(() => _json(s), e.value);
           expect(r['synced'], false);

@@ -14,6 +14,7 @@ import '../../shared/theme/app_theme.dart';
 import '../widgets/skeleton.dart';
 import '../api/api_client.dart';
 import '../db/attempt_store.dart';
+import '../models/test_version.dart';
 import 'test_models.dart';
 import 'test_scorer.dart';
 import 'question_widgets.dart';
@@ -429,7 +430,7 @@ class _TestEngineState extends State<TestEngine>
     if (localAnswers != null &&
         localAnswers['completed'] != true &&
         savedVersion is num &&
-        savedVersion.toInt() != widget.spec.version) {
+        testVersionChanged(savedVersion.toInt(), widget.spec.version)) {
       debugPrint('TestEngine: saved attempt is for test version '
           '$savedVersion, spec is ${widget.spec.version} - discarding');
       localAnswers = null;
@@ -723,6 +724,9 @@ class _TestEngineState extends State<TestEngine>
     final deadlineMs = _deadlineMs;
     if (deadlineMs == null) return;
     if (!mounted) return;
+    // A suspended PC (lid closed) may have stopped the ticks: believe the wall
+    // clock for that gap so slept time is not handed back to the student.
+    _clock.absorbSuspend();
     // Paused: the countdown is frozen, the (stale) deadline must not expire
     // the attempt behind the shield -- e.g. on a window-focus resume.
     if (_lockShieldVisible) return;
@@ -767,6 +771,7 @@ class _TestEngineState extends State<TestEngine>
   /// — a duplicate `locked: true` from a replayed ping/frame is a no-op.
   void _pauseForLock() {
     if (_lockShieldVisible) return;
+    _clock.absorbSuspend();
     _timer?.cancel();
     final deadlineMs = _deadlineMs;
     _pausedRemainingMs =
@@ -781,6 +786,9 @@ class _TestEngineState extends State<TestEngine>
   /// long the pause lasted (see `_pausedRemainingMs` doc comment).
   void _resumeFromLock() {
     if (!_lockShieldVisible) return;
+    // Slept while paused: that time is not the student's either way, but it
+    // must be absorbed BEFORE the new deadline is built from nowMs.
+    _clock.absorbSuspend();
     final remaining = _pausedRemainingMs;
     _pausedRemainingMs = null;
     if (remaining != null) {
@@ -1091,7 +1099,9 @@ class _TestEngineState extends State<TestEngine>
         _totalQuestions > 0 ? _answeredCount / _totalQuestions : 0.0;
     final isLast = _sectionIdx == sections.length - 1;
 
-    return Scaffold(
+    return YesNoLabelScope(
+      english: YesNoLabelScope.englishFor(widget.spec.subject),
+      child: Scaffold(
       backgroundColor: AppColors.bg,
       body: Stack(children: [
         Column(children: [
@@ -1192,6 +1202,7 @@ class _TestEngineState extends State<TestEngine>
         // ── Admin-lock shield ─────────────────────────────────────────────────
         if (_lockShieldVisible) _buildLockShield(),
       ]),
+    ),
     );
   }
 

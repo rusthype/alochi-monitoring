@@ -6,6 +6,8 @@ import 'dart:math' show Random;
 
 import 'package:flutter/foundation.dart' show debugPrint;
 
+import '../models/test_version.dart';
+
 // ── Question types ─────────────────────────────────────────────────────────────
 
 enum QuestionType {
@@ -515,7 +517,7 @@ class TestSpec {
     final testKey = json['test_key']?.toString() ?? '';
     final title = json['title']?.toString() ?? '';
     final grade = _asInt(json['grade']) ?? 0;
-    final version = _asInt(json['version']) ?? 1;
+    final version = parseTestVersion(json['version']);
     final durationMinutes = _asInt(json['duration_minutes']);
     final subject = json['subject']?.toString();
 

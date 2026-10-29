@@ -68,3 +68,52 @@ String expandContractions(String s) {
   final expanded = tokens.map((t) => kContractions[t] ?? t).toList();
   return expanded.join(' ');
 }
+
+/// Canonical form of a plain decimal number, or null when [s] is not one.
+///
+/// Accepts an optional sign, digits and ONE `.` or `,` decimal separator
+/// (`"3"`, `"3.0"`, `"3,0"`, `"-0,50"`); leading zeros of the integer part and
+/// trailing zeros of the fraction are dropped (`"03,50"` -> `"3.5"`,
+/// `"3.0"` -> `"3"`, `"-0"` -> `"0"`). Compared as STRINGS, never as doubles,
+/// so two different numbers can never collapse into one. Callers pass an
+/// already trimmed/normalized string.
+String? canonicalNumber(String s) {
+  final m = RegExp(r'^([+-]?)(\d+)(?:[.,](\d+))?$').firstMatch(s);
+  if (m == null) return null;
+  var int_ = m.group(2)!.replaceFirst(RegExp(r'^0+(?=\d)'), '');
+  final frac = (m.group(3) ?? '').replaceFirst(RegExp(r'0+$'), '');
+  final zero = int_ == '0' && frac.isEmpty;
+  final sign = m.group(1) == '-' && !zero ? '-' : '';
+  return frac.isEmpty ? '$sign$int_' : '$sign$int_.$frac';
+}
+
+/// True when [a] and [b] are both plain numbers of the same value
+/// (`"3"` == `"3.0"` == `"3,0"`); never true for different numbers.
+bool sameNumber(String a, String b) {
+  final x = canonicalNumber(a.trim());
+  return x != null && x == canonicalNumber(b.trim());
+}
+
+/// Language-independent form of a yes/no answer: `YES`, `NO`, or null when
+/// [s] is neither. The stored value is always English `YES`/`NO`; the Uzbek /
+/// Russian words are accepted too so an answer saved under a localized label
+/// still scores the same.
+String? canonicalYesNo(String s) {
+  final t = s
+      .trim()
+      .toUpperCase()
+      .replaceAll(RegExp("[’ʻʼ‘`´]"), "'")
+      .replaceAll(RegExp(r'\s+'), ' ');
+  switch (t) {
+    case 'YES':
+    case 'ДА':
+    case 'HA':
+      return 'YES';
+    case 'NO':
+    case 'НЕТ':
+    case "YO'Q":
+    case 'YOQ':
+      return 'NO';
+  }
+  return null;
+}

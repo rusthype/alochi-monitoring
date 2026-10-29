@@ -51,6 +51,11 @@ class OfflineQueue {
   static final ValueNotifier<({int count, Duration? oldest})> pending =
       ValueNotifier<({int count, Duration? oldest})>((count: 0, oldest: null));
 
+  /// Results the server REJECTED (409 `max_attempts_exceeded` etc.): kept in
+  /// their own terminal table, never retried, never purged. The teacher chip
+  /// shows this count next to the pending one.
+  static final ValueNotifier<int> rejected = ValueNotifier<int>(0);
+
   static void _changed() {
     changes.value++;
     unawaited(refreshPending());
@@ -61,6 +66,7 @@ class OfflineQueue {
     try {
       final count = await _countAll();
       final oldest = count > 0 ? await oldestPendingAge() : null;
+      rejected.value = await rejectedCount();
       return pending.value = (count: count, oldest: oldest);
     } catch (e) {
       debugPrint('OfflineQueue.refreshPending: $e');
@@ -120,6 +126,7 @@ class OfflineQueue {
     await _db?.close();
     _db = null;
     pending.value = (count: 0, oldest: null);
+    rejected.value = 0;
   }
 
   // Schema v9 adds `local_students` (local_students_db.dart): children a
@@ -179,6 +186,20 @@ class OfflineQueue {
     await db.execute(
       'CREATE UNIQUE INDEX IF NOT EXISTS idx_local_queue_token ON local_queue(token) WHERE token IS NOT NULL',
     );
+    // Additive (no version bump: ensureSchema runs on every open). Results the
+    // server rejected live here; no older code path ever reads this table.
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS rejected_results (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        source    TEXT NOT NULL,
+        payload   TEXT NOT NULL,
+        token     TEXT,
+        created   INTEGER NOT NULL,
+        attempts  INTEGER NOT NULL DEFAULT 0,
+        reason    TEXT,
+        rejected_at INTEGER NOT NULL
+      )
+    ''');
     await createPackTables(db);
     await createLanTables(db);
     await LocalStudentsDb.createTable(db);
@@ -284,6 +305,8 @@ class OfflineQueue {
         if (ok) {
           await d.delete('queue', where: 'id = ?', whereArgs: [row['id']]);
           synced++;
+        } else if (r['rejected'] == true) {
+          await _holdRejected(d, 'queue', row, r['reject_reason']);
         } else if (permanent) {
           // Server permanently rejected payload — drop to avoid endless retry
           await d.delete('queue', where: 'id = ?', whereArgs: [row['id']]);
@@ -302,6 +325,58 @@ class OfflineQueue {
     }
     _changed();
     return synced;
+  }
+
+  /// Moves a row the server rejected into `rejected_results` (one
+  /// transaction: it is never in neither table). The payload stays encrypted.
+  static Future<void> _holdRejected(
+      Database d, String source, Map<String, Object?> row, Object? reason) {
+    debugPrint('OfflineQueue: id=${row['id']} ($source) rejected by the '
+        'server ($reason), kept for the teacher');
+    return d.transaction((txn) async {
+      await txn.insert('rejected_results', {
+        'source': source,
+        'payload': row['payload'],
+        'token': row['token'],
+        'created': row['created'],
+        'attempts': (row['attempts'] as int? ?? 0) + 1,
+        'reason': reason?.toString() ?? 'conflict',
+        'rejected_at': DateTime.now().millisecondsSinceEpoch,
+      });
+      await txn.delete(source, where: 'id = ?', whereArgs: [row['id']]);
+    });
+  }
+
+  static Future<int> rejectedCount() async {
+    final d = await db;
+    final res = await d.rawQuery('SELECT COUNT(*) as c FROM rejected_results');
+    return (res.first['c'] as int?) ?? 0;
+  }
+
+  /// The teacher acted (e.g. the panel granted another attempt): put every
+  /// rejected result back into its queue under the SAME idempotency token, so
+  /// the next flush submits it again. Returns how many moved.
+  static Future<int> requeueRejected() async {
+    final d = await db;
+    final moved = await d.transaction((txn) async {
+      final rows = await txn.query('rejected_results', orderBy: 'id ASC');
+      for (final r in rows) {
+        await txn.insert(
+          r['source'] == 'local_queue' ? 'local_queue' : 'queue',
+          {
+            'payload': r['payload'],
+            'created': r['created'],
+            'attempts': 0,
+            'token': r['token'],
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      }
+      await txn.delete('rejected_results');
+      return rows.length;
+    });
+    if (moved > 0) _changed();
+    return moved;
   }
 
   /// Records a `retry_after_s` hint of a submit reply; true = stop flushing.
@@ -350,7 +425,9 @@ class OfflineQueue {
         final r = await submitFn(json, token);
         final ok = r['synced'] as bool? ?? false;
         final permanent = r['permanent'] as bool? ?? false;
-        if (ok || permanent) {
+        if (r['rejected'] == true) {
+          await _holdRejected(d, 'local_queue', row, r['reject_reason']);
+        } else if (ok || permanent) {
           await d
               .delete('local_queue', where: 'id = ?', whereArgs: [row['id']]);
           if (ok) synced++;

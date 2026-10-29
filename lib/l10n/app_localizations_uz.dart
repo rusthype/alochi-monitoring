@@ -3108,6 +3108,11 @@ class AppLocalizationsUz extends AppLocalizations {
   }
 
   @override
+  String pendingResultsRejected(int count) {
+    return '$count natija qabul qilinmadi';
+  }
+
+  @override
   String pendingResultsOldestMinutes(int n) {
     return 'eng eskisi $n daq. oldin';
   }

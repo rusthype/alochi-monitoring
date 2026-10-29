@@ -114,7 +114,9 @@ void main() {
         'duration_minutes': null,
       }));
       expect(spec.grade, 0);
-      expect(spec.version, 1);
+      // Contract change (audit wave 5, F3): a missing / garbage version is 0
+      // = unknown everywhere (cache stores 0 too), no longer 1.
+      expect(spec.version, 0);
       expect(spec.durationMinutes, isNull);
     });
   });

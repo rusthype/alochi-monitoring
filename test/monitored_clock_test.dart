@@ -248,8 +248,9 @@ void main() {
         };
 
     testWidgets(
-        'changing the system date +1h mid-test neither ends the test nor '
-        'moves the countdown, and records a clock flag', (tester) async {
+        'changing the system date mid-test: a jump BACK adds no time, a jump '
+        'forward is counted as elapsed (indistinguishable from a sleep) and '
+        'is flagged', (tester) async {
       SharedPreferences.setMockInitialValues({});
       _mockPlatformChannels(tester);
       await _warmQueueCrypto(tester);
@@ -293,20 +294,80 @@ void main() {
       await step(3);
       expect(find.text('09:57'), findsOneWidget);
 
-      // The student sets the date one hour forward. Ticks do not move.
-      f.wall += 3600000;
+      // The date moves two minutes forward. Ticks do not move. Contract change
+      // (sleep fix): this used to leave the countdown alone (09:54); the wall
+      // clock is now believed for the gap, because a PC that slept looks
+      // exactly like this (ticks frozen, wall ahead).
+      f.wall += 120000;
       await step(3); // crosses a 5s skew-check boundary
 
-      expect(completed, isFalse,
-          reason: 'wall-clock jump must not end the test');
-      expect(find.text('09:54'), findsOneWidget);
+      expect(completed, isFalse);
+      expect(find.text('07:54'), findsOneWidget);
       final flags = MonitoredClock.instance.drainFlags();
       expect(flags.any((x) => x['type'] == 'clock_forward'), isTrue);
 
       // Same jump backwards must not add time either.
       f.wall -= 2 * 3600000;
       await step(2);
-      expect(find.text('09:52'), findsOneWidget);
+      expect(find.text('07:52'), findsOneWidget);
+    });
+
+    testWidgets(
+        'the PC sleeps mid-test (ticks frozen, wall advances): the slept time '
+        'is taken off the countdown, once', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      _mockPlatformChannels(tester);
+      await _warmQueueCrypto(tester);
+      final f = _Fake();
+      final saved = MonitoredClock.instance;
+      MonitoredClock.instance = f.clock();
+      addTearDown(() => MonitoredClock.instance = saved);
+
+      var completed = false;
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: TestEngine(
+          spec: TestSpec.fromJson(specJson()),
+          variant: 1,
+          firstName: 'Ism',
+          lastName: 'Familiya',
+          school: '56',
+          studentId: 'S-CLOCK-SLEEP',
+          duration: const Duration(minutes: 10),
+          onComplete: (_, __) => completed = true,
+        ),
+      ));
+      addTearDown(() => tester.pumpWidget(const SizedBox()));
+      await _settle(tester);
+
+      Future<void> step(int seconds) async {
+        for (var i = 0; i < seconds; i++) {
+          f.advance(1000);
+          tester.binding
+              .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+          await tester.pump();
+        }
+      }
+
+      await step(3);
+      expect(find.text('09:57'), findsOneWidget);
+
+      // Lid closed for 4 minutes: wall moves, the monotonic ticks do not.
+      f.wall += 4 * 60 * 1000;
+      await step(1); // resume: 1 s of normal time + the sleep
+      expect(find.text('05:56'), findsOneWidget);
+      await step(2); // and it keeps counting normally, no double credit
+      expect(find.text('05:54'), findsOneWidget);
+      expect(completed, isFalse);
+
+      // A second, long sleep that outlasts the test ends it (answers are
+      // submitted by the normal expiry path).
+      f.wall += 20 * 60 * 1000;
+      await step(1);
+      await _settle(tester);
+      expect(find.text('00:00'), findsOneWidget);
+      expect(completed, isTrue);
     });
 
     testWidgets(

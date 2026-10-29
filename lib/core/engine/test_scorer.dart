@@ -284,12 +284,18 @@ class TestScorer {
 
       case QuestionType.yesNo:
         if (given is! String) return false;
+        final g = canonicalYesNo(given);
+        final e = canonicalYesNo(q.yesNoAns ?? '');
+        if (g != null && e != null) return g == e;
         return given.trim().toUpperCase() == (q.yesNoAns ?? '').toUpperCase();
 
       case QuestionType.spelling:
       case QuestionType.fillBlank:
         if (given is! String) return false;
-        return _normalize(given) == _normalize(q.strAns ?? '');
+        final typed = _normalize(given);
+        final expected = _normalize(q.strAns ?? '');
+        // "3", "3.0", "3,0" are the same answer; different numbers never are.
+        return typed == expected || sameNumber(typed, expected);
 
       case QuestionType.sentenceOrder:
         if (given is! String) return false;
