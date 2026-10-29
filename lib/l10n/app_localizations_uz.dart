@@ -2540,7 +2540,7 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String usbExportBadKeys(int count) {
-    return 'Diqqat: $count ta natija kalitida xato bor, server faylni qabul qilmaydi. Natijani qayta topshiring.';
+    return 'Diqqat: $count ta natija kalitida xato bor, server ularni qabul qilmaydi. Natijani qayta topshiring.';
   }
 
   @override

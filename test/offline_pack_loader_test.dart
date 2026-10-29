@@ -73,6 +73,26 @@ void main() {
     expect(jsonEncode(pack.tests).contains('"ans"'), isFalse);
   });
 
+  test('a damaged media file of the right size is rewritten; temps removed',
+      () async {
+    final tmp = Directory.systemTemp.createTempSync('pack_media_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final name = (expected['media_member'] as String).split('/').last;
+    final good = ZipDecoder()
+        .decodeBytes(_bytes('golden.alochipack'))
+        .files
+        .firstWhere((f) => f.name == expected['media_member'])
+        .readBytes()!;
+    final f = File('${tmp.path}/$name')
+      ..writeAsBytesSync(Uint8List(good.length)); // same size, zeros
+    final stray = File('${tmp.path}/$name.tmp')..writeAsBytesSync([1]);
+
+    await loader().open(_bytes('golden.alochipack'), '12345678', mediaDir: tmp);
+
+    expect(f.readAsBytesSync(), good);
+    expect(stray.existsSync(), isFalse);
+  });
+
   test('wrong PIN is rejected with wrongPin', () async {
     final archive = loader().inspect(_bytes('golden.alochipack'));
     expect(

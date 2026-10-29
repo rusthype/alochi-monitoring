@@ -17,6 +17,8 @@ import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 import 'package:pointycastle/export.dart' show RSAPublicKey;
 
+import '../security/monitored_clock.dart';
+import 'atomic_file.dart';
 import 'offline_content_source.dart' show kPackDoneStudentsKey;
 import 'offline_crypto.dart';
 import 'offline_keys.dart';
@@ -113,8 +115,8 @@ class PackManifest {
         packUuid: (j['pack_uuid'] ?? '').toString(),
         schoolId: (j['school_id'] ?? '').toString(),
         schoolCode: (j['school_code'] ?? '').toString(),
-        createdAt: DateTime.parse(j['created_at'].toString()).toUtc(),
-        expiresAt: DateTime.parse(j['expires_at'].toString()).toUtc(),
+        createdAt: _parseUtc(j['created_at'].toString()),
+        expiresAt: _parseUtc(j['expires_at'].toString()),
         kdfIter: iter,
         kdfSalt: Uint8List.fromList(base64.decode(kdf['salt'].toString())),
         files: files.map((k, v) => MapEntry(k.toString(), v.toString())),
@@ -130,6 +132,16 @@ class PackManifest {
       throw PackException(PackError.badFormat, e.toString());
     }
   }
+}
+
+/// The backend writes UTC (`...Z`) and treats a naive timestamp as UTC
+/// (offline_pack.py `_iso`); [DateTime.parse] would read a naive one as the
+/// PC's local time. A timestamp with `Z` or an offset keeps its instant.
+DateTime _parseUtc(String s) {
+  final d = DateTime.parse(s);
+  if (d.isUtc) return d;
+  return DateTime.utc(d.year, d.month, d.day, d.hour, d.minute, d.second,
+      d.millisecond, d.microsecond);
 }
 
 /// A pack whose signature, expiry and file hashes are verified, PIN not yet
@@ -191,10 +203,19 @@ Future<Uint8List> _decryptOffThread(
 }
 
 /// Zip decode + RSA verify + per-file SHA-256 of the pack at [path] off the
-/// UI thread. Only the path and the (String-only) [keys] cross the boundary.
-Future<PackArchive> inspectPackFile(String path, OfflineKeys keys) =>
-    Isolate.run(
-        () => PackLoader(keys: keys).inspect(File(path).readAsBytesSync()));
+/// UI thread. Only the path, the (String-only) [keys] and the expiry time
+/// cross the boundary.
+///
+/// Expiry is judged against [MonitoredClock]'s trusted time (monotonic,
+/// raised to the persisted high-water mark), taken HERE on the calling
+/// isolate: a worker isolate would build a fresh clock anchored to the
+/// (possibly set-back) system date. [now] overrides it for tests.
+Future<PackArchive> inspectPackFile(String path, OfflineKeys keys,
+    {DateTime? now}) async {
+  final at = now ?? await MonitoredClock.instance.trustedNowUtc();
+  return Isolate.run(() => PackLoader(keys: keys, now: () => at)
+      .inspect(File(path).readAsBytesSync()));
+}
 
 class PackLoader {
   final OfflineKeys keys;
@@ -208,7 +229,7 @@ class PackLoader {
     KdfFn? kdf,
     this.limits = const PackLimits(),
   })  : keys = keys ?? OfflineKeys.current,
-        now = now ?? DateTime.now,
+        now = now ?? (() => MonitoredClock.instance.nowUtc),
         kdf = kdf ?? OfflineCrypto.deriveKeyAsync;
 
   static final RegExp _mediaName =
@@ -358,13 +379,28 @@ class PackLoader {
   Future<void> _extractMedia(
       Map<String, Uint8List> media, Directory mediaDir) async {
     await mediaDir.create(recursive: true);
+    await cleanStrayTemps(mediaDir);
     for (final e in media.entries) {
       // Names were validated against _mediaName, so basename is the whole
       // `<sha256>.<ext>` and cannot escape [mediaDir].
       final f = File(p.join(mediaDir.path, p.basename(e.key)));
-      if (await f.exists() && await f.length() == e.value.length) continue;
-      await f.writeAsBytes(e.value, flush: true);
+      // Reuse only a file that is byte-identical to the (hash-verified) pack
+      // member: a size match alone keeps a damaged leftover.
+      if (await f.exists() &&
+          await f.length() == e.value.length &&
+          _sameBytes(await f.readAsBytes(), e.value)) {
+        continue;
+      }
+      await writeFileVerified(f, e.value);
     }
+  }
+
+  static bool _sameBytes(Uint8List a, Uint8List b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   RSAPublicKey _signingKeyOrThrow() {

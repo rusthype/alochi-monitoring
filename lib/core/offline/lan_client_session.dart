@@ -33,6 +33,7 @@ import '../local_server/hub_guard.dart' show HubLimits, packFingerprint;
 import '../security/incident_log.dart';
 import '../security/monitored_clock.dart';
 import '../services/server_clock.dart';
+import 'atomic_file.dart';
 import 'lan_client_api.dart';
 import 'lan_diagnostic_api.dart';
 import 'offline_content_source.dart';
@@ -657,10 +658,14 @@ class LanClientSession implements OfflineContentSource {
   Future<void> ensureMedia(Set<String> names) async {
     if (names.isEmpty) return;
     await mediaDir.create(recursive: true);
+    // Leftovers of a download interrupted by a crash (once per session).
+    if (!_tempsCleaned) {
+      _tempsCleaned = true;
+      await cleanStrayTemps(mediaDir);
+    }
     final todo = <String>[];
     for (final n in names) {
-      final f = File(p.join(mediaDir.path, n));
-      if (!await f.exists() || await f.length() == 0) todo.add(n);
+      if (!await _mediaIntact(n)) todo.add(n);
     }
     const parallel = 4;
     for (var i = 0; i < todo.length; i += parallel) {
@@ -668,7 +673,43 @@ class LanClientSession implements OfflineContentSource {
     }
   }
 
-  Future<void> _fetchMedia(String name) async {
+  bool _tempsCleaned = false;
+
+  /// Names whose bytes on disk were hashed against their own (content hash)
+  /// name in this session.
+  final Set<String> _verifiedMedia = {};
+
+  /// The file exists and hashes to its name. A truncated file (crash, full
+  /// disk) is deleted so it is fetched again instead of staying broken.
+  Future<bool> _mediaIntact(String name) async {
+    if (_verifiedMedia.contains(name)) return true;
+    final f = File(p.join(mediaDir.path, name));
+    if (!await f.exists()) return false;
+    try {
+      if (OfflineCrypto.sha256Hex(await f.readAsBytes()) ==
+          name.substring(0, 64)) {
+        _verifiedMedia.add(name);
+        return true;
+      }
+    } catch (e) {
+      debugPrint('LanClientSession: media check failed (${e.runtimeType})');
+    }
+    try {
+      await f.delete();
+    } catch (_) {}
+    return false;
+  }
+
+  /// One download per name at a time: two writers would share the temp file.
+  final Map<String, Future<void>> _mediaInFlight = {};
+
+  Future<void> _fetchMedia(String name) => _mediaInFlight[name] ??=
+      _fetchMediaOnce(name).whenComplete(() {
+        // Block body: returning remove()'s Future would make it await itself.
+        _mediaInFlight.remove(name);
+      });
+
+  Future<void> _fetchMediaOnce(String name) async {
     http.Response resp;
     var attempt = 0;
     while (true) {
@@ -688,7 +729,8 @@ class LanClientSession implements OfflineContentSource {
     if (OfflineCrypto.sha256Hex(bytes) != name.substring(0, 64)) {
       throw const ApiException(502, 'lan: media hash mismatch');
     }
-    await File(p.join(mediaDir.path, name)).writeAsBytes(bytes, flush: true);
+    await writeFileVerified(File(p.join(mediaDir.path, name)), bytes);
+    _verifiedMedia.add(name);
   }
 
   // ── diagnostic snapshot (OfflineContentSource) ─────────────────────────────

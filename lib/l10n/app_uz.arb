@@ -1260,7 +1260,7 @@
       }
     }
   },
-  "usbExportBadKeys": "Diqqat: {count} ta natija kalitida xato bor, server faylni qabul qilmaydi. Natijani qayta topshiring.",
+  "usbExportBadKeys": "Diqqat: {count} ta natija kalitida xato bor, server ularni qabul qilmaydi. Natijani qayta topshiring.",
   "@usbExportBadKeys": {
     "placeholders": {
       "count": {

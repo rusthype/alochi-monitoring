@@ -254,6 +254,21 @@ class MonitoredClock {
   /// What the (possibly tampered) system clock says right now.
   int get wallMs => _wall();
 
+  /// [nowUtc], but never earlier than the persisted wall-clock high-water mark:
+  /// a date set back before this process started (when [nowMs] was anchored
+  /// to the tampered wall) still reads as at least the latest time ever seen.
+  /// For expiry checks. An unreadable store is not fatal - [nowUtc] is used.
+  Future<DateTime> trustedNowUtc() async {
+    final now = nowUtc;
+    DateTime? seen;
+    try {
+      seen = await _hwm.read();
+    } catch (e) {
+      debugPrint('MonitoredClock: high-water read failed (non-fatal): $e');
+    }
+    return seen != null && seen.isAfter(now) ? seen.toUtc() : now;
+  }
+
   // ── resume across a process restart ────────────────────────────────────────
 
   /// The wall clock still agrees with the ticks since the last agreement. The
