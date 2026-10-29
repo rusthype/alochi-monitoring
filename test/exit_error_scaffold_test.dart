@@ -1,5 +1,6 @@
 // A child must never get stuck on a dead-end screen of the exam flow
-// (old pack whose variant key was 'A' -> TestEngine has no sections).
+// (pack with no variants at all -> TestEngine has no sections; a mere key
+// mismatch now falls back to the nearest variant instead).
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,21 +16,10 @@ TestSpec _spec() => TestSpec.fromJson({
       'grade': 5,
       'version': 1,
       'parts': ['Math'],
-      'variants': {
-        'A': {
-          'Math': [
-            {
-              'type': 'text_choice',
-              'q': 'Q1',
-              'opts': ['Alpha', 'Beta'],
-              'ans': 0,
-            },
-          ],
-        },
-      },
+      'variants': <String, dynamic>{},
     });
 
-// variant 1 does not exist in the spec (only 'A') -> sections empty.
+// the spec has no variants -> sections empty (no fallback possible).
 Widget _engine() => TestEngine(
       spec: _spec(),
       variant: 1,
