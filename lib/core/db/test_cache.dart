@@ -400,11 +400,8 @@ class TestCache {
     // Bo'sh to'plam hech qachon "hammasini o'chir" degani emas (2026-10-28:
     // bo'sh/qisman katalog javobi butun keshni o'chirgan).
     if (keepKeys.isEmpty) return;
-    final mem = _memory;
-    if (mem != null) {
-      mem.removeWhere((k, _) => !keepKeys.contains(k));
-      return;
-    }
+    // Pack mode: only the pack's tests are visible here, never prune from it.
+    if (_memory != null) return;
     final placeholders = List.filled(keepKeys.length, '?').join(',');
     await _run((db) => db.delete(
           'cached_tests',

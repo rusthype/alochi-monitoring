@@ -683,6 +683,9 @@ class TestCatalogService {
   /// ishlamaydi).
   Future<void> gcStore({Duration minAge = const Duration(days: 1)}) async {
     if (_activeDownloads > 0) return;
+    // Pack mode: TestCache holds only the pack's tests, so `keep` would miss
+    // every persistent download and the GC would delete their images.
+    if (TestCache.isMemoryMode) return;
     try {
       final keep = <String>{};
       for (final row in await TestCache.all()) {

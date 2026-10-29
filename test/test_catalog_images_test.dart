@@ -19,6 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class _RosterApi extends MonitoringApi {
   @override
@@ -338,6 +339,12 @@ void main() {
 
   test('gc: keeps every URL of any cached test (all variants), removes the '
       'rest; no half files counted', () async {
+    // GC is a no-op in pack (memory) mode: use the real file-backed cache.
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    TestCache.exitMemoryMode();
+    TestCache.pathOverride = '${dir.path}/tc.db';
+    addTearDown(TestCache.resetForTest);
     final data = _test(2);
     final (store, svc) = await make(data);
     await TestCache.upsert('k', 'T', 5, 1, jsonEncode(data));
