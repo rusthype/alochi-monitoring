@@ -146,8 +146,6 @@
   "usernameRequired": "Login kiriting",
   "passwordRequired": "Parol kiriting",
   "offlineLogin": "Offline kirish",
-  "localGradeEntry": "Oddiy kirish (Internet kerak emas)",
-  "monitoringTestUnit1": "Monitoring Test Unit 1",
   "offlineHistory": "Oflayn Tarix",
   "selectPdfFirst": "Avval PDF fayl tanlang",
   "aiGeneratingMessage": "AI savollar yaratmoqda...\nBu 1-2 daqiqa olishi mumkin",
@@ -176,8 +174,6 @@
     }
   },
   "aiImagePromptHint": "AI rasm taklifi (saqlanmaydi):",
-  "mathSubject": "Math",
-  "englishSubject": "Ingliz",
   "selectPdfBook": "PDF kitob tanlang",
   "pdfFileHint": ".pdf fayl, max 10MB, 50 bet",
   "subjectLabel": "Fan",
@@ -216,8 +212,6 @@
       }
     }
   },
-  "enterFirstAndLastName": "Ism va familiyani kiriting",
-  "incorrectSecretPassword": "Maxfiy parol noto'g'ri (Maslahat: 1234)",
   "errorPrefix": "Xato: {error}",
   "@errorPrefix": {
     "placeholders": {
@@ -228,22 +222,8 @@
   },
   "selectVariant": "Variantni tanlang",
   "studentInfoTitle": "O'quvchi ma'lumotlari",
-  "localTestInfo": "2-sinf Ingliz tili — Interhouse testi\n10 variant · 30 savol · Offline rejim",
-  "continueButton": "Davom etish",
-  "firstNameLabel": "Ism",
-  "firstNameHint": "Alisher",
-  "lastNameLabel": "Familiya",
-  "lastNameHint": "Karimov",
   "groupGradeLabel": "Guruh / Sinf",
-  "groupGradeHint": "3-A",
-  "schoolNameLabel": "Maktab nomi",
-  "schoolNameHint": "12-maktab",
-  "pinCodeLabel": "Parol (PIN kod)",
   "startTest": "Testni boshlash",
-  "combinedTestInfo": "79 savol · 75 daqiqa · Offline rejim",
-  "combinedTestSubjects": "30 matematika + 49 ingliz tili",
-  "incorrectPassword": "Maxfiy parol noto'g'ri",
-  "confirmLogout": "Hisobdan chiqmoqchimisiz?",
   "cancel": "Bekor qilish",
   "noActiveExamOrExpired": "Faol imtihon topilmadi yoki muddati tugagan",
   "loadFailed": "Yuklanmadi. Qayta urinib ko'ring.",
@@ -264,12 +244,7 @@
     }
   },
   "selectTest": "Testni tanlang",
-  "selectMonitoringTest": "Mavjud monitoring testlaridan birini tanlang",
   "retry": "Qayta urinish",
-  "noActiveExam": "Aktiv imtihon yo'q",
-  "noExamAssignedOrExpired": "Sizga hali imtihon biriktirilmagan\nyoki muddati tugagan",
-  "testsNotLoadedYet": "Testlar hali yuklanmagan",
-  "tryAgainAfterTeacherUploads": "O'qituvchingiz test yuklagandan so'ng\nqayta urinib ko'ring",
   "refresh": "Yangilash",
   "totalLabel": "Jami",
   "helloGreeting": "Salom!",
@@ -432,11 +407,6 @@
   "monitoringTestResult": "Monitoring test natijasi",
   "alochiMonitoringSystem": "Alochi Monitoring tizimi",
   "homePage": "Bosh sahifa",
-  "savePdf": "PDF Saqlash",
-  "printPdf": "Chop etish",
-  "sharePdf": "Ulashish",
-  "loadingLabelDots": "Yuklanmoqda...",
-  "errorLater": "Xatolik. Keyinroq yuboriladi.",
   "gradeAndVariant": "Sinf va Variant",
   "overallResult": "Umumiy Natija",
   "topicAnalysisTitle": "Mavzular bo'yicha tahlil",
@@ -504,15 +474,7 @@
     }
   },
   "syncImagesOfflineButton": "Oflayn rasmlarni tayyorlash (Sync)",
-  "localResSending": "📤 Yuborilmoqda...",
-  "localResSavedSending": "✅ Saqlandi, yuborilmoqda...",
-  "localResSaveError": "❌ Saqlashda xato. Qayta urinib ko'ring.",
-  "localResBarakalla": "Barakalla!",
-  "localResYaxshi": "Yaxshi!",
-  "nextStudentButton": "Keyingi o'quvchi",
   "questionsUnansweredPrompt": "ta savol javobsiz. Tugatmoqchimisiz?",
-  "finishButtonText": "Tugatish",
-  "gradeWord": "-sinf",
   "mathSectionTimeUp": "Matematika bo'limi vaqti tugagan!",
   "engSectionTimeUp": "Ingliz tili bo'limi vaqti tugagan!",
   "finishTest": "Tugatish",
@@ -591,14 +553,6 @@
   "controlTestPlan": "Nazorat testi — natijani solishtirish",
   "plan14DaysTitle": "14 kunlik reja",
   "sending": "Yuborilmoqda...",
-  "savedSuccess": "Saqlandi!",
-  "savedOfflineLater": "Saqlandi (offline — keyinroq yuboriladi)",
-  "savedSending": "Saqlandi, yuborilmoqda...",
-  "interhouseGrade2": "Interhouse Grade 2",
-  "sectionsBreakdown": "Bo'limlar bo'yicha",
-  "nextStudentBtn": "Keyingi o'quvchi",
-  "finishBtn": "Tugatish",
-  "mathQuestionsNotFound": "Matematika savollari topilmadi.",
   "generalTests": "Umumiy testlar",
   "loadingGroups": "Guruhlar yuklanmoqda...",
   "selectGroup": "Guruhni tanlang",
@@ -684,7 +638,6 @@
   "returnToHome": "Bosh sahifaga qaytish",
   "routeNotFound": "Route not found",
   "reportGenerationError": "Hisobot yaratishda xato",
-  "printBtn": "Chop etish",
   "downloadBtn": "Yuklab olish",
   "exitBtn": "Chiqish",
   "yesBtn": "Ha",
@@ -696,31 +649,15 @@
   "okBtn": "Yaxshi",
   "yesOption": "YES",
   "noOption": "NO",
-  "alisherHint": "Alisher",
-  "vocabularyTopic": "Vocabulary",
-  "grammarTopic": "Grammar",
-  "spellingTopic": "Spelling",
-  "sentencesTopic": "Sentences",
-  "readingTopic": "Reading",
   "checkForUpdates": "Check for Updates...",
   "appNameTitle": "Alochi Monitoring",
   "bobEmptySectionMsg": "Bu bo'lim bo'sh.",
-  "returnBtn": "Qaytish",
-  "sectionsResultTitle": "Bo'limlar natijasi",
-  "vocabularyQuestionsNotFoundMsg": "Vocabulary savollari topilmadi.",
-  "grammarQuestionsNotFoundMsg": "Grammar savollari topilmadi.",
-  "spellingQuestionsNotFoundMsg": "Spelling savollari topilmadi.",
-  "sentencesQuestionsNotFoundMsg": "Sentences savollari topilmadi.",
-  "readingQuestionsNotFoundMsg": "Reading savollari topilmadi.",
-  "variantsNotFoundMsg": "Variantlar topilmadi.",
   "arrangeLettersPrompt": "Harflarni to'g'ri joylashtiring",
-  "arrangeSentencePrompt": "Jumlani to'g'ri tartibga soling",
   "arrangeEventsPrompt": "Voqealarni to'g'ri tartibda belgilang",
   "selectVariantsInOrderPrompt": "Quyidagi variantlarni to'g'ri ketma-ketlikda tanlang",
   "clearSelectionBtn": "Tozalash",
   "variantsSectionHeader": "VARIANTLAR",
   "answerHintText": "Javob...",
-  "fullSentenceHintText": "To'liq jumlani yozing...",
   "sessionGradeVariantLabel": "{grade}-sinf · Variant {variant}",
   "@sessionGradeVariantLabel": {
     "placeholders": {
@@ -733,22 +670,6 @@
     }
   },
   "reportSavedButOpenFailedMsg": "Hisobot saqlandi, lekin ochib bo'lmadi",
-  "bob14ScreenTitle": "2-sinf — Bob 1-4 Monitoringi",
-  "bob14TestInfo": "30 savol · 45 daqiqa · Offline rejim",
-  "unit1ScreenTitle": "1-sinf Ingliz tili — Unit 1",
-  "unit1TestInfo": "49 savol · 49 daqiqa · Offline rejim",
-  "unit1RunnerHeaderTitle": "1-sinf Unit 1 — Ingliz tili",
-  "correctFractionLabel": "{correct} / {total} to'g'ri",
-  "@correctFractionLabel": {
-    "placeholders": {
-      "correct": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "hujjatlarLabel": "Hujjatlar",
   "noDocumentsMsg": "Hujjat yo'q",
   "savedFileMsg": "Saqlandi: {path}",
@@ -765,14 +686,6 @@
   "monitoringTestHeader": "MONITORING TEST",
   "testDataNotFoundMsg": "Test ma'lumotlari topilmadi",
   "updateUpToDateMessage": "Sizda dasturning eng so'nggi versiyasi o'rnatilgan.",
-  "shieldsProgressLabel": "{count}/25 shields",
-  "@shieldsProgressLabel": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "diagnosticPassportHeader": "A'LOCHI — DIAGNOSTIK PASPORT",
   "totalQuestionsCountLabel": "Jami savol",
   "correctAnswerLabelPdf": "To'g'ri javob",
@@ -811,14 +724,6 @@
   "goodResultLabel": "Yaxshi natija",
   "searchOrCommandHint": "Izlash yoki buyruq kiriting...",
   "commandHistoryTitle": "Oflayn tarix",
-  "commandLocalGradeTitle": "Mahalliy baholash",
-  "commandCombinedTitle": "Kombinatsiyalangan",
-  "bob14FallbackLabel": "Bob 1-4",
-  "unit1FallbackLabel": "Unit 1",
-  "saveErrorRetryMsg": "Saqlashda xato. Qayta urinib ko'ring.",
-  "unit1PillLabel": "Unit 1 G1",
-  "interhousePillLabel": "Interhouse G2",
-  "combinedPillLabel": "Monitoring Unit 1",
   "mathEngCountSummary": "Matematika: {math} ta  Ingliz tili: {eng} ta",
   "@mathEngCountSummary": {
     "placeholders": {

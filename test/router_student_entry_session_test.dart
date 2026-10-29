@@ -74,12 +74,12 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('bare /student_entry and /package without extra bounce to /',
+  testWidgets('bare /student_entry without extra bounce to /',
       (tester) async {
     final (_, router) = await boot(tester);
     String loc() => router.routerDelegate.currentConfiguration.uri.toString();
 
-    for (final path in ['/student_entry', '/package', '/test', '/result']) {
+    for (final path in ['/student_entry', '/test', '/result']) {
       router.go(path);
       await settle(tester);
       expect(tester.takeException(), isNull, reason: path);

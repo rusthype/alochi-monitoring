@@ -146,8 +146,6 @@
   "usernameRequired": "Введите логин",
   "passwordRequired": "Введите пароль",
   "offlineLogin": "Оффлайн вход",
-  "localGradeEntry": "Обычный вход (Без интернета)",
-  "monitoringTestUnit1": "Мониторинг тест Unit 1",
   "offlineHistory": "Оффлайн история",
   "selectPdfFirst": "Сначала выберите PDF файл",
   "aiGeneratingMessage": "ИИ генерирует вопросы...\nЭто может занять 1-2 минуты",
@@ -176,8 +174,6 @@
     }
   },
   "aiImagePromptHint": "Подсказка ИИ (не сохраняется):",
-  "mathSubject": "Мат.",
-  "englishSubject": "Англ.",
   "selectPdfBook": "Выберите PDF книгу",
   "pdfFileHint": ".pdf файл, макс 10МБ, 50 страниц",
   "subjectLabel": "Предмет",
@@ -216,8 +212,6 @@
       }
     }
   },
-  "enterFirstAndLastName": "Введите имя и фамилию",
-  "incorrectSecretPassword": "Неверный секретный пароль (Подсказка: 1234)",
   "errorPrefix": "Ошибка: {error}",
   "@errorPrefix": {
     "placeholders": {
@@ -228,22 +222,8 @@
   },
   "selectVariant": "Выберите вариант",
   "studentInfoTitle": "Данные ученика",
-  "localTestInfo": "2-й класс Английский язык — Тест Interhouse\n10 вариантов · 30 вопросов · Оффлайн режим",
-  "continueButton": "Продолжить",
-  "firstNameLabel": "Имя",
-  "firstNameHint": "Алишер",
-  "lastNameLabel": "Фамилия",
-  "lastNameHint": "Каримов",
   "groupGradeLabel": "Группа / Класс",
-  "groupGradeHint": "3-А",
-  "schoolNameLabel": "Название школы",
-  "schoolNameHint": "12-школа",
-  "pinCodeLabel": "Пароль (PIN-код)",
   "startTest": "Начать тест",
-  "combinedTestInfo": "79 вопросов · 75 минут · Оффлайн режим",
-  "combinedTestSubjects": "30 математика + 49 английский язык",
-  "incorrectPassword": "Неверный секретный пароль",
-  "confirmLogout": "Вы хотите выйти из аккаунта?",
   "cancel": "Отмена",
   "noActiveExamOrExpired": "Активный экзамен не найден или срок его действия истек",
   "loadFailed": "Не удалось загрузить. Повторите попытку.",
@@ -264,12 +244,7 @@
     }
   },
   "selectTest": "Выберите тест",
-  "selectMonitoringTest": "Выберите один из доступных тестов мониторинга",
   "retry": "Повторить",
-  "noActiveExam": "Нет активного экзамена",
-  "noExamAssignedOrExpired": "Экзамен еще не назначен\nили срок его действия истек",
-  "testsNotLoadedYet": "Тесты еще не загружены",
-  "tryAgainAfterTeacherUploads": "Пожалуйста, повторите попытку после того,\nкак ваш учитель загрузит тесты",
   "refresh": "Обновить",
   "totalLabel": "Всего",
   "helloGreeting": "Привет!",
@@ -387,11 +362,6 @@
   "monitoringTestResult": "Результат мониторингового теста",
   "alochiMonitoringSystem": "Система Alochi Monitoring",
   "homePage": "Главная",
-  "savePdf": "Сохранить PDF",
-  "printPdf": "Распечатать",
-  "sharePdf": "Поделиться",
-  "loadingLabelDots": "Загрузка...",
-  "errorLater": "Ошибка. Будет отправлено позже.",
   "gradeAndVariant": "Класс и Вариант",
   "overallResult": "Общий результат",
   "topicAnalysisTitle": "Анализ по темам",
@@ -459,15 +429,7 @@
     }
   },
   "syncImagesOfflineButton": "Подготовить офлайн изображения (Sync)",
-  "localResSending": "📤 Отправка...",
-  "localResSavedSending": "✅ Сохранено, отправка...",
-  "localResSaveError": "❌ Ошибка при сохранении. Повторите попытку.",
-  "localResBarakalla": "Молодец!",
-  "localResYaxshi": "Хорошо!",
-  "nextStudentButton": "Следующий ученик",
   "questionsUnansweredPrompt": "вопрос(ов) без ответа. Всё равно завершить?",
-  "finishButtonText": "Завершить",
-  "gradeWord": "-класс",
   "mathSectionTimeUp": "Время раздела «Математика» истекло!",
   "engSectionTimeUp": "Время раздела «Английский язык» истекло!",
   "finishTest": "Завершить",
@@ -546,14 +508,6 @@
   "controlTestPlan": "Контрольный тест — сравнение результата",
   "plan14DaysTitle": "План на 14 дней",
   "sending": "Отправка...",
-  "savedSuccess": "Сохранено!",
-  "savedOfflineLater": "Сохранено (офлайн — будет отправлено позже)",
-  "savedSending": "Сохранено, отправка...",
-  "interhouseGrade2": "Interhouse Grade 2",
-  "sectionsBreakdown": "По разделам",
-  "nextStudentBtn": "Следующий ученик",
-  "finishBtn": "Завершить",
-  "mathQuestionsNotFound": "Вопросы по математике не найдены.",
   "generalTests": "Общие тесты",
   "loadingGroups": "Загрузка групп...",
   "selectGroup": "Выберите группу",
@@ -639,7 +593,6 @@
   "returnToHome": "Вернуться на главную",
   "routeNotFound": "Маршрут не найден",
   "reportGenerationError": "Ошибка при создании отчета",
-  "printBtn": "Печать",
   "downloadBtn": "Скачать",
   "exitBtn": "Выход",
   "yesBtn": "Да",
@@ -651,31 +604,15 @@
   "okBtn": "Хорошо",
   "yesOption": "ДА",
   "noOption": "НЕТ",
-  "alisherHint": "Алишер",
-  "vocabularyTopic": "Словарный запас",
-  "grammarTopic": "Грамматика",
-  "spellingTopic": "Орфография",
-  "sentencesTopic": "Предложения",
-  "readingTopic": "Чтение",
   "checkForUpdates": "Проверить обновления...",
   "appNameTitle": "Мониторинг Alochi",
   "bobEmptySectionMsg": "Этот раздел пуст.",
-  "returnBtn": "Вернуться",
-  "sectionsResultTitle": "Результаты по разделам",
-  "vocabularyQuestionsNotFoundMsg": "Вопросы Vocabulary не найдены.",
-  "grammarQuestionsNotFoundMsg": "Вопросы Grammar не найдены.",
-  "spellingQuestionsNotFoundMsg": "Вопросы Spelling не найдены.",
-  "sentencesQuestionsNotFoundMsg": "Вопросы Sentences не найдены.",
-  "readingQuestionsNotFoundMsg": "Вопросы Reading не найдены.",
-  "variantsNotFoundMsg": "Варианты не найдены.",
   "arrangeLettersPrompt": "Расположите буквы в правильном порядке",
-  "arrangeSentencePrompt": "Расставьте предложение в правильном порядке",
   "arrangeEventsPrompt": "Отметьте события в правильном порядке",
   "selectVariantsInOrderPrompt": "Выберите варианты ниже в правильном порядке",
   "clearSelectionBtn": "Очистить",
   "variantsSectionHeader": "ВАРИАНТЫ",
   "answerHintText": "Ответ...",
-  "fullSentenceHintText": "Напишите полное предложение...",
   "sessionGradeVariantLabel": "{grade} класс · Вариант {variant}",
   "@sessionGradeVariantLabel": {
     "placeholders": {
@@ -688,22 +625,6 @@
     }
   },
   "reportSavedButOpenFailedMsg": "Отчёт сохранён, но не удалось открыть",
-  "bob14ScreenTitle": "2 класс — Мониторинг Bob 1-4",
-  "bob14TestInfo": "30 вопросов · 45 минут · Оффлайн режим",
-  "unit1ScreenTitle": "1 класс Английский язык — Unit 1",
-  "unit1TestInfo": "49 вопросов · 49 минут · Оффлайн режим",
-  "unit1RunnerHeaderTitle": "1 класс Unit 1 — Английский язык",
-  "correctFractionLabel": "{correct} / {total} правильно",
-  "@correctFractionLabel": {
-    "placeholders": {
-      "correct": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "hujjatlarLabel": "Документы",
   "noDocumentsMsg": "Нет документов",
   "savedFileMsg": "Сохранено: {path}",
@@ -720,14 +641,6 @@
   "monitoringTestHeader": "МОНИТОРИНГ ТЕСТ",
   "testDataNotFoundMsg": "Данные теста не найдены",
   "updateUpToDateMessage": "У вас установлена последняя версия программы.",
-  "shieldsProgressLabel": "{count}/25 щитов",
-  "@shieldsProgressLabel": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "diagnosticPassportHeader": "A'LOCHI — ДИАГНОСТИЧЕСКИЙ ПАСПОРТ",
   "totalQuestionsCountLabel": "Всего вопросов",
   "correctAnswerLabelPdf": "Правильный ответ",
@@ -766,14 +679,6 @@
   "goodResultLabel": "Хороший результат",
   "searchOrCommandHint": "Введите поиск или команду...",
   "commandHistoryTitle": "Оффлайн история",
-  "commandLocalGradeTitle": "Локальная оценка",
-  "commandCombinedTitle": "Комбинированный",
-  "bob14FallbackLabel": "Bob 1-4",
-  "unit1FallbackLabel": "Unit 1",
-  "saveErrorRetryMsg": "Ошибка сохранения. Попробуйте ещё раз.",
-  "unit1PillLabel": "Unit 1 G1",
-  "interhousePillLabel": "Interhouse G2",
-  "combinedPillLabel": "Monitoring Unit 1",
   "mathEngCountSummary": "Математика: {math}  Английский язык: {eng}",
   "@mathEngCountSummary": {
     "placeholders": {

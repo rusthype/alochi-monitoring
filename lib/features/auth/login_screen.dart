@@ -1229,46 +1229,6 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                   const SizedBox(height: 16),
                   _buildPrimaryButton(l10n, palette),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.push('/local_grade', extra: {}),
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: palette.fieldFill,
-                        foregroundColor: palette.ink2,
-                        side: BorderSide(color: palette.border),
-                        shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(kControlRadius)),
-                      ),
-                      icon: const Icon(Icons.groups_rounded, size: 18),
-                      label: Text(l10n.localGradeEntry,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 13)),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.push('/combined', extra: {}),
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: palette.fieldFill,
-                        foregroundColor: AppColors.flame,
-                        side: const BorderSide(
-                            color: AppColors.flame, width: 1.2),
-                        shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(kControlRadius)),
-                      ),
-                      icon: const Icon(Icons.menu_book_rounded,
-                          size: 18, color: AppColors.flame),
-                      label: Text(l10n.monitoringTestUnit1,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 13)),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -1776,7 +1736,7 @@ class _LaunchArgs {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _LaunchDialog — variant selector + student info form (2-step)
-// Follows the same step pattern as CombinedScreen.
+// Multi-step flow (see the step enum below).
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _LaunchDialog extends StatefulWidget {

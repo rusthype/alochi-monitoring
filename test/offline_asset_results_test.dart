@@ -15,10 +15,7 @@ import 'package:alochi_monitoring/core/offline/lan_client_session.dart';
 import 'package:alochi_monitoring/core/offline/offline_asset_results.dart';
 import 'package:alochi_monitoring/core/offline/offline_session.dart';
 import 'package:alochi_monitoring/core/security/monitored_clock.dart';
-import 'package:alochi_monitoring/features/combined/combined_screen.dart';
-import 'package:alochi_monitoring/features/interhouse/interhouse_data.dart';
 import 'package:alochi_monitoring/features/offline/offline_asset_ui.dart';
-import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -208,25 +205,6 @@ void main() {
       expect(kMaxAnswerChars, greaterThanOrEqualTo(5 * 40));
     });
 
-    test('every free-text field of the three runners carries the limit', () {
-      for (final f in [
-        'lib/features/unit1/unit1_runner.dart',
-        'lib/features/combined/combined_runner.dart',
-        'lib/features/interhouse/interhouse_runner.dart',
-      ]) {
-        // Windows checkouts convert LF -> CRLF (git autocrlf); the regex below
-        // is written against LF.
-        final src = File(f).readAsStringSync().replaceAll('\r\n', '\n');
-        final fields = RegExp(r'TextField\(').allMatches(src).length;
-        final limited = RegExp(
-                r'TextField\(\n\s+controller: [_a-z.]+,\n\s+inputFormatters: \[LengthLimitingTextInputFormatter\(kMaxAnswerChars\)\]')
-            .allMatches(src)
-            .length;
-        expect(fields, 3, reason: f);
-        expect(limited, fields, reason: f);
-      }
-    });
-
     test('USB: a 60 000-character answer is stored clipped; export entry small',
         () async {
       final tmp = Directory.systemTemp.createTempSync('asset_huge_');
@@ -286,7 +264,7 @@ void main() {
       expect(await OfflineQueue.pendingCount(), 0);
     });
 
-    test('all four runners record under their own key', () async {
+    test('all asset keys record under their own key', () async {
       var i = 0;
       for (final key in kAssetTestKeys) {
         await recordOfflineAssetResult(
@@ -539,106 +517,6 @@ void main() {
     });
   });
 
-  // ── the real result screens ────────────────────────────────────────────────
-  group('result screens in USB mode', () {
-    late Directory tmp;
-    late IhTestData ih;
-
-    setUpAll(() async {
-      ih = await IhLoader.load();
-    });
-
-    setUp(() async {
-      await TestWidgetsFlutterBinding.instance.runAsync(() async {
-        tmp = Directory.systemTemp.createTempSync('asset_ui_');
-        await OfflineQueue.openAtPath(p.join(tmp.path, 'q.db'));
-        await OfflinePackSession.open(
-            lanTestPack(), Directory(p.join(tmp.path, 'media')));
-      });
-    });
-
-    tearDown(() async {
-      await TestWidgetsFlutterBinding.instance.runAsync(() async {
-        OfflinePackSession.close();
-        await OfflineQueue.resetForTest();
-        tmp.deleteSync(recursive: true);
-      });
-    });
-
-    Future<List<PackResultRow>> waitRows(WidgetTester t, int n) async {
-      var rows = <PackResultRow>[];
-      for (var i = 0; i < 100 && rows.length < n; i++) {
-        rows =
-            (await t.runAsync(() => PackResultsDb.rowsForPack(lanPackUuid)))!;
-        if (rows.length >= n) break;
-        await t.runAsync(
-            () => Future<void>.delayed(const Duration(milliseconds: 30)));
-        await t.pump();
-      }
-      await t.pump();
-      return rows;
-    }
-
-    final cases = <String,
-        ({
-      Widget Function(OfflineAssetStudent?, IhTestData) build,
-      String key
-    })>{
-      'unit1': (build: (s, _) => unit1Result(s), key: 'asset:unit1_eng'),
-      'combined': (
-        build: (s, _) => combinedResult(s),
-        key: 'asset:monitoring_unit1'
-      ),
-      'interhouse': (
-        build: (s, d) => interhouseResult(s, d),
-        key: 'asset:interhouse_g2'
-      ),
-      'bob14/local': (build: (s, _) => localResult(s), key: 'asset:bob1_4'),
-    };
-
-    for (final e in cases.entries) {
-      testWidgets('${e.key}: saved to the chain, no score, nothing queued',
-          (tester) async {
-        await tester.pumpWidget(assetTestApp(e.value.build(_student, ih)));
-        final rows = await waitRows(tester, 1);
-
-        expect(rows, hasLength(1));
-        final saved = jsonDecode(rows.single.payloadJson) as Map;
-        expect(saved['student_id'], lanS1);
-        expect(saved['group_id'], lanG1);
-        expect(saved['test_key'], e.value.key);
-        expect((saved['detail'] as Map)['test_key'], e.value.key);
-        expect(saved['school_code'], '999');
-
-        final l10n =
-            AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
-        expect(find.text(l10n.usbSavedTitle), findsOneWidget);
-        expect(find.textContaining('%'), findsNothing);
-        expect(find.textContaining(RegExp(r'\d+\s*/\s*\d+')), findsNothing);
-        expect(await tester.runAsync(OfflineQueue.pendingLocalCount), 0);
-        expect(await tester.runAsync(OfflineQueue.pendingCount), 0);
-      });
-
-      testWidgets('${e.key}: no student -> honest failure, nothing written',
-          (tester) async {
-        await tester.pumpWidget(assetTestApp(e.value.build(null, ih)));
-        await tester.runAsync(
-            () => Future<void>.delayed(const Duration(milliseconds: 100)));
-        await tester.pump();
-
-        final l10n =
-            AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
-        expect(find.text(l10n.resultNotSavedError), findsOneWidget);
-        expect(find.text(l10n.retry), findsOneWidget);
-        expect(find.text(l10n.usbSavedTitle), findsNothing);
-        expect(
-            await tester.runAsync(() => PackResultsDb.rowsForPack(lanPackUuid)),
-            isEmpty);
-        expect(await tester.runAsync(OfflineQueue.pendingLocalCount), 0);
-      });
-    }
-  });
-
   // ── student gate on the entry screens ──────────────────────────────────────
   group('entry screens', () {
     late Directory tmp;
@@ -685,48 +563,6 @@ void main() {
       expect(picked?.lastName, 'Valiyev');
       expect(picked?.firstName, 'Ali');
       await close(tester);
-    });
-
-    testWidgets(
-        'pack open: roster picker replaces the name fields and a run '
-        'cannot start without a student', (tester) async {
-      await open(tester);
-      await tester.binding.setSurfaceSize(const Size(1200, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(assetTestApp(const CombinedScreen()));
-      await tester.pump(const Duration(milliseconds: 500));
-      final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
-
-      await tester.tap(find.text('1').first); // variant 1
-      await tester.pump();
-      await tester.tap(find.text(l10n.continueButton));
-      await tester.pump(const Duration(milliseconds: 500));
-
-      expect(find.byType(OfflineStudentPicker), findsOneWidget);
-      expect(find.text(l10n.firstNameLabel), findsNothing);
-
-      await tester.enterText(find.byType(TextField).last, '1234');
-      await tester.tap(find.text(l10n.startTest));
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text(l10n.selectStudent), findsWidgets);
-      expect(find.byType(CombinedScreen), findsOneWidget); // did not start
-      await close(tester);
-    });
-
-    testWidgets('online (no pack): unchanged name fields, no picker',
-        (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1200, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(assetTestApp(const CombinedScreen()));
-      await tester.pump(const Duration(milliseconds: 500));
-      final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
-      await tester.tap(find.text('1').first);
-      await tester.pump();
-      await tester.tap(find.text(l10n.continueButton));
-      await tester.pump(const Duration(milliseconds: 500));
-
-      expect(find.byType(OfflineStudentPicker), findsNothing);
-      expect(find.text(l10n.firstNameLabel), findsWidgets);
     });
   });
 }
