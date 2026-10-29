@@ -945,11 +945,14 @@ class TestCatalogService {
   /// Oflayn rejimda bunday rasm testni bloklamasligi uchun kerak: do'konda
   /// hech qachon bo'lmaydi, lekin "tarmoq yo'q" bilan "serverda yo'q" farqlanadi.
   static final Set<String> _knownMissing = {};
-  static bool _missingLoaded = false;
 
-  static Future<void> _loadMissing() async {
-    if (_missingLoaded) return;
-    _missingLoaded = true;
+  /// The one in-flight/finished load: every caller awaits the SAME future, so
+  /// a gate check racing the first load never sees a half-empty set.
+  static Future<void>? _missingLoad;
+
+  static Future<void> _loadMissing() => _missingLoad ??= _readMissing();
+
+  static Future<void> _readMissing() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _knownMissing.addAll(prefs.getStringList(_missingPrefsKey) ?? const []);
@@ -972,7 +975,7 @@ class TestCatalogService {
   @visibleForTesting
   static void resetKnownMissingForTest() {
     _knownMissing.clear();
-    _missingLoaded = false;
+    _missingLoad = null;
   }
 
   /// Renderer ishlatadigan kalit bilan bir xil (fixImageUrl) bo'lishi shart.
