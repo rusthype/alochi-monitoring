@@ -1,14 +1,24 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/api/api_client.dart';
 import '../../core/cache/image_cache_manager.dart';
+import '../../core/db/offline_queue.dart';
+import '../../core/sync/sync_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/button_shape.dart';
+import '../../shared/widgets/pending_results_chip.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 class SyncImagesButton extends StatefulWidget {
-  const SyncImagesButton({super.key});
+  const SyncImagesButton({super.key, this.requeueOverride, this.flushOverride});
+
+  /// Test seams for the held/pending results resend (see
+  /// [resendHeldResults]); when [flushOverride] is set the queue refresh is
+  /// skipped, like PendingResultsChip's overrides.
+  final Future<int> Function()? requeueOverride;
+  final Future<SyncFlushOutcome> Function()? flushOverride;
   @override
   State<SyncImagesButton> createState() => _SyncImagesButtonState();
 }
@@ -19,7 +29,21 @@ class _SyncImagesButtonState extends State<SyncImagesButton> {
   int _total = 0;
   int _done = 0;
 
+  /// Same as the pending-results chip's "send now": held/rejected results get
+  /// another try along with the pending ones. No-op when both counts are 0.
+  Future<void> _resendResults() async {
+    final before = OfflineQueue.pending.value.count;
+    if (before <= 0 && OfflineQueue.rejected.value <= 0) return;
+    final outcome = await resendHeldResults(
+        requeue: widget.requeueOverride, flush: widget.flushOverride);
+    if (widget.flushOverride == null) await OfflineQueue.refreshPending();
+    if (!mounted) return;
+    showResendOutcome(context, outcome,
+        before: before, left: OfflineQueue.pending.value.count);
+  }
+
   Future<void> _startSync() async {
+    unawaited(_resendResults());
     setState(() {
       _syncing = true;
       _progress = 0;

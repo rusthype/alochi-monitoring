@@ -16,6 +16,7 @@ import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/services/diagnostic_export_service.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/button_shape.dart';
 import '../dialogs/diagnostic_export_pin_dialog.dart';
 
 enum DiagnosticHistoryFilter { all, sent, pending }
@@ -305,14 +306,20 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
 
   Widget _chip(String label, DiagnosticHistoryFilter value) {
     final selected = _filter == value;
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => setState(() => _filter = value),
-      selectedColor: AppColors.brand.withValues(alpha: 0.18),
-      labelStyle: TextStyle(
-        color: selected ? AppColors.brand : AppColors.ink2,
-        fontWeight: FontWeight.w600,
+    return BottomChip(
+      fill: selected
+          ? AppColors.brand.withValues(alpha: 0.12)
+          : AppColors.surface,
+      border: selected ? AppColors.brand : AppColors.border,
+      height: 40,
+      child: TextButton(
+        onPressed: () => setState(() => _filter = value),
+        style: bottomChipButtonStyle(
+          foreground: selected ? AppColors.brand : AppColors.ink2,
+          fontSize: 13,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+        ),
+        child: Text(label),
       ),
     );
   }

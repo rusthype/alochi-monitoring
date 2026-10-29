@@ -201,4 +201,58 @@ void main() {
       expect(age, const Duration(milliseconds: 3000000));
     });
   });
+
+  group('rejected-only banner', () {
+    Widget chip(int pending, int rejected) => _wrap(PendingResultsChip(
+          pendingCountOverride: () async => pending,
+          oldestAgeOverride: () async => null,
+          rejectedCountOverride: () async => rejected,
+        ));
+
+    testWidgets('auto-hides after ~10s when only rejected results remain',
+        (tester) async {
+      await tester.pumpWidget(chip(0, 2));
+      await settle(tester);
+      final t = l10n(tester);
+      expect(find.text(t.pendingResultsRejected(2)), findsOneWidget);
+      await tester.pump(const Duration(seconds: 9));
+      expect(find.text(t.pendingResultsRejected(2)), findsOneWidget);
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text(t.pendingResultsRejected(2)), findsNothing);
+      expect(find.text(t.pendingResultsSendNow), findsNothing);
+    });
+
+    testWidgets('stays pinned while results are unsent', (tester) async {
+      await tester.pumpWidget(chip(3, 1));
+      await settle(tester);
+      final t = l10n(tester);
+      await tester.pump(const Duration(seconds: 30));
+      expect(find.text(t.pendingResultsChip(3)), findsOneWidget);
+      expect(find.text(t.pendingResultsRejected(1)), findsOneWidget);
+    });
+
+    testWidgets('a higher rejected count re-shows it once', (tester) async {
+      var rejected = 1;
+      await tester.pumpWidget(_wrap(PendingResultsChip(
+        pendingCountOverride: () async => 0,
+        oldestAgeOverride: () async => null,
+        rejectedCountOverride: () async => rejected,
+      )));
+      await settle(tester);
+      final t = l10n(tester);
+      await tester.pump(const Duration(seconds: 11));
+      expect(find.text(t.pendingResultsRejected(1)), findsNothing);
+
+      rejected = 2;
+      OfflineQueue.changes.value++; // chip re-reads on queue changes
+      await settle(tester);
+      expect(find.text(t.pendingResultsRejected(2)), findsOneWidget);
+      await tester.pump(const Duration(seconds: 11));
+      expect(find.text(t.pendingResultsRejected(2)), findsNothing);
+
+      OfflineQueue.changes.value++; // unrelated rebuild: no re-pop
+      await settle(tester);
+      expect(find.text(t.pendingResultsRejected(2)), findsNothing);
+    });
+  });
 }
