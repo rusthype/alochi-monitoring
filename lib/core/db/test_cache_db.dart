@@ -66,7 +66,21 @@ class TestCacheDb {
       whereArgs: [testKey],
     );
     if (rows.isEmpty) return null;
-    return jsonDecode(rows.first['json'] as String) as Map<String, dynamic>;
+    // A row that does not decode to a JSON object is not a downloaded test:
+    // drop it so the version check re-downloads instead of crashing the loader.
+    try {
+      final decoded = jsonDecode(rows.first['json'] as String);
+      if (decoded is Map<String, dynamic>) return decoded;
+      debugPrint('TestCacheDb.get($testKey): not a JSON object, dropping row');
+    } catch (e) {
+      debugPrint('TestCacheDb.get($testKey): corrupt row, dropping it: $e');
+    }
+    try {
+      await d.delete('test_cache', where: 'test_key = ?', whereArgs: [testKey]);
+    } catch (e) {
+      debugPrint('TestCacheDb.get($testKey): could not drop bad row: $e');
+    }
+    return null;
   }
 
   static Future<int?> cachedVersion(String testKey) async {

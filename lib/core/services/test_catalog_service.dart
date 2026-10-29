@@ -743,6 +743,12 @@ class TestCatalogService {
           {void Function(int done, int total)? onProgress}) =>
       ensureUrls(variantImageUrls(cached, variant), onProgress: onProgress);
 
+  /// ALL images of [data] (every variant) into the store - the whole-test
+  /// counterpart of [ensureVariantImages] for flows that do not pick a variant
+  /// up front (legacy unit1 / bob1_4 / math_gN loaders).
+  Future<bool> ensureTestImages(Map<String, dynamic> data) =>
+      ensureUrls(_imageUrls(data));
+
   /// Berilgan (fixImageUrl'dan o'tgan) url'lar ro'yxatini do'konga yuklaydi.
   Future<bool> ensureUrls(List<String> urls,
       {void Function(int done, int total)? onProgress}) async {
