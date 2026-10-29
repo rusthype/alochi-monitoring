@@ -42,7 +42,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:crypto/crypto.dart' show sha256;
+import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -234,16 +235,156 @@ Uint8List _utf16LEBytes(String s) {
   return bytes;
 }
 
+/// Hosts the installer / DMG may be downloaded from. The release workflows
+/// (build-windows.yml / build-macos.yml) publish every installer as a GitHub
+/// release asset, so `github.com` is the only host the manifest `url` may name
+/// (GitHub then redirects to its own CDN). The Alochi backend host is not part
+/// of the update flow.
+const Set<String> _allowedUpdateHosts = {'github.com'};
+
+/// True for an `https://` URL whose host is exactly one of [_allowedUpdateHosts].
+@visibleForTesting
+bool isAllowedUpdateUrl(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null || uri.scheme != 'https') return false;
+  return _allowedUpdateHosts.contains(uri.host.toLowerCase());
+}
+
+/// The downloaded installer was refused (disallowed URL or hash mismatch).
+/// Never shown to the user: the dialog falls back to its generic localized
+/// message and the detail goes to the update log.
+class UpdateIntegrityException implements Exception {
+  final String message;
+  const UpdateIntegrityException(this.message);
+  @override
+  String toString() => 'UpdateIntegrityException: $message';
+}
+
+final RegExp _hex64 = RegExp(r'^[0-9a-f]{64}$');
+bool _loggedNoHash = false;
+
+/// Normalizes a manifest hash: null when absent/blank, else lowercase hex.
+/// A present but malformed value is NOT ignored (that would let a mangled
+/// manifest turn the check off): it throws [UpdateIntegrityException].
+String? _normalizeSha256(String? raw) {
+  var v = raw?.trim().toLowerCase() ?? '';
+  if (v.startsWith('sha256:')) v = v.substring('sha256:'.length).trim();
+  if (v.isEmpty) return null;
+  if (!_hex64.hasMatch(v)) {
+    throw const UpdateIntegrityException('manifest sha256 is not 64 hex digits');
+  }
+  return v;
+}
+
+/// Downloads [info] to [savePath] and checks it: the URL must pass
+/// [isAllowedUpdateUrl], and when the manifest carried a SHA-256 the file's
+/// digest must match (case-insensitive). Without a hash the file is accepted
+/// as before (logged once). On ANY failure the file is deleted, so a partial
+/// or refused installer never stays on disk.
+@visibleForTesting
+Future<void> downloadVerified(
+  UpdateInfo info,
+  String savePath, {
+  Function(double)? onProgress,
+  Future<void> Function(String url, String savePath,
+          {Function(double)? onProgress})
+      download = _downloadWithRetry,
+}) async {
+  if (!isAllowedUpdateUrl(info.downloadUrl)) {
+    throw UpdateIntegrityException(
+        'download url not allowed: ${Uri.tryParse(info.downloadUrl)?.host}');
+  }
+  final expected = _normalizeSha256(info.sha256);
+  try {
+    await download(info.downloadUrl, savePath, onProgress: onProgress);
+    if (expected == null) {
+      if (!_loggedNoHash) {
+        _loggedNoHash = true;
+        debugPrint('UpdateService: manifest has no sha256, installer '
+            'integrity is not verified');
+      }
+      return;
+    }
+    final actual = (await sha256.bind(File(savePath).openRead()).first).toString();
+    if (actual != expected) {
+      throw UpdateIntegrityException(
+          'sha256 mismatch (expected $expected, got $actual)');
+    }
+  } catch (_) {
+    await _deleteQuietly(savePath);
+    rethrow;
+  }
+}
+
+Future<void> _deleteQuietly(String path) async {
+  try {
+    final f = File(path);
+    if (await f.exists()) await f.delete();
+  } catch (_) {}
+}
+
+/// Starts a process and waits at most [timeout] for it to exit. On timeout the
+/// child is killed (it used to be left running forever behind the dialog) and
+/// -1 is returned. Output is drained so the child can never block on a full
+/// pipe.
+@visibleForTesting
+Future<int> runBounded(Future<Process> Function() start, Duration timeout) async {
+  final proc = await start();
+  unawaited(proc.stdout.drain<void>().catchError((_) {}));
+  unawaited(proc.stderr.drain<void>().catchError((_) {}));
+  try {
+    return await proc.exitCode.timeout(timeout);
+  } on TimeoutException {
+    proc.kill();
+    return -1;
+  }
+}
+
+/// Turns a decoded manifest into [UpdateInfo], or null when it is malformed,
+/// not newer than [currentVersion], or names a disallowed download URL. The
+/// optional `sha256` / `installer_sha256` field is carried through verbatim.
+@visibleForTesting
+UpdateInfo? parseUpdateManifest(Object? decoded, String currentVersion) {
+  if (decoded is! Map<String, dynamic>) return null;
+
+  final latestVersion = decoded['version'];
+  final downloadUrl = decoded['url'];
+  if (latestVersion is! String || downloadUrl is! String) return null;
+
+  if (!isNewerVersion(latestVersion, currentVersion)) return null;
+
+  // A manifest naming any other host (or plain http) is not an update.
+  if (!isAllowedUpdateUrl(downloadUrl)) {
+    debugPrint('UpdateService: manifest url host not allowed, ignoring: '
+        '${Uri.tryParse(downloadUrl)?.host}');
+    return null;
+  }
+  final hash = decoded['sha256'] ?? decoded['installer_sha256'];
+
+  return UpdateInfo(
+    latestVersion: latestVersion,
+    currentVersion: currentVersion,
+    downloadUrl: downloadUrl,
+    sha256: hash?.toString(),
+  );
+}
+
 /// Result of a successful update check: a newer version exists.
 class UpdateInfo {
   final String latestVersion;
   final String currentVersion;
   final String downloadUrl;
 
+  /// Hex SHA-256 of the installer, from the manifest's optional `sha256` /
+  /// `installer_sha256` field. Null when the manifest has none (old backend /
+  /// old CI): the download is then installed exactly as before.
+  final String? sha256;
+
   const UpdateInfo({
     required this.latestVersion,
     required this.currentVersion,
     required this.downloadUrl,
+    this.sha256,
   });
 }
 
@@ -251,8 +392,9 @@ class UpdateInfo {
 /// called `exit(0)` and relaunched itself (Windows) or handed off to a
 /// detached script (macOS) — so `UpdateResult.success()` is only ever
 /// theoretically reachable, same as the `Future<bool> => true` path it
-/// replaces. [error] carries the actual exception text so the UI can show
-/// something more useful than a generic failure message.
+/// replaces. [error] is null for every failure the user would only see as
+/// raw exception text: the UI then shows its generic localized message and the
+/// detail stays in the update log (see [UpdateService._logUpdateFailure]).
 class UpdateResult {
   final bool success;
   final String? error;
@@ -297,20 +439,7 @@ class UpdateService {
       );
       if (resp.statusCode != 200) return null;
 
-      final decoded = jsonDecode(resp.body);
-      if (decoded is! Map<String, dynamic>) return null;
-
-      final latestVersion = decoded['version'];
-      final downloadUrl = decoded['url'];
-      if (latestVersion is! String || downloadUrl is! String) return null;
-
-      if (!isNewerVersion(latestVersion, currentVersion)) return null;
-
-      return UpdateInfo(
-        latestVersion: latestVersion,
-        currentVersion: currentVersion,
-        downloadUrl: downloadUrl,
-      );
+      return parseUpdateManifest(jsonDecode(resp.body), currentVersion);
     } catch (e) {
       debugPrint(
           'UpdateService.fetchUpdateInfo: check failed after retries: $e');
@@ -354,6 +483,7 @@ class UpdateService {
   /// update dialog, which the caller should surface alongside the error.
   Future<UpdateResult> downloadAndInstallUpdate(UpdateInfo info,
       {Function(double)? onProgress}) async {
+    String? installerPath;
     try {
       if (Platform.isMacOS) {
         return await _updateMacOS(info, onProgress);
@@ -363,21 +493,21 @@ class UpdateService {
         // Auto-install is currently only supported on Windows and macOS —
         // no automatic browser open here anymore; the caller (UI) decides
         // whether/when to offer an explicit "open in browser" action.
-        return const UpdateResult.failed(
-          'Auto-install is not supported on this platform',
-        );
+        return const UpdateResult.failed(null);
       }
 
       final tempDir = await getTemporaryDirectory();
       final savePath =
           '${tempDir.path}\\AlochiMonitoring-Setup-${info.latestVersion}.exe';
+      installerPath = savePath;
 
       // Retries the whole transfer (up to _maxAttempts times) on a stalled
       // or dropped connection — see _downloadWithRetry. Throws on final
       // failure, caught by the outer catch below which falls back to
       // openReleasePage() and reports failure to the caller.
-      await _downloadWithRetry(info.downloadUrl, savePath,
-          onProgress: onProgress);
+      // Host-pinned and (when the manifest has a sha256) hash-verified; a
+      // refused or partial file is deleted by downloadVerified.
+      await downloadVerified(info, savePath, onProgress: onProgress);
 
       // Launch installer with UAC elevation.
       // InnoSetup's installer.iss has PrivilegesRequired=admin, so the
@@ -406,35 +536,37 @@ try {
 ''';
       final encoded = base64Encode(_utf16LEBytes(psScript));
       // Bounded wait: if the UAC prompt never gets a response (user AFK,
-      // minimized, on another virtual desktop), Process.run's Future would
-      // otherwise never resolve, leaving the login screen's update badge
-      // stuck forever. 3 minutes covers realistic UAC reaction time + the
-      // installer's file copy while still failing closed into the
-      // openReleasePage() fallback if nothing happens.
-      final result = await Process.run(
-        'powershell.exe',
-        ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
-      ).timeout(
-        const Duration(minutes: 3),
-        onTimeout: () => ProcessResult(
-          -1,
-          -1,
-          '',
-          'timed out waiting for elevated installer',
+      // minimized, on another virtual desktop), the wait would otherwise never
+      // end, leaving the login screen's update badge stuck forever. 3 minutes
+      // covers realistic UAC reaction time + the installer's file copy; on
+      // timeout the PowerShell child is killed, not left running.
+      final exitCode = await runBounded(
+        () => Process.start(
+          'powershell.exe',
+          ['-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
         ),
+        const Duration(minutes: 3),
       );
 
-      if (result.exitCode != 0) {
+      if (exitCode != 0) {
         throw Exception(
-          'Windows installer failed or was cancelled (exit code ${result.exitCode})',
+          'Windows installer failed or was cancelled (exit code $exitCode)',
         );
       }
 
+      await _deleteQuietly(savePath);
       exit(0);
     } catch (e) {
       debugPrint('UpdateService.downloadAndInstallUpdate (Windows) error: $e');
       await _logUpdateFailure('windows-download-or-install', e);
-      return UpdateResult.failed(e.toString());
+      // The raw exception stays in the log; the dialog shows its generic
+      // localized message (error == null).
+      return const UpdateResult.failed(null);
+    } finally {
+      // Never reached on the success path (exit(0) above): a failed, refused
+      // or cancelled run leaves no installer behind in the temp folder.
+      final left = installerPath;
+      if (left != null) await _deleteQuietly(left);
     }
   }
 
@@ -454,8 +586,7 @@ try {
 
       // Retries the whole transfer (up to _maxAttempts times) on a stalled
       // or dropped connection — see _downloadWithRetry.
-      await _downloadWithRetry(info.downloadUrl, dmgPath,
-          onProgress: onProgress);
+      await downloadVerified(info, dmgPath, onProgress: onProgress);
 
       // Create a shell script to mount, copy, unmount, and relaunch.
       // Every step that can fail is checked explicitly and logged: silently
@@ -503,7 +634,7 @@ open -a "/Applications/alochi_monitoring.app"
     } catch (e) {
       debugPrint('UpdateService._updateMacOS error: $e');
       await _logUpdateFailure('macos-download-or-install', e);
-      return UpdateResult.failed(e.toString());
+      return const UpdateResult.failed(null);
     }
   }
 
