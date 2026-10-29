@@ -32,6 +32,7 @@ import '../diagnostics/active_test_gate.dart';
 import '../db/attempt_store.dart';
 import '../db/offline_queue.dart';
 import '../db/test_cache.dart';
+import '../models/test_version.dart';
 import '../network/connectivity_service.dart';
 import '../offline/lan_client_session.dart';
 import '../offline/offline_session.dart';
@@ -151,7 +152,7 @@ class AttemptRecoveryService {
       var versionChanged = false;
       if (savedVersion is num) {
         final now = await _currentVersion(testKey);
-        versionChanged = now != null && now != savedVersion.toInt();
+        versionChanged = testVersionChanged(savedVersion.toInt(), now);
       }
       if (versionChanged) {
         // The engine drops an attempt of another version (its keys map to

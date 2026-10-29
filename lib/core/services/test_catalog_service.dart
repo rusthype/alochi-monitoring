@@ -8,6 +8,7 @@ import '../api/api_client.dart';
 import '../cache/test_image_store.dart';
 import '../db/attempt_store.dart';
 import '../db/test_cache.dart';
+import '../models/test_version.dart';
 import '../diagnostics/active_test_gate.dart';
 import 'heartbeat_service.dart';
 import 'server_clock.dart';
@@ -232,7 +233,7 @@ class TestCatalogService {
     final cachedVersions = <String, int>{};
     for (final row in cachedRows) {
       final key = row['test_key']?.toString() ?? '';
-      final ver = int.tryParse(row['version']?.toString() ?? '') ?? 0;
+      final ver = parseTestVersion(row['version']);
       if (key.isNotEmpty) cachedVersions[key] = ver;
     }
 
@@ -274,7 +275,7 @@ class TestCatalogService {
         final key = row['test_key']?.toString() ?? '';
         final title = row['title']?.toString() ?? '';
         final grade = int.tryParse(row['grade']?.toString() ?? '') ?? 0;
-        final version = int.tryParse(row['version']?.toString() ?? '') ?? 0;
+        final version = parseTestVersion(row['version']);
         final lockedUntil = _parseTime(row['locked_until']);
         _lockedUntilCache[key] = lockedUntil;
         return CatalogEntry(
@@ -296,7 +297,7 @@ class TestCatalogService {
       if (key.isEmpty) continue;
       final title = item['title']?.toString() ?? '';
       final grade = int.tryParse(item['grade']?.toString() ?? '') ?? 0;
-      final version = int.tryParse(item['version']?.toString() ?? '') ?? 0;
+      final version = parseTestVersion(item['version']);
 
       var cachedVer = cachedVersions[key];
       // A row whose JSON cannot be read back is not a downloaded test.
@@ -598,7 +599,7 @@ class TestCatalogService {
 
       final title = data['title']?.toString() ?? '';
       final grade = int.tryParse(data['grade']?.toString() ?? '') ?? 0;
-      final version = int.tryParse(data['version']?.toString() ?? '') ?? 0;
+      final version = parseTestVersion(data['version']);
       final jsonStr = jsonEncode(data);
 
       final prev = await TestCache.versionOf(testKey);

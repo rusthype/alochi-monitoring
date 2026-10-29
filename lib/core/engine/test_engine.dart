@@ -14,6 +14,7 @@ import '../../shared/theme/app_theme.dart';
 import '../widgets/skeleton.dart';
 import '../api/api_client.dart';
 import '../db/attempt_store.dart';
+import '../models/test_version.dart';
 import 'test_models.dart';
 import 'test_scorer.dart';
 import 'question_widgets.dart';
@@ -429,7 +430,7 @@ class _TestEngineState extends State<TestEngine>
     if (localAnswers != null &&
         localAnswers['completed'] != true &&
         savedVersion is num &&
-        savedVersion.toInt() != widget.spec.version) {
+        testVersionChanged(savedVersion.toInt(), widget.spec.version)) {
       debugPrint('TestEngine: saved attempt is for test version '
           '$savedVersion, spec is ${widget.spec.version} - discarding');
       localAnswers = null;
