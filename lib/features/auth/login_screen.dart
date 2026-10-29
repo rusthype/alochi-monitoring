@@ -1229,25 +1229,6 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                   const SizedBox(height: 16),
                   _buildPrimaryButton(l10n, palette),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.push('/local_grade', extra: {}),
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: palette.fieldFill,
-                        foregroundColor: palette.ink2,
-                        side: BorderSide(color: palette.border),
-                        shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(kControlRadius)),
-                      ),
-                      icon: const Icon(Icons.groups_rounded, size: 18),
-                      label: Text(l10n.localGradeEntry,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 13)),
-                    ),
-                  ),
                 ],
               ),
             ),

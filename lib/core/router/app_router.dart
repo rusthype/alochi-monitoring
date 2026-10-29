@@ -26,14 +26,10 @@ import '../models/models.dart';
 import '../../features/test/package_screen.dart';
 import '../../features/offline/offline_history_hub_screen.dart';
 import '../../features/offline/teacher_lan_monitoring_screen.dart';
-import '../../features/local_test/local_grade_screen.dart';
 import '../../features/test/engine_host_screen.dart';
 import '../../features/test/test_screen.dart';
 import '../../features/result/result_screen.dart';
-import '../../features/interhouse/interhouse_runner.dart';
 import '../../features/test/confirm_screen.dart';
-import '../../features/local_test/local_result_screen.dart';
-import '../../features/local_test/local_test_screen.dart';
 
 // Diagnostic kiosk flow
 import '../../features/diagnostic/screens/diagnostic_school_select_screen.dart';
@@ -236,11 +232,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           path: '/lan_hub',
           builder: (context, state) => const TeacherLanMonitoringScreen()),
       GoRoute(
-          path: '/local_grade',
-          builder: (context, state) {
-            return const LocalGradeScreen();
-          }),
-      GoRoute(
           path: '/engine_host',
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
@@ -282,57 +273,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             );
           }),
       GoRoute(
-          path: '/local_test',
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {};
-            return LocalTestScreen(
-              firstName: extra['firstName'] ?? '',
-              lastName: extra['lastName'] ?? '',
-              group: extra['group'] ?? '',
-              school: extra['school'] ?? '',
-              grade: extra['grade'] ?? 0,
-              variant: extra['variant'] ?? 1,
-              questions: extra['questions'] ?? const [],
-            );
-          }),
-      GoRoute(
-          path: '/interhouse',
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {};
-            return InterhouseRunner(
-              session: extra['session'],
-              isOnline: extra['isOnline'] ?? false,
-              packageId: extra['packageId'] ?? 0,
-              variant: extra['variant'] ?? 1,
-              testData: extra['testData'],
-            );
-          }),
-      GoRoute(
           path: '/confirm',
           builder: (context, state) {
             final extra = state.extra as Map<String, dynamic>? ?? {};
             return ConfirmScreen(
               session: extra['session'],
               package: extra['package'],
-            );
-          }),
-      GoRoute(
-          path: '/local_result',
-          builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {};
-            return LocalResultScreen(
-              firstName: extra['firstName'] ?? '',
-              lastName: extra['lastName'] ?? '',
-              group: extra['group'] ?? '',
-              school: extra['school'] ?? '',
-              grade: extra['grade'] ?? 0,
-              variant: extra['variant'] ?? 1,
-              questions: extra['questions'] ?? const [],
-              answers: extra['answers'] ?? const {},
-              mathOk: extra['mathOk'] ?? 0,
-              engOk: extra['engOk'] ?? 0,
-              pct: extra['pct'] ?? 0,
-              topicScores: extra['topicScores'] ?? const {},
             );
           }),
       GoRoute(

@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 import '../../features/offline/offline_history_hub_screen.dart';
-import '../../features/local_test/local_grade_screen.dart';
 
 class CommandPalette extends StatefulWidget {
   const CommandPalette({super.key});
@@ -41,8 +40,6 @@ class _CommandPaletteState extends State<CommandPalette> {
     switch (route) {
       case '/history':
         return const OfflineHistoryHubScreen();
-      case '/local_grade':
-        return const LocalGradeScreen();
       default:
         return null;
     }
@@ -74,7 +71,6 @@ class _CommandPaletteState extends State<CommandPalette> {
     _allRoutes = [
       {'title': l10n.homePage, 'route': '/'},
       {'title': l10n.commandHistoryTitle, 'route': '/history'},
-      {'title': l10n.commandLocalGradeTitle, 'route': '/local_grade'},
     ];
     _applyFilter();
   }

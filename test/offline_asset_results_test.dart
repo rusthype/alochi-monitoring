@@ -585,7 +585,6 @@ void main() {
         build: (s, d) => interhouseResult(s, d),
         key: 'asset:interhouse_g2'
       ),
-      'bob14/local': (build: (s, _) => localResult(s), key: 'asset:bob1_4'),
     };
 
     for (final e in cases.entries) {

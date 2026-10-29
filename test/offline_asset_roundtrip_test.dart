@@ -31,10 +31,11 @@ import 'helpers/asset_screens.dart';
 
 const _fixtures = 'test/fixtures/offline';
 
-/// Keys of the result screens runAllScreens pumps. The Unit1 / Combined screens
-/// are gone, but their `asset:` keys stay in kAssetTestKeys (results queued by
-/// older app versions must still be admitted).
-const _exercisedKeys = {kAssetKeyInterhouse, kAssetKeyBob14};
+/// Keys of the result screens runAllScreens pumps. The Unit1 / Combined /
+/// Bob 1-4 / local-grade screens are gone, but their `asset:` keys stay in
+/// kAssetTestKeys (results queued by older app versions must still be admitted).
+const _exercisedKeys = {kAssetKeyInterhouse};
+
 const _defaultBackend =
     '/Users/max/PycharmProjects/AlochiSchool/alochi/.claude/worktrees/agent-ab638607e6e37ee92/alochi_backend';
 
@@ -119,7 +120,6 @@ void main() {
   Future<void> runAllScreens(WidgetTester t) async {
     final builders = <Widget Function()>[
       () => interhouseResult(_student, ih),
-      () => localResult(_student),
     ];
     for (var i = 0; i < builders.length; i++) {
       await t.pumpWidget(assetTestApp(builders[i]()));
