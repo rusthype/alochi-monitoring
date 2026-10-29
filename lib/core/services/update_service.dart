@@ -92,6 +92,24 @@ Future<T> _withRetry<T>(
 /// installer is cheap enough that resume isn't worth the added complexity.
 /// Any partial file from a failed attempt is deleted before the next try so
 /// a later successful attempt can't append to/mix with stale bytes.
+/// Arguments of the macOS last-resort `curl` download. https only, also for
+/// every redirect hop (GitHub redirects release assets to its CDN): a
+/// downgrade to http or another scheme is refused by curl itself.
+@visibleForTesting
+List<String> curlFallbackArgs(String url, String savePath) => [
+      '--proto',
+      '=https',
+      '--proto-redir',
+      '=https',
+      '-L',
+      '-f',
+      '--connect-timeout',
+      '25',
+      '-o',
+      savePath,
+      url,
+    ];
+
 Future<void> _downloadWithRetry(
   String url,
   String savePath, {
@@ -113,15 +131,7 @@ Future<void> _downloadWithRetry(
         .catchError((_) => false);
     if (!hasCurl) rethrow;
     onProgress?.call(0.0);
-    final result = await Process.run('curl', [
-      '-L',
-      '-f',
-      '--connect-timeout',
-      '25',
-      '-o',
-      savePath,
-      url,
-    ]);
+    final result = await Process.run('curl', curlFallbackArgs(url, savePath));
     if (result.exitCode != 0) {
       try {
         final partial = File(savePath);

@@ -208,6 +208,12 @@ void main() {
     });
   });
 
+  test('F5: the macOS curl fallback is https-only, including redirects', () {
+    final a = curlFallbackArgs(goodUrl, '/tmp/x.dmg');
+    expect(a.sublist(0, 4), ['--proto', '=https', '--proto-redir', '=https']);
+    expect(a, containsAll(['-L', '-f', '-o', '/tmp/x.dmg', goodUrl]));
+  });
+
   group('runBounded (F23 timeout kills the child)', () {
     test('returns the exit code of a process that finishes', () async {
       final p = _FakeProcess()..finish(0);
