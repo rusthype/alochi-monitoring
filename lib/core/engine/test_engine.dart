@@ -723,6 +723,9 @@ class _TestEngineState extends State<TestEngine>
     final deadlineMs = _deadlineMs;
     if (deadlineMs == null) return;
     if (!mounted) return;
+    // A suspended PC (lid closed) may have stopped the ticks: believe the wall
+    // clock for that gap so slept time is not handed back to the student.
+    _clock.absorbSuspend();
     // Paused: the countdown is frozen, the (stale) deadline must not expire
     // the attempt behind the shield -- e.g. on a window-focus resume.
     if (_lockShieldVisible) return;
@@ -767,6 +770,7 @@ class _TestEngineState extends State<TestEngine>
   /// — a duplicate `locked: true` from a replayed ping/frame is a no-op.
   void _pauseForLock() {
     if (_lockShieldVisible) return;
+    _clock.absorbSuspend();
     _timer?.cancel();
     final deadlineMs = _deadlineMs;
     _pausedRemainingMs =
@@ -781,6 +785,9 @@ class _TestEngineState extends State<TestEngine>
   /// long the pause lasted (see `_pausedRemainingMs` doc comment).
   void _resumeFromLock() {
     if (!_lockShieldVisible) return;
+    // Slept while paused: that time is not the student's either way, but it
+    // must be absorbed BEFORE the new deadline is built from nowMs.
+    _clock.absorbSuspend();
     final remaining = _pausedRemainingMs;
     _pausedRemainingMs = null;
     if (remaining != null) {

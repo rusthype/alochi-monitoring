@@ -17,12 +17,17 @@
 // Decision 8 of the offline plan: flags are metadata for the teacher/boss —
 // nothing here ever blocks or ends a test.
 //
-// KNOWN LIMITATION (sleep / hibernation): whether Windows' `GetTickCount64`
-// keeps counting while the PC is suspended is NOT verified on hardware here.
-// If it excludes suspended time, a student could close the lid mid-test and
-// the countdown would not advance meanwhile (extra time); the wall-vs-monotonic
-// skew check would then record a `clock_forward` flag on resume, but the test
-// is not shortened. This is documented, not solved.
+// SLEEP / SUSPEND: a monotonic source may stop while the PC is suspended
+// (macOS `mach_absolute_time` / Dart [Stopwatch] does; Windows
+// `GetTickCount64` is believed not to - unverified on hardware), which would
+// hand the student the slept time back. [absorbSuspend] compares wall time
+// with ticks since the last agreement and, when the wall clock ran ahead by
+// more than [skewThresholdMs], believes the LARGER (wall) elapsed time - the
+// same "larger of tick and wall" rule as [rebaseSavedDeadline]. A wall clock
+// that went back, or a jump above [_maxSuspendCreditMs] (dead-CMOS reset,
+// NTP fixing the year), is never credited, so time is only ever taken, never
+// added. A date moved forward by hand is indistinguishable from a sleep and
+// is credited the same way.
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io' show Platform;
@@ -103,6 +108,9 @@ class MonitoredClock {
   /// A saved attempt older than this (in ticks) is treated as "different boot".
   static const int _maxRebaseElapsedMs = 12 * 60 * 60 * 1000;
   static const int _clockBackTolerance = 60 * 1000;
+  /// A wall-vs-ticks gap above this is a clock reset / NTP year fix, not a
+  /// sleep: ignored (matches [_maxRebaseElapsedMs]).
+  static const int _maxSuspendCreditMs = _maxRebaseElapsedMs;
   /// Trusted-clock vs tick elapsed time may differ by this much (NTP step or
   /// drift between two processes) before the larger one is believed.
   static const int _wallAgreeTolerance = 5 * 60 * 1000;
@@ -120,6 +128,8 @@ class MonitoredClock {
     _anchorTicks = _ticks();
     _lastCheckWall = _anchorWall;
     _lastCheckTicks = _anchorTicks;
+    _syncWall = _anchorWall;
+    _syncTicks = _anchorTicks;
   }
 
   /// Production singleton. Tests replace it with a fake-driven instance.
@@ -129,6 +139,11 @@ class MonitoredClock {
   late final int _anchorTicks;
   late int _lastCheckWall;
   late int _lastCheckTicks;
+  // Last point where wall time and ticks were believed to agree
+  // ([absorbSuspend]) and the suspended time credited to [nowMs] since.
+  late int _syncWall;
+  late int _syncTicks;
+  int _suspendCreditMs = 0;
   int? _lastHwmWriteTicks;
   Timer? _timer;
   int _monitors = 0;
@@ -158,7 +173,7 @@ class MonitoredClock {
 
   /// Trusted epoch milliseconds: wall time at first use + monotonic delta.
   /// Unlike `DateTime.now()` this does NOT move when the user edits the date.
-  int get nowMs => _anchorWall + (_ticks() - _anchorTicks);
+  int get nowMs => _anchorWall + (_ticks() - _anchorTicks) + _suspendCreditMs;
 
   DateTime get nowUtc =>
       DateTime.fromMillisecondsSinceEpoch(nowMs, isUtc: true);
@@ -214,8 +229,29 @@ class MonitoredClock {
 
   // ── skew / high-water-mark monitoring ──────────────────────────────────────
 
+  /// Credits time the PC spent suspended (wall ran ahead of the ticks by more
+  /// than [skewThresholdMs]) to [nowMs]; returns the ms credited. Call on every
+  /// countdown tick and on resume. Wall behind the ticks, or ahead by more
+  /// than [_maxSuspendCreditMs], credits nothing (the baseline is re-agreed).
+  /// A small gap (NTP slew, a few seconds) is left to accumulate until it is
+  /// big enough to be believed, then credited in full.
+  int absorbSuspend() {
+    final wall = _wall();
+    final ticks = _ticks();
+    final skew = (wall - _syncWall) - (ticks - _syncTicks);
+    if (skew.abs() <= skewThresholdMs) return 0;
+    _syncWall = wall;
+    _syncTicks = ticks;
+    if (skew < 0 || skew > _maxSuspendCreditMs) return 0;
+    _suspendCreditMs += skew;
+    return skew;
+  }
+
   /// Starts the periodic check (reference counted so nested screens are safe).
   void startMonitoring() {
+    // Whatever happened before this screen opened (an idle laptop that slept on
+    // the login screen) is not part of the test: agree the baseline first.
+    if (_monitors == 0) absorbSuspend();
     _monitors++;
     if (_timer != null) return;
     _lastCheckWall = _wall();
