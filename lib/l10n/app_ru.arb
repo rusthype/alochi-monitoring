@@ -1688,5 +1688,7 @@
   "exportDailyPractice1520Msg": "Каждый день 15–20 минут практики",
   "exportReviewBothSubjectsMsg": "Повторять оба предмета вместе",
   "exportParentTipsText": "• Ежедневно уделяйте 20–30 минут чтению\n• Повторяйте слабый предмет вместе\n• Поощряйте и обучайте с терпением",
-  "exportFooterBrand": "Образование A'lochi · alochi.org"
+  "exportFooterBrand": "Образование A'lochi · alochi.org",
+  "testAttemptsExhaustedTitle": "Лимит попыток исчерпан",
+  "testAttemptsExhaustedBody": "Этот ученик использовал все попытки для этого теста. Для пересдачи нужно разрешение администратора (разрешение на пересдачу в панели)."
 }

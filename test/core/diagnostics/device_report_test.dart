@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:alochi_monitoring/core/diagnostics/device_info_collector.dart';
 import 'package:alochi_monitoring/core/diagnostics/device_report_sender.dart';
 import 'package:alochi_monitoring/core/diagnostics/error_log.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -146,5 +149,59 @@ void main() {
   test('send() never throws when offline/unconfigured', () async {
     SharedPreferences.setMockInitialValues({});
     await DeviceReportSender.instance.send();
+  });
+
+  group('last-sent bookkeeping', () {
+    const key = 'device_report_last_sent_ms';
+
+    Future<int?> lastSent() async =>
+        (await SharedPreferences.getInstance()).getInt(key);
+
+    test('failed POST (offline / 5xx) leaves last-sent unchanged', () async {
+      SharedPreferences.setMockInitialValues({key: 111});
+      await http.runWithClient(
+        () => DeviceReportSender.instance.send(),
+        () => MockClient((_) async => throw const SocketException('offline')),
+      );
+      expect(await lastSent(), 111);
+      await http.runWithClient(
+        () => DeviceReportSender.instance.send(),
+        () => MockClient((_) async => http.Response('', 503)),
+      );
+      expect(await lastSent(), 111);
+    });
+
+    test('2xx writes last-sent', () async {
+      SharedPreferences.setMockInitialValues({});
+      var posts = 0;
+      await http.runWithClient(
+        () => DeviceReportSender.instance.send(),
+        () => MockClient((_) async {
+          posts++;
+          return http.Response('{}', 200);
+        }),
+      );
+      expect(posts, 1);
+      expect(await lastSent(), isNotNull);
+    });
+
+    test('second send() while one is in flight does not POST twice', () async {
+      SharedPreferences.setMockInitialValues({});
+      var posts = 0;
+      final gate = Completer<void>();
+      await http.runWithClient(() async {
+        final a = DeviceReportSender.instance.send();
+        final b = DeviceReportSender.instance.send();
+        await b; // returns immediately: guarded
+        expect(posts, lessThanOrEqualTo(1));
+        gate.complete();
+        await a;
+      }, () => MockClient((_) async {
+            posts++;
+            await gate.future;
+            return http.Response('{}', 200);
+          }));
+      expect(posts, 1);
+    });
   });
 }
