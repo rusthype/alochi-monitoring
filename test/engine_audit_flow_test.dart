@@ -141,7 +141,8 @@ void main() {
     await _io(tester);
 
     final l10n = _l10n(tester);
-    await tester.tap(find.text(l10n.noOption));
+    // English test (no subject): the label is 'NO' whatever the UI language.
+    await tester.tap(find.text('NO'));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tap(find.text(l10n.nextButton)); // _syncTextAnswers runs
     await tester.pump(const Duration(milliseconds: 400));

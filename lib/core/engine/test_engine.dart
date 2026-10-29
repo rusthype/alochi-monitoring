@@ -1091,7 +1091,9 @@ class _TestEngineState extends State<TestEngine>
         _totalQuestions > 0 ? _answeredCount / _totalQuestions : 0.0;
     final isLast = _sectionIdx == sections.length - 1;
 
-    return Scaffold(
+    return YesNoLabelScope(
+      english: YesNoLabelScope.englishFor(widget.spec.subject),
+      child: Scaffold(
       backgroundColor: AppColors.bg,
       body: Stack(children: [
         Column(children: [
@@ -1192,6 +1194,7 @@ class _TestEngineState extends State<TestEngine>
         // ── Admin-lock shield ─────────────────────────────────────────────────
         if (_lockShieldVisible) _buildLockShield(),
       ]),
+    ),
     );
   }
 

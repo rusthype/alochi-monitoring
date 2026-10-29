@@ -1123,6 +1123,28 @@ class ReadingPassageWidget extends StatelessWidget {
 //        but also usable stand-alone in other section types.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Tells the yes/no buttons below which language the TEST is in, so an English
+/// test shows `YES` / `NO` whatever the app (UI) language is. Only the LABEL
+/// changes: the stored/scored answer stays `YES` / `NO` either way.
+class YesNoLabelScope extends InheritedWidget {
+  final bool english;
+  const YesNoLabelScope(
+      {super.key, required this.english, required super.child});
+
+  /// English tests: the explicit `subject: english`, the combined tests (their
+  /// yes/no items live in the English part) and legacy specs without a subject
+  /// (math + English only). Any other subject follows the UI language.
+  static bool englishFor(String? subject) =>
+      subject == null || subject == 'english' || subject == 'combined';
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<YesNoLabelScope>()?.english ??
+      false;
+
+  @override
+  bool updateShouldNotify(YesNoLabelScope old) => english != old.english;
+}
+
 /// Yes/No toggle — type: yes_no
 /// [answer] — "YES", "NO", or null.
 class YesNoWidget extends StatelessWidget {
@@ -1170,14 +1192,18 @@ class YesNoWidget extends StatelessWidget {
         const SizedBox(width: 10),
         Row(mainAxisSize: MainAxisSize.min, children: [
           _YesNoButton(
-            label: AppLocalizations.of(context)!.yesOption,
+            label: YesNoLabelScope.of(context)
+                ? 'YES'
+                : AppLocalizations.of(context)!.yesOption,
             color: AppColors.ok,
             selected: answer == 'YES',
             onTap: () => onSelect('YES'),
           ),
           const SizedBox(width: 8),
           _YesNoButton(
-            label: AppLocalizations.of(context)!.noOption,
+            label: YesNoLabelScope.of(context)
+                ? 'NO'
+                : AppLocalizations.of(context)!.noOption,
             color: AppColors.err,
             selected: answer == 'NO',
             onTap: () => onSelect('NO'),
