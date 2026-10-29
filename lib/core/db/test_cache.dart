@@ -359,8 +359,8 @@ class TestCache {
     }
   }
 
-  /// Last good roster of [groupId], or null. `done` belongs to one test, so
-  /// for any other [testKey] it is dropped from the rows.
+  /// Last good roster of [groupId], or null. `done` and `attempts_remaining`
+  /// belong to one test, so for any other [testKey] they are dropped.
   static Future<List<Map<String, dynamic>>?> getRoster(
       String groupId, String testKey) async {
     if (_memory != null || groupId.isEmpty) return null;
@@ -377,7 +377,10 @@ class TestCache {
       for (final e in decoded) {
         if (e is! Map) continue;
         final m = Map<String, dynamic>.from(e);
-        if (!sameTest) m.remove('done');
+        if (!sameTest) {
+          m.remove('done');
+          m.remove('attempts_remaining');
+        }
         out.add(m);
       }
       return out.isEmpty ? null : out;

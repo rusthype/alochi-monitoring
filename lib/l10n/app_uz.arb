@@ -1754,5 +1754,7 @@
   "exportDailyPractice1520Msg": "Har kuni 15–20 daqiqa mashq",
   "exportReviewBothSubjectsMsg": "Ikkala fanni birga takrorlash",
   "exportParentTipsText": "• Har kuni 20–30 daqiqa o'qish vaqti\n• Zaif fanni birgalikda takrorlang\n• Rag'batlantiring va sabr bilan o'rgating",
-  "exportFooterBrand": "A'lochi Ta'lim · alochi.org"
+  "exportFooterBrand": "A'lochi Ta'lim · alochi.org",
+  "testAttemptsExhaustedTitle": "Urinishlar limiti tugagan",
+  "testAttemptsExhaustedBody": "Bu o'quvchi bu test uchun barcha urinishlarini ishlatib bo'lgan. Qayta topshirish uchun administratordan ruxsat so'rang (panelda qayta topshirishga ruxsat berish)."
 }

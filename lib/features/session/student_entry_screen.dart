@@ -519,6 +519,13 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
       groupId = '';
     }
     if (_selectedStudent != null && _done.contains(studentId)) {
+      // Backend says the attempt limit is used up (absent field = unknown:
+      // old backend / pack / offline rosters keep the retake confirm).
+      final left = _selectedStudent!['attempts_remaining'];
+      if (left is int && left == 0) {
+        await _showAttemptsExhausted();
+        return;
+      }
       if (!await _confirmRetake() || !mounted) return;
     }
     // The Start tap is the earliest moment this attempt is "starting": hold
@@ -572,6 +579,22 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
         _err = null;
       });
     }
+  }
+
+  Future<void> _showAttemptsExhausted() async {
+    final l10n = AppLocalizations.of(context)!;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.testAttemptsExhaustedTitle),
+        content: Text(l10n.testAttemptsExhaustedBody),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l10n.okBtn)),
+        ],
+      ),
+    );
   }
 
   Future<bool> _confirmRetake() async {
