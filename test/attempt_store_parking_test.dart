@@ -108,4 +108,18 @@ void main() {
     final again = await AttemptStore.listAll();
     expect(again.where((e) => e.record['attempt_id'] == 'b1'), hasLength(1));
   });
+
+  test('F6: replaceEntry rewrites a listed slot only while it is unchanged',
+      () async {
+    await AttemptStore.save('t7', _rec('A', answers: {'S/0': 1}));
+    final e = (await AttemptStore.listAll()).single;
+    expect(
+        await AttemptStore.replaceEntry(
+            e, {...e.record, 'deadline_epoch_ms': 42}),
+        isTrue);
+    expect((await AttemptStore.load('t7'))!['deadline_epoch_ms'], 42);
+    // Stale listing (record moved on meanwhile): refused, newer data kept.
+    expect(await AttemptStore.replaceEntry(e, {...e.record, 'x': 1}), isFalse);
+    expect((await AttemptStore.load('t7'))!.containsKey('x'), isFalse);
+  });
 }
