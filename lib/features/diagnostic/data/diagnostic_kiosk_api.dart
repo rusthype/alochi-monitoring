@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../../../core/diagnostics/error_log.dart';
+import '../../../core/api/api_host.dart';
 import '../../../core/api/api_client.dart'
     show ApiException, isJsonObjectReply, retryAfterSecondsOf;
 import '../../../core/models/add_student.dart';
@@ -105,11 +106,11 @@ Map<String, dynamic> withRecoveredScore(
 class DiagnosticKioskApi {
   // Reads the same API_BASE_URL override as MonitoringApi (api_client.dart)
   // so one --dart-define configures the whole app's backend host.
-  static const String _host = String.fromEnvironment(
+  static final String _host = normalizeApiHost(const String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'https://api.alochi.org',
-  );
-  static const String _base = '$_host/api/v1/diagnostic';
+  ));
+  static final String _base = '$_host/api/v1/diagnostic';
   static const Duration _timeout = Duration(seconds: 20);
 
   Future<http.Response> _send(Future<http.Response> Function() req) async {

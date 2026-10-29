@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// `done` flag reflects the synced result. Never throws.
 class RosterDoneStore {
   static const _prefix = 'roster_done_';
-  static const _cap = 500; // per test; oldest dropped first
+  static const _cap = 5000; // per test (a big school's grade-wide test on one PC); oldest dropped first
 
   static Future<Set<String>> load(String testKey) async {
     try {
