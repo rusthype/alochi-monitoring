@@ -21,6 +21,15 @@ void main() {
       expect(isNewerVersion('1.0.44', '1.0.44'), false);
     });
 
+    test('build suffix is ignored and every numeric segment is compared', () {
+      expect(isNewerVersion('1.0.168', '1.0.167'), true);
+      expect(isNewerVersion('1.0.168+168', '1.0.167'), true);
+      expect(isNewerVersion('1.0.167+168', '1.0.167'), false);
+      expect(isNewerVersion('1.0.167.1', '1.0.167'), true);
+      expect(isNewerVersion('1.0.167', '1.0.167.1'), false);
+      expect(isNewerVersion('1.0.167.0', '1.0.167'), false);
+    });
+
     test('malformed version strings return false, never throw', () {
       expect(isNewerVersion('not-a-version', '1.0.44'), false);
       expect(isNewerVersion('1.0.45', 'not-a-version'), false);
@@ -74,6 +83,36 @@ void main() {
           }, '1.0.49')!
               .sha256,
           'CD');
+    });
+    test('accepted version shapes', () {
+      for (final v in ['1.0.168', '1.0.168+168', '1.0.168.2']) {
+        expect(parseUpdateManifest({'version': v, 'url': goodUrl}, '1.0.167'),
+            isNotNull,
+            reason: v);
+      }
+    });
+    test('F6: hostile versions are rejected before any path/script use', () {
+      for (final v in [
+        r'1.0.1$(calc)',
+        r'1.0.200.$(Start-Process calc)',
+        r'..\..\x',
+        r'1.0.200.\..\..\Startup\x',
+        '1.0.168;rm',
+        '1.0.168 ',
+        '1.0.168\n',
+        '1.0.168\n',
+        '1.0.168+',
+        '1.0.168+a',
+        '1.0.168-beta',
+        '1.0.168+${'9' * 30}',
+        '1.0.${'9' * 40}',
+        '1.0.168.1.2.3',
+        '',
+      ]) {
+        expect(parseUpdateManifest({'version': v, 'url': goodUrl}, '1.0.167'),
+            isNull,
+            reason: v);
+      }
     });
     test('disallowed host, not newer or malformed manifests give null', () {
       expect(

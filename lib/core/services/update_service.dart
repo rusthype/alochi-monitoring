@@ -196,31 +196,36 @@ Future<void> _downloadOnce(
   }
 }
 
-/// True if [remote] is strictly newer than [local] (both "X.Y.Z" strings).
-/// Numeric comparison, not string comparison — "1.0.9" vs "1.0.10" must
-/// compare correctly. Returns false (not an error) for malformed input,
-/// since this only gates whether to show the update badge.
+/// The only version shape accepted from a manifest: 3-4 dot-separated
+/// numbers plus an optional `+build`. The value is later embedded in an
+/// installer file name, so nothing else (spaces, `$`, `(`, `\`, `..`) may pass.
+final RegExp _versionShape = RegExp(r'^\d{1,9}(\.\d{1,9}){2,3}(\+\d{1,9})?$');
+
+/// True if [remote] is strictly newer than [local] ("X.Y.Z[.W][+build]").
+/// Numeric comparison of every segment, not string comparison - "1.0.9" vs
+/// "1.0.10" must compare correctly; the `+build` part is ignored. Returns
+/// false (not an error) for malformed input, since this only gates whether to
+/// show the update badge.
 bool isNewerVersion(String remote, String local) {
   final r = _parseVersionParts(remote);
   final l = _parseVersionParts(local);
   if (r == null || l == null) return false;
-  for (var i = 0; i < 3; i++) {
-    if (r[i] != l[i]) return r[i] > l[i];
+  for (var i = 0; i < 4; i++) {
+    final a = i < r.length ? r[i] : 0;
+    final b = i < l.length ? l[i] : 0;
+    if (a != b) return a > b;
   }
   return false;
 }
 
 List<int>? _parseVersionParts(String version) {
-  final segments = version.split('.');
-  if (segments.length < 3) return null;
-  final parts = <int>[];
-  for (var i = 0; i < 3; i++) {
-    final n = int.tryParse(segments[i]);
-    if (n == null) return null;
-    parts.add(n);
-  }
-  return parts;
+  if (!_versionShape.hasMatch(version)) return null;
+  return version.split('+').first.split('.').map(int.parse).toList();
 }
+
+/// A PowerShell single-quoted literal: nothing inside is expanded (`$(...)`,
+/// backticks), a quote is doubled.
+String _psQuote(String s) => "'${s.replaceAll("'", "''")}'";
 
 /// Encodes [s] as UTF-16LE bytes, the format PowerShell's -EncodedCommand
 /// expects to be base64'd. Used to pass the installer launch script without
@@ -351,6 +356,8 @@ UpdateInfo? parseUpdateManifest(Object? decoded, String currentVersion) {
   final downloadUrl = decoded['url'];
   if (latestVersion is! String || downloadUrl is! String) return null;
 
+  // Also the shape gate: a version that is not strictly X.Y.Z[.W][+build]
+  // never reaches the installer file name (see [_versionShape]).
   if (!isNewerVersion(latestVersion, currentVersion)) return null;
 
   // A manifest naming any other host (or plain http) is not an update.
@@ -524,10 +531,10 @@ class UpdateService {
       final exePath = Platform.resolvedExecutable;
       final psScript = '''
 try {
-  \$p = Start-Process -FilePath "$savePath" -ArgumentList "/SILENT","/CLOSEAPPLICATIONS" -Verb RunAs -Wait -PassThru
+  \$p = Start-Process -FilePath ${_psQuote(savePath)} -ArgumentList "/SILENT","/CLOSEAPPLICATIONS" -Verb RunAs -Wait -PassThru
   if (\$p.ExitCode -eq 0) {
     Start-Sleep -Seconds 1
-    Start-Process -FilePath "$exePath"
+    Start-Process -FilePath ${_psQuote(exePath)}
   }
   exit \$p.ExitCode
 } catch {
