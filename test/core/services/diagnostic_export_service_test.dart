@@ -1,12 +1,30 @@
+import 'dart:typed_data';
+
 import 'package:alochi_monitoring/core/services/diagnostic_export_service.dart';
+import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:archive/archive.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+late AppLocalizations uz;
+
+String passport(Map<String, dynamic> r) =>
+    DiagnosticExportService.generateStudentPassportHtml(r, l10n: uz);
+
+Uint8List zip(List<Map<String, dynamic>> r,
+        {void Function(int done)? onProgress}) =>
+    DiagnosticExportService.buildZipBytes(r, l10n: uz, onProgress: onProgress);
+
 void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    uz = await AppLocalizations.delegate.load(const Locale('uz'));
+  });
+
   group('DiagnosticExportService.generateStudentPassportHtml', () {
     test('a "sent" record with both scores renders full passport with scores',
         () {
-      final html = DiagnosticExportService.generateStudentPassportHtml({
+      final html = passport({
         'attempt_id': 'a1b2c3d4-0000',
         'student_name': 'Aliyev Ali',
         'class_label': '4-A',
@@ -30,7 +48,7 @@ void main() {
 
     test('a low-scoring "sent" record gets the "Qayta mashq kerak" verdict',
         () {
-      final html = DiagnosticExportService.generateStudentPassportHtml({
+      final html = passport({
         'attempt_id': 'low0000-0000',
         'student_name': 'Valiyev Vali',
         'class_label': '3-B',
@@ -49,7 +67,7 @@ void main() {
     test(
         'a "pending" record (both scores null) renders the pending status block, no score UI',
         () {
-      final html = DiagnosticExportService.generateStudentPassportHtml({
+      final html = passport({
         'attempt_id': 'p1',
         'student_name': 'Karimov Karim',
         'class_label': '5-C',
@@ -68,7 +86,7 @@ void main() {
 
     test('handles a null date_taken without throwing', () {
       expect(
-        () => DiagnosticExportService.generateStudentPassportHtml({
+        () => passport({
           'attempt_id': 'x1',
           'student_name': 'No Date',
           'class_label': '1-A',
@@ -85,7 +103,7 @@ void main() {
     test(
         'a locally-estimated "pending" record shows the unofficial-estimate banner',
         () {
-      final html = DiagnosticExportService.generateStudentPassportHtml({
+      final html = passport({
         'attempt_id': 'est1',
         'student_name': 'Estimated Student',
         'class_label': '3-A',
@@ -107,7 +125,7 @@ void main() {
 
   group('DiagnosticExportService.buildZipBytes', () {
     test('produces one HTML entry per record, named collision-safely', () {
-      final bytes = DiagnosticExportService.buildZipBytes([
+      final bytes = zip([
         {
           'attempt_id': 'aaaa1111-xxxx',
           'student_name': 'Aliyev Ali',
@@ -141,7 +159,7 @@ void main() {
 
     test('reports progress once per record via onProgress', () {
       final progressCalls = <int>[];
-      DiagnosticExportService.buildZipBytes(
+      zip(
         [
           {
             'attempt_id': 'a1',
@@ -171,7 +189,7 @@ void main() {
     });
 
     test('an empty record list produces a valid, empty zip', () {
-      final bytes = DiagnosticExportService.buildZipBytes(const []);
+      final bytes = zip(const []);
       final archive = ZipDecoder().decodeBytes(bytes);
       expect(archive.length, equals(0));
     });

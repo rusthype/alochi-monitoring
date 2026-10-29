@@ -154,7 +154,9 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
     String? savedPath;
     try {
       final exportToZip = widget.exportToZipOverride ??
-          DiagnosticExportService.exportResultsToZip;
+          (List<Map<String, dynamic>> rs, {void Function(int done)? onProgress}) =>
+              DiagnosticExportService.exportResultsToZip(rs,
+                  l10n: l10n, onProgress: onProgress);
       savedPath = await exportToZip(
         records,
         onProgress: (done) {

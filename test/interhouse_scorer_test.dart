@@ -227,28 +227,60 @@ void main() {
       expect(result.parts[4].score, 6, reason: 'trailing ! should be stripped before comparison');
     });
 
-    test('yn answer is case-sensitive (YES matches YES, yes does NOT match YES)', () {
+    test('yn answer: stored YES/NO match; padding, case and localized words too', () {
       final v = buildFixtureVariant();
       // reading[0] is yn with ans='YES', reading[1] is yn with ans='NO'
-      final answersCorrect = <String, dynamic>{
-        'vocab': List<int?>.filled(6, null),
-        'grammar': List<int?>.filled(6, null),
-        'spelling': List<String>.filled(6, ''),
-        'reading': ['YES', 'NO', null, null, null, null],
-        'sentences': List<String>.filled(6, ''),
-      };
-      final resultCorrect = IhScorer.score(v, answersCorrect, buildLevels());
-      expect(resultCorrect.parts[3].score, 2, reason: 'uppercase YES/NO should match');
+      Map<String, dynamic> withYn(String a, String b) => {
+            'vocab': List<int?>.filled(6, null),
+            'grammar': List<int?>.filled(6, null),
+            'spelling': List<String>.filled(6, ''),
+            'reading': [a, b, null, null, null, null],
+            'sentences': List<String>.filled(6, ''),
+          };
+      for (final pair in [
+        ['YES', 'NO'],
+        ['yes', 'no'],
+        [' yes ', ' NO '],
+        ['ДА', 'НЕТ'],
+      ]) {
+        final r = IhScorer.score(v, withYn(pair[0], pair[1]), buildLevels());
+        expect(r.parts[3].score, 2, reason: '$pair');
+      }
+      // swapped / unknown answers never match
+      expect(IhScorer.score(v, withYn('NO', 'YES'), buildLevels()).parts[3].score, 0);
+      expect(IhScorer.score(v, withYn('maybe', ''), buildLevels()).parts[3].score, 0);
+    });
 
-      final answersLower = <String, dynamic>{
-        'vocab': List<int?>.filled(6, null),
-        'grammar': List<int?>.filled(6, null),
-        'spelling': List<String>.filled(6, ''),
-        'reading': ['yes', 'no', null, null, null, null], // lowercase should NOT match
-        'sentences': List<String>.filled(6, ''),
-      };
-      final resultLower = IhScorer.score(v, answersLower, buildLevels());
-      expect(resultLower.parts[3].score, 0, reason: 'lowercase yes/no should NOT match (yn is exact-match)');
+    test('numeric spelling / fill answers match by value, not by text', () {
+      final base = buildFixtureVariant();
+      final v = IhVariant(
+        vocab: base.vocab,
+        grammar: base.grammar,
+        spelling: List.generate(6, (_) => _wordQ('3')),
+        reading: IhReading(
+          img: 'r07.png',
+          title: 'T',
+          text: 'tx',
+          qs: [for (var i = 0; i < 6; i++) _fillQ('2.5')],
+        ),
+        sentences: base.sentences,
+      );
+      IhResult run(String sp, String fill) => IhScorer.score(v, {
+            'vocab': List<int?>.filled(6, null),
+            'grammar': List<int?>.filled(6, null),
+            'spelling': List<String>.filled(6, sp),
+            'reading': List<dynamic>.filled(6, fill),
+            'sentences': List<String>.filled(6, ''),
+          }, buildLevels());
+      for (final sp in ['3', '3.0', '3,0', ' 03 ']) {
+        expect(run(sp, '').parts[2].score, 6, reason: '"$sp"');
+      }
+      for (final f in ['2.5', '2,5', '2.50', ' 02,5 ']) {
+        expect(run('', f).parts[3].score, 6, reason: '"$f"');
+      }
+      expect(run('3.1', '2.6').parts[2].score, 0);
+      expect(run('3.1', '2.6').parts[3].score, 0);
+      expect(run('30', '25').parts[2].score, 0);
     });
 
     test('reading fill is case-insensitive (dog matches Dog)', () {

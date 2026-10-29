@@ -29,7 +29,7 @@ class PdfReport {
     required List<dynamic> wrongAnswers,
     required AppLocalizations l10n,
   }) async {
-    final doc = pw.Document(title: 'Natija - ${session.studentName}');
+    final doc = pw.Document(title: l10n.pdfTitle(session.studentName));
     final date = _date(DateTime.now());
 
     final mathPct =
@@ -354,9 +354,9 @@ class PdfReport {
 
   static pw.Widget _recommendations(
       double mathPct, double engPct, int totalPct, AppLocalizations l10n) {
-    final mathTips = PdfTips.mathTips(mathPct);
-    final engTips = PdfTips.englishTips(engPct);
-    final status = PdfTips.overallStatus(totalPct);
+    final mathTips = PdfTips.mathTips(mathPct, l10n);
+    final engTips = PdfTips.englishTips(engPct, l10n);
+    final status = PdfTips.overallStatus(totalPct, l10n);
 
     return pw.Container(
         padding: const pw.EdgeInsets.all(18),

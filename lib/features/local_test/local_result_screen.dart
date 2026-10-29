@@ -132,7 +132,7 @@ class _LocalResultScreenState extends State<LocalResultScreen>
         _sendStatus = AppLocalizations.of(context)!.localResSavedSending;
       });
       // Submit bo'lgandan keyin HTML ni bot uchun yuklaymiz (retry bilan)
-      _autoUploadHtmlForBot(token);
+      _autoUploadHtmlForBot(token, AppLocalizations.of(context)!);
     } catch (e) {
       debugPrint('Navbatga yozishda xato: $e');
       if (!mounted) return;
@@ -146,10 +146,12 @@ class _LocalResultScreenState extends State<LocalResultScreen>
   /// App ko'rsatadigan HTML ni bot uchun serverga yuklaydi.
   /// Race condition: /result/ submit va HTML upload parallel — agar natija
   /// DB ga hali yetmagan bo'lsa (404), exponential back-off: 2s → 5s → 10s.
-  Future<void> _autoUploadHtmlForBot(String token) async {
+  Future<void> _autoUploadHtmlForBot(
+      String token, AppLocalizations l10n) async {
     String htmlStr;
     try {
       htmlStr = HtmlService.generateResultHtml(
+        l10n: l10n,
         firstName: widget.firstName,
         lastName: widget.lastName,
         group: widget.group,

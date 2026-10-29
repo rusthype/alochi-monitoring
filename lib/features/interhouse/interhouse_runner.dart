@@ -1058,14 +1058,16 @@ class _YnQuestion extends StatelessWidget {
         const SizedBox(width: 10),
         Row(mainAxisSize: MainAxisSize.min, children: [
           _YnButton(
-            label: AppLocalizations.of(context)!.yesOption,
+            // English test: YES/NO in any UI language, like the generic engine
+            // (YesNoLabelScope); the stored value is 'YES'/'NO' either way.
+            label: 'YES',
             color: AppColors.ok,
             selected: selected == 'YES',
             onTap: () => onSelect('YES'),
           ),
           const SizedBox(width: 8),
           _YnButton(
-            label: AppLocalizations.of(context)!.noOption,
+            label: 'NO',
             color: AppColors.err,
             selected: selected == 'NO',
             onTap: () => onSelect('NO'),
