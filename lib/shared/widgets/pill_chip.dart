@@ -1,6 +1,6 @@
 // lib/shared/widgets/pill_chip.dart
 //
-// The rounded chip used for filters, hub tabs and small actions: white pill,
+// The rounded chip used for filters, hub tabs and small actions: white capsule (school-picker pill shape),
 // thin border, soft shadow; selected = accent-tinted fill + accent border.
 // Extracted from DiagnosticHistoryScreen._chip so the offline history hub
 // (tab switcher, clear action) and the diagnostic filters look identical.
@@ -8,6 +8,10 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import 'button_shape.dart';
+
+/// Fully rounded capsule, same radius as the school-picker pills
+/// (DiagnosticPillButton).
+const double _kCapsuleRadius = 100;
 
 class PillChip extends StatelessWidget {
   final String label;
@@ -41,12 +45,14 @@ class PillChip extends StatelessWidget {
           : AppColors.surface,
       border: selected ? AppColors.brand : AppColors.border,
       height: 40,
+      radius: _kCapsuleRadius,
       child: TextButton(
         onPressed: onPressed,
         style: bottomChipButtonStyle(
           foreground: fg,
           fontSize: 13,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          radius: _kCapsuleRadius,
         ).copyWith(overlayColor: pointerOnlyOverlay(hoverColor ?? fg)),
         child: icon == null
             ? Text(label)
