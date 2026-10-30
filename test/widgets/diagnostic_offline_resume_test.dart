@@ -185,10 +185,15 @@ void main() {
               'total_questions': 3,
               'subject': subject,
               'attempts_used': serverGeneration,
-              'questions': [
-                for (var i = 1; i <= 3; i++)
-                  _question(id: 'n$i', text: 'Yangi $i')
-              ],
+              // A subject's package is idempotent server-side: same
+              // generation => same questions; a reset => a fresh package.
+              'questions': localGeneration == null ||
+                      localGeneration == serverGeneration
+                  ? pkg(3)
+                  : [
+                      for (var i = 1; i <= 3; i++)
+                        _question(id: 'n$i', text: 'Yangi $i')
+                    ],
             }, isFixedVariant: true);
           },
         )));
@@ -223,6 +228,58 @@ void main() {
           onAvailableSubjects: () => availableSubjectsCalls++);
       expect(availableSubjectsCalls, 0);
       expect((blob!['questions'] as List).first['question_id'], 'q1');
+    });
+
+    testWidgets(
+        'restored blob whose questions belong to another subject (english '
+        'label on MATH questions) is replaced by the server package',
+        (tester) async {
+      mockAppSupportDirectoryFor(tester);
+      Map<String, dynamic>? blob;
+      await tester.runAsync(() async {
+        await AttemptStore.save('diag_att-mix', {
+          'all_subjects': ['math', 'english'],
+          'subjects_completed': ['math'],
+          'current_subject': 'english',
+          'is_fixed_variant': true,
+          'attempts_used': 2,
+          'questions': pkg(3), // MATH questions q1..q3 (the bug)
+          'position': 1,
+          'total': 3,
+          'deadline_epoch_ms': DateTime.now()
+              .add(const Duration(minutes: 5))
+              .millisecondsSinceEpoch,
+        });
+        await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+          attemptId: 'att-mix',
+          studentName: 'Aliyev Ali',
+          grade: 3,
+          language: 'uz',
+          availableSubjectsOverride: (grade, {String language = 'uz'}) async =>
+              {
+            'subjects': ['math', 'english']
+          },
+          startAttemptOverride: ({required attemptId, required subject}) async {
+            return _withMeta({
+              'position': 1,
+              'total_questions': 3,
+              'subject': subject,
+              'attempts_used': 2,
+              'questions': [
+                for (var i = 1; i <= 3; i++)
+                  _question(id: 'e$i', text: 'Ingliz $i')
+              ],
+            }, isFixedVariant: true);
+          },
+        )));
+        await tester.pumpAndSettle();
+        blob = await AttemptStore.load('diag_att-mix');
+      });
+      expect(find.text('Ingliz 1'), findsOneWidget);
+      expect(find.text('Savol 1'), findsNothing);
+      expect((blob!['questions'] as List).first['question_id'], 'e1');
+      expect(blob!['current_subject'], 'english');
+      await unmount(tester);
     });
 
     testWidgets('legacy blob without a generation adopts the server value',

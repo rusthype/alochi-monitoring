@@ -193,60 +193,115 @@ class SyncService {
     }
   }
 
+  /// kiosk/sync/ bitta so'rovda eng ko'pi bilan shuncha javobni ko'radi
+  /// (backend `QUESTIONS_PER_VARIANT`); undan keyingilari jimgina kesiladi.
+  static const int _syncBatchSize = 30;
+
+  /// Server 200 bilan batch'dagi hammasini qabul qilmasa (`synced` < yuborilgan:
+  /// boshqa subject / allaqachon baholangan savollar), shuncha marta qayta
+  /// uriniladi, keyin to'xtatiladi (cheksiz qayta yuborish yo'q).
+  static const int _maxPartialSyncStrikes = 3;
+  final Map<String, int> _partialSyncStrikes = {};
+
   /// Bitta attempt'ning hali sinxronlanmagan fixed-variant javoblarini
   /// best-effort sinxronlash — o'z xatolarini yutadi, shunda bitta yomon
   /// attempt hech qachon shu flush tsiklining qolgan qismini yoki undan
   /// yuqoridagi OfflineQueue flush'ini bloklamaydi; sinxronlanmagan qator
   /// shunchaki keyingi tick'da qayta urinadi.
+  ///
+  /// Qatorlar (generation, subject) bo'yicha guruhlanib, <= 30 talik
+  /// batch'larda yuboriladi: server faqat JORIY subject'ning savollarini
+  /// qabul qiladi va batch'ni 30 tada kesadi, shuning uchun aralash
+  /// (Matematika+Ingliz tili) batch'da ingliz javoblari jimgina tushib
+  /// qolardi. Qator faqat server HAMMASINI qabul qilganda (`synced` >=
+  /// yuborilgan) yoki javobda `synced` umuman bo'lmaganda (eski backend)
+  /// sinxronlangan deb belgilanadi.
   @visibleForTesting
   Future<void> flushDiagnosticAnswers(String attemptId) async {
     final rows = await DiagnosticAnswerStore.pendingForAttempt(attemptId);
     if (rows.isEmpty) return;
-    // Group by generation (attempts_used at write time): each group is sent
-    // with its own `generation` so a stale group is rejected on its own and
-    // never blocks rows written after a reset. NULL = legacy row, sent as-is.
-    final groups = <int?, List<Map<String, dynamic>>>{};
+    // Group by generation (attempts_used at write time) and subject: each
+    // group is sent with its own `generation` so a stale group is rejected on
+    // its own and never blocks rows written after a reset. NULL = legacy row,
+    // sent as-is.
+    final groups = <(int?, String), List<Map<String, dynamic>>>{};
     for (final r in rows) {
-      groups.putIfAbsent((r['generation'] as num?)?.toInt(), () => []).add(r);
+      groups
+          .putIfAbsent(
+              ((r['generation'] as num?)?.toInt(), '${r['subject'] ?? ''}'),
+              () => [])
+          .add(r);
     }
+    final staleGenerations = <int?>{};
     for (final entry in groups.entries) {
-      final generation = entry.key;
-      final group = entry.value;
-      final ids = group.map((r) => r['question_id'] as String).toList();
-      try {
-        await diagnosticKioskApi.syncAnswers(
-          attemptId: attemptId,
-          generation: generation,
-          answers: group
-              .map((r) => {
-                    'question_index': r['question_index'],
-                    'question_id': r['question_id'],
-                    'selected_option': r['selected_option'],
-                    'answered_at': r['answered_at'],
-                  })
-              .toList(),
-        );
-        await DiagnosticAnswerStore.markSynced(attemptId, ids);
-      } on ApiException catch (e) {
-        if (e.statusCode == 409 && e.code == 'stale_generation') {
-          // Admin reset/retake: these rows belong to a previous generation.
-          // Uploading them would pollute the reset attempt — drop them and
-          // stop retrying (the runner re-bootstraps on its own next open).
-          await DiagnosticAnswerStore.clearGeneration(attemptId, generation);
-          continue;
+      final (generation, subject) = entry.key;
+      if (staleGenerations.contains(generation)) continue;
+      final all = entry.value;
+      for (var i = 0; i < all.length; i += _syncBatchSize) {
+        final group = all.sublist(i, math.min(i + _syncBatchSize, all.length));
+        final ids = group.map((r) => r['question_id'] as String).toList();
+        final strikeKey = '$attemptId|$generation|$subject';
+        try {
+          final resp = await diagnosticKioskApi.syncAnswers(
+            attemptId: attemptId,
+            generation: generation,
+            answers: group
+                .map((r) => {
+                      'question_index': r['question_index'],
+                      'question_id': r['question_id'],
+                      'selected_option': r['selected_option'],
+                      'answered_at': r['answered_at'],
+                    })
+                .toList(),
+          );
+          final accepted = (resp['synced'] as num?)?.toInt();
+          if (accepted == null || accepted >= ids.length) {
+            _partialSyncStrikes.remove(strikeKey);
+            await DiagnosticAnswerStore.markSynced(attemptId, ids);
+            continue;
+          }
+          // 200, lekin server hammasini qabul qilmadi (rad etilganlar qaysi
+          // ekanini bilmaymiz) — qatorlarni "yuborilgan" deb BELGILAMAYMIZ.
+          final strikes = (_partialSyncStrikes[strikeKey] ?? 0) + 1;
+          debugPrint(
+              'SyncService: kiosk/sync accepted $accepted/${ids.length} '
+              '(attempt=$attemptId subject=$subject strike=$strikes)');
+          if (strikes >= _maxPartialSyncStrikes) {
+            // ponytail: rows the server never accepts (e.g. subject already
+            // scored via kiosk/finish/) are released after 3 tries so the
+            // flush loop doesn't re-send them forever.
+            _partialSyncStrikes.remove(strikeKey);
+            await DiagnosticAnswerStore.markSynced(attemptId, ids);
+          } else {
+            _partialSyncStrikes[strikeKey] = strikes;
+          }
+        } on ApiException catch (e) {
+          if (e.statusCode == 409 && e.code == 'stale_generation') {
+            // Admin reset/retake: these rows belong to a previous generation.
+            // Uploading them would pollute the reset attempt — drop them and
+            // stop retrying (the runner re-bootstraps on its own next open).
+            await DiagnosticAnswerStore.clearGeneration(attemptId, generation);
+            staleGenerations.add(generation);
+            break;
+          }
+          // Plain 409 "Attempt allaqachon yakunlangan": attempt allaqachon
+          // kiosk/finish/ bilan yopilgan — javoblar finish payload orqali
+          // yetib borgan, qayta yuborish hech qachon o'tmaydi (prod: bitta
+          // attempt ~52 marta 409 bilan urildi). Aniq rad etish — qatorlarni
+          // sinxronlangan deb belgilab, abadiy qayta urinishni to'xtatamiz.
+          if (e.statusCode == 409) {
+            await DiagnosticAnswerStore.markSynced(
+                attemptId, all.map((r) => r['question_id'] as String).toList());
+            break;
+          }
+          debugPrint(
+              'SyncService._flushDiagnosticAnswers($attemptId) error: $e');
+          break;
+        } catch (e) {
+          debugPrint(
+              'SyncService._flushDiagnosticAnswers($attemptId) error: $e');
+          break;
         }
-        // Plain 409 "Attempt allaqachon yakunlangan": attempt allaqachon
-        // kiosk/finish/ bilan yopilgan — javoblar finish payload orqali
-        // yetib borgan, qayta yuborish hech qachon o'tmaydi (prod: bitta
-        // attempt ~52 marta 409 bilan urildi). Aniq rad etish — qatorlarni
-        // sinxronlangan deb belgilab, abadiy qayta urinishni to'xtatamiz.
-        if (e.statusCode == 409) {
-          await DiagnosticAnswerStore.markSynced(attemptId, ids);
-          continue;
-        }
-        debugPrint('SyncService._flushDiagnosticAnswers($attemptId) error: $e');
-      } catch (e) {
-        debugPrint('SyncService._flushDiagnosticAnswers($attemptId) error: $e');
       }
     }
   }
