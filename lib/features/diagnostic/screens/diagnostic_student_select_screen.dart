@@ -342,7 +342,7 @@ class _DiagnosticStudentSelectScreenState
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
         if (questions != null && questions.isNotEmpty) {
-          prefetchDiagnosticImages(questions);
+          unawaited(prefetchDiagnosticImages(questions));
         }
         return _PeekOutcome.cached;
       } catch (e) {
