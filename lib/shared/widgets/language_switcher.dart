@@ -26,6 +26,7 @@ class LanguageSwitcher extends ConsumerWidget {
         value: currentLocale.languageCode,
         borderRadius: BorderRadius.circular(14),
         padding: padding,
+        focusColor: Colors.transparent,
         elevation: 8,
         icon: Icon(
           Icons.language_rounded,

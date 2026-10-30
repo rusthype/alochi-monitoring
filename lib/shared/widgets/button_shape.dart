@@ -8,6 +8,22 @@ const double kControlRadius = 14;
 /// the border.
 const double kChipRadius = 13;
 
+/// Ink overlay that paints only for hover and press, never for keyboard
+/// focus. A pointer-activated control whose focus is restored after a route
+/// pop (FocusScope) would otherwise keep a solid grey focus highlight while
+/// the mouse is elsewhere. Values mirror the Material 3 defaults for
+/// hover (8%) and press (10%); keyboard activation still works.
+WidgetStateProperty<Color?> pointerOnlyOverlay(Color foreground) =>
+    WidgetStateProperty.resolveWith((states) {
+      if (states.contains(WidgetState.pressed)) {
+        return foreground.withValues(alpha: .10);
+      }
+      if (states.contains(WidgetState.hovered)) {
+        return foreground.withValues(alpha: .08);
+      }
+      return null;
+    });
+
 /// Style for a [TextButton] living inside a [BottomChip]: same shape as the
 /// frame, so hover/pressed/focus overlays follow the outline exactly.
 ButtonStyle bottomChipButtonStyle({
@@ -23,7 +39,7 @@ ButtonStyle bottomChipButtonStyle({
         borderRadius: BorderRadius.circular(kChipRadius),
       ),
       textStyle: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w600),
-    );
+    ).copyWith(overlayColor: pointerOnlyOverlay(foreground));
 
 /// Outlined, softly shadowed frame for the small action chips under the
 /// login card. Clips its child to the rounded shape.
