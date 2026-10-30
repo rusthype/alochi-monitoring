@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/db/history_db.dart';
 import '../../shared/theme/app_theme.dart';
+import '../../shared/widgets/history_card.dart';
+import '../../shared/widgets/pill_chip.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -13,7 +15,17 @@ class HistoryScreen extends StatefulWidget {
   /// command_palette.dart's quick preview) keep compiling/behaving
   /// unchanged if ever reused standalone.
   final bool embedded;
-  const HistoryScreen({super.key, this.embedded = false});
+
+  /// Test-only overrides — default to the real HistoryDb calls.
+  final Future<List<Map<String, dynamic>>> Function()? getHistoryOverride;
+  final Future<void> Function()? clearOverride;
+
+  const HistoryScreen({
+    super.key,
+    this.embedded = false,
+    this.getHistoryOverride,
+    this.clearOverride,
+  });
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
@@ -29,7 +41,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _load() async {
-    final res = await HistoryDb.getHistory();
+    final res = await (widget.getHistoryOverride ?? HistoryDb.getHistory)();
     if (mounted) {
       setState(() {
         _records = res;
@@ -61,134 +73,123 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
     if (conf == true) {
       setState(() => _loading = true);
-      await HistoryDb.clearHistory();
+      await (widget.clearOverride ?? HistoryDb.clearHistory)();
       await _load();
     }
   }
 
   Widget _buildBody(BuildContext context) {
-    return _loading
-        ? const Center(child: CircularProgressIndicator(color: AppColors.brand))
-        : _records.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.history_toggle_off_rounded,
-                        size: 64, color: AppColors.ink3.withValues(alpha: .5)),
-                    const SizedBox(height: 16),
-                    Text(AppLocalizations.of(context)!.noHistoryYet,
-                        style: const TextStyle(
-                            color: AppColors.ink2, fontSize: 16)),
-                  ],
-                ),
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: _records.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (ctx, i) {
-                  final r = _records[i];
-                  final date = DateTime.fromMillisecondsSinceEpoch(
-                      r['date_taken'] as int);
-                  final dateStr = DateFormat('dd.MM.yyyy HH:mm').format(date);
-                  final pct = r['total_pct'] as double;
-                  final isPass = pct >= 60.0;
+    final l10n = AppLocalizations.of(context)!;
+    if (_loading) {
+      return const Center(
+          child: CircularProgressIndicator(color: AppColors.brand));
+    }
+    if (_records.isEmpty) return HistoryEmpty(l10n.noHistoryYet);
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      itemCount: _records.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (ctx, i) {
+        final r = _records[i];
+        final date =
+            DateTime.fromMillisecondsSinceEpoch(r['date_taken'] as int);
+        final dateStr = DateFormat('dd.MM.yyyy HH:mm').format(date);
+        final pct = r['total_pct'] as double;
+        final tone = pct >= 60.0 ? AppColors.ok : AppColors.err;
 
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
+        return HistoryCard(
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: tone.withValues(alpha: .1),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: tone.withValues(alpha: .25)),
+                ),
+                child: Center(
+                  child: Text(
+                    '${pct.toInt()}%',
+                    style: TextStyle(
+                      color: tone,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
                     ),
-                    child: Row(
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${r['first_name']} ${r['last_name']}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: AppColors.ink1,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
                       children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: isPass
-                                ? AppColors.ok.withValues(alpha: .1)
-                                : AppColors.err.withValues(alpha: .1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${pct.toInt()}%',
-                              style: TextStyle(
-                                color: isPass ? AppColors.ok : AppColors.err,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('${r['first_name']} ${r['last_name']}',
-                                  style: const TextStyle(
-                                      color: AppColors.ink1,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 4),
-                              Text(
-                                  '${AppLocalizations.of(context)!.schoolLabel}: ${r['school']} | ${AppLocalizations.of(context)!.groupGradeLabel}: ${r['grade_group']}',
-                                  style: const TextStyle(
-                                      color: AppColors.ink2, fontSize: 12)),
-                              const SizedBox(height: 2),
-                              Text(
-                                  '${AppLocalizations.of(context)!.dateLabel}: $dateStr',
-                                  style: const TextStyle(
-                                      color: AppColors.ink3, fontSize: 11)),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                                '${AppLocalizations.of(context)!.mathShort}: ${r['math_score']}',
-                                style: const TextStyle(
-                                    color: AppColors.brand,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600)),
-                            Text(
-                                '${AppLocalizations.of(context)!.engShort}: ${r['eng_score']}',
-                                style: const TextStyle(
-                                    color: AppColors.ok,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600)),
-                          ],
-                        ),
+                        HistoryTag('${l10n.schoolLabel}: ${r['school']}',
+                            icon: Icons.school_outlined),
+                        HistoryTag(
+                            '${l10n.groupGradeLabel}: ${r['grade_group']}',
+                            icon: Icons.groups_outlined),
+                        HistoryTag('${l10n.dateLabel}: $dateStr',
+                            icon: Icons.event_outlined),
                       ],
                     ),
-                  );
-                },
-              );
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  HistoryTag('${l10n.mathShort}: ${r['math_score']}',
+                      color: AppColors.brand),
+                  const SizedBox(height: 6),
+                  HistoryTag('${l10n.engShort}: ${r['eng_score']}',
+                      color: AppColors.ok),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
+
+  /// Quiet rounded "clear all" action (grey; red only on hover/press).
+  Widget _clearChip(BuildContext context) => PillChip(
+        label: AppLocalizations.of(context)!.clearHistoryTitle,
+        tooltip: AppLocalizations.of(context)!.clearHistoryTitle,
+        icon: Icons.delete_outline_rounded,
+        hoverColor: AppColors.err,
+        onPressed: _clear,
+      );
 
   @override
   Widget build(BuildContext context) {
     if (widget.embedded) {
-      return Container(
+      return ColoredBox(
         color: AppColors.bg,
-        child: Stack(
+        child: Column(
           children: [
-            _buildBody(context),
             if (_records.isNotEmpty)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: IconButton(
-                  icon: const Icon(Icons.delete_outline, color: AppColors.err),
-                  tooltip: AppLocalizations.of(context)!.clearHistoryTitle,
-                  onPressed: _clear,
-                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Align(
+                    alignment: Alignment.centerRight,
+                    child: _clearChip(context)),
               ),
+            Expanded(child: _buildBody(context)),
           ],
         ),
       );

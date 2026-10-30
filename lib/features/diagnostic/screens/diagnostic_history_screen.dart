@@ -16,7 +16,8 @@ import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/services/diagnostic_export_service.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/theme/app_theme.dart';
-import '../../../shared/widgets/button_shape.dart';
+import '../../../shared/widgets/history_card.dart';
+import '../../../shared/widgets/pill_chip.dart';
 import '../dialogs/diagnostic_export_pin_dialog.dart';
 
 enum DiagnosticHistoryFilter { all, sent, pending }
@@ -291,13 +292,7 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
                 ? const Center(
                     child: CircularProgressIndicator(color: AppColors.brand))
                 : filtered.isEmpty
-                    ? Center(
-                        child: Text(
-                          l10n.diagnosticHistoryNoRecords,
-                          style: const TextStyle(
-                              color: AppColors.ink2, fontSize: 16),
-                        ),
-                      )
+                    ? HistoryEmpty(l10n.diagnosticHistoryNoRecords)
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                         itemCount: filtered.length,
@@ -311,25 +306,11 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
     );
   }
 
-  Widget _chip(String label, DiagnosticHistoryFilter value) {
-    final selected = _filter == value;
-    return BottomChip(
-      fill: selected
-          ? AppColors.brand.withValues(alpha: 0.12)
-          : AppColors.surface,
-      border: selected ? AppColors.brand : AppColors.border,
-      height: 40,
-      child: TextButton(
+  Widget _chip(String label, DiagnosticHistoryFilter value) => PillChip(
+        label: label,
+        selected: _filter == value,
         onPressed: () => setState(() => _filter = value),
-        style: bottomChipButtonStyle(
-          foreground: selected ? AppColors.brand : AppColors.ink2,
-          fontSize: 13,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-        ),
-        child: Text(label),
-      ),
-    );
-  }
+      );
 
   Widget _row(
       BuildContext context, AppLocalizations l10n, Map<String, dynamic> r) {
@@ -338,56 +319,50 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
     final isSent = r['status'] == 'sent';
     final mathScore = r['math_score'];
     final engScore = r['english_score'];
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
+    return HistoryCard(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Icon(Icons.circle,
-                size: 12, color: isSent ? AppColors.ok : AppColors.err),
-          ),
+          Icon(Icons.circle,
+              size: 12, color: isSent ? AppColors.ok : AppColors.err),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('${r['student_name'] ?? ''}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         color: AppColors.ink1,
                         fontSize: 15,
                         fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(
-                  '${l10n.schoolLabel}: ${r['school'] ?? ''} | ${l10n.groupGradeLabel}: ${r['class_label'] ?? ''}',
-                  style: const TextStyle(color: AppColors.ink2, fontSize: 12),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    HistoryTag('${l10n.schoolLabel}: ${r['school'] ?? ''}',
+                        icon: Icons.school_outlined),
+                    HistoryTag(
+                        '${l10n.groupGradeLabel}: ${r['class_label'] ?? ''}',
+                        icon: Icons.groups_outlined),
+                    HistoryTag('${l10n.dateLabel}: $dateStr',
+                        icon: Icons.event_outlined),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text('${l10n.dateLabel}: $dateStr',
-                    style:
-                        const TextStyle(color: AppColors.ink3, fontSize: 11)),
               ],
             ),
           ),
+          const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('${l10n.mathShort}: ${mathScore ?? '-'}',
-                  style: const TextStyle(
-                      color: AppColors.brand,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600)),
-              Text('${l10n.engShort}: ${engScore ?? '-'}',
-                  style: const TextStyle(
-                      color: AppColors.ok,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600)),
+              HistoryTag('${l10n.mathShort}: ${mathScore ?? '-'}',
+                  color: AppColors.brand),
+              const SizedBox(height: 6),
+              HistoryTag('${l10n.engShort}: ${engScore ?? '-'}',
+                  color: AppColors.ok),
               if (!isSent)
                 TextButton(
                   onPressed: _sending ? null : _flushThenReload,

@@ -30,13 +30,14 @@ ButtonStyle bottomChipButtonStyle({
   required Color foreground,
   double fontSize = 12,
   EdgeInsetsGeometry padding = const EdgeInsets.symmetric(horizontal: 8),
+  double radius = kChipRadius,
 }) =>
     TextButton.styleFrom(
       foregroundColor: foreground,
       padding: padding,
       minimumSize: const Size(0, 40),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(kChipRadius),
+        borderRadius: BorderRadius.circular(radius),
       ),
       textStyle: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w600),
     ).copyWith(overlayColor: pointerOnlyOverlay(foreground));
@@ -51,6 +52,7 @@ class BottomChip extends StatelessWidget {
     required this.child,
     this.height,
     this.minHeight,
+    this.radius = kChipRadius,
   });
 
   final Color fill;
@@ -58,6 +60,7 @@ class BottomChip extends StatelessWidget {
   final Widget child;
   final double? height;
   final double? minHeight;
+  final double radius;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -67,7 +70,7 @@ class BottomChip extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: fill,
-          borderRadius: BorderRadius.circular(kChipRadius),
+          borderRadius: BorderRadius.circular(radius),
           border: Border.all(color: border),
           boxShadow: [
             BoxShadow(
