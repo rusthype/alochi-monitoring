@@ -216,7 +216,13 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Row(
+            // Buttons size to their label; the cap is proportional to the row
+            // (not a fixed px) so desktop shows full labels while a narrow
+            // window still leaves room for the scrollable chips (ellipsis
+            // only as a last resort).
+            child: LayoutBuilder(builder: (context, box) {
+              final btnMax = BoxConstraints(maxWidth: box.maxWidth * 0.45);
+              return Row(
               children: [
                 Expanded(
                   child: SingleChildScrollView(
@@ -238,7 +244,7 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
                 if (hasPending) ...[
                   const SizedBox(width: 8),
                   ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 160),
+                    constraints: btnMax,
                     child: TextButton.icon(
                       onPressed: _sending ? null : _flushThenReload,
                       icon: _sending
@@ -256,7 +262,7 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
                 ],
                 const SizedBox(width: 8),
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 160),
+                  constraints: btnMax,
                   child: OutlinedButton.icon(
                     onPressed: (_exporting || filtered.isEmpty)
                         ? null
@@ -277,7 +283,8 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
                   ),
                 ),
               ],
-            ),
+            );
+            }),
           ),
           Expanded(
             child: _loading

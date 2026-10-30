@@ -2,6 +2,7 @@ import 'package:alochi_monitoring/core/sync/sync_service.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_history_screen.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 final _fixture = <Map<String, dynamic>>[
@@ -27,9 +28,9 @@ final _fixture = <Map<String, dynamic>>[
   },
 ];
 
-Widget _wrap(Widget child) {
+Widget _wrap(Widget child, {Locale locale = const Locale('uz')}) {
   return MaterialApp(
-    locale: const Locale('uz'),
+    locale: locale,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: Scaffold(body: child),
@@ -57,6 +58,9 @@ void main() {
 
     final l10n = AppLocalizations.of(
         tester.element(find.byType(DiagnosticHistoryScreen)))!;
+    // Test font (Ahem) is much wider than real fonts, so the button labels
+    // squeeze the scrollable chip list — scroll the chip into view first.
+    await tester.ensureVisible(find.text(l10n.diagnosticHistoryFilterSent));
     await tester.tap(find.text(l10n.diagnosticHistoryFilterSent));
     await tester.pumpAndSettle();
 
@@ -316,6 +320,45 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(l10n.diagnosticExportError), findsOneWidget);
+    });
+  });
+
+  group('filter-row action buttons', () {
+    for (final lang in ['uz', 'ru']) {
+      testWidgets('full export + send-all labels at 1200px ($lang)',
+          (tester) async {
+        tester.view.physicalSize = const Size(1200, 800);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(_wrap(
+            DiagnosticHistoryScreen(getAllOverride: () async => _fixture),
+            locale: Locale(lang)));
+        await tester.pumpAndSettle();
+
+        final l10n = AppLocalizations.of(
+            tester.element(find.byType(DiagnosticHistoryScreen)))!;
+        for (final label in [
+          l10n.diagnosticExportZipButton,
+          l10n.diagnosticHistorySendAll,
+        ]) {
+          final para = tester.renderObject<RenderParagraph>(find.text(label));
+          expect(para.size.width,
+              greaterThanOrEqualTo(para.getMaxIntrinsicWidth(double.infinity)),
+              reason: '"$label" is truncated');
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('500px width pumps without overflow (ru)', (tester) async {
+      tester.view.physicalSize = const Size(500, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_wrap(
+          DiagnosticHistoryScreen(getAllOverride: () async => _fixture),
+          locale: const Locale('ru')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
     });
   });
 }
