@@ -1,4 +1,6 @@
 import 'package:alochi_monitoring/features/diagnostic/utils/diagnostic_image_prefetch.dart';
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -50,6 +52,95 @@ void main() {
         'https://api.alochi.org/media/b.svg',
       });
       expect(urls.length, 2);
+    });
+  });
+
+  group('prefetchDiagnosticImages', () {
+    final qs = [
+      for (var i = 1; i <= 8; i++) {'image_url': '/media/q$i.png'},
+    ];
+    String u(int i) => 'https://api.alochi.org/media/q$i.png';
+
+    test('downloads in question order, at most 3 in flight', () async {
+      final started = <String>[];
+      final gates = <String, Completer<void>>{};
+      var inFlight = 0;
+      var maxInFlight = 0;
+      Future<void> fake(String url) async {
+        started.add(url);
+        inFlight++;
+        if (inFlight > maxInFlight) maxInFlight = inFlight;
+        final c = gates[url] = Completer<void>();
+        await c.future;
+        inFlight--;
+      }
+
+      final done = prefetchDiagnosticImages(qs, download: fake);
+      await Future<void>.delayed(Duration.zero);
+      expect(started, [u(1), u(2), u(3)]);
+
+      gates[u(1)]!.complete();
+      await Future<void>.delayed(Duration.zero);
+      expect(started, [u(1), u(2), u(3), u(4)]);
+
+      for (var i = 2; i <= 8; i++) {
+        while (gates[u(i)] == null) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        gates[u(i)]!.complete();
+        await Future<void>.delayed(Duration.zero);
+      }
+      await done;
+      expect(started, [for (var i = 1; i <= 8; i++) u(i)]);
+      expect(maxInFlight, 3);
+    });
+
+    test('a failing download does not stop the rest or throw', () async {
+      final seen = <String>[];
+      await prefetchDiagnosticImages(
+        qs.take(4).toList(),
+        download: (url) async {
+          seen.add(url);
+          if (url == u(2)) throw Exception('boom');
+        },
+      );
+      expect(seen.length, 4);
+    });
+  });
+
+  group('awaitDiagnosticQuestionImages', () {
+    test('returns after the timeout when the download never completes',
+        () async {
+      final sw = Stopwatch()..start();
+      await awaitDiagnosticQuestionImages(
+        {'image_url': '/media/q1.png'},
+        timeout: const Duration(milliseconds: 50),
+        download: (_) => Completer<void>().future,
+      );
+      expect(sw.elapsedMilliseconds, greaterThanOrEqualTo(45));
+      expect(sw.elapsedMilliseconds, lessThan(2000));
+    });
+
+    test('skips questions without an image, and never throws', () async {
+      var calls = 0;
+      await awaitDiagnosticQuestionImages(
+        {'question_text': 'What is 2 + 2?'},
+        download: (_) async => calls++,
+      );
+      expect(calls, 0);
+      await awaitDiagnosticQuestionImages(
+        {'image_url': '/media/q1.png'},
+        download: (_) => throw Exception('offline'),
+      );
+    });
+
+    test('completes as soon as the image is cached', () async {
+      var downloaded = false;
+      await awaitDiagnosticQuestionImages(
+        {'image_url': '/media/q1.png'},
+        download: (_) async => downloaded = true,
+      );
+      expect(downloaded, isTrue);
     });
   });
 }

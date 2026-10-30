@@ -20,7 +20,6 @@ import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart'
     show ApiException, newIdempotencyToken;
-import '../../../core/cache/image_cache_manager.dart';
 import '../../../core/db/attempt_store.dart';
 import '../../../core/db/diagnostic_answer_store.dart';
 import '../../../core/db/diagnostic_history_db.dart';
@@ -507,6 +506,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       questions.length,
     );
     if (!mounted) return false;
+    // Still _loading here: warm images from the saved position onward (ordered)
+    // and wait (bounded) for the visible question's image before revealing it.
+    _prefetchImages(_fromPosition(questions, position));
+    await awaitDiagnosticQuestionImages(questions[position - 1]);
+    if (!mounted) return false;
     setState(() {
       _allSubjects = allSubjects;
       _subjectsCompleted
@@ -529,7 +533,6 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       _loading = false;
     });
     if (remainingSeconds != null) _restoreCountdown(remainingSeconds);
-    _prefetchImages(_questions);
     return true;
   }
 
@@ -1250,11 +1253,17 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       } else {
         question = _extractQuestion(resp);
       }
-      // Await the reveal-question's image (best-effort, short timeout) so
-      // the question never flashes a live-fetch spinner on first render —
+      // Warm the package in question order from the current position first,
+      // then await the reveal-question's image (bounded, best-effort) so the
+      // question never flashes a live-fetch spinner on first render —
       // near-instant when the package was already background-prefetched.
-      await _awaitFirstImage(question);
-      if (!mounted) return;
+      if (isFixedVariant && questions.isNotEmpty) {
+        _prefetchImages(_fromPosition(questions, position));
+      }
+      await awaitDiagnosticQuestionImages(question);
+      // A newer _startSubject (retry / self-heal) may have taken over while we
+      // waited — it owns _loading and the state now.
+      if (!mounted || _currentSubject != subject) return;
       _generation = (resp['attempts_used'] as num?)?.toInt() ?? _generation;
       final restoredAnswers = isFixedVariant
           ? await _seedSavedAnswers(resp, subject, questions)
@@ -1285,7 +1294,6 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // image now so the student never waits on a lazy load mid-test. CAT:
       // only the one question just rendered is known.
       if (_isFixedVariant) {
-        _prefetchImages(_questions);
         unawaited(_saveProgressIfFixed());
       } else if (q != null) {
         _prefetchImages([q]);
@@ -1499,6 +1507,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       _question = _questions[clamped];
       _selectedOption = _answers[_position];
     });
+    // Keep the next two questions' images warm (cheap cache hit when present)
+    // so moving forward never shows the spinner.
+    _prefetchImages(_questions.skip(clamped + 1).take(2).toList());
   }
 
   /// Fixed-variant answer pick — shared by [DiagnosticOptionsGrid]'s tap
@@ -2044,7 +2055,17 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// `DiagnosticStudentSelectScreen`'s student-tap prefetch, so there's
   /// exactly one URL-normalization + cache-manager call pattern.
   void _prefetchImages(List<Map<String, dynamic>> questions) =>
-      prefetchDiagnosticImages(questions);
+      unawaited(prefetchDiagnosticImages(questions));
+
+  /// [questions] reordered to start at 1-based [position] (then the earlier
+  /// ones), so a mid-package resume downloads the visible question first.
+  List<Map<String, dynamic>> _fromPosition(
+    List<Map<String, dynamic>> questions,
+    int position,
+  ) {
+    final i = (position - 1).clamp(0, questions.length);
+    return [...questions.skip(i), ...questions.take(i)];
+  }
 
   /// Background subject-package warm-up (Bug 1) — same live call
   /// `_startSubject` would eventually make, just kicked off early and
@@ -2074,23 +2095,6 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       }
     } catch (e) {
       debugPrint('Diagnostic background prefetch for "$subject" failed: $e');
-    }
-  }
-
-  /// Bug 2: await the given question's image(s) into cache before the
-  /// question is revealed via setState, so the image widget's first render
-  /// is a cache hit instead of a live fetch with a spinner. Best-effort —
-  /// a short timeout means a slow/broken image never blocks the UI.
-  Future<void> _awaitFirstImage(Map<String, dynamic>? question) async {
-    if (question == null) return;
-    final urls = collectDiagnosticImageUrls(question);
-    if (urls.isEmpty) return;
-    try {
-      await AlochiImageCacheManager()
-          .downloadFile(urls.first)
-          .timeout(const Duration(seconds: 3));
-    } catch (_) {
-      // Best-effort — proceed to reveal the question regardless.
     }
   }
 

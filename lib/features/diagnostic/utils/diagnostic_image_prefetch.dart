@@ -54,20 +54,63 @@ List<String> collectDiagnosticImageUrls(dynamic node) {
   return urls.toList();
 }
 
-/// Best-effort, fire-and-forget image prefetch for a batch of questions —
-/// same pattern as `TestCatalogService._prefetchImages` (monitoring).
-void prefetchDiagnosticImages(List<Map<String, dynamic>> questions) {
-  final cacheManager = AlochiImageCacheManager();
-  for (final q in questions) {
-    for (final rawUrl in collectDiagnosticImageUrls(q)) {
-      // Must match the exact key AppNetworkImage/CachedNetworkImage renders
-      // with (MonitoringApi.fixImageUrl(url)) — prefetching the raw url
-      // writes a cache entry the renderer never looks up.
-      final url = MonitoringApi.fixImageUrl(rawUrl);
-      if (url.isEmpty) continue;
-      cacheManager.downloadFile(url).then((_) {}).catchError((Object e) {
+/// Downloads one image into the shared cache; injectable for tests.
+typedef DiagnosticImageDownloader = Future<void> Function(String url);
+
+// getSingleFile = cache hit when fresh (no network), download otherwise —
+// unlike downloadFile, which re-requests even when the file is cached.
+Future<void> _cacheDownload(String url) =>
+    AlochiImageCacheManager().getSingleFile(url);
+
+/// Ordered, bounded image prefetch: URLs are fetched in question order with at
+/// most [concurrency] in flight, so the first questions' images land first
+/// instead of competing with the whole package. Best-effort: failures are
+/// logged, never thrown. Callers may ignore the returned future (fire and
+/// forget) or await it.
+Future<void> prefetchDiagnosticImages(
+  List<Map<String, dynamic>> questions, {
+  DiagnosticImageDownloader? download,
+  int concurrency = 3,
+}) async {
+  final fetch = download ?? _cacheDownload;
+  // Must match the exact key AppNetworkImage/CachedNetworkImage renders with
+  // (MonitoringApi.fixImageUrl(url)) — collectDiagnosticImageUrls already
+  // returns fixed URLs. Insertion order = question order.
+  final urls = <String>{
+    for (final q in questions) ...collectDiagnosticImageUrls(q),
+  }.toList();
+  var next = 0;
+  Future<void> worker() async {
+    while (next < urls.length) {
+      final url = urls[next++];
+      try {
+        await fetch(url);
+      } catch (e) {
         debugPrint('Diagnostic image prefetch failed for $url: $e');
-      });
+      }
     }
+  }
+
+  await Future.wait(List.generate(concurrency, (_) => worker()));
+}
+
+/// Waits (at most [timeout], never throws) until [question]'s image(s) are in
+/// the cache, so the question's first render is a cache hit instead of a
+/// spinner. A slow/offline/broken image just lets the reveal proceed.
+Future<void> awaitDiagnosticQuestionImages(
+  Map<String, dynamic>? question, {
+  Duration timeout = const Duration(seconds: 4),
+  DiagnosticImageDownloader? download,
+}) async {
+  if (question == null) return;
+  final urls = collectDiagnosticImageUrls(question);
+  if (urls.isEmpty) return;
+  final fetch = download ?? _cacheDownload;
+  try {
+    await Future.wait(
+      urls.map((u) => fetch(u).catchError((Object _) {})),
+    ).timeout(timeout);
+  } catch (_) {
+    // Timed out / failed — best-effort, reveal anyway.
   }
 }
