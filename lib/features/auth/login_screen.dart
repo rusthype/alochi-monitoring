@@ -883,6 +883,11 @@ class _LoginScreenState extends State<LoginScreen>
                         // Re-probe now instead of waiting for the next tick.
                         ref.read(signalProvider.notifier).refresh();
                       },
+                      style: ButtonStyle(
+                        overlayColor: pointerOnlyOverlay(
+                          Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
                       icon: const Icon(Icons.logout_rounded),
                       label: Text(l10n.usbExitMode),
                     ),
@@ -922,7 +927,7 @@ class _LoginScreenState extends State<LoginScreen>
               shape: const StadiumBorder(),
               foregroundColor: color,
               disabledForegroundColor: color,
-            ),
+            ).copyWith(overlayColor: pointerOnlyOverlay(color)),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1077,6 +1082,9 @@ class _LoginScreenState extends State<LoginScreen>
             onTap: disabled ? null : onTap,
             borderRadius: BorderRadius.circular(kChipRadius),
             hoverColor: active ? Colors.white.withValues(alpha: .10) : null,
+            // No focus paint: focus restored on route pop must not leave a
+            // grey highlight on a tab the pointer is not over.
+            focusColor: Colors.transparent,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 5),
               child: Row(
@@ -1275,6 +1283,7 @@ class _LoginScreenState extends State<LoginScreen>
               child: InkWell(
                 onTap: _loading ? null : _login,
                 borderRadius: BorderRadius.circular(kControlRadius),
+                focusColor: Colors.transparent,
                 child: Center(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 150),
@@ -1371,7 +1380,7 @@ class _LoginScreenState extends State<LoginScreen>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(kControlRadius),
                 ),
-              ),
+              ).copyWith(overlayColor: pointerOnlyOverlay(AppColors.flame)),
               icon: const Icon(Icons.school_rounded, size: 18),
               label: Text(
                 l10n.schools,
@@ -1440,7 +1449,7 @@ class _LoginScreenState extends State<LoginScreen>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(kControlRadius),
                 ),
-              ),
+              ).copyWith(overlayColor: pointerOnlyOverlay(AppColors.flame)),
               icon: const Icon(Icons.school_rounded, size: 18),
               label: Text(
                 l10n.schools,
