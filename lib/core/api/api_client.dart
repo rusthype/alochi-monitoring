@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../diagnostics/error_log.dart';
 import 'api_host.dart';
+import 'request_tap.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../models/add_student.dart';
@@ -289,9 +290,10 @@ class MonitoringApi {
 
   Future<http.Response> _send(Future<http.Response> Function() req) async {
     // `message` is a debug string only; the UI shows text by `code`.
+    final tap = RequestTap(http.Client());
     try {
       final sent = Stopwatch()..start();
-      final resp = await req().timeout(_timeout);
+      final resp = await tap.run(req).timeout(_timeout);
       // Time-lock checks use server time: learn the offset from any real
       // (non-portal) answer.
       if (resp.statusCode >= 200 &&
@@ -303,7 +305,7 @@ class MonitoringApi {
       }
       return resp;
     } on TimeoutException catch (e) {
-      ErrorLog.record(e, 'api');
+      ErrorLog.record(tap.describe(e), 'api');
       throw const ApiException(
           0, "Server javob bermayapti. Internetingizni tekshiring.",
           code: kApiTimeout);
@@ -1201,7 +1203,8 @@ class MonitoringApi {
       if (streamed.statusCode == 404) return false; // natija hali yo'q — retry
       debugPrint('uploadResultHtml unexpected status: ${streamed.statusCode}');
       return false;
-    } on TimeoutException {
+    } on TimeoutException catch (e) {
+      ErrorLog.record('$e [POST /api/v1/monitoring/result/pdf/]', 'api');
       throw const ApiException(0, "HTML yuklash vaqti tugadi.");
     } on SocketException {
       throw const ApiException(0, "Internet aloqasi yo'q.");

@@ -12,6 +12,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../../../core/diagnostics/error_log.dart';
 import '../../../core/api/api_host.dart';
+import '../../../core/api/request_tap.dart';
 import '../../../core/api/api_client.dart'
     show ApiException, isJsonObjectReply, retryAfterSecondsOf;
 import '../../../core/models/add_student.dart';
@@ -114,10 +115,11 @@ class DiagnosticKioskApi {
   static const Duration _timeout = Duration(seconds: 20);
 
   Future<http.Response> _send(Future<http.Response> Function() req) async {
+    final tap = RequestTap(http.Client());
     try {
-      return await req().timeout(_timeout);
+      return await tap.run(req).timeout(_timeout);
     } on TimeoutException catch (e) {
-      ErrorLog.record(e, 'api');
+      ErrorLog.record(tap.describe(e), 'api');
       throw const ApiException(
           0, "Server javob bermayapti. Internetingizni tekshiring.");
     } on SocketException catch (e) {
