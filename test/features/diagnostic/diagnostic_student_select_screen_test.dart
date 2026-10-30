@@ -157,7 +157,7 @@ void main() {
 
     expect(router.routerDelegate.currentConfiguration.matches.length, 1);
 
-    await tester.tap(find.text('Ortga'));
+    await tester.tap(find.byTooltip('Ortga'));
     await tester.pumpAndSettle();
 
     expect(find.text('CLASS_SELECT'), findsOneWidget);
@@ -220,14 +220,14 @@ void main() {
 
     // Step 1: student-select's own Ortga fallback (nothing to pop) lands on
     // the real class-select screen via go() -- a fresh single-entry stack.
-    await tester.tap(find.text('Ortga'));
+    await tester.tap(find.byTooltip('Ortga'));
     await tester.pumpAndSettle();
     // DiagnosticTopBar renders its title via title.toUpperCase().
     expect(find.text('MAKTAB 1'), findsOneWidget); // class-select's title
 
     // Step 2: class-select's OWN Ortga, with nothing to pop either, must
     // reach school-select -- not bounce back to the student roster.
-    await tester.tap(find.text('Ortga'));
+    await tester.tap(find.byTooltip('Ortga'));
     await tester.pumpAndSettle();
     expect(find.text('SCHOOL_SELECT'), findsOneWidget);
     expect(find.text('MAKTAB 1'), findsNothing);

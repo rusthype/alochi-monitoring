@@ -19,6 +19,7 @@ import '../../core/services/test_catalog_service.dart';
 import '../../core/services/toast_service.dart';
 import '../../shared/widgets/add_student_dialog.dart';
 import '../../shared/widgets/pending_results_chip.dart';
+import '../../shared/widgets/pill_top_bar.dart';
 import '../../shared/theme/app_theme.dart';
 import '../diagnostic/widgets/school_picker_body.dart'
     show SchoolPickerErrorBanner;
@@ -1068,64 +1069,17 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 600),
-                    child: _DoubleBezel(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Semantics(
-                            button: true,
-                            label: l10n.backBtn,
-                            child: GestureDetector(
-                              onTap: () {
-                                if (context.canPop()) {
-                                  context.pop();
-                                } else {
-                                  context.go('/');
-                                }
-                              },
-                              child: Container(
-                                width: 44,
-                                height: 44,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.pageBg,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.arrow_back_rounded,
-                                    size: 18, color: AppColors.brand),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                    width: 6,
-                                    height: 6,
-                                    decoration: const BoxDecoration(
-                                        color: AppColors.brand,
-                                        shape: BoxShape.circle)),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    widget.session.schoolLabel.isEmpty
-                                        ? l10n.generalTests.toUpperCase()
-                                        : widget.session.schoolLabel
-                                            .toUpperCase(),
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        color: AppColors.brand,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                        letterSpacing: 1),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 44), // Spacer for centering
-                        ],
-                      ),
+                    child: PillTopBar(
+                      title: widget.session.schoolLabel.isEmpty
+                          ? l10n.generalTests
+                          : widget.session.schoolLabel,
+                      onBack: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/');
+                        }
+                      },
                     ),
                   ),
                 ),
@@ -1247,40 +1201,6 @@ class _StudentEntryScreenState extends State<StudentEntryScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-
-class _DoubleBezel extends StatelessWidget {
-  final Widget child;
-  const _DoubleBezel({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.02),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.03)),
-      ),
-      padding: const EdgeInsets.all(4),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: child,
       ),
     );
   }

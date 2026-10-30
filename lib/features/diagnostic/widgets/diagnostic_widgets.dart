@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../../../shared/widgets/pill_top_bar.dart';
 
 /// Double-bordered rounded card chrome, copied from the session flow's
 /// private `_DoubleBezel` widget.
@@ -46,66 +47,19 @@ class DiagnosticDoubleBezel extends StatelessWidget {
   }
 }
 
-/// Floating capsule top bar: back button + centered uppercase title.
+/// Floating capsule top bar: thin adapter over the shared [PillTopBar] that
+/// keeps the `canPop() ? pop() : go('/')` default back fallback.
 class DiagnosticTopBar extends StatelessWidget {
   final String title;
   final VoidCallback? onBack;
   const DiagnosticTopBar({super.key, required this.title, this.onBack});
 
   @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return DiagnosticDoubleBezel(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            GestureDetector(
-              onTap: onBack ??
-                  () => context.canPop() ? context.pop() : context.go('/'),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.arrow_back_rounded,
-                      size: 18, color: AppColors.brand),
-                  const SizedBox(width: 6),
-                  Text(
-                    l10n.backBtn,
-                    style: const TextStyle(
-                      color: AppColors.brand,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Guaranteed gap so a long title never touches the back button.
-            const SizedBox(width: 12),
-            Flexible(
-              child: Tooltip(
-                message: title,
-                child: Text(
-                  title.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.ink1,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 60),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => PillTopBar(
+        title: title,
+        onBack: onBack ??
+            () => context.canPop() ? context.pop() : context.go('/'),
+      );
 }
 
 /// "• Qadam N" step badge, copied from group_select_screen's
