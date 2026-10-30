@@ -5,6 +5,7 @@
 // a recorded error (throttled: 24h / 60 min, persisted). Never throws, never blocks.
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'device_info_collector.dart';
@@ -58,6 +59,11 @@ class DeviceReportSender {
 
   Timer? _pending;
   bool _started = false;
+  int _incompleteRetries = 0;
+  static const _maxIncompleteRetries = 3;
+
+  @visibleForTesting
+  Future<DeviceInfo> Function() collector = DeviceInfoCollector.collect;
 
   Future<Duration?> _sinceLastSent() async {
     try {
@@ -103,16 +109,18 @@ class DeviceReportSender {
   bool _inFlight = false;
   DateTime? _lastAttempt; // in-memory: throttles error retries after failures
 
-  /// Records last-sent only after a 2xx, so an offline start doesn't block
-  /// the next attempt for a full interval. [_inFlight] stops double POSTs.
+  /// Records last-sent only after a 2xx of a complete report (cpu + ram), so
+  /// an offline start or an empty hardware probe doesn't block the next
+  /// attempt for a full interval. [_inFlight] stops double POSTs.
   Future<void> send() async {
     if (_inFlight) return;
     _inFlight = true;
     _lastAttempt = DateTime.now();
     try {
       final prefs = await SharedPreferences.getInstance();
+      final info = await collector();
       final payload = buildDeviceReportPayload(
-        info: await DeviceInfoCollector.collect(),
+        info: info,
         deviceId: await DeviceInfoCollector.deviceId(),
         schoolId: prefs.getString(_lastSchoolKey),
         errors: await ErrorLog.snapshot(),
@@ -126,7 +134,21 @@ class DeviceReportSender {
           )
           .timeout(const Duration(seconds: 10));
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        await prefs.setInt(_lastSentKey, DateTime.now().millisecondsSinceEpoch);
+        if (info.isComplete) {
+          _incompleteRetries = 0;
+          await prefs.setInt(
+              _lastSentKey, DateTime.now().millisecondsSinceEpoch);
+        } else {
+          // Drop any stale stamp so the next launch re-reports at once, and
+          // retry in-process after the error interval (capped).
+          await prefs.remove(_lastSentKey);
+          if (_incompleteRetries++ < _maxIncompleteRetries) {
+            _pending ??= Timer(errorInterval, () {
+              _pending = null;
+              unawaited(send());
+            });
+          }
+        }
       }
     } catch (_) {
       // Guest telemetry: offline/server errors must stay invisible.

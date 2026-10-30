@@ -18,6 +18,20 @@ void main() {
     expect(normalizeOsVersion('x' * 50), 'x' * 40);
   });
 
+  test('cleanCpuName / parseRegQueryCpu / parsePowershellHw / bytesToMb', () {
+    expect(cleanCpuName('  Intel(R) Core(TM)  i5-8250U \u0000'),
+        'Intel(R) Core(TM) i5-8250U');
+    expect(
+        parseRegQueryCpu('\r\nHKEY_LOCAL_MACHINE\\HARDWARE\\X\r\n'
+            '    ProcessorNameString    REG_SZ    Intel(R) Celeron(R) N4020  \r\n'),
+        'Intel(R) Celeron(R) N4020');
+    expect(parseRegQueryCpu('ERROR: not found'), '');
+    final hw = parsePowershellHw('Intel(R) Core(TM) i3\r\n8087\r\n');
+    expect((hw.cpu, hw.ramMb), ('Intel(R) Core(TM) i3', 8087));
+    expect(parsePowershellHw('').ramMb, 0);
+    expect(bytesToMb(8 * 1024 * 1024 * 1024), 8192);
+  });
+
   test('classify: macOS updater signature error', () {
     expect(classifyError(Exception('Code signature validation failed: bad')),
         kErrUpdateSignature);
@@ -182,6 +196,42 @@ void main() {
         }),
       );
       expect(posts, 1);
+      expect(await lastSent(), isNotNull);
+    });
+
+    DeviceInfo info({String cpu = 'M1', int ramMb = 8192}) => DeviceInfo(
+        os: 'windows',
+        osVersion: '10.0.19045',
+        cpu: cpu,
+        ramMb: ramMb,
+        screenW: 1,
+        screenH: 1,
+        appVersion: '1');
+
+    Future<void> sendWith(DeviceInfo i) async {
+      DeviceReportSender.instance.collector = () async => i;
+      try {
+        await http.runWithClient(() => DeviceReportSender.instance.send(),
+            () => MockClient((_) async => http.Response('{}', 200)));
+      } finally {
+        DeviceReportSender.instance.collector = DeviceInfoCollector.collect;
+      }
+    }
+
+    test('2xx with empty cpu or zero ram does not write last-sent', () async {
+      SharedPreferences.setMockInitialValues({});
+      await sendWith(info(cpu: ''));
+      expect(await lastSent(), isNull);
+      await sendWith(info(ramMb: 0));
+      expect(await lastSent(), isNull);
+    });
+
+    test('incomplete report clears a stale last-sent; complete writes it',
+        () async {
+      SharedPreferences.setMockInitialValues({key: 111});
+      await sendWith(info(ramMb: 0));
+      expect(await lastSent(), isNull);
+      await sendWith(info());
       expect(await lastSent(), isNotNull);
     });
 
