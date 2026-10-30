@@ -490,7 +490,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       )) {
         final pos = (row['question_index'] as num?)?.toInt();
         final selected = row['selected_option'] as String?;
-        if (pos != null && selected != null) answers[pos] = selected;
+        if (pos != null &&
+            selected != null &&
+            _rowMatchesQuestion(row, pos, questions)) {
+          answers[pos] = selected;
+        }
       }
     } catch (e) {
       // A local SQLite read failure must not crash restore — degrade to
@@ -529,6 +533,19 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     return true;
   }
 
+  /// True iff the stored answer [row] belongs to the question actually at
+  /// 1-based [pos] in [questions] — a row written against another subject's
+  /// package (same `question_index`, different question id) must never be
+  /// shown as an answer to this subject's question.
+  bool _rowMatchesQuestion(
+    Map<String, dynamic> row,
+    int pos,
+    List<Map<String, dynamic>> questions,
+  ) =>
+      pos >= 1 &&
+      pos <= questions.length &&
+      row['question_id']?.toString() == _questionId(questions[pos - 1]);
+
   /// Seeds DiagnosticAnswerStore from the start/resume response's
   /// `saved_answers` (`{question_id: selected_option}`) — local rows win —
   /// and returns the resulting position->option map for [subject]. No-op
@@ -555,7 +572,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       )) {
         final pos = (row['question_index'] as num?)?.toInt();
         final selected = row['selected_option'] as String?;
-        if (pos != null && selected != null) result[pos] = selected;
+        if (pos != null &&
+            selected != null &&
+            _rowMatchesQuestion(row, pos, questions)) {
+          result[pos] = selected;
+        }
       }
     } catch (e) {
       debugPrint('Diagnostic seed saved_answers error: $e');
@@ -611,6 +632,30 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       await _discardStaleLocalState();
       if (mounted) await _bootstrap();
       return;
+    }
+    // Restored blob written by the pre-fix client in the subject-switch
+    // window: current_subject=english but the questions are MATH's. A subject's
+    // package is idempotent server-side, so zero overlap with the server's
+    // package for [subject] means the local questions belong to another
+    // subject — replace them with the server's instead of letting the student
+    // answer (and finish) the wrong question set.
+    final serverQuestions = (resp['questions'] as List?)
+        ?.whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    if (serverQuestions != null &&
+        serverQuestions.isNotEmpty &&
+        _questions.isNotEmpty) {
+      final serverIds = serverQuestions.map(_questionId).toSet();
+      if (!_questions.any((q) => serverIds.contains(_questionId(q)))) {
+        debugPrint(
+          'Diagnostic restore: local questions do not belong to "$subject" '
+          '— reloading that subject from the server',
+        );
+        _prefetchedSubjectPackages[subject] = resp;
+        await _startSubject(subject);
+        return;
+      }
     }
     _generation = server;
     final merged = await _seedSavedAnswers(resp, subject, _questions);
@@ -1097,12 +1142,24 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   }) async {
     _retryAction = () =>
         _startSubject(subject, skipLiveCallForPeek: skipLiveCallForPeek);
+    // 2026-10-30 (english answers lost): until the new package lands,
+    // `_currentSubject` says [subject] but `_questions`/`_answers` still
+    // belonged to the PREVIOUS subject. The previous subject's 30s ping timer
+    // kept firing `_saveProgressIfFixed` in that window (persisting
+    // current_subject=english + MATH questions, which `_tryRestore` then
+    // restored), and the answer hotkeys stayed live (writing MATH question ids
+    // under subject=english). Stop the timers and drop the old package first.
+    _pingTimer?.cancel();
+    _autoAdvance?.cancel();
     setState(() {
       _loading = true;
       _error = null;
       _selectedOption = null;
       _transition = null;
       _currentSubject = subject;
+      _questions = [];
+      _question = null;
+      _answers.clear();
     });
     try {
       // Always prefer a REAL, confirmed kiosk/start/ response (from
@@ -1501,6 +1558,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   void _selectOptionByKeyboard(String key) {
     final q = _question;
     if (q == null || !_isFixedVariantAttempt || _submitting) return;
+    // No picks while a subject is loading / mid-transition: the visible
+    // question set is not (yet) the one `_currentSubject` refers to.
+    if (_loading || _transition != null) return;
     if (!extractDiagnosticOptions(q).any((o) => o.key == key)) return;
     _selectOption(key, q);
   }
@@ -1783,6 +1843,34 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // the subject done and let the normal flow decide the next step.
       final message = e is ApiException ? e.message : '';
       if (message.contains('allaqachon yakunlangan')) {
+        // The same text also comes back when this payload was built from a
+        // package that is not [_currentSubject]'s (backend
+        // `stale_completed_subject`: all ids belong to an already-completed
+        // subject) — advancing on it silently closed English with 0 answers
+        // (2026-10-30). Ask the server whether THIS subject is really done.
+        final confirmation = await _confirmSubjectCompleted(_currentSubject);
+        if (!mounted) return;
+        if (confirmation.completed == null) {
+          // Cannot verify (network): never guess — error UI, Retry re-runs
+          // this finish (idempotent server-side).
+          setState(() {
+            _submitting = false;
+            _error = AppLocalizations.of(context)!.serverErrorRetry;
+          });
+          return;
+        }
+        if (confirmation.completed == false) {
+          // Subject still open on the server: our local package/answers are
+          // for something else. Reload the real package (the confirm call's
+          // own response) and let the student continue this subject.
+          setState(() => _submitting = false);
+          final fresh = confirmation.package;
+          if (fresh != null) {
+            _prefetchedSubjectPackages[_currentSubject] = fresh;
+          }
+          await _startSubject(_currentSubject);
+          return;
+        }
         _timer?.cancel();
         // No response body on this code path (the server rejected the
         // finish-call itself), so the actual score isn't available here —
@@ -1887,6 +1975,32 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       return;
     }
     _finishTest();
+  }
+
+  /// Asks the server (existing `kiosk/start/`, idempotent per subject)
+  /// whether [subject] is already completed. `completed`: true = the server
+  /// says so (a `finished: true` summary or the "<subject> allaqachon
+  /// yakunlangan" 400); false = still open ([package] is the live start
+  /// response); null = could not be determined (network / other error).
+  Future<({bool? completed, Map<String, dynamic>? package})>
+  _confirmSubjectCompleted(String subject) async {
+    try {
+      final resp = await _startAttemptCall(
+        attemptId: widget.attemptId,
+        subject: subject,
+      );
+      if (resp['finished'] == true) return (completed: true, package: null);
+      return (completed: false, package: resp);
+    } on ApiException catch (e) {
+      if (e.statusCode == 400 &&
+          e.message.contains('$subject allaqachon yakunlangan')) {
+        return (completed: true, package: null);
+      }
+      debugPrint('Diagnostic subject-completed check failed: $e');
+    } catch (e) {
+      debugPrint('Diagnostic subject-completed check failed: $e');
+    }
+    return (completed: null, package: null);
   }
 
   /// Upserts this attempt's `diagnostic_history` row (Task 4) — best-effort,

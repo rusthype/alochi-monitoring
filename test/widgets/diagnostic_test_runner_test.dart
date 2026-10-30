@@ -14,6 +14,7 @@ import 'package:alochi_monitoring/shared/widgets/app_network_image.dart';
 import 'package:alochi_monitoring/core/locale/locale_provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -2872,5 +2873,215 @@ void main() {
         await unmount(tester);
       },
     );
+
+    // 2026-10-30 "English answers lost" regression group: a subject switch
+    // must never leave the NEW subject's label on the PREVIOUS subject's
+    // package, and "allaqachon yakunlangan" on finish must be verified.
+    group('subject switch / stale finish (english answers lost)', () {
+      setUp(() async {
+        sqfliteFfiInit();
+        databaseFactory = databaseFactoryFfi;
+        await DiagnosticAnswerStore.openInMemory();
+      });
+
+      tearDown(() async => DiagnosticAnswerStore.reset());
+
+      Map<String, dynamic> mathPackage() => _withMeta({
+            'position': 1,
+            'total_questions': 1,
+            'subject': 'math',
+            'questions': fullPackageQuestions(1),
+          }, isFixedVariant: true);
+
+      Map<String, dynamic> englishPkg() => _withMeta({
+            'position': 1,
+            'total_questions': 1,
+            'subject': 'english',
+            'questions': [_question(id: 'e1', text: 'Live ingliz savoli')],
+          }, isFixedVariant: true);
+
+      Future<void> pumpMathThenFinish(
+        WidgetTester tester, {
+        required Future<Map<String, dynamic>> Function(String subject, int call)
+            onStart,
+        required Future<Map<String, dynamic>> Function() onFinish,
+        Future<Map<String, dynamic>> Function({
+          required String attemptId,
+          required int elapsedSeconds,
+        })? onPing,
+      }) async {
+        final calls = <String, int>{};
+        await tester.pumpWidget(
+          _wrapWithRouter(
+            DiagnosticTestRunnerScreen(
+              attemptId: 'att-sw',
+              studentName: 'Aliyev Ali',
+              grade: 3,
+              language: 'uz',
+              availableSubjectsOverride:
+                  (grade, {String language = 'uz'}) async => {
+                'subjects': ['math', 'english'],
+              },
+              startAttemptOverride: ({required attemptId, required subject}) =>
+                  onStart(
+                      subject,
+                      calls.update(
+                        subject,
+                        (v) => v + 1,
+                        ifAbsent: () => 1,
+                      )),
+              finishAttemptOverride: ({
+                required attemptId,
+                required answers,
+                List<String>? flaggedQuestionIds,
+              }) =>
+                  onFinish(),
+              pingElapsedOverride: onPing,
+              enqueueLocalOverride: (payload, token) async {},
+              flushPendingFinishOverride: () async => true,
+              connectivityStreamOverride: const Stream.empty(),
+            ),
+            onFinished: (extra) {},
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 4));
+        final l10n = AppLocalizations.of(
+          tester.element(find.byType(DiagnosticTestRunnerScreen)),
+        )!;
+        await tester.tap(find.text('Variant A'));
+        await tester.pump();
+        await tester.tap(find.text(l10n.nextSubjectButton));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump();
+      }
+
+      testWidgets(
+        'while english is loading: no hotkey answer is recorded against the '
+        'math package and the math ping timer is stopped',
+        (tester) async {
+          final englishGate = Completer<Map<String, dynamic>>();
+          final startLog = <String>[];
+          var pings = 0;
+          await pumpMathThenFinish(
+            tester,
+            onStart: (subject, call) {
+              startLog.add(subject);
+              if (subject == 'english') return englishGate.future;
+              return Future.value(mathPackage());
+            },
+            onFinish: () async => {'finished': true, 'next_subject': 'english'},
+            onPing: ({required attemptId, required elapsedSeconds}) async {
+              pings++;
+              return {'ok': true};
+            },
+          );
+          // Past the 1.5s transition: english start is in flight (gated).
+          await tester.pump(const Duration(milliseconds: 1600));
+          expect(startLog.where((s) => s == 'english'), isNotEmpty);
+          final pingsBefore = pings;
+
+          await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+          await tester.pump(const Duration(seconds: 65));
+          await tester.runAsync(() async {
+            final rows = await DiagnosticAnswerStore.loadAll(
+              'att-sw',
+              subject: 'english',
+            );
+            expect(rows, isEmpty, reason: 'math qid must not land in english');
+          });
+          expect(pings, pingsBefore, reason: 'math ping timer must be off');
+
+          englishGate.complete(englishPkg());
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 1));
+          expect(find.text('Live ingliz savoli'), findsOneWidget);
+          await unmount(tester);
+        },
+      );
+
+      testWidgets(
+        'stale "allaqachon yakunlangan" 400 while the subject is NOT completed '
+        'server-side: no advance, the real package is reloaded',
+        (tester) async {
+          final startLog = <String>[];
+          var finishCalls = 0;
+          await pumpMathThenFinish(
+            tester,
+            onStart: (subject, call) async {
+              startLog.add(subject);
+              return subject == 'math' ? mathPackage() : englishPkg();
+            },
+            onFinish: () async {
+              finishCalls++;
+              throw const ApiException(400, 'Bu test allaqachon yakunlangan.');
+            },
+          );
+          await tester.pump(const Duration(seconds: 4));
+
+          expect(finishCalls, 1);
+          // bootstrap + confirmation; the reload reuses the confirm response.
+          expect(startLog, ['math', 'math']);
+          expect(find.text('Savol 1'), findsOneWidget);
+          expect(find.text('Live ingliz savoli'), findsNothing);
+          await unmount(tester);
+        },
+      );
+
+      testWidgets(
+        'stale "allaqachon yakunlangan" 400 and the server says the subject '
+        'IS completed: advances to the next subject (2026-10-14 behavior)',
+        (tester) async {
+          final startLog = <String>[];
+          await pumpMathThenFinish(
+            tester,
+            onStart: (subject, call) async {
+              startLog.add(subject);
+              if (subject == 'math') {
+                if (call == 1) return mathPackage();
+                throw const ApiException(400, 'math allaqachon yakunlangan.');
+              }
+              return englishPkg();
+            },
+            onFinish: () async => throw const ApiException(
+                400, 'Bu test allaqachon yakunlangan.'),
+          );
+          await tester.pump(const Duration(seconds: 4));
+
+          expect(startLog, ['math', 'math', 'english']);
+          expect(find.text('Live ingliz savoli'), findsOneWidget);
+          await unmount(tester);
+        },
+      );
+
+      testWidgets(
+        'stale 400 and the completion check itself fails (network): no '
+        'advance, error + retry shown',
+        (tester) async {
+          final startLog = <String>[];
+          await pumpMathThenFinish(
+            tester,
+            onStart: (subject, call) async {
+              startLog.add(subject);
+              if (subject == 'math' && call == 1) return mathPackage();
+              throw const ApiException(0, 'timeout');
+            },
+            onFinish: () async => throw const ApiException(
+                400, 'Bu test allaqachon yakunlangan.'),
+          );
+          await tester.pump(const Duration(seconds: 4));
+
+          expect(startLog, ['math', 'math']);
+          final l10n = AppLocalizations.of(
+            tester.element(find.byType(DiagnosticTestRunnerScreen)),
+          )!;
+          expect(find.text(l10n.serverErrorRetry), findsOneWidget);
+          await unmount(tester);
+        },
+      );
+    });
   });
 }
