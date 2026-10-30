@@ -56,6 +56,10 @@ class DeviceReportSender {
   static const Duration startInterval = Duration(hours: 24);
   static const Duration errorInterval = Duration(minutes: 60);
   static const _lastSentKey = 'device_report_last_sent_ms';
+  // Set only after a 2xx of a complete report. Builds <= 1.0.168 stamped
+  // last-sent even with empty CPU/RAM and never wrote this flag, so a missing
+  // flag means "never sent properly": re-report once after updating.
+  static const _hwCompleteKey = 'device_report_hw_complete';
 
   Timer? _pending;
   bool _started = false;
@@ -67,8 +71,9 @@ class DeviceReportSender {
 
   Future<Duration?> _sinceLastSent() async {
     try {
-      final ms = (await SharedPreferences.getInstance()).getInt(_lastSentKey);
-      return ms == null
+      final prefs = await SharedPreferences.getInstance();
+      final ms = prefs.getInt(_lastSentKey);
+      return ms == null || prefs.getBool(_hwCompleteKey) != true
           ? null
           : DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(ms));
     } catch (_) {
@@ -81,10 +86,13 @@ class DeviceReportSender {
     if (_started) return;
     _started = true;
     ErrorLog.onRecorded = () => unawaited(_onError());
-    Timer(delay, () async {
-      final since = await _sinceLastSent();
-      if (since == null || since >= startInterval) await send();
-    });
+    Timer(delay, sendOnStartIfDue);
+  }
+
+  @visibleForTesting
+  Future<void> sendOnStartIfDue() async {
+    final since = await _sinceLastSent();
+    if (since == null || since >= startInterval) await send();
   }
 
   Future<void> _onError() async {
@@ -138,10 +146,12 @@ class DeviceReportSender {
           _incompleteRetries = 0;
           await prefs.setInt(
               _lastSentKey, DateTime.now().millisecondsSinceEpoch);
+          await prefs.setBool(_hwCompleteKey, true);
         } else {
           // Drop any stale stamp so the next launch re-reports at once, and
           // retry in-process after the error interval (capped).
           await prefs.remove(_lastSentKey);
+          await prefs.remove(_hwCompleteKey);
           if (_incompleteRetries++ < _maxIncompleteRetries) {
             _pending ??= Timer(errorInterval, () {
               _pending = null;

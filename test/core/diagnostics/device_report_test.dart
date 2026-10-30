@@ -235,6 +235,42 @@ void main() {
       expect(await lastSent(), isNotNull);
     });
 
+    const flagKey = 'device_report_hw_complete';
+    Future<bool?> flag() async =>
+        (await SharedPreferences.getInstance()).getBool(flagKey);
+
+    Future<int> startCheck() async {
+      var posts = 0;
+      await http.runWithClient(
+          () => DeviceReportSender.instance.sendOnStartIfDue(),
+          () => MockClient((_) async {
+                posts++;
+                return http.Response('{}', 200);
+              }));
+      return posts;
+    }
+
+    test('start: fresh stamp but no complete flag (old build) sends at once',
+        () async {
+      SharedPreferences.setMockInitialValues(
+          {key: DateTime.now().millisecondsSinceEpoch});
+      expect(await startCheck(), 1);
+    });
+
+    test('start: fresh stamp + complete flag does not send', () async {
+      SharedPreferences.setMockInitialValues(
+          {key: DateTime.now().millisecondsSinceEpoch, flagKey: true});
+      expect(await startCheck(), 0);
+    });
+
+    test('flag is set only by a complete 2xx report', () async {
+      SharedPreferences.setMockInitialValues({});
+      await sendWith(info(cpu: ''));
+      expect(await flag(), isNull);
+      await sendWith(info());
+      expect(await flag(), isTrue);
+    });
+
     test('second send() while one is in flight does not POST twice', () async {
       SharedPreferences.setMockInitialValues({});
       var posts = 0;
