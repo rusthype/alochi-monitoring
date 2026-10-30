@@ -25,58 +25,67 @@ class OfflineHistoryHubScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: AppColors.bg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: PillTopBar(
-                      title: l10n.offlineHistoryTitle,
-                      onBack: Navigator.canPop(context)
-                          ? () => Navigator.pop(context)
-                          : null,
-                    ),
-                  ),
-                  Builder(builder: (context) {
-                    final tabs = DefaultTabController.of(context);
-                    return AnimatedBuilder(
-                      animation: tabs,
-                      builder: (_, __) => Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                        child: Row(
-                          children: [
-                            PillChip(
-                              label: l10n.offlineHistoryTabGeneral,
-                              selected: tabs.index == 0,
-                              onPressed: () => tabs.animateTo(0),
-                            ),
-                            const SizedBox(width: 8),
-                            PillChip(
-                              label: l10n.offlineHistoryTabDiagnostic,
-                              selected: tabs.index == 1,
-                              onPressed: () => tabs.animateTo(1),
-                            ),
-                          ],
-                        ),
+    // canPop:false turns off the Cupertino edge back-swipe that macOS gets by
+    // default (the hub's own gesture is the horizontal tab swipe). Programmatic
+    // pops (PillTopBar back, maybePop) are re-issued below, so they still work.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) Navigator.of(context).pop();
+      },
+      child: DefaultTabController(
+        length: 2,
+        child: Scaffold(
+          backgroundColor: AppColors.bg,
+          body: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: PillTopBar(
+                        title: l10n.offlineHistoryTitle,
+                        onBack: Navigator.canPop(context)
+                            ? () => Navigator.pop(context)
+                            : null,
                       ),
-                    );
-                  }),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        generalTab ?? const HistoryScreen(embedded: true),
-                        diagnosticTab ?? const DiagnosticHistoryScreen(),
-                      ],
                     ),
-                  ),
-                ],
+                    Builder(builder: (context) {
+                      final tabs = DefaultTabController.of(context);
+                      return AnimatedBuilder(
+                        animation: tabs,
+                        builder: (_, __) => Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                          child: Row(
+                            children: [
+                              PillChip(
+                                label: l10n.offlineHistoryTabGeneral,
+                                selected: tabs.index == 0,
+                                onPressed: () => tabs.animateTo(0),
+                              ),
+                              const SizedBox(width: 8),
+                              PillChip(
+                                label: l10n.offlineHistoryTabDiagnostic,
+                                selected: tabs.index == 1,
+                                onPressed: () => tabs.animateTo(1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          generalTab ?? const HistoryScreen(embedded: true),
+                          diagnosticTab ?? const DiagnosticHistoryScreen(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
