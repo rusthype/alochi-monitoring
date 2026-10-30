@@ -28,6 +28,7 @@ import '../diagnostic/widgets/school_picker_body.dart'
     show SchoolPickerErrorBanner;
 import '../../shared/widgets/new_badge.dart';
 import '../../shared/widgets/pending_results_chip.dart';
+import '../../shared/widgets/pill_top_bar.dart';
 import 'student_entry_screen.dart';
 import 'test_session.dart';
 
@@ -480,56 +481,14 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
           // Floating Navbar
           Positioned(
             top: MediaQuery.of(context).padding.top + 16,
-            left: 0,
-            right: 0,
+            left: 16,
+            right: 16,
             child: Center(
-              child: _DoubleBezel(
-                padding: const EdgeInsets.all(6),
-                borderRadius: 100,
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Back Button
-                      MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: Container(
-                            color: Colors.transparent, // expand tap area
-                            child: Row(
-                              children: [
-                                _HoverableBackButtonIcon(),
-                                const SizedBox(width: 8),
-                                Text(
-                                  AppLocalizations.of(context)!.backBtn,
-                                  style: const TextStyle(
-                                    color: AppColors.brand,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 48),
-                      Text(
-                        AppLocalizations.of(context)!.appTitle,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: AppColors.ink1,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      const SizedBox(width: 48),
-                      const SizedBox(width: 40), // spacer to balance "Ortga"
-                    ],
-                  ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: PillTopBar(
+                  title: AppLocalizations.of(context)!.appTitle,
+                  onBack: () => Navigator.of(context).pop(),
                 ),
               ),
             ),
@@ -808,39 +767,6 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
   }
 }
 
-class _HoverableBackButtonIcon extends StatefulWidget {
-  @override
-  State<_HoverableBackButtonIcon> createState() =>
-      _HoverableBackButtonIconState();
-}
-
-class _HoverableBackButtonIconState extends State<_HoverableBackButtonIcon> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOutCubic,
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: _isHovered ? AppColors.brand : AppColors.brandLight,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          Icons.arrow_back_rounded,
-          color: _isHovered ? Colors.white : AppColors.brand,
-          size: 18,
-        ),
-      ),
-    );
-  }
-}
-
 class _HoverableDownloadButton extends StatefulWidget {
   final VoidCallback onPressed;
 
@@ -1032,16 +958,15 @@ class _HoverableTestCardState extends State<_HoverableTestCard> {
 
 class _DoubleBezel extends StatelessWidget {
   final Widget child;
-  final EdgeInsetsGeometry padding;
-  final double borderRadius;
   final bool isHovered;
 
   const _DoubleBezel({
     required this.child,
-    this.padding = const EdgeInsets.all(6),
-    this.borderRadius = 32,
     this.isHovered = false,
   });
+
+  static const EdgeInsetsGeometry padding = EdgeInsets.all(6);
+  static const double borderRadius = 32;
 
   @override
   Widget build(BuildContext context) {

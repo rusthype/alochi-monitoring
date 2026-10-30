@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/services/test_catalog_service.dart';
 import '../../shared/theme/app_theme.dart';
 import '../../shared/widgets/hover_region.dart';
+import '../../shared/widgets/pill_top_bar.dart';
 import 'test_session.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -174,81 +175,16 @@ class _SessionSetupScreenState extends ConsumerState<SessionSetupScreen> {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.8),
-            borderRadius: BorderRadius.circular(100),
-            border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Semantics(
-                button: true,
-                label: AppLocalizations.of(context)!.backBtn,
-                child: InkWell(
-                  onTap: () {
-                    if (context.canPop()) {
-                      context.pop();
-                    } else {
-                      context.go('/');
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(100),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.pageBg,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                          color: Colors.black.withValues(alpha: 0.05)),
-                    ),
-                    child: const Icon(Icons.arrow_back_rounded,
-                        color: AppColors.accent, size: 20),
-                  ),
-                ),
-              ),
-              Text(
-                AppLocalizations.of(context)!.monitoringTestHeader,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                  letterSpacing: 1.2,
-                  color: AppColors.charcoal,
-                ),
-              ),
-              Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                  child: const Text(
-                    '1/3',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
-                      color: AppColors.stone,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+        child: PillTopBar(
+          title: AppLocalizations.of(context)!.monitoringTestHeader,
+          onBack: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+          trailing: '1/3',
         ),
       ),
     );
