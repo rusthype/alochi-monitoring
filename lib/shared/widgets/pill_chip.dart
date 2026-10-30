@@ -16,6 +16,10 @@ const double _kCapsuleRadius = 100;
 class PillChip extends StatelessWidget {
   final String label;
   final bool selected;
+
+  /// 0..1 selection progress; when set it overrides [selected] and lerps the
+  /// fill/border/text colors (used to follow a TabBarView swipe live).
+  final double? selectedAmount;
   final VoidCallback? onPressed;
   final IconData? icon;
 
@@ -31,6 +35,7 @@ class PillChip extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.selected = false,
+    this.selectedAmount,
     this.icon,
     this.hoverColor,
     this.tooltip,
@@ -38,12 +43,12 @@ class PillChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? AppColors.brand : AppColors.ink2;
+    final t = (selectedAmount ?? (selected ? 1.0 : 0.0)).clamp(0.0, 1.0);
+    final fg = Color.lerp(AppColors.ink2, AppColors.brand, t)!;
     final chip = BottomChip(
-      fill: selected
-          ? AppColors.brand.withValues(alpha: 0.12)
-          : AppColors.surface,
-      border: selected ? AppColors.brand : AppColors.border,
+      fill: Color.lerp(
+          AppColors.surface, AppColors.brand.withValues(alpha: 0.12), t)!,
+      border: Color.lerp(AppColors.border, AppColors.brand, t)!,
       height: 40,
       radius: _kCapsuleRadius,
       child: TextButton(

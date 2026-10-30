@@ -22,6 +22,9 @@ class OfflineHistoryHubScreen extends StatelessWidget {
   const OfflineHistoryHubScreen(
       {super.key, this.generalTab, this.diagnosticTab});
 
+  static double _amount(TabController tabs, int i) =>
+      1 - ((tabs.animation?.value ?? tabs.index.toDouble()) - i).abs();
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -46,21 +49,23 @@ class OfflineHistoryHubScreen extends StatelessWidget {
                   ),
                   Builder(builder: (context) {
                     final tabs = DefaultTabController.of(context);
+                    // tabs.animation follows the TabBarView drag live; tabs.index
+                    // only flips when the swipe ends.
                     return AnimatedBuilder(
-                      animation: tabs,
+                      animation: tabs.animation ?? tabs,
                       builder: (_, __) => Padding(
                         padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                         child: Row(
                           children: [
                             PillChip(
                               label: l10n.offlineHistoryTabGeneral,
-                              selected: tabs.index == 0,
+                              selectedAmount: _amount(tabs, 0),
                               onPressed: () => tabs.animateTo(0),
                             ),
                             const SizedBox(width: 8),
                             PillChip(
                               label: l10n.offlineHistoryTabDiagnostic,
-                              selected: tabs.index == 1,
+                              selectedAmount: _amount(tabs, 1),
                               onPressed: () => tabs.animateTo(1),
                             ),
                           ],

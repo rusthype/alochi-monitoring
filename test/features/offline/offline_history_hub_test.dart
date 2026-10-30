@@ -1,6 +1,7 @@
 import 'package:alochi_monitoring/features/local_test/history_screen.dart';
 import 'package:alochi_monitoring/features/offline/offline_history_hub_screen.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import 'package:alochi_monitoring/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -90,5 +91,48 @@ void main() {
 
     expect(find.text(l10n.noHistoryYet), findsOneWidget);
     expect(find.byTooltip(l10n.clearHistoryTitle), findsNothing);
+  });
+
+  testWidgets('tab chips follow the swipe live, fully selected after settle',
+      (tester) async {
+    await tester.pumpWidget(_hub());
+    await tester.pumpAndSettle();
+    final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)))!;
+
+    BoxDecoration deco(String label) {
+      final c = find.ancestor(
+          of: find.text(label), matching: find.byType(Container));
+      return tester
+          .widgetList<Container>(c)
+          .map((w) => w.decoration)
+          .whereType<BoxDecoration>()
+          .first;
+    }
+
+    const idleFill = AppColors.surface;
+    final selFill = AppColors.brand.withValues(alpha: 0.12);
+    final gen = l10n.offlineHistoryTabGeneral;
+    final diag = l10n.offlineHistoryTabDiagnostic;
+    expect(deco(gen).color, selFill);
+    expect(deco(diag).color, idleFill);
+
+    // Hold the pointer down mid-swipe (about 40% of a page): no settle.
+    final g = await tester.startGesture(const Offset(400, 300));
+    await g.moveBy(const Offset(-100, 0));
+    await g.moveBy(const Offset(-100, 0));
+    await tester.pump();
+    final genMid = deco(gen);
+    final diagMid = deco(diag);
+    expect(genMid.color, isNot(anyOf(selFill, idleFill)));
+    expect(diagMid.color, isNot(anyOf(selFill, idleFill)));
+    expect(genMid.border!.top.color, isNot(AppColors.brand));
+    expect(diagMid.border!.top.color, isNot(AppColors.border));
+
+    await g.moveBy(const Offset(-400, 0));
+    await g.up();
+    await tester.pumpAndSettle();
+    expect(deco(diag).color, selFill);
+    expect(deco(diag).border!.top.color, AppColors.brand);
+    expect(deco(gen).color, idleFill);
   });
 }
