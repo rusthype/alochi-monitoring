@@ -207,5 +207,80 @@ void main() {
       final rows = await DiagnosticAnswerStore.loadAll('a1', subject: 'math');
       expect(rows.single['synced'], 1);
     });
+
+    // Strike counters live on the SyncService singleton, keyed by
+    // attempt|generation|subject — use a distinct generation per test.
+    Future<void> seedSubject(String subject, String qid, int idx,
+            [int gen = 1]) =>
+        DiagnosticAnswerStore.saveAnswer(
+          attemptId: 'a1',
+          subject: subject,
+          questionIndex: idx,
+          questionId: qid,
+          selectedOption: 'B',
+          generation: gen,
+        );
+
+    test('rows are sent per subject, never one mixed math+english batch',
+        () async {
+      for (var i = 1; i <= 3; i++) {
+        await seedSubject('math', 'm$i', i);
+        await seedSubject('english', 'e$i', i);
+      }
+      final batches = <List<String>>[];
+      await flush((req) {
+        final ids = [
+          for (final a in (jsonDecode(req.body) as Map)['answers'] as List)
+            (a as Map)['question_id'] as String
+        ];
+        batches.add(ids);
+        return http.Response(jsonEncode({'synced': ids.length}), 200);
+      });
+      expect(batches, hasLength(2));
+      expect(batches.every((b) => b.every((id) => id[0] == b.first[0])),
+          isTrue);
+      expect(await DiagnosticAnswerStore.pendingForAttempt('a1'), isEmpty);
+    });
+
+    test('a subject with more than 30 rows is split into <=30 batches',
+        () async {
+      for (var i = 1; i <= 35; i++) {
+        await seedSubject('english', 'e$i', i);
+      }
+      final sizes = <int>[];
+      await flush((req) {
+        final n = ((jsonDecode(req.body) as Map)['answers'] as List).length;
+        sizes.add(n);
+        return http.Response(jsonEncode({'synced': n}), 200);
+      });
+      expect(sizes, [30, 5]);
+      expect(await DiagnosticAnswerStore.pendingForAttempt('a1'), isEmpty);
+    });
+
+    test('server accepting 0 rows (synced=0) does NOT mark them synced',
+        () async {
+      await seedSubject('english', 'e1', 1, 7);
+      await seedSubject('english', 'e2', 2, 7);
+      await flush((_) => http.Response(jsonEncode({'synced': 0}), 200));
+      final pending = await DiagnosticAnswerStore.pendingForAttempt('a1');
+      expect(pending.map((r) => r['question_id']), ['e1', 'e2']);
+    });
+
+    test('partial acceptance keeps the batch pending, bounded to 3 tries',
+        () async {
+      await seedSubject('english', 'e1', 1, 8);
+      await seedSubject('english', 'e2', 2, 8);
+      var calls = 0;
+      Future<void> once() => flush((_) {
+            calls++;
+            return http.Response(jsonEncode({'synced': 1}), 200);
+          });
+      await once();
+      await once();
+      expect(await DiagnosticAnswerStore.pendingForAttempt('a1'), hasLength(2));
+      await once(); // 3rd strike: released so it is not re-sent forever
+      expect(await DiagnosticAnswerStore.pendingForAttempt('a1'), isEmpty);
+      expect(calls, 3);
+    });
   });
 }
