@@ -5,6 +5,7 @@
 // a recorded error (throttled: 24h / 60 min, persisted). Never throws, never blocks.
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'device_info_collector.dart';
@@ -55,14 +56,24 @@ class DeviceReportSender {
   static const Duration startInterval = Duration(hours: 24);
   static const Duration errorInterval = Duration(minutes: 60);
   static const _lastSentKey = 'device_report_last_sent_ms';
+  // Set only after a 2xx of a complete report. Builds <= 1.0.168 stamped
+  // last-sent even with empty CPU/RAM and never wrote this flag, so a missing
+  // flag means "never sent properly": re-report once after updating.
+  static const _hwCompleteKey = 'device_report_hw_complete';
 
   Timer? _pending;
   bool _started = false;
+  int _incompleteRetries = 0;
+  static const _maxIncompleteRetries = 3;
+
+  @visibleForTesting
+  Future<DeviceInfo> Function() collector = DeviceInfoCollector.collect;
 
   Future<Duration?> _sinceLastSent() async {
     try {
-      final ms = (await SharedPreferences.getInstance()).getInt(_lastSentKey);
-      return ms == null
+      final prefs = await SharedPreferences.getInstance();
+      final ms = prefs.getInt(_lastSentKey);
+      return ms == null || prefs.getBool(_hwCompleteKey) != true
           ? null
           : DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(ms));
     } catch (_) {
@@ -75,10 +86,13 @@ class DeviceReportSender {
     if (_started) return;
     _started = true;
     ErrorLog.onRecorded = () => unawaited(_onError());
-    Timer(delay, () async {
-      final since = await _sinceLastSent();
-      if (since == null || since >= startInterval) await send();
-    });
+    Timer(delay, sendOnStartIfDue);
+  }
+
+  @visibleForTesting
+  Future<void> sendOnStartIfDue() async {
+    final since = await _sinceLastSent();
+    if (since == null || since >= startInterval) await send();
   }
 
   Future<void> _onError() async {
@@ -103,16 +117,18 @@ class DeviceReportSender {
   bool _inFlight = false;
   DateTime? _lastAttempt; // in-memory: throttles error retries after failures
 
-  /// Records last-sent only after a 2xx, so an offline start doesn't block
-  /// the next attempt for a full interval. [_inFlight] stops double POSTs.
+  /// Records last-sent only after a 2xx of a complete report (cpu + ram), so
+  /// an offline start or an empty hardware probe doesn't block the next
+  /// attempt for a full interval. [_inFlight] stops double POSTs.
   Future<void> send() async {
     if (_inFlight) return;
     _inFlight = true;
     _lastAttempt = DateTime.now();
     try {
       final prefs = await SharedPreferences.getInstance();
+      final info = await collector();
       final payload = buildDeviceReportPayload(
-        info: await DeviceInfoCollector.collect(),
+        info: info,
         deviceId: await DeviceInfoCollector.deviceId(),
         schoolId: prefs.getString(_lastSchoolKey),
         errors: await ErrorLog.snapshot(),
@@ -126,7 +142,23 @@ class DeviceReportSender {
           )
           .timeout(const Duration(seconds: 10));
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        await prefs.setInt(_lastSentKey, DateTime.now().millisecondsSinceEpoch);
+        if (info.isComplete) {
+          _incompleteRetries = 0;
+          await prefs.setInt(
+              _lastSentKey, DateTime.now().millisecondsSinceEpoch);
+          await prefs.setBool(_hwCompleteKey, true);
+        } else {
+          // Drop any stale stamp so the next launch re-reports at once, and
+          // retry in-process after the error interval (capped).
+          await prefs.remove(_lastSentKey);
+          await prefs.remove(_hwCompleteKey);
+          if (_incompleteRetries++ < _maxIncompleteRetries) {
+            _pending ??= Timer(errorInterval, () {
+              _pending = null;
+              unawaited(send());
+            });
+          }
+        }
       }
     } catch (_) {
       // Guest telemetry: offline/server errors must stay invisible.
