@@ -62,6 +62,7 @@ class ErrorLog {
 
   static const window = Duration(days: 7);
   static const maxEventsPerKind = 1000;
+  static const dedupWindow = Duration(seconds: 60);
 
   /// Injectable clock for tests.
   static DateTime Function() clock = DateTime.now;
@@ -81,6 +82,25 @@ class ErrorLog {
     final kind = classifyError(error, context);
     final prefs = await SharedPreferences.getInstance();
     final now = clock().toUtc();
+    final message = sanitizeErrorMessage(error.toString());
+    // Same kind+message as the newest entry within [dedupWindow]: bump that
+    // entry's `count` instead of logging again (a slow network used to write
+    // one 20s-timeout entry every few seconds). Counter and onRecorded are
+    // skipped, so a repeat burst counts once.
+    final prev = _readEntries(prefs, now);
+    if (prev.isNotEmpty) {
+      final last = prev.last;
+      final lastAt = DateTime.tryParse('${last['at']}');
+      if (last['kind'] == kind &&
+          last['message'] == message &&
+          lastAt != null &&
+          now.difference(lastAt) <= dedupWindow) {
+        last['count'] = ((last['count'] as num?)?.toInt() ?? 1) + 1;
+        last['at'] = now.toIso8601String();
+        await prefs.setString(_entriesKey, jsonEncode(prev));
+        return;
+      }
+    }
     final events = _readEvents(prefs, now);
     final list = [
       ...(events[kind] ?? const <int>[]),
@@ -89,9 +109,9 @@ class ErrorLog {
     events[kind] = list.length > maxEventsPerKind
         ? list.sublist(list.length - maxEventsPerKind)
         : list;
-    final entries = appendRing(_readEntries(prefs, now), {
+    final entries = appendRing(prev, {
       'kind': kind,
-      'message': sanitizeErrorMessage(error.toString()),
+      'message': message,
       'at': now.toIso8601String(),
     });
     await prefs.setString(_eventsKey, jsonEncode(events));

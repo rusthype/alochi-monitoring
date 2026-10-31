@@ -113,11 +113,15 @@ class DiagnosticKioskApi {
   ));
   static final String _base = '$_host/api/v1/diagnostic';
   static const Duration _timeout = Duration(seconds: 20);
+  // Fire-and-forget calls (elapsed ping, answer sync): on a slow school
+  // network a 20s hang per call flooded ErrorLog; they retry on the next tick.
+  static const Duration backgroundTimeout = Duration(seconds: 8);
 
-  Future<http.Response> _send(Future<http.Response> Function() req) async {
+  Future<http.Response> _send(Future<http.Response> Function() req,
+      {Duration timeout = _timeout}) async {
     final tap = RequestTap(http.Client());
     try {
-      return await tap.run(req).timeout(_timeout);
+      return await tap.run(req).timeout(timeout);
     } on TimeoutException catch (e) {
       ErrorLog.record(tap.describe(e), 'api');
       throw const ApiException(
@@ -153,13 +157,15 @@ class DiagnosticKioskApi {
     }
   }
 
-  Future<Map<String, dynamic>> _post(
-      String path, Map<String, dynamic> body) async {
-    final resp = await _send(() => http.post(
-          Uri.parse('$_base$path'),
-          headers: const {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        ));
+  Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body,
+      {Duration timeout = _timeout}) async {
+    final resp = await _send(
+        () => http.post(
+              Uri.parse('$_base$path'),
+              headers: const {'Content-Type': 'application/json'},
+              body: jsonEncode(body),
+            ),
+        timeout: timeout);
     Map<String, dynamic> data;
     try {
       data = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
@@ -304,10 +310,13 @@ class DiagnosticKioskApi {
     required String attemptId,
     required int elapsedSeconds,
   }) {
-    return _post('/kiosk/ping/', {
-      'attempt_id': attemptId,
-      'elapsed_seconds': elapsedSeconds,
-    });
+    return _post(
+        '/kiosk/ping/',
+        {
+          'attempt_id': attemptId,
+          'elapsed_seconds': elapsedSeconds,
+        },
+        timeout: backgroundTimeout);
   }
 
   /// Fixed-variant kiosk oqimining jonli telemetriya + butun
@@ -323,11 +332,14 @@ class DiagnosticKioskApi {
     required List<Map<String, dynamic>> answers,
     int? generation,
   }) {
-    return _post('/kiosk/sync/', {
-      'attempt_id': attemptId,
-      'answers': answers,
-      if (generation != null) 'generation': generation,
-    });
+    return _post(
+        '/kiosk/sync/',
+        {
+          'attempt_id': attemptId,
+          'answers': answers,
+          if (generation != null) 'generation': generation,
+        },
+        timeout: backgroundTimeout);
   }
 
   /// `{exchange_code}` — starts the web-test bridge session for a class

@@ -2960,6 +2960,57 @@ void main() {
       }
 
       testWidgets(
+        'elapsed ping is not re-sent while the previous one is in flight',
+        (tester) async {
+          final gate = Completer<Map<String, dynamic>>();
+          var pings = 0;
+          await tester.pumpWidget(
+            _wrapWithRouter(
+              DiagnosticTestRunnerScreen(
+                attemptId: 'att-sw',
+                studentName: 'Aliyev Ali',
+                grade: 3,
+                language: 'uz',
+                availableSubjectsOverride:
+                    (grade, {String language = 'uz'}) async => {
+                  'subjects': ['math', 'english'],
+                },
+                startAttemptOverride: ({
+                  required attemptId,
+                  required subject,
+                }) =>
+                    Future.value({...mathPackage(), 'remaining_seconds': 600}),
+                pingElapsedOverride: ({
+                  required attemptId,
+                  required elapsedSeconds,
+                }) {
+                  pings++;
+                  return gate.future;
+                },
+                enqueueLocalOverride: (payload, token) async {},
+                flushPendingFinishOverride: () async => true,
+                connectivityStreamOverride: const Stream.empty(),
+              ),
+              onFinished: (extra) {},
+            ),
+          );
+          for (var i = 0; i < 3; i++) {
+            await tester.pump();
+          }
+          await tester.pump(const Duration(seconds: 4));
+          // Ticks at 30s, 60s, 90s: the first ping never returns.
+          await tester.pump(const Duration(seconds: 95));
+          expect(pings, 1, reason: 'later ticks must skip while in flight');
+
+          gate.complete({'ok': true});
+          await tester.pump();
+          await tester.pump(const Duration(seconds: 30));
+          expect(pings, 2, reason: 'guard released once the ping finished');
+          await unmount(tester);
+        },
+      );
+
+      testWidgets(
         'while english is loading: no hotkey answer is recorded against the '
         'math package and the math ping timer is stopped',
         (tester) async {

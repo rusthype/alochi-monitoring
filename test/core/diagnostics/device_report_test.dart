@@ -121,6 +121,76 @@ void main() {
     });
   });
 
+  group('dedup of repeated identical errors (60s)', () {
+    final t0 = DateTime.utc(2026, 10, 1);
+    var recorded = 0;
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      recorded = 0;
+      ErrorLog.clock = () => t0;
+      ErrorLog.onRecorded = () => recorded++;
+    });
+    tearDown(() {
+      ErrorLog.clock = DateTime.now;
+      ErrorLog.onRecorded = null;
+    });
+
+    Future<void> at(int seconds, Object e) async {
+      ErrorLog.clock = () => t0.add(Duration(seconds: seconds));
+      await ErrorLog.record(e);
+    }
+
+    test('same kind+message within 60s -> one entry, count=2, counter 1',
+        () async {
+      final e = TimeoutException('Future not completed');
+      await at(0, e);
+      await at(30, e);
+      final s = await ErrorLog.snapshot();
+      expect(s.counts[kErrOther], 1);
+      expect(s.entries, hasLength(1));
+      expect(s.entries.single['count'], 2);
+      expect(s.entries.single['at'],
+          t0.add(const Duration(seconds: 30)).toIso8601String());
+      expect(recorded, 1, reason: 'onRecorded only for non-deduped entries');
+    });
+
+    test('window slides from the last occurrence; third repeat -> count=3',
+        () async {
+      await at(0, Exception('boom'));
+      await at(50, Exception('boom'));
+      await at(100, Exception('boom'));
+      final s = await ErrorLog.snapshot();
+      expect(s.entries.single['count'], 3);
+      expect(s.counts[kErrOther], 1);
+    });
+
+    test('61s later -> new entry and counter', () async {
+      await at(0, Exception('boom'));
+      await at(61, Exception('boom'));
+      final s = await ErrorLog.snapshot();
+      expect(s.entries, hasLength(2));
+      expect(s.entries.last.containsKey('count'), isFalse);
+      expect(s.counts[kErrOther], 2);
+      expect(recorded, 2);
+    });
+
+    test('different message or kind -> new entry', () async {
+      await at(0, Exception('boom'));
+      await at(1, Exception('other boom'));
+      await at(2, Exception('ECONNRESET'));
+      final s = await ErrorLog.snapshot();
+      expect(s.entries, hasLength(3));
+      expect(s.counts, {kErrOther: 2, kErrNetworkReset: 1});
+      expect(recorded, 3);
+    });
+
+    test('messages equal after sanitizing (digit runs) are deduped', () async {
+      await at(0, Exception('failed id 123456'));
+      await at(5, Exception('failed id 987654'));
+      expect((await ErrorLog.snapshot()).entries.single['count'], 2);
+    });
+  });
+
   test('payload shape, school_id null when unknown', () {
     const info = DeviceInfo(
         os: 'macos',

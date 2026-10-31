@@ -743,6 +743,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// blocks/fails the test on error (see file header's `kiosk/ping/`
   /// contract: a nice-to-have, not a hard requirement for the test to work).
   Future<void> _pingElapsed() async {
+    if (_pingInFlight) return; // slow network: don't stack requests
+    _pingInFlight = true;
     try {
       await _pingElapsedCall(
         attemptId: widget.attemptId,
@@ -750,8 +752,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       );
     } catch (e) {
       debugPrint('Diagnostic elapsed-ping failed: $e');
+    } finally {
+      _pingInFlight = false;
     }
   }
+
+  bool _pingInFlight = false;
 
   /// Recomputes `_remainingSeconds` from [_stopwatch]'s elapsed time (see
   /// its doc comment) instead of trusting the tick count or the wall clock —
