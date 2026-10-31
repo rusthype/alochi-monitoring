@@ -40,12 +40,30 @@ String sanitizeErrorMessage(String raw, {int max = 200}) {
   return s;
 }
 
-/// Pure ring-buffer append: newest last, capped at [cap].
+/// Pure ring-buffer append: newest last, capped at [cap]. On overflow the
+/// oldest entry of the most frequent `kind` is dropped (ties: the overall
+/// oldest), so one flooding kind cannot push rare kinds out of the ring.
+/// Entries without a `kind` all share one group, i.e. plain drop-oldest.
 List<Map<String, dynamic>> appendRing(
     List<Map<String, dynamic>> entries, Map<String, dynamic> entry,
     {int cap = 20}) {
   final out = [...entries, entry];
-  return out.length > cap ? out.sublist(out.length - cap) : out;
+  while (out.length > cap) {
+    final counts = <Object?, int>{}; // insertion order = first appearance
+    for (final e in out) {
+      counts[e['kind']] = (counts[e['kind']] ?? 0) + 1;
+    }
+    Object? victim;
+    var best = 0;
+    for (final c in counts.entries) {
+      if (c.value > best) {
+        best = c.value;
+        victim = c.key;
+      }
+    }
+    out.removeAt(out.indexWhere((e) => e['kind'] == victim));
+  }
+  return out;
 }
 
 class ErrorSnapshot {

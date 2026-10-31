@@ -67,6 +67,50 @@ void main() {
     expect(l.last['i'], 24);
   });
 
+  group('appendRing kind-aware eviction', () {
+    Map<String, dynamic> e(String kind, int i) => {'kind': kind, 'i': i};
+
+    test('rare kind survives a flood of one kind', () {
+      var l = <Map<String, dynamic>>[];
+      var i = 0;
+      for (var n = 0; n < 20; n++) {
+        l = appendRing(l, e('other', i++));
+      }
+      l = appendRing(l, e('update_signature_failed', i++));
+      // 25 more (not 5): the old oldest-first cap only drops the signature
+      // entry once more than 19 newer entries follow it.
+      for (var n = 0; n < 25; n++) {
+        l = appendRing(l, e('other', i++));
+      }
+      expect(l.length, 20);
+      expect(l.where((x) => x['kind'] == 'update_signature_failed').length, 1);
+      expect(l.last['i'], 45);
+      final order = [for (final x in l) x['i'] as int];
+      expect([...order]..sort(), order, reason: 'oldest -> newest order');
+    });
+
+    test('evicts the oldest entry of the fullest kind', () {
+      var l = <Map<String, dynamic>>[
+        e('b', 0),
+        for (var i = 1; i < 20; i++) e('a', i),
+      ];
+      l = appendRing(l, e('a', 20));
+      expect(l.length, 20);
+      expect(l.any((x) => x['i'] == 1), isFalse, reason: 'oldest a evicted');
+      expect(l.any((x) => x['i'] == 0), isTrue, reason: 'rare b kept');
+    });
+
+    test('ties evict the overall oldest entry', () {
+      var l = <Map<String, dynamic>>[
+        for (var i = 0; i < 20; i++) e(i.isEven ? 'a' : 'b', i),
+      ];
+      l = appendRing(l, e('c', 20));
+      expect(l.length, 20);
+      expect(l.first['i'], 1);
+      expect(l.last['i'], 20);
+    });
+  });
+
   test('ErrorLog persists counts + entries', () async {
     SharedPreferences.setMockInitialValues({});
     for (var i = 0; i < 22; i++) {
