@@ -66,6 +66,16 @@ class DeviceInfoCollector {
     }
   }
 
+  /// "version+build", '' if unavailable. Cheap: no hardware probing.
+  static Future<String> appVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      return '${info.version}+${info.buildNumber}';
+    } catch (_) {
+      return '';
+    }
+  }
+
   static Future<DeviceInfo> collect() async {
     var cpu = '';
     var ramMb = 0;
@@ -115,11 +125,7 @@ class DeviceInfoCollector {
       }
     } catch (_) {}
 
-    var version = '';
-    try {
-      final info = await PackageInfo.fromPlatform();
-      version = '${info.version}+${info.buildNumber}';
-    } catch (_) {}
+    final version = await appVersion();
 
     return DeviceInfo(
       os: Platform.operatingSystem,

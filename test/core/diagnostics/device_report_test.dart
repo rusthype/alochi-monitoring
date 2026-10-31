@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:alochi_monitoring/core/diagnostics/device_info_collector.dart';
@@ -7,6 +8,7 @@ import 'package:alochi_monitoring/core/diagnostics/error_log.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -243,8 +245,8 @@ void main() {
       var posts = 0;
       await http.runWithClient(
           () => DeviceReportSender.instance.sendOnStartIfDue(),
-          () => MockClient((_) async {
-                posts++;
+          () => MockClient((req) async {
+                if (req.url.path.endsWith('/device-report/')) posts++;
                 return http.Response('{}', 200);
               }));
       return posts;
@@ -261,6 +263,73 @@ void main() {
       SharedPreferences.setMockInitialValues(
           {key: DateTime.now().millisecondsSinceEpoch, flagKey: true});
       expect(await startCheck(), 0);
+    });
+
+    Future<List<String>> startPaths(
+        {Object? failWith, int status = 204}) async {
+      final paths = <String>[];
+      await http.runWithClient(
+          () => DeviceReportSender.instance.sendOnStartIfDue(),
+          () => MockClient((req) async {
+                paths.add(req.url.path);
+                if (failWith != null) throw failWith;
+                return http.Response('', status);
+              }));
+      return paths;
+    }
+
+    test('start: report not due -> ping only, no device-report', () async {
+      SharedPreferences.setMockInitialValues(
+          {key: DateTime.now().millisecondsSinceEpoch, flagKey: true});
+      expect(await startPaths(), ['/api/v1/diagnostic/kiosk/device-ping/']);
+    });
+
+    test('start: report due (>=24h) -> device-report only, no ping', () async {
+      SharedPreferences.setMockInitialValues({
+        key: DateTime.now()
+            .subtract(const Duration(hours: 25))
+            .millisecondsSinceEpoch,
+        flagKey: true,
+      });
+      expect(await startPaths(status: 200),
+          ['/api/v1/diagnostic/kiosk/device-report/']);
+    });
+
+    test('ping body is {device_id, app_version} only', () async {
+      SharedPreferences.setMockInitialValues({});
+      PackageInfo.setMockInitialValues(
+          appName: 'a',
+          packageName: 'p',
+          version: '1.2.3',
+          buildNumber: '45',
+          buildSignature: '');
+      late http.Request sent;
+      await http.runWithClient(
+          () => DeviceReportSender.instance.ping(),
+          () => MockClient((req) async {
+                sent = req;
+                return http.Response('', 204);
+              }));
+      expect(sent.headers['Content-Type'], startsWith('application/json'));
+      final body = jsonDecode(sent.body) as Map<String, dynamic>;
+      expect(body.keys.toSet(), {'device_id', 'app_version'});
+      expect(body['device_id'], isNotEmpty);
+      expect(body['app_version'], '1.2.3+45');
+    });
+
+    test('ping offline / timeout / 5xx never throws, stamps unchanged',
+        () async {
+      SharedPreferences.setMockInitialValues({key: 111, flagKey: true});
+      for (final client in <MockClient>[
+        MockClient((_) async => throw const SocketException('offline')),
+        MockClient((_) async => throw TimeoutException('slow')),
+        MockClient((_) async => http.Response('', 503)),
+      ]) {
+        await http.runWithClient(
+            () => DeviceReportSender.instance.ping(), () => client);
+      }
+      expect(await lastSent(), 111);
+      expect(await flag(), isTrue);
     });
 
     test('flag is set only by a complete 2xx report', () async {

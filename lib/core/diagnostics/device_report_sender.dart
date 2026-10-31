@@ -2,7 +2,8 @@
 //
 // Fire-and-forget POST of hardware + error counters to the guest endpoint
 // `diagnostic/kiosk/device-report/`. Sent shortly after app start and after
-// a recorded error (throttled: 24h / 60 min, persisted). Never throws, never blocks.
+// a recorded error (throttled: 24h / 60 min, persisted); a tiny hourly
+// `device-ping/` keeps "last contact" live. Never throws, never blocks.
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show visibleForTesting;
@@ -55,6 +56,7 @@ class DeviceReportSender {
   // most once per 24h, error-triggered at most once per 60 min.
   static const Duration startInterval = Duration(hours: 24);
   static const Duration errorInterval = Duration(minutes: 60);
+  static const Duration pingInterval = Duration(minutes: 60);
   static const _lastSentKey = 'device_report_last_sent_ms';
   // Set only after a 2xx of a complete report. Builds <= 1.0.168 stamped
   // last-sent even with empty CPU/RAM and never wrote this flag, so a missing
@@ -62,6 +64,7 @@ class DeviceReportSender {
   static const _hwCompleteKey = 'device_report_hw_complete';
 
   Timer? _pending;
+  Timer? _pingTimer;
   bool _started = false;
   int _incompleteRetries = 0;
   static const _maxIncompleteRetries = 3;
@@ -87,12 +90,38 @@ class DeviceReportSender {
     _started = true;
     ErrorLog.onRecorded = () => unawaited(_onError());
     Timer(delay, sendOnStartIfDue);
+    _pingTimer ??= Timer.periodic(pingInterval, (_) => unawaited(ping()));
   }
 
   @visibleForTesting
   Future<void> sendOnStartIfDue() async {
     final since = await _sinceLastSent();
-    if (since == null || since >= startInterval) await send();
+    if (since == null || since >= startInterval) {
+      await send();
+    } else {
+      await ping();
+    }
+  }
+
+  /// Lightweight liveness POST ({device_id, app_version}); touches no
+  /// last-sent stamps so it can't disturb the full-report throttle.
+  Future<void> ping() async {
+    try {
+      final id = await DeviceInfoCollector.deviceId();
+      if (id.isEmpty) return;
+      await http
+          .post(
+            Uri.parse('$_host/api/v1/diagnostic/kiosk/device-ping/'),
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'device_id': id,
+              'app_version': await DeviceInfoCollector.appVersion(),
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // Guest telemetry: offline/server errors must stay invisible.
+    }
   }
 
   Future<void> _onError() async {
