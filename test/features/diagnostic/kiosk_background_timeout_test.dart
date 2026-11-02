@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:alochi_monitoring/core/diagnostics/device_info_collector.dart';
 import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_kiosk_api.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -7,7 +8,13 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    // finishAttempt reads the device id/version first; platform I/O never
+    // completes under the fake clock, so pre-seed the collector cache.
+    DeviceInfoCollector.debugSet(id: 'dev', version: '1.0.0+1');
+  });
+  tearDown(DeviceInfoCollector.resetCache);
 
   testWidgets('background calls give up after 8s, interactive ones keep 20s',
       (tester) async {

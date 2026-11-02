@@ -9,6 +9,7 @@ import 'dart:ffi';
 import 'dart:io';
 import 'dart:ui' show PlatformDispatcher;
 import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:win32/win32.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -50,9 +51,29 @@ Future<String> _run(String exe, List<String> args,
 class DeviceInfoCollector {
   static const _idKey = 'device_report_device_id';
 
+  // Both values are read on every kiosk start/finish/add call; keep them in
+  // memory. Only non-empty results are cached so a failed probe is retried.
+  static String? _cachedId;
+  static String? _cachedVersion;
+
+  @visibleForTesting
+  static void resetCache() {
+    _cachedId = null;
+    _cachedVersion = null;
+  }
+
+  /// Pins the cached values (even to '') so tests can simulate "unavailable".
+  @visibleForTesting
+  static void debugSet({String? id, String? version}) {
+    _cachedId = id;
+    _cachedVersion = version;
+  }
+
   /// Persisted random id (no app-wide device id exists; heartbeat uses a
   /// per-platform constant).
   static Future<String> deviceId() async {
+    final cached = _cachedId;
+    if (cached != null) return cached;
     try {
       final prefs = await SharedPreferences.getInstance();
       var id = prefs.getString(_idKey);
@@ -60,7 +81,7 @@ class DeviceInfoCollector {
         id = const Uuid().v4();
         await prefs.setString(_idKey, id);
       }
-      return id;
+      return _cachedId = id;
     } catch (_) {
       return '';
     }
@@ -68,9 +89,11 @@ class DeviceInfoCollector {
 
   /// "version+build", '' if unavailable. Cheap: no hardware probing.
   static Future<String> appVersion() async {
+    final cached = _cachedVersion;
+    if (cached != null) return cached;
     try {
       final info = await PackageInfo.fromPlatform();
-      return '${info.version}+${info.buildNumber}';
+      return _cachedVersion = '${info.version}+${info.buildNumber}';
     } catch (_) {
       return '';
     }

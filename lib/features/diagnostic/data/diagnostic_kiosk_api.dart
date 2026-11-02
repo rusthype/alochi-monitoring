@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../../../core/diagnostics/device_info_collector.dart';
 import '../../../core/diagnostics/error_log.dart';
 import '../../../core/api/api_host.dart';
 import '../../../core/api/request_tap.dart';
@@ -116,6 +117,18 @@ class DiagnosticKioskApi {
   // Fire-and-forget calls (elapsed ping, answer sync): on a slow school
   // network a 20s hang per call flooded ErrorLog; they retry on the next tick.
   static const Duration backgroundTimeout = Duration(seconds: 8);
+
+  /// `device_id` / `app_version` for the add/start/finish bodies so the panel
+  /// can show which computer an attempt came from. A key is omitted when its
+  /// value is unavailable; the collector never throws.
+  static Future<Map<String, String>> deviceFields() async {
+    final id = await DeviceInfoCollector.deviceId();
+    final version = await DeviceInfoCollector.appVersion();
+    return {
+      if (id.isNotEmpty) 'device_id': id,
+      if (version.isNotEmpty) 'app_version': version,
+    };
+  }
 
   Future<http.Response> _send(Future<http.Response> Function() req,
       {Duration timeout = _timeout}) async {
@@ -255,6 +268,7 @@ class DiagnosticKioskApi {
     required AddStudentDraft draft,
     bool confirmNew = false,
   }) async {
+    final device = await deviceFields();
     final resp = await _send(() => http.post(
           Uri.parse('$_base/kiosk/schools/$schoolId/students/add/'),
           headers: const {'Content-Type': 'application/json'},
@@ -262,6 +276,7 @@ class DiagnosticKioskApi {
             'class_label': classLabel,
             'language': language,
             ...draft.toJson(confirmNew: confirmNew),
+            ...device,
           }),
         ));
     return parseAddStudentResponse(resp, diagnostic: true);
@@ -272,10 +287,11 @@ class DiagnosticKioskApi {
   Future<Map<String, dynamic>> startAttempt({
     required String attemptId,
     required String subject,
-  }) {
+  }) async {
     return _post('/kiosk/start/', {
       'attempt_id': attemptId,
       'subject': subject,
+      ...await deviceFields(),
     });
   }
 
@@ -377,12 +393,13 @@ class DiagnosticKioskApi {
     required List<Map<String, dynamic>> answers,
     List<String>? flaggedQuestionIds,
     int? generation,
-  }) {
+  }) async {
     return _post('/kiosk/finish/', {
       'attempt_id': attemptId,
       'answers': answers,
       'flagged_question_ids': flaggedQuestionIds ?? const <String>[],
       if (generation != null) 'generation': generation,
+      ...await deviceFields(),
     });
   }
 
@@ -411,13 +428,17 @@ class DiagnosticKioskApi {
       Map<String, dynamic> payload, String token,
       {String subject = ''}) async {
     try {
+      // Queued payloads never carry device keys (the runner enqueues its own
+      // map; older app versions never added them): fill them in at replay,
+      // keeping any value the payload already has.
+      final body = {...await deviceFields(), ...payload};
       final resp = await _send(() => http.post(
             Uri.parse('$_base/kiosk/finish/'),
             headers: {
               'Content-Type': 'application/json',
               'Idempotency-Key': token,
             },
-            body: jsonEncode(payload),
+            body: jsonEncode(body),
           ));
       if (resp.statusCode >= 400) {
         final classified =
