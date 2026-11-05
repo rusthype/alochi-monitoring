@@ -10,7 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 
-enum ProctorToastKind { warning, extended }
+/// `warning` = admin message (rendered with the "Administrator warning:"
+/// prefix); `notice` = same amber look for system notices, shown verbatim.
+enum ProctorToastKind { warning, notice, extended }
 
 /// Self-removes from [ProctorToastController.entries] via [timer] after its
 /// display duration.
@@ -82,7 +84,7 @@ class _ProctorToastBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWarning = entry.kind == ProctorToastKind.warning;
+    final isWarning = entry.kind != ProctorToastKind.extended;
     final l10n = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -111,7 +113,7 @@ class _ProctorToastBanner extends StatelessWidget {
         const SizedBox(width: 8),
         Flexible(
           child: Text(
-            isWarning
+            entry.kind == ProctorToastKind.warning
                 ? '${l10n.adminWarning}: ${entry.message}'
                 : entry.message,
             style: TextStyle(

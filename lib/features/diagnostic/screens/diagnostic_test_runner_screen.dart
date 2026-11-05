@@ -958,8 +958,18 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       });
       unawaited(
         startTestFuture.then(
-          (_) {
+          (ok) {
             if (!completer.isCompleted) completer.complete();
+            // `false` = another device already runs this attempt. Warn only;
+            // the student keeps working (startTest is best-effort and
+            // returns true on every failure, so offline never lands here).
+            if (ok == false && mounted) {
+              _toasts.push(
+                ProctorToastKind.notice,
+                AppLocalizations.of(context)!.sessionConflictOtherDevice,
+                const Duration(seconds: 10),
+              );
+            }
           },
           onError: (_) {
             if (!completer.isCompleted) completer.complete();

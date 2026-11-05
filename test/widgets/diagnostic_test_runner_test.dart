@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:alochi_monitoring/core/api/api_client.dart' show ApiException;
+import 'package:alochi_monitoring/core/api/api_client.dart'
+    show ApiException, MonitoringApi, api;
 import 'package:alochi_monitoring/core/db/attempt_store.dart';
 import 'package:alochi_monitoring/core/db/diagnostic_answer_store.dart';
 import 'package:alochi_monitoring/core/db/diagnostic_history_db.dart';
@@ -111,6 +112,38 @@ Widget _wrapWithRouter(Widget child, {void Function(Object?)? onFinished}) {
       routerConfig: router,
     ),
   );
+}
+
+/// Stands in for the monitoring backend's session-ping answer so
+/// `HeartbeatService.startTest()` sees a conflict / no conflict / hang.
+class _PingApi extends MonitoringApi {
+  _PingApi(this.reply);
+  final Future<Map<String, dynamic>> Function() reply;
+
+  @override
+  Future<Map<String, dynamic>> sessionPing({
+    required String sessionId,
+    String schoolCode = '',
+    String name = '',
+    String variant = '',
+    String testKey = '',
+    String status = 'active',
+    String? studentCode,
+    int tabSwitchCount = 0,
+    int? currentQuestionIndex,
+    int? totalQuestions,
+    List<int>? questionTimes,
+    String? platform,
+    String? appVersion,
+    String? deviceName,
+    Map<String, dynamic>? answers,
+    int? elapsedSeconds,
+    int? remainingSeconds,
+    String? localIp,
+    String? machineId,
+    String? macAddress,
+    List<String>? capabilities,
+  }) => reply();
 }
 
 void main() {
@@ -272,6 +305,119 @@ void main() {
       expect(find.text('${l10n.adminWarning}: Diqqat qiling'), findsNothing);
       expect(find.text(l10n.timeAdded(2)), findsNothing);
       await unmount(tester);
+    });
+
+    group('other-device session warning', () {
+      Future<void> pumpRunner(WidgetTester tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            DiagnosticTestRunnerScreen(
+              attemptId: 'att-1',
+              studentName: 'Aliyev Ali',
+              grade: 3,
+              language: 'uz',
+              availableSubjectsOverride:
+                  (grade, {String language = 'uz'}) async => {
+                    'subjects': ['math'],
+                  },
+              startAttemptOverride:
+                  ({required attemptId, required subject}) async => {
+                    'position': 1,
+                    'total_questions': 5,
+                    'subject': subject,
+                    'question': _question(),
+                  },
+            ),
+          ),
+        );
+        // startTest()'s ping does real IO (device info, local IP) that the
+        // FakeAsync clock cannot advance.
+        for (var i = 0; i < 10; i++) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 100)),
+          );
+          await tester.pump();
+        }
+      }
+
+      testWidgets('conflict shows a non-blocking toast, the question stays '
+          'interactive', (tester) async {
+        final saved = api;
+        api = _PingApi(() async => {'ok': true, 'conflict': true});
+        addTearDown(() => api = saved);
+        await pumpRunner(tester);
+        final l10n =
+            AppLocalizations.of(tester.element(find.byType(Scaffold).first))!;
+
+        expect(find.text(l10n.sessionConflictOtherDevice), findsOneWidget);
+        expect(find.byType(DiagnosticOptionCard), findsNWidgets(4));
+        expect(find.byType(DiagnosticTestRunnerScreen), findsOneWidget);
+        await tester.pump(const Duration(seconds: 11));
+        await unmount(tester);
+      });
+
+      testWidgets('no conflict shows no toast', (tester) async {
+        final saved = api;
+        api = _PingApi(() async => {'ok': true});
+        addTearDown(() => api = saved);
+        await pumpRunner(tester);
+        final l10n =
+            AppLocalizations.of(tester.element(find.byType(Scaffold).first))!;
+
+        expect(find.text(l10n.sessionConflictOtherDevice), findsNothing);
+        await tester.pump(const Duration(seconds: 4));
+        await unmount(tester);
+      });
+
+      testWidgets('ping failure shows no toast', (tester) async {
+        final saved = api;
+        api = _PingApi(() async => throw Exception('offline'));
+        addTearDown(() => api = saved);
+        await pumpRunner(tester);
+        final l10n =
+            AppLocalizations.of(tester.element(find.byType(Scaffold).first))!;
+
+        expect(find.text(l10n.sessionConflictOtherDevice), findsNothing);
+        await tester.pump(const Duration(seconds: 4));
+        await unmount(tester);
+      });
+
+      testWidgets('a ping that outlasts the 3s wait shows no toast', (
+        tester,
+      ) async {
+        final saved = api;
+        final never = Completer<Map<String, dynamic>>();
+        api = _PingApi(() => never.future);
+        addTearDown(() => api = saved);
+        await pumpRunner(tester);
+        await tester.pump(const Duration(seconds: 4));
+        final l10n =
+            AppLocalizations.of(tester.element(find.byType(Scaffold).first))!;
+
+        expect(find.text(l10n.sessionConflictOtherDevice), findsNothing);
+        expect(find.byType(DiagnosticOptionCard), findsNWidgets(4));
+        await unmount(tester);
+      });
+
+      testWidgets('is shown once per runner instance', (tester) async {
+        final saved = api;
+        api = _PingApi(() async => {'ok': true, 'conflict': true});
+        addTearDown(() => api = saved);
+        await pumpRunner(tester);
+        final l10n =
+            AppLocalizations.of(tester.element(find.byType(Scaffold).first))!;
+        expect(find.text(l10n.sessionConflictOtherDevice), findsOneWidget);
+
+        // Toast expires; later pings (30s heartbeat etc.) must not re-warn.
+        await tester.pump(const Duration(seconds: 11));
+        expect(find.text(l10n.sessionConflictOtherDevice), findsNothing);
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 200)),
+        );
+        await tester.pump();
+        expect(find.text(l10n.sessionConflictOtherDevice), findsNothing);
+        await unmount(tester);
+      });
     });
 
     testWidgets('selecting an option submits selected: "B" and updates the '
