@@ -313,15 +313,15 @@ class SyncService {
               sc != 408 &&
               sc != 429) {
             // 404/410 = the attempt itself is gone: drop its other groups too.
+            // Any other 4xx only rejected THIS batch; later batches were never
+            // sent, so they stay pending.
             final gone = sc == 404 || sc == 410;
+            final released = gone ? rows : group;
             debugPrint('SyncService: kiosk/sync permanent $sc for '
                 'attempt=$attemptId — releasing '
-                '${gone ? rows.length : all.length} pending rows');
-            await DiagnosticAnswerStore.markSynced(
-                attemptId,
-                (gone ? rows : all)
-                    .map((r) => r['question_id'] as String)
-                    .toList());
+                '${released.length} pending rows');
+            await DiagnosticAnswerStore.markSynced(attemptId,
+                released.map((r) => r['question_id'] as String).toList());
             if (gone) return;
             break;
           }

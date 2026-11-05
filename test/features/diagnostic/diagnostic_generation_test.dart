@@ -262,6 +262,22 @@ void main() {
           generation: gen,
         );
 
+    test('a permanent 400 on one batch releases only that batch (>30 rows)',
+        () async {
+      for (var i = 1; i <= 35; i++) {
+        await seedSubject('english', 'e$i', i, 7);
+      }
+      var calls = 0;
+      await flush((_) {
+        calls++;
+        return http.Response(jsonEncode({'detail': 'bad'}), 400);
+      });
+      expect(calls, 1);
+      final left = await DiagnosticAnswerStore.pendingForAttempt('a1');
+      expect(left.map((r) => r['question_id']),
+          ['e31', 'e32', 'e33', 'e34', 'e35']);
+    });
+
     test('rows are sent per subject, never one mixed math+english batch',
         () async {
       for (var i = 1; i <= 3; i++) {
