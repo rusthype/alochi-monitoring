@@ -151,6 +151,8 @@ qo'lda `IP:port` ishlayveradi (faqat chiquvchi TCP kerak). Ko'p PC'li maktabda q
 - Ilovaga qotirilgan ("assets") testlar — Unit 1, Combined, Interhouse, Bob 1-4 — uchun pastdagi
   "Assets testlar oflayn rejimda" bo'limiga qarang (ular endi onlayn navbatga EMAS, zanjirga yoziladi).
 
+Qisqa jamlanma (token IP'ga bog'lanmagani, global 60 xato bloki, qachon qayta ko'rish): `lan_hub_known_limits.md`.
+
 ## O'qituvchi uchun tartib (kod chiqib ketsa)
 
 1. **Kodni yangilash** mavjud tokenlarni bekor QILMAYDI — faqat yangi ulanishlar uchun yangi kod kerak bo'ladi.
