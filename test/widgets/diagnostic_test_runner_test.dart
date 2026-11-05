@@ -3321,6 +3321,7 @@ void main() {
               DiagnosticTestRunnerScreen(
                 attemptId: 'att-audit',
                 studentName: 'Aliyev Ali',
+                schoolId: 'sch-9',
                 grade: 3,
                 language: 'uz',
                 availableSubjectsOverride:
@@ -3642,6 +3643,7 @@ void main() {
                 return DiagnosticHistoryDb.getAll();
               });
               expect(rows, lanMode ? isEmpty : hasLength(1));
+              if (!lanMode) expect(rows!.single['school_id'], 'sch-9');
               await tester.pump(const Duration(seconds: 10));
               await unmount(tester);
             },

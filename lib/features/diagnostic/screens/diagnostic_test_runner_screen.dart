@@ -2094,6 +2094,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         studentName: widget.studentName,
         classLabel: widget.classLabel,
         school: widget.schoolName,
+        schoolId: widget.schoolId,
         status: status,
         mathScore: mathScore,
         englishScore: englishScore,

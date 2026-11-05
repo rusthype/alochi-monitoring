@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:alochi_monitoring/core/db/diagnostic_history_db.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -168,5 +170,115 @@ void main() {
     final rows = await DiagnosticHistoryDb.getAll();
     expect(rows.first['attempt_id'], equals('newer'));
     expect(rows.last['attempt_id'], equals('older'));
+  });
+
+  group('school_id', () {
+    test('upsert records the school id on insert', () async {
+      await DiagnosticHistoryDb.upsert(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        classLabel: '4-A',
+        school: '56-maktab',
+        status: 'pending',
+        schoolId: 'sch-56',
+      );
+      final rows = await DiagnosticHistoryDb.getAll();
+      expect(rows.single['school_id'], 'sch-56');
+    });
+
+    test('a later upsert without a school id does not erase it', () async {
+      await DiagnosticHistoryDb.upsert(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        classLabel: '4-A',
+        school: '56-maktab',
+        status: 'pending',
+        schoolId: 'sch-56',
+      );
+      await DiagnosticHistoryDb.upsert(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        classLabel: '4-A',
+        school: '56-maktab',
+        status: 'sent',
+        schoolId: null,
+      );
+      await DiagnosticHistoryDb.upsert(
+        attemptId: 'att-1',
+        studentName: 'Aliyev Ali',
+        classLabel: '4-A',
+        school: '56-maktab',
+        status: 'sent',
+        schoolId: '',
+      );
+      final rows = await DiagnosticHistoryDb.getAll();
+      expect(rows.single['school_id'], 'sch-56');
+      expect(rows.single['status'], 'sent');
+    });
+
+    test('a row saved without a school id keeps school_id null', () async {
+      await DiagnosticHistoryDb.upsert(
+        attemptId: 'att-1',
+        studentName: 'A',
+        classLabel: '4-A',
+        school: 'S',
+        status: 'pending',
+      );
+      expect((await DiagnosticHistoryDb.getAll()).single['school_id'], isNull);
+    });
+
+    test('migrating a v1 database adds the column and keeps old rows',
+        () async {
+      final dir = await Directory.systemTemp.createTemp('diag_hist_mig_');
+      addTearDown(() => dir.delete(recursive: true));
+      final path = '${dir.path}/h.db';
+      final v1 = await openDatabase(path, version: 1,
+          onCreate: (d, _) => d.execute('''
+        CREATE TABLE diagnostic_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          attempt_id TEXT UNIQUE,
+          student_name TEXT,
+          class_label TEXT,
+          school TEXT,
+          math_score INTEGER,
+          english_score INTEGER,
+          status TEXT,
+          date_taken INTEGER
+        )'''));
+      await v1.insert('diagnostic_history', {
+        'attempt_id': 'old-1',
+        'student_name': 'Old Row',
+        'class_label': '4-A',
+        'school': '56-maktab',
+        'math_score': 20,
+        'status': 'sent',
+        'date_taken': DateTime.now().millisecondsSinceEpoch,
+      });
+      await v1.close();
+
+      await DiagnosticHistoryDb.reset();
+      await DiagnosticHistoryDb.openAtPath(path);
+      var rows = await DiagnosticHistoryDb.getAll();
+      expect(rows.single['attempt_id'], 'old-1');
+      expect(rows.single['math_score'], 20);
+      expect(rows.single['school_id'], isNull);
+
+      // Reopening an already-migrated file (and re-running the upgrade
+      // step by hand) must be a no-op, not a duplicate-column error.
+      await DiagnosticHistoryDb.reset();
+      await DiagnosticHistoryDb.openAtPath(path);
+      final d = await DiagnosticHistoryDb.db;
+      await DiagnosticHistoryDb.migrate(d);
+      await DiagnosticHistoryDb.upsert(
+        attemptId: 'old-1',
+        studentName: 'Old Row',
+        classLabel: '4-A',
+        school: '56-maktab',
+        status: 'sent',
+        schoolId: 'sch-56',
+      );
+      rows = await DiagnosticHistoryDb.getAll();
+      expect(rows.single['school_id'], 'sch-56');
+    });
   });
 }

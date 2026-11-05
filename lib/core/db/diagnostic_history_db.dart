@@ -14,6 +14,8 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'db_migrate.dart';
+
 class DiagnosticHistoryDb {
   static Database? _db;
 
@@ -25,9 +27,29 @@ class DiagnosticHistoryDb {
     }
     final dir = await getApplicationSupportDirectory();
     final path = join(dir.path, 'diagnostic_history.db');
-    _db = await openDatabase(path, version: 1, onCreate: _create);
+    return openAtPath(path);
+  }
+
+  /// v2 adds `school_id` (nullable; rows from v1 keep it null).
+  static const _version = 2;
+
+  /// Opens [path] with the real create/upgrade callbacks and makes it the
+  /// active db.
+  @visibleForTesting
+  static Future<Database> openAtPath(String path,
+      {bool singleInstance = true}) async {
+    _db = await openDatabase(path,
+        version: _version,
+        onCreate: _create,
+        onUpgrade: (d, _, __) => migrate(d),
+        singleInstance: singleInstance);
     return _db!;
   }
+
+  /// Idempotent: safe whatever `user_version` says (see db_migrate.dart).
+  @visibleForTesting
+  static Future<void> migrate(Database db) =>
+      addColumnIfMissing(db, 'diagnostic_history', 'school_id', 'TEXT');
 
   static Future<void> _create(Database db, int version) async {
     await db.execute('''
@@ -37,6 +59,7 @@ class DiagnosticHistoryDb {
         student_name TEXT,
         class_label TEXT,
         school TEXT,
+        school_id TEXT,
         math_score INTEGER,
         english_score INTEGER,
         status TEXT,
@@ -54,8 +77,7 @@ class DiagnosticHistoryDb {
     // call, so a second test's openInMemory() would silently hand back the
     // FIRST test's still-open (and still-populated) in-memory db instead of
     // a fresh one.
-    _db = await openDatabase(inMemoryDatabasePath,
-        version: 1, onCreate: _create, singleInstance: false);
+    await openAtPath(inMemoryDatabasePath, singleInstance: false);
   }
 
   @visibleForTesting
@@ -75,16 +97,19 @@ class DiagnosticHistoryDb {
     required String status,
     int? mathScore,
     int? englishScore,
+    String? schoolId,
   }) async {
     final d = await db;
     final existing = await d.query('diagnostic_history',
         where: 'attempt_id = ?', whereArgs: [attemptId], limit: 1);
+    final sid = (schoolId == null || schoolId.isEmpty) ? null : schoolId;
     if (existing.isEmpty) {
       await d.insert('diagnostic_history', {
         'attempt_id': attemptId,
         'student_name': studentName,
         'class_label': classLabel,
         'school': school,
+        'school_id': sid,
         'math_score': mathScore,
         'english_score': englishScore,
         'status': status,
@@ -99,6 +124,8 @@ class DiagnosticHistoryDb {
         'student_name': studentName,
         'class_label': classLabel,
         'school': school,
+        // A null/empty id never erases one already recorded.
+        'school_id': sid ?? row['school_id'],
         'math_score': mathScore ?? row['math_score'],
         'english_score': englishScore ?? row['english_score'],
         'status': status,
