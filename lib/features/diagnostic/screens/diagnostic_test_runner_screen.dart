@@ -1195,6 +1195,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       _questions = [];
       _question = null;
       _answers.clear();
+      // Flags belong to the subject's own question ids; math flags must not
+      // reach English's reminder dialog or `flagged_question_ids` payload.
+      _flaggedQuestionIds.clear();
     });
     try {
       // Always prefer a REAL, confirmed kiosk/start/ response (from

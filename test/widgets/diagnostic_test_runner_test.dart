@@ -3282,6 +3282,118 @@ void main() {
           await unmount(tester);
         },
       );
+
+      // 2026-11 audit (A3/A4/A6/A7/A9): flags, admin-lock and dead-end fixes.
+      group('audit fixes: flags / admin lock / empty question', () {
+        Map<String, dynamic> pkg(String subject, int n,
+                {int? remaining}) =>
+            _withMeta({
+              'position': 1,
+              'total_questions': n,
+              'subject': subject,
+              'questions': subject == 'math'
+                  ? fullPackageQuestions(n)
+                  : [_question(id: 'e1', text: 'Live ingliz savoli')],
+              if (remaining != null) 'remaining_seconds': remaining,
+            }, isFixedVariant: true);
+
+        Future<void> pumpRunner(
+          WidgetTester tester, {
+          required Future<Map<String, dynamic>> Function(String subject)
+              onStart,
+          Future<Map<String, dynamic>> Function(List<String>? flagged)?
+              onFinish,
+          Future<Map<String, dynamic>> Function({
+            required String attemptId,
+            required int elapsedSeconds,
+          })? onPing,
+          List<String> subjects = const ['math', 'english'],
+        }) async {
+          await tester.pumpWidget(
+            _wrapWithRouter(
+              DiagnosticTestRunnerScreen(
+                attemptId: 'att-audit',
+                studentName: 'Aliyev Ali',
+                grade: 3,
+                language: 'uz',
+                availableSubjectsOverride:
+                    (grade, {String language = 'uz'}) async => {
+                  'subjects': subjects,
+                },
+                startAttemptOverride: ({required attemptId, required subject}) =>
+                    onStart(subject),
+                finishAttemptOverride: ({
+                  required attemptId,
+                  required answers,
+                  List<String>? flaggedQuestionIds,
+                }) =>
+                    (onFinish ?? (_) async => {'finished': true})(
+                        flaggedQuestionIds),
+                pingElapsedOverride: onPing,
+                enqueueLocalOverride: (payload, token) async {},
+                flushPendingFinishOverride: () async => true,
+                connectivityStreamOverride: const Stream.empty(),
+              ),
+              onFinished: (extra) {},
+            ),
+          );
+          for (var i = 0; i < 3; i++) {
+            await tester.pump();
+          }
+          await tester.pump(const Duration(seconds: 4));
+        }
+
+        AppLocalizations l10nOf(WidgetTester tester) => AppLocalizations.of(
+              tester.element(find.byType(DiagnosticTestRunnerScreen)),
+            )!;
+
+        testWidgets(
+          'A7: math flags do not leak into the english reminder or payload',
+          (tester) async {
+            final payloads = <List<String>?>[];
+            await pumpRunner(
+              tester,
+              onStart: (s) async => pkg(s, 1),
+              onFinish: (flagged) async {
+                payloads.add(flagged);
+                return payloads.length == 1
+                    ? {'finished': true, 'next_subject': 'english'}
+                    : {'finished': true};
+              },
+            );
+            final l10n = l10nOf(tester);
+            await tester.tap(find.text('Variant A'));
+            await tester.pump();
+            await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+            await tester.pump();
+            await tester.tap(find.text(l10n.nextSubjectButton));
+            await tester.pump();
+            expect(find.text(l10n.flaggedQuestionsReminder(1)), findsOneWidget);
+            await tester.tap(find.descendant(
+                of: find.byType(AlertDialog),
+                matching: find.text(l10n.finishTest)));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 1700));
+            await tester.pump();
+            expect(find.text('Live ingliz savoli'), findsOneWidget);
+
+            await tester.tap(find.text('Variant A'));
+            await tester.pump();
+            await tester.tap(find.text(l10n.finishTestButton));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 100));
+            expect(find.byType(AlertDialog), findsNothing,
+                reason: 'no flag reminder for english');
+            expect(payloads, [
+              ['q1'],
+              isEmpty,
+            ]);
+            await tester.pump(const Duration(seconds: 10));
+            await unmount(tester);
+          },
+        );
+
+      });
     });
   });
 }
