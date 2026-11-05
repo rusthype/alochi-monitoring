@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:alochi_monitoring/core/services/diagnostic_export_service.dart';
@@ -459,6 +460,86 @@ void main() {
       final html = passport(result.first);
       expect(html, contains('18/'));
       expect(html, contains('25/'));
+    });
+  });
+
+  group('DiagnosticExportService hardening', () {
+    const hostile = {
+      'attempt_id': 'att-xss-0001',
+      'student_name': '<script>alert(1)</script>',
+      'class_label': '4-<b>A',
+      'school': 'A&B "maktab"',
+      'date_taken': 1735689600000,
+    };
+
+    test('sent passport HTML-escapes name, class and school, title included',
+        () {
+      final html = passport({
+        ...hostile,
+        'math_score': 20,
+        'english_score': 10,
+        'status': 'sent',
+      });
+      expect(html, isNot(contains('<script>')));
+      expect(html, isNot(contains('<b>A')));
+      expect(html, contains('&lt;script&gt;'));
+      expect(html, contains('4-&lt;b&gt;A'));
+      expect(html, contains('A&amp;B'));
+      expect(html, contains("<title>A'lochi"));
+      expect(RegExp(r'<title>[^<]*&lt;script&gt;').hasMatch(html), isTrue);
+    });
+
+    test('pending passport HTML-escapes name, class and school', () {
+      final html = passport({
+        ...hostile,
+        'math_score': null,
+        'english_score': null,
+        'status': 'pending',
+      });
+      expect(html, isNot(contains('<script>')));
+      expect(html, isNot(contains('<b>A')));
+      expect(html, contains('&lt;script&gt;'));
+      expect(html, contains('A&amp;B'));
+    });
+
+    test('zip entry names never contain separators, .. or control chars', () {
+      final bytes = zip([
+        {
+          'attempt_id': 'a/b\\..c-0001',
+          'student_name': 'a/b\\..c\u0007d',
+          'class_label': '4-A',
+          'school': 's',
+          'math_score': 1,
+          'english_score': 1,
+          'status': 'sent',
+          'date_taken': 1,
+        },
+      ]);
+      final names = ZipDecoder().decodeBytes(bytes).files.map((f) => f.name);
+      expect(names, hasLength(1));
+      for (final n in names) {
+        expect(n, isNot(contains('/')));
+        expect(n, isNot(contains('\\')));
+        expect(n, isNot(contains('..')));
+        expect(n.codeUnits.any((c) => c < 0x20 || c == 0x7f), isFalse);
+      }
+    });
+
+    test('saving twice at the same instant never overwrites the first file',
+        () async {
+      final dir = await Directory.systemTemp.createTemp('diag_zip_');
+      addTearDown(() => dir.delete(recursive: true));
+      final now = DateTime(2026, 11, 5, 9, 30, 15);
+      final a = await DiagnosticExportService.saveZipUnique(
+          dir, Uint8List.fromList([1, 2, 3]), now);
+      final b = await DiagnosticExportService.saveZipUnique(
+          dir, Uint8List.fromList([9, 9]), now);
+      expect(a, isNot(b));
+      expect(File(a).readAsBytesSync(), [1, 2, 3]);
+      expect(File(b).readAsBytesSync(), [9, 9]);
+      expect(a, contains('2026-11-05_093015'));
+      // Atomic write: no .tmp leftover.
+      expect(dir.listSync().where((e) => e.path.endsWith('.tmp')), isEmpty);
     });
   });
 }

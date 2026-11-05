@@ -13,12 +13,15 @@
 /// generated — fabricating one would be dishonest.
 library;
 
+import 'dart:convert' show HtmlEscape, HtmlEscapeMode;
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path_provider/path_provider.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../db/offline_queue.dart';
+import '../offline/atomic_file.dart';
 
 /// Flat max question count per fixed-variant diagnostic subject (both
 /// math and english) — backend `apps/diagnostic/fixed_variant.py`'s
@@ -34,9 +37,12 @@ class DiagnosticExportService {
     Map<String, dynamic> record, {
     required AppLocalizations l10n,
   }) {
-    final studentName = (record['student_name'] ?? '').toString();
-    final classLabel = (record['class_label'] ?? '').toString();
-    final school = (record['school'] ?? '').toString();
+    final rawName = (record['student_name'] ?? '').toString();
+    // Everything interpolated into the HTML (title included) is escaped.
+    final studentName = _esc(rawName);
+    final initial = _esc(_initial(rawName));
+    final classLabel = _esc((record['class_label'] ?? '').toString());
+    final school = _esc((record['school'] ?? '').toString());
     final dateStr = _formatDate(record['date_taken'] as int?);
     final mathScore = record['math_score'] as int?;
     final englishScore = record['english_score'] as int?;
@@ -45,6 +51,7 @@ class DiagnosticExportService {
       return _pendingHtml(
         l10n: l10n,
         studentName: studentName,
+        initial: initial,
         classLabel: classLabel,
         school: school,
         dateStr: dateStr,
@@ -53,6 +60,7 @@ class DiagnosticExportService {
     return _sentHtml(
       l10n: l10n,
       studentName: studentName,
+      initial: initial,
       classLabel: classLabel,
       school: school,
       dateStr: dateStr,
@@ -69,6 +77,9 @@ class DiagnosticExportService {
     return '${two(d.day)}.${two(d.month)}.${d.year}';
   }
 
+  static const _html = HtmlEscape(HtmlEscapeMode.element);
+  static String _esc(String v) => _html.convert(v);
+
   static String _initial(String name) {
     final trimmed = name.trim();
     return trimmed.isNotEmpty ? trimmed[0].toUpperCase() : '?';
@@ -83,6 +94,7 @@ class DiagnosticExportService {
   static String _pendingHtml({
     required AppLocalizations l10n,
     required String studentName,
+    required String initial,
     required String classLabel,
     required String school,
     required String dateStr,
@@ -97,7 +109,7 @@ $_headStyle
     <div style='font-size:10px;color:#888'>$dateStr</div>
   </div>
   <div style='display:flex;align-items:center;gap:18px;background:#f7f7f7;border-radius:12px;padding:16px 20px;margin-bottom:16px'>
-    <div style='width:54px;height:54px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0'>${_initial(studentName)}</div>
+    <div style='width:54px;height:54px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0'>$initial</div>
     <div style='flex:1'>
       <div style='font-size:20px;font-weight:800;margin-bottom:5px'>$studentName</div>
       <div style='display:flex;gap:16px;font-size:12px;color:#555'><span>$classLabel</span><span>$school</span></div>
@@ -118,6 +130,7 @@ $_headStyle
   static String _sentHtml({
     required AppLocalizations l10n,
     required String studentName,
+    required String initial,
     required String classLabel,
     required String school,
     required String dateStr,
@@ -176,7 +189,7 @@ $_headStyle
   </div>
   ${isLocalEstimate ? "<div style='background:#FFF7ED;border:1.5px solid #F97316;border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:11px;font-weight:700;color:#9A3412'>${l10n.exportLocalEstimateBanner}</div>" : ''}
   <div style='display:flex;align-items:center;gap:18px;background:#f7f7f7;border-radius:12px;padding:16px 20px;margin-bottom:16px'>
-    <div style='width:54px;height:54px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0'>${_initial(studentName)}</div>
+    <div style='width:54px;height:54px;border-radius:50%;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0'>$initial</div>
     <div style='flex:1'>
       <div style='font-size:20px;font-weight:800;margin-bottom:5px'>$studentName</div>
       <div style='display:flex;gap:16px;font-size:12px;color:#555'><span>$classLabel</span><span>$school</span></div>
@@ -309,6 +322,12 @@ $_headStyle
     return {'math': mathCorrect, 'english': englishCorrect};
   }
 
+  /// File-name-safe form of [v]: no path separators, `..`, control or
+  /// Windows-reserved characters (zip entry names are untrusted data).
+  static String _safeName(String v) => v
+      .replaceAll(RegExp(r'[/\\:*?"<>|\x00-\x1f\x7f]'), '_')
+      .replaceAll('..', '_');
+
   /// Builds the raw ZIP bytes for [records] — pure, no disk I/O, easily
   /// unit-testable. [onProgress] fires once per record, after that
   /// record's HTML has been added to the archive.
@@ -323,12 +342,12 @@ $_headStyle
       final record = records[i];
       final html = generateStudentPassportHtml(record, l10n: l10n);
       final attemptId = (record['attempt_id'] ?? '').toString();
-      final shortId =
-          attemptId.length >= 8 ? attemptId.substring(0, 8) : attemptId;
-      final studentSlug = (record['student_name'] ?? 'student')
+      final shortId = _safeName(
+          attemptId.length >= 8 ? attemptId.substring(0, 8) : attemptId);
+      final studentSlug = _safeName((record['student_name'] ?? 'student')
           .toString()
           .trim()
-          .replaceAll(RegExp(r'\s+'), '_');
+          .replaceAll(RegExp(r'\s+'), '_'));
       var filename = 'natija_${studentSlug}_$shortId.html';
       // attempt_id is unique per DiagnosticHistoryDb row, but guard
       // against a blank/duplicate attempt_id silently overwriting a
@@ -362,9 +381,6 @@ $_headStyle
         l10n: l10n, onProgress: onProgress);
 
     final now = DateTime.now();
-    String two(int n) => n.toString().padLeft(2, '0');
-    final dateSuffix = '${now.year}-${two(now.month)}-${two(now.day)}';
-    final filename = 'alochi_diagnostika_$dateSuffix.zip';
 
     String? path;
     if (!Platform.isIOS && !Platform.isAndroid) {
@@ -380,18 +396,28 @@ $_headStyle
           }
         }
         dir ??= await getDownloadsDirectory();
-        if (dir != null) {
-          final testPath = '${dir.path}/$filename';
-          await File(testPath).writeAsBytes(zipBytes);
-          path = testPath;
-        }
+        if (dir != null) path = await saveZipUnique(dir, zipBytes, now);
       } catch (_) {}
     }
-    if (path == null) {
-      final fallbackDir = await getApplicationSupportDirectory();
-      path = '${fallbackDir.path}/$filename';
-      await File(path).writeAsBytes(zipBytes);
-    }
+    path ??= await saveZipUnique(
+        await getApplicationSupportDirectory(), zipBytes, now);
     return path;
+  }
+
+  /// Writes [bytes] into [dir] as `alochi_diagnostika_<date>_<HHmmss>.zip`
+  /// (temp file + verify + rename, see [writeFileVerified]) and never
+  /// overwrites: a taken name gets `-2`, `-3` ... Returns the saved path.
+  @visibleForTesting
+  static Future<String> saveZipUnique(
+      Directory dir, Uint8List bytes, DateTime now) async {
+    String two(int n) => n.toString().padLeft(2, '0');
+    final base = 'alochi_diagnostika_${now.year}-${two(now.month)}-'
+        '${two(now.day)}_${two(now.hour)}${two(now.minute)}${two(now.second)}';
+    var file = File('${dir.path}/$base.zip');
+    for (var n = 2; file.existsSync(); n++) {
+      file = File('${dir.path}/$base-$n.zip');
+    }
+    await writeFileVerified(file, bytes);
+    return file.path;
   }
 }
