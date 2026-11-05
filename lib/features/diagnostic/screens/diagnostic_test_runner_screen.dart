@@ -24,6 +24,7 @@ import '../../../core/db/attempt_store.dart';
 import '../../../core/db/diagnostic_answer_store.dart';
 import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/db/offline_queue.dart';
+import '../../../core/offline/lan_client_session.dart';
 import '../../../core/offline/offline_session.dart';
 import '../../../core/session/session_handoff.dart';
 import '../../../core/sync/sync_service.dart';
@@ -772,6 +773,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   }
 
   bool _pingInFlight = false;
+
+  /// USB pack or LAN hub session: results never go to the cloud queue or the
+  /// local history DB from here.
+  bool get _offlineMode =>
+      OfflinePackSession.isActive || LanClientSession.isActive;
 
   @visibleForTesting
   bool get debugStopwatchRunning => _stopwatch.isRunning;
@@ -1849,9 +1855,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // again inside the same throttle window instead of succeeding.
       final status = e is ApiException ? e.statusCode : 0;
       final isNetworkFailure = status == 0 || status >= 500 || status == 429;
-      // Pack mode: a failed chain write must surface (retry UI), never be
-      // queued for the online server under an `offline|...` attempt id.
-      if (isNetworkFailure && !OfflinePackSession.isActive) {
+      // Pack / LAN mode: a failed chain write or hub POST must surface (retry
+      // UI), never be queued for the online server under an `offline|...`
+      // attempt id.
+      if (isNetworkFailure && !_offlineMode) {
         // The finish-call itself failed transiently, but we still know the
         // full subject order locally — don't end the whole diagnostic if
         // there's another subject left to attempt (diagnostic-premature-
@@ -2077,7 +2084,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     // Pack mode: nothing is sent and there is no score, so a 'sent' row would
     // lie, and the roster names would outlive the pack in this plain on-disk
     // DB. The pack's own chain is the record.
-    if (OfflinePackSession.isActive) return;
+    if (_offlineMode) return;
     try {
       await DiagnosticHistoryDb.upsert(
         attemptId: widget.attemptId,

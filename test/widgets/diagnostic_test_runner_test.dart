@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:alochi_monitoring/core/api/api_client.dart' show ApiException;
 import 'package:alochi_monitoring/core/db/attempt_store.dart';
 import 'package:alochi_monitoring/core/db/diagnostic_answer_store.dart';
+import 'package:alochi_monitoring/core/db/diagnostic_history_db.dart';
+import 'package:alochi_monitoring/core/offline/lan_client_session.dart';
 import 'package:alochi_monitoring/core/services/heartbeat_service.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_bottom_nav.dart';
@@ -18,6 +21,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart' as http_testing;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -3308,6 +3313,8 @@ void main() {
             required int elapsedSeconds,
           })? onPing,
           List<String> subjects = const ['math', 'english'],
+          Future<void> Function(Map<String, dynamic> payload, String token)?
+              onEnqueue,
         }) async {
           await tester.pumpWidget(
             _wrapWithRouter(
@@ -3330,7 +3337,7 @@ void main() {
                     (onFinish ?? (_) async => {'finished': true})(
                         flaggedQuestionIds),
                 pingElapsedOverride: onPing,
-                enqueueLocalOverride: (payload, token) async {},
+                enqueueLocalOverride: onEnqueue ?? (payload, token) async {},
                 flushPendingFinishOverride: () async => true,
                 connectivityStreamOverride: const Stream.empty(),
               ),
@@ -3555,6 +3562,91 @@ void main() {
             await unmount(tester);
           },
         );
+
+        // A student PC in LAN mode has a LanClientSession and no pack: the
+        // runner must treat it like pack mode (offline|... attempt ids are
+        // never queued to the cloud, no history rows).
+        Future<LanClientSession> joinLan() => LanClientSession.join(
+              host: '127.0.0.1',
+              port: 8080,
+              code: '123456',
+              client: http_testing.MockClient((req) async => http.Response(
+                  '{"token":"${'t' * 32}",'
+                  '"pack_uuid":"11111111-2222-3333-4444-555555555555"}',
+                  200,
+                  headers: {'content-type': 'application/json'})),
+              machineId: 'pc-1',
+              deviceName: 'pc-1',
+              mediaDirFor: (id) async => Directory.systemTemp,
+            );
+
+        testWidgets(
+          'B3: in LAN mode a failed finish is never queued to the cloud queue',
+          (tester) async {
+            final lan = await tester.runAsync(joinLan);
+            LanClientSession.current = lan;
+            addTearDown(() {
+              LanClientSession.current = null;
+              lan!.close();
+            });
+            var enqueued = 0;
+            await pumpRunner(
+              tester,
+              onStart: (s) async => pkg(s, 1),
+              onFinish: (_) async => throw const ApiException(0, 'offline'),
+              onEnqueue: (payload, token) async => enqueued++,
+              subjects: const ['math'],
+            );
+            final l10n = l10nOf(tester);
+            await tester.tap(find.text('Variant A'));
+            await tester.pump();
+            await tester.tap(find.text(l10n.finishTestButton));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 100));
+            await tester.pump();
+            expect(enqueued, 0);
+            expect(find.text(l10n.serverErrorRetry), findsOneWidget);
+            await tester.pump(const Duration(seconds: 10));
+            await unmount(tester);
+          },
+        );
+
+        for (final lanMode in [true, false]) {
+          testWidgets(
+            'N3: a finished attempt ${lanMode ? 'leaves no' : 'writes a'} '
+            'history row in ${lanMode ? 'LAN' : 'online'} mode',
+            (tester) async {
+              final lan = lanMode ? await tester.runAsync(joinLan) : null;
+              LanClientSession.current = lan;
+              await tester.runAsync(DiagnosticHistoryDb.openInMemory);
+              addTearDown(() async {
+                LanClientSession.current = null;
+                lan?.close();
+                await DiagnosticHistoryDb.reset();
+              });
+              await pumpRunner(
+                tester,
+                onStart: (s) async => pkg(s, 1),
+                onFinish: (_) async => {'finished': true, 'score_math': 7},
+                subjects: const ['math'],
+              );
+              final l10n = l10nOf(tester);
+              await tester.tap(find.text('Variant A'));
+              await tester.pump();
+              await tester.tap(find.text(l10n.finishTestButton));
+              await tester.pump();
+              await tester.pump(const Duration(milliseconds: 100));
+              await tester.pump();
+              final rows = await tester.runAsync(() async {
+                await Future<void>.delayed(const Duration(milliseconds: 100));
+                return DiagnosticHistoryDb.getAll();
+              });
+              expect(rows, lanMode ? isEmpty : hasLength(1));
+              await tester.pump(const Duration(seconds: 10));
+              await unmount(tester);
+            },
+          );
+        }
       });
     });
   });
