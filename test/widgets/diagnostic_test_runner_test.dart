@@ -3667,6 +3667,43 @@ void main() {
         );
 
         testWidgets(
+          'F1: a start that reports the attempt finished never paints the '
+          'error card while the finished screen transitions in',
+          (tester) async {
+            await tester.pumpWidget(
+              _wrapWithRouter(
+                DiagnosticTestRunnerScreen(
+                  attemptId: 'att-audit',
+                  studentName: 'Aliyev Ali',
+                  schoolId: 'sch-9',
+                  grade: 3,
+                  language: 'uz',
+                  availableSubjectsOverride:
+                      (grade, {String language = 'uz'}) async => {
+                    'subjects': ['math'],
+                  },
+                  startAttemptOverride: ({required attemptId, required subject}) async =>
+                      {'finished': true, 'score_math': 7},
+                  connectivityStreamOverride: const Stream.empty(),
+                ),
+                onFinished: (extra) {},
+              ),
+            );
+            final l10n = l10nOf(tester);
+            var navigated = false;
+            for (var i = 0; i < 40 && !navigated; i++) {
+              await tester.pump(const Duration(milliseconds: 50));
+              expect(find.text(l10n.retry), findsNothing,
+                  reason: 'error card flashed at frame $i');
+              navigated = find.byKey(const Key('finished')).evaluate().isNotEmpty;
+            }
+            expect(navigated, isTrue);
+            await tester.pump(const Duration(seconds: 1));
+            await unmount(tester);
+          },
+        );
+
+        testWidgets(
           'A4: answer/flag/next hotkeys are inert while the admin lock pauses '
           'the test',
           (tester) async {

@@ -1309,7 +1309,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // screen (diagnostic-first-card-blank-page bug).
       if (resp['finished'] == true) {
         _timer?.cancel();
-        setState(() => _loading = false);
+        // Stay _loading (spinner) until the finished screen replaces this
+        // route: _question is null here, so `_loading = false` would flash the
+        // error card (with a Retry that restarts the subject) mid-transition.
         _finishTest();
         return;
       }
