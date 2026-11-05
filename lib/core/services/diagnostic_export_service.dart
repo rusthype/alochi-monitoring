@@ -260,8 +260,10 @@ $_headStyle
       if (estimate == null) return record;
       return {
         ...record,
-        'math_score': estimate['math'],
-        'english_score': estimate['english'],
+        // A subject the queue has no estimate for keeps its official (sent)
+        // score instead of being overwritten with null.
+        'math_score': estimate['math'] ?? record['math_score'],
+        'english_score': estimate['english'] ?? record['english_score'],
         '_local_estimate': true,
       };
     }).toList();

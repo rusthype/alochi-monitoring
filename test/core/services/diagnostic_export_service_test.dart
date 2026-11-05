@@ -419,5 +419,46 @@ void main() {
 
       expect(result.first['math_score'], isNull);
     });
+
+    test(
+        'a subject already sent officially keeps its score when the queue only '
+        'estimates the other subject (math sent=18, english pending=25)', () {
+      final records = [
+        {
+          'attempt_id': 'att-mixed',
+          'student_name': 'M',
+          'class_label': '3-A',
+          'school': 'S',
+          'math_score': 18,
+          'english_score': null,
+          'status': 'pending',
+          'date_taken': 1,
+        },
+      ];
+      final queued = [
+        {
+          '_offlineKind': 'diagnostic_finish',
+          'attempt_id': 'att-mixed',
+          'answers': [
+            for (var i = 1; i <= 25; i++)
+              {'question_id': 'e$i', 'selected': 'A'},
+          ],
+          '_offline_answer_key': {
+            'subject': 'english',
+            'answers': {for (var i = 1; i <= 25; i++) 'e$i': 'A'},
+          },
+        },
+      ];
+
+      final result =
+          DiagnosticExportService.withLocalEstimates(records, queued);
+
+      expect(result.first['math_score'], equals(18)); // official, not null
+      expect(result.first['english_score'], equals(25));
+      expect(result.first['_local_estimate'], isTrue);
+      final html = passport(result.first);
+      expect(html, contains('18/'));
+      expect(html, contains('25/'));
+    });
   });
 }
