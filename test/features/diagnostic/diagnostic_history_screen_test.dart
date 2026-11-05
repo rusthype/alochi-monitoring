@@ -258,7 +258,6 @@ void main() {
         hrow('a2', 'Alpha Pending', '56-maktab', schoolId: 'A', status: 'pending');
     final bRow = hrow('b1', 'Bravo Student', '12-maktab', schoolId: 'B');
     final cRow = hrow('c1', 'Charlie Student', '7-maktab', schoolId: 'C');
-    final oldA = hrow('o1', 'Old Alpha', ' 56-MAKTAB');
     final lost = hrow('u1', 'Lost Student', 'Noma\'lum maktab');
 
     late List<Map<String, dynamic>>? exported;
@@ -316,7 +315,7 @@ void main() {
     testWidgets(
         'one school: no chooser, PIN is verified for THAT school and only its '
         'rows are exported', (tester) async {
-      final l10n = await pump(tester, [aRow, oldA]);
+      final l10n = await pump(tester, [aRow, aPending]);
       await tapExport(tester, l10n);
       expect(find.text(l10n.selectSchool), findsNothing);
       expect(find.byType(TextField), findsOneWidget);
@@ -325,7 +324,7 @@ void main() {
       expect(verified, [
         {'id': 'A', 'pin': '1111', 'legacy': '1111'}
       ]);
-      expect(exported!.map((r) => r['attempt_id']), ['a1', 'o1']);
+      expect(exported!.map((r) => r['attempt_id']), ['a1', 'a2']);
       expect(find.text(l10n.diagnosticExportSuccess), findsOneWidget);
     });
 
@@ -344,7 +343,7 @@ void main() {
       AppLocalizations? l;
       late List<String> zipEntries;
       late String zipHtml;
-      final l10n = await pump(tester, [aRow, bRow, cRow, oldA],
+      final l10n = await pump(tester, [aRow, bRow, cRow, aPending],
           export: (records, {onProgress}) async {
         exported = records;
         final bytes = DiagnosticExportService.buildZipBytes(records, l10n: l!);
@@ -366,10 +365,10 @@ void main() {
       await typePin(tester, l10n, '1111');
 
       expect(verified.map((v) => v['id']), ['A']);
-      expect(exported!.map((r) => r['attempt_id']), ['a1', 'o1']);
+      expect(exported!.map((r) => r['attempt_id']), ['a1', 'a2']);
       expect(zipEntries, hasLength(2));
       expect(zipHtml, contains('Alpha Student'));
-      expect(zipHtml, contains('Old Alpha'));
+      expect(zipHtml, contains('Alpha Pending'));
       expect(zipHtml, isNot(contains('Bravo')));
       expect(zipHtml, isNot(contains('Charlie')));
     });

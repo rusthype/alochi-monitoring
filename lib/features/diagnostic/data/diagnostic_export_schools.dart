@@ -3,9 +3,8 @@
 // Splits the local diagnostic history by school for the per-school export. A
 // PC's history can hold several schools, and a school's PIN must only ever
 // unlock that school's rows, so a row is exportable only once it is tied to a
-// school id: its own `school_id`, or (old rows) an exact normalised name match
-// against the cached school list. Anything else is "unresolved" and is never
-// exported.
+// school id: its own `school_id`. Old rows without one are "unresolved" and are
+// never exported (two schools can share a name, so the name is never trusted).
 class ExportSchool {
   final String id;
   final String name;
@@ -41,24 +40,16 @@ ExportSchools groupExportSchools(
   List<Map<String, dynamic>> schools,
 ) {
   final byId = <String, Map<String, dynamic>>{};
-  final idsByName = <String, Set<String>>{};
   for (final s in schools) {
     final id = _norm(s['school_id']);
     if (id.isEmpty) continue;
     byId[id] = s;
-    final name = _norm(s['school_name']);
-    if (name.isNotEmpty) idsByName.putIfAbsent(name, () => {}).add(id);
   }
 
   final groups = <String, ExportSchool>{};
   var unresolved = 0;
   for (final r in records) {
-    var key = _norm(r['school_id']);
-    if (key.isEmpty) {
-      // Old row: only an unambiguous name match counts.
-      final ids = idsByName[_norm(r['school'])];
-      if (ids != null && ids.length == 1) key = ids.single;
-    }
+    final key = _norm(r['school_id']);
     if (key.isEmpty) {
       unresolved++;
       continue;

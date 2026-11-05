@@ -26,28 +26,21 @@ void main() {
     expect(g.resolved.first.records.map((r) => r['attempt_id']), ['1', '3']);
   });
 
-  test('old rows resolve by exact normalised name and merge into the group',
+  test('rows without a school_id are unresolved, even on an exact name match',
       () {
     final g = groupExportSchools([
       row('1', '56-maktab', schoolId: 'A'),
       row('2', '  56-MAKTAB '),
-    ], schools);
-    expect(g.resolved.single.id, 'A');
-    expect(g.resolved.single.records, hasLength(2));
-  });
-
-  test('an unknown or ambiguous name is unresolved, never guessed', () {
-    final g = groupExportSchools([
-      row('1', 'Boshqa maktab'),
-      row('2', ''),
-      row('3', 'dup'),
+      row('3', 'Boshqa maktab'),
+      row('4', ''),
+      row('5', 'dup'),
     ], [
       ...schools,
       {'school_id': 'C', 'school_name': 'Dup'},
-      {'school_id': 'D', 'school_name': 'dup'},
     ]);
-    expect(g.resolved, isEmpty);
-    expect(g.unresolvedCount, 3);
+    expect(g.resolved.single.id, 'A');
+    expect(g.resolved.single.records, hasLength(1));
+    expect(g.unresolvedCount, 4);
   });
 
   test('PIN rule: pin_required wins, else kiosk_pin, unknown school needs PIN',
