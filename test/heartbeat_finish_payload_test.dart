@@ -35,7 +35,15 @@ class _RecordingApi extends MonitoringApi {
     String? macAddress,
     List<String>? capabilities,
   }) async {
-    pings.add({'session_id': sessionId, 'test_key': testKey, 'status': status});
+    pings.add({
+      'session_id': sessionId,
+      'test_key': testKey,
+      'status': status,
+      'school_code': schoolCode,
+      'name': name,
+      'variant': variant,
+      'student_code': studentCode,
+    });
     return {'ok': true};
   }
 }
@@ -66,6 +74,13 @@ void main() {
     expect(fin, hasLength(1));
     expect(fin.single['test_key'], 'cw1_key');
     expect(fin.single['session_id'], 'attempt-1');
+    // finishTest() clears the identity right after firing the ping; the ping
+    // reads it after two awaits, so it used to go out blank and the backend
+    // overwrote the session's name/school_code/student_code with ''.
+    expect(fin.single['school_code'], '56');
+    expect(fin.single['name'], 'Ali');
+    expect(fin.single['variant'], '1');
+    expect(fin.single['student_code'], 'S1');
   });
 
   test('LAN api: finishTest sends the device-level idle ping (no test_key)',

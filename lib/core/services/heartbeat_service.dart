@@ -459,10 +459,22 @@ class HeartbeatService with WidgetsBindingObserver {
       {bool leaving = false}) async {
     final id = _activeSessionId;
     if (id == null) return null;
-    // Snapshot before the first await: finishTest() clears these right after
-    // firing its 'finished' ping, and that ping must carry the real key.
+    // Snapshot before the first await: finishTest() clears all of these right
+    // after firing its 'finished' ping, and that ping must carry the real
+    // identity (the backend overwrites the session's name/school_code/
+    // student_code with whatever a ping sends).
     final testKey = (leaving && api.isLan) ? '' : _testKey;
     final remaining = remainingSeconds;
+    final schoolCode = _schoolCode;
+    final name = _name;
+    final variant = _variant;
+    final studentCode = _studentCode;
+    final tabSwitchCount = _tabSwitchCount;
+    final currentQuestionIndex = _currentQuestionIndex;
+    final totalQuestions = _totalQuestions;
+    final questionTimes = _questionTimes;
+    final answers = _answers;
+    final elapsedSeconds = _elapsedSeconds;
     // Everything below is best-effort and many callers are fire-and-forget
     // (unawaited): nothing may escape as an unhandled async error.
     try {
@@ -470,21 +482,21 @@ class HeartbeatService with WidgetsBindingObserver {
       final localIp = await _localIp();
       final response = await api.sessionPing(
         sessionId: id,
-        schoolCode: _schoolCode,
-        name: _name,
-        variant: _variant,
+        schoolCode: schoolCode,
+        name: name,
+        variant: variant,
         testKey: testKey,
         status: status,
-        studentCode: _studentCode,
-        tabSwitchCount: _tabSwitchCount,
-        currentQuestionIndex: _currentQuestionIndex,
-        totalQuestions: _totalQuestions,
-        questionTimes: _questionTimes,
+        studentCode: studentCode,
+        tabSwitchCount: tabSwitchCount,
+        currentQuestionIndex: currentQuestionIndex,
+        totalQuestions: totalQuestions,
+        questionTimes: questionTimes,
         platform: _cachedPlatform,
         appVersion: _cachedAppVersion,
         deviceName: _cachedDeviceName,
-        answers: _answers,
-        elapsedSeconds: _elapsedSeconds,
+        answers: answers,
+        elapsedSeconds: elapsedSeconds,
         remainingSeconds: remaining,
         localIp: localIp,
         machineId: _cachedMachineId,
