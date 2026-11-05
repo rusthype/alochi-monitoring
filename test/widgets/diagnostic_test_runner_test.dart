@@ -1731,7 +1731,7 @@ void main() {
 
     // Audit A2: the unanswered-warning dialog used to stay open across the
     // timeout; confirming it later finished whatever subject was current.
-    for (final nested in [false, true])
+    for (final nested in [false, true]) {
     testWidgets('timeout dismisses an open finish-confirmation dialog and '
         'finishes the timed-out subject exactly once'
         '${nested ? ' (nested navigator, dialog on the root)' : ''}',
@@ -1802,6 +1802,7 @@ void main() {
       await tester.pump(const Duration(seconds: 4));
       await unmount(tester);
     });
+    }
 
     testWidgets('transient finish-call failure with a next subject available '
         'starts that subject instead of ending the test', (tester) async {
@@ -1982,8 +1983,9 @@ void main() {
             startAttemptOverride:
                 ({required attemptId, required subject}) async {
                   events?.add('start:$subject');
-                  if (subject == 'english')
+                  if (subject == 'english') {
                     return onStartEnglish(++englishCalls);
+                  }
                   return _withMeta({
                     'position': 1,
                     'total_questions': 1,
