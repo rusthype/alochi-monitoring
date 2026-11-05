@@ -922,6 +922,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     HeartbeatService.instance.onTerminated = () {
       ProctorService.instance.stop();
       HeartbeatService.instance.finishTest();
+      // Same best-effort local cleanup as `_finishTest`: otherwise the
+      // cached `diag_<id>` package blob (carries correct_display_letter)
+      // and prefetched packages would outlive a remotely-ended session.
+      unawaited(
+        cleanSessionHandoff(attemptKey: _diagKey, attemptId: widget.attemptId),
+      );
       if (mounted) {
         context.pushReplacement(
           '/diagnostic_finished',

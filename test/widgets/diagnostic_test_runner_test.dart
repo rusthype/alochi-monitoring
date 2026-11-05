@@ -7,6 +7,7 @@ import 'package:alochi_monitoring/core/db/diagnostic_answer_store.dart';
 import 'package:alochi_monitoring/core/db/diagnostic_history_db.dart';
 import 'package:alochi_monitoring/core/offline/lan_client_session.dart';
 import 'package:alochi_monitoring/core/services/heartbeat_service.dart';
+import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_prefetch_cache.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_bottom_nav.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_option_card.dart';
@@ -992,6 +993,61 @@ void main() {
         await unmount(tester);
       },
     );
+
+    testWidgets('remote termination runs the same local session cleanup as '
+        'a normal finish (prefetch cache dropped) and still navigates', (
+      tester,
+    ) async {
+      DiagnosticPrefetchCache.instance.reset();
+      DiagnosticPrefetchCache.instance.peekCache['att-term'] = {
+        'math': {'questions': <Object?>[]},
+      };
+      await tester.pumpWidget(
+        _wrapWithRouter(
+          DiagnosticTestRunnerScreen(
+            attemptId: 'att-term',
+            studentName: 'Aliyev Ali',
+            grade: 3,
+            language: 'uz',
+            availableSubjectsOverride:
+                (grade, {String language = 'uz'}) async => {
+                  'subjects': ['math'],
+                },
+            startAttemptOverride:
+                ({required attemptId, required subject}) async => {
+                  'position': 1,
+                  'total_questions': 5,
+                  'subject': subject,
+                  'question': _question(),
+                },
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+      expect(DiagnosticPrefetchCache.instance.peekCache, contains('att-term'));
+
+      HeartbeatService.instance.onTerminated!();
+      for (var i = 0; i < 5; i++) {
+        await tester.pump();
+      }
+      // cleanSessionHandoff is fire-and-forget over real plugin/isolate
+      // work (AttemptStore, sqflite) — let it settle outside FakeAsync.
+      for (var i = 0; i < 10; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pump();
+      }
+
+      expect(find.byKey(const Key('finished')), findsOneWidget);
+      expect(
+        DiagnosticPrefetchCache.instance.peekCache,
+        isNot(contains('att-term')),
+      );
+      await unmount(tester);
+    });
 
     testWidgets('unanswered questions show the finish-confirmation dialog; '
         'confirming calls finishAttempt exactly once', (tester) async {
