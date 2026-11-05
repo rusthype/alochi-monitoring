@@ -3528,6 +3528,33 @@ void main() {
           },
         );
 
+        testWidgets(
+          'A6: a response without a question shows the error view with '
+          'Back and Retry, not a dead end',
+          (tester) async {
+            var calls = 0;
+            await pumpRunner(
+              tester,
+              onStart: (s) async {
+                calls++;
+                if (calls == 1) {
+                  return _withMeta({'position': 1, 'subject': s});
+                }
+                return pkg(s, 1);
+              },
+              subjects: const ['math'],
+            );
+            final l10n = l10nOf(tester);
+            expect(find.text(l10n.diagnosticGoBack), findsOneWidget);
+            expect(find.text(l10n.retry), findsOneWidget);
+            await tester.tap(find.text(l10n.retry));
+            await tester.pump();
+            await tester.pump();
+            await tester.pump();
+            expect(find.text('Savol 1'), findsOneWidget);
+            await unmount(tester);
+          },
+        );
       });
     });
   });

@@ -2248,10 +2248,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                     ? _buildTransitionView(l10n, transition)
                     : _loading
                     ? const Center(child: CircularProgressIndicator())
-                    : (_error != null || _subjectsEmpty)
+                    : (_error != null || _subjectsEmpty || q == null)
+                    // q == null: a response without a question must not be a
+                    // dead end — same Back/Retry view as any other failure.
                     ? _buildErrorView(l10n)
-                    : q == null
-                    ? Center(child: Text(l10n.diagnosticNoStudents))
                     : _buildQuestionView(l10n, q),
                 // Panel notices (admin warning / time added), top-right just
                 // below the header bar so the timer stays visible.
@@ -2347,7 +2347,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     // here" at a glance.
     final title = _subjectsEmpty
         ? l10n.diagnosticSubjectsEmptyTitle
-        : (_error ?? l10n.diagnosticSubjectsEmptyTitle);
+        : (_error ?? l10n.serverErrorRetry);
     final subtitle = _subjectsEmpty
         ? l10n.diagnosticSubjectsEmptySubtitle
         : null;
