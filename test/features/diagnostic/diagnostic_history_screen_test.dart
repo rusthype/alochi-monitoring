@@ -43,6 +43,30 @@ Widget _wrap(Widget child, {Locale locale = const Locale('uz')}) {
 }
 
 void main() {
+  testWidgets('a failing history load shows the error + retry, not a spinner',
+      (tester) async {
+    var calls = 0;
+    await tester.pumpWidget(_wrap(DiagnosticHistoryScreen(
+      getAllOverride: () async {
+        calls++;
+        if (calls == 1) throw StateError('db locked');
+        return _fixture;
+      },
+    )));
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+        tester.element(find.byType(DiagnosticHistoryScreen)))!;
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text(l10n.loadFailed), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text(l10n.retry));
+    await tester.pumpAndSettle();
+    expect(find.text('Aliyev Ali'), findsOneWidget);
+    expect(find.text(l10n.loadFailed), findsNothing);
+  });
+
   testWidgets('shows every record under the "all" filter by default',
       (tester) async {
     await tester.pumpWidget(_wrap(DiagnosticHistoryScreen(

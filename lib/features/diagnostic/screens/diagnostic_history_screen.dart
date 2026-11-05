@@ -60,6 +60,7 @@ class DiagnosticHistoryScreen extends StatefulWidget {
 class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
   List<Map<String, dynamic>> _records = [];
   bool _loading = true;
+  bool _loadFailed = false;
   bool _sending = false;
   DiagnosticHistoryFilter _filter = DiagnosticHistoryFilter.all;
 
@@ -71,12 +72,25 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
 
   Future<void> _load() async {
     final getAll = widget.getAllOverride ?? DiagnosticHistoryDb.getAll;
-    final res = await getAll();
-    if (mounted) {
-      setState(() {
-        _records = res;
-        _loading = false;
-      });
+    try {
+      final res = await getAll();
+      if (mounted) {
+        setState(() {
+          _records = res;
+          _loading = false;
+          _loadFailed = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('DiagnosticHistoryScreen._load failed: $e');
+      // Keep whatever was already on screen (a failed reload after a flush
+      // must not blank the list); only the first load shows the error state.
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadFailed = _records.isEmpty;
+        });
+      }
     }
   }
 
@@ -334,7 +348,25 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
             child: _loading
                 ? const Center(
                     child: CircularProgressIndicator(color: AppColors.brand))
-                : filtered.isEmpty
+                : _loadFailed
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(l10n.loadFailed,
+                                style: const TextStyle(
+                                    color: AppColors.error, fontSize: 14)),
+                            TextButton(
+                              onPressed: () {
+                                setState(() => _loading = true);
+                                _load();
+                              },
+                              child: Text(l10n.retry),
+                            ),
+                          ],
+                        ),
+                      )
+                    : filtered.isEmpty
                     ? HistoryEmpty(l10n.diagnosticHistoryNoRecords)
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
