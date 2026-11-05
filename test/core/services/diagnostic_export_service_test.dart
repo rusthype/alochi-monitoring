@@ -558,5 +558,132 @@ void main() {
       expect(bName, isNot(contains('..')));
       expect(bName, endsWith('_2026-11-05_093015.zip'));
     });
+
+    group('retention (kExportKeepPerSchool)', () {
+      Future<Directory> tmp() async {
+        final d = await Directory.systemTemp.createTemp('diag_prune_');
+        addTearDown(() => d.delete(recursive: true));
+        return d;
+      }
+
+      File seed(Directory d, String name) {
+        final f = File('${d.path}/$name')..writeAsBytesSync([0]);
+        return f;
+      }
+
+      String nm(String label, int day, {String t = '090000', String x = ''}) =>
+          'alochi_diagnostika_${label}_2026-10-${day.toString().padLeft(2, '0')}_$t$x.zip';
+
+      test('keeps the 5 newest of the label incl. the new one; foreign untouched',
+          () async {
+        final dir = await tmp();
+        for (var d = 1; d <= 7; d++) {
+          seed(dir, nm('A', d));
+        }
+        seed(dir, nm('B', 1));
+        seed(dir, 'alochi_diagnostika_A_notadate.zip');
+        seed(dir, 'alochi_diagnostika_A_2026-10-01_090000.zip.bak');
+        seed(dir, 'notes.zip');
+        Directory('${dir.path}/${nm('A', 2, t: '010101')}').createSync();
+        Link('${dir.path}/${nm('A', 3, t: '010101')}')
+            .createSync('${dir.path}/notes.zip');
+
+        final out = await DiagnosticExportService.saveZipUnique(
+            dir, Uint8List.fromList([1]), DateTime(2026, 11, 5, 9, 30, 15),
+            label: 'A');
+
+        final names = dir.listSync().map((e) => e.path.split('/').last).toSet();
+        // New + days 7,6,5,4 survive; days 1-3 pruned.
+        for (final d in [4, 5, 6, 7]) {
+          expect(names, contains(nm('A', d)));
+        }
+        for (final d in [1, 2, 3]) {
+          expect(names, isNot(contains(nm('A', d))));
+        }
+        expect(names, contains(out.split('/').last));
+        expect(names, contains(nm('B', 1)));
+        expect(names, contains('alochi_diagnostika_A_notadate.zip'));
+        expect(names,
+            contains('alochi_diagnostika_A_2026-10-01_090000.zip.bak'));
+        expect(names, contains('notes.zip'));
+        // subdirectory and symlink with a matching name are never touched.
+        expect(Directory('${dir.path}/${nm('A', 2, t: '010101')}').existsSync(),
+            isTrue);
+        expect(
+            FileSystemEntity.isLinkSync('${dir.path}/${nm('A', 3, t: '010101')}'),
+            isTrue);
+      });
+
+      test('orders by name timestamp, -N suffix is newer than the bare name',
+          () async {
+        final dir = await tmp();
+        final now = DateTime(2026, 11, 5, 9, 30, 15);
+        for (var i = 0; i < 6; i++) {
+          await DiagnosticExportService.saveZipUnique(
+              dir, Uint8List.fromList([i]), now,
+              label: 'A');
+        }
+        final names = dir.listSync().map((e) => e.path.split('/').last).toList()
+          ..sort();
+        expect(names, hasLength(5));
+        // oldest (bare name) pruned, -2..-6 kept
+        expect(names, isNot(contains('alochi_diagnostika_A_2026-11-05_093015.zip')));
+        expect(names, contains('alochi_diagnostika_A_2026-11-05_093015-6.zip'));
+      });
+
+      test('no label -> no pruning', () async {
+        final dir = await tmp();
+        for (var d = 1; d <= 7; d++) {
+          seed(dir, 'alochi_diagnostika_2026-10-0${d}_090000.zip');
+        }
+        await DiagnosticExportService.saveZipUnique(
+            dir, Uint8List.fromList([1]), DateTime(2026, 11, 5, 9, 30, 15));
+        expect(dir.listSync(), hasLength(8));
+      });
+
+      test('failing delete never fails the export and keeps the new file',
+          () async {
+        final dir = await tmp();
+        for (var d = 1; d <= 7; d++) {
+          seed(dir, nm('A', d));
+        }
+        DiagnosticExportService.deleteExportFile = (f) async {
+          throw const FileSystemException('denied');
+        };
+        addTearDown(() => DiagnosticExportService.deleteExportFile =
+            DiagnosticExportService.defaultDeleteExportFile);
+        final out = await DiagnosticExportService.saveZipUnique(
+            dir, Uint8List.fromList([1]), DateTime(2026, 11, 5, 9, 30, 15),
+            label: 'A');
+        expect(File(out).existsSync(), isTrue);
+        expect(dir.listSync(), hasLength(8));
+      });
+
+      test('prunes only the directory written to', () async {
+        final a = await tmp();
+        final b = await tmp();
+        for (var d = 1; d <= 7; d++) {
+          seed(a, nm('A', d));
+          seed(b, nm('A', d));
+        }
+        await DiagnosticExportService.saveZipUnique(
+            a, Uint8List.fromList([1]), DateTime(2026, 11, 5, 9, 30, 15),
+            label: 'A');
+        expect(a.listSync(), hasLength(5));
+        expect(b.listSync(), hasLength(7));
+      });
+
+      test('label with regex metacharacters matches literally', () async {
+        final dir = await tmp();
+        // sanitised label "5.6" must not match "5x6" files.
+        for (var d = 1; d <= 6; d++) {
+          seed(dir, nm('5x6', d));
+        }
+        await DiagnosticExportService.saveZipUnique(
+            dir, Uint8List.fromList([1]), DateTime(2026, 11, 5, 9, 30, 15),
+            label: '5.6');
+        expect(dir.listSync(), hasLength(7));
+      });
+    });
   });
 }

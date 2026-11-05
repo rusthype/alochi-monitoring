@@ -17,11 +17,15 @@ import 'dart:convert' show HtmlEscape, HtmlEscapeMode;
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:archive/archive.dart';
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:path_provider/path_provider.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../db/offline_queue.dart';
 import '../offline/atomic_file.dart';
+
+/// How many exports of one school (same label, same folder) are kept; older
+/// ones are pruned after each successful save so names+scores don't pile up.
+const int kExportKeepPerSchool = 5;
 
 /// Flat max question count per fixed-variant diagnostic subject (both
 /// math and english) — backend `apps/diagnostic/fixed_variant.py`'s
@@ -425,6 +429,60 @@ $_headStyle
       file = File('${dir.path}/$base-$n.zip');
     }
     await writeFileVerified(file, bytes);
+    if (tag.isNotEmpty) await _pruneOldExports(dir, tag, file);
     return file.path;
+  }
+
+  @visibleForTesting
+  static Future<void> defaultDeleteExportFile(File f) => f.delete();
+
+  /// Test seam for the (best-effort) prune delete.
+  @visibleForTesting
+  static Future<void> Function(File) deleteExportFile = defaultDeleteExportFile;
+
+  /// Deletes all but the newest [kExportKeepPerSchool] exports of [tag] in
+  /// [dir]. Matches only the exact names [saveZipUnique] generates, plain
+  /// files only (no dirs/symlinks), never [keep]. Best-effort: never throws.
+  static Future<void> _pruneOldExports(
+      Directory dir, String tag, File keep) async {
+    try {
+      final re = RegExp('^alochi_diagnostika_${RegExp.escape(tag)}_'
+          r'(\d{4}-\d{2}-\d{2}_\d{6})(?:-(\d+))?\.zip$');
+      final found = <({File file, String stamp, int n, DateTime mtime})>[];
+      await for (final e in dir.list(followLinks: false)) {
+        if (e is! File) continue;
+        final m = re.firstMatch(e.uri.pathSegments.last);
+        if (m == null) continue;
+        found.add((
+          file: e,
+          stamp: m.group(1)!,
+          n: int.tryParse(m.group(2) ?? '') ?? 1,
+          mtime: e.statSync().modified,
+        ));
+      }
+      // Newest first: name timestamp, then -N suffix, then mtime.
+      found.sort((a, b) {
+        final c = b.stamp.compareTo(a.stamp);
+        if (c != 0) return c;
+        final d = b.n.compareTo(a.n);
+        return d != 0 ? d : b.mtime.compareTo(a.mtime);
+      });
+      final keepName = keep.uri.pathSegments.last;
+      var kept = 0;
+      for (final f in found) {
+        final isNew = f.file.uri.pathSegments.last == keepName;
+        if (isNew || kept < kExportKeepPerSchool) {
+          kept++;
+          continue;
+        }
+        try {
+          await deleteExportFile(f.file);
+        } catch (_) {
+          debugPrint('diagnostic export prune: delete failed');
+        }
+      }
+    } catch (_) {
+      debugPrint('diagnostic export prune: listing failed');
+    }
   }
 }
