@@ -302,9 +302,12 @@ class SyncService {
           // Permanent 4xx (404 attempt/session deleted, 400/403/410/422...):
           // the server will never accept these rows, so release them instead
           // of re-sending every 10-320 s forever. 401/408/429 and 5xx/status 0
-          // are transient and keep retrying.
+          // are transient and keep retrying. Only the app's own JSON error
+          // body (`e.body`) counts: a gateway/nginx HTML 404 during a deploy
+          // is not "attempt deleted" and must keep the rows pending.
           final sc = e.statusCode;
-          if (sc >= 400 &&
+          if (e.body != null &&
+              sc >= 400 &&
               sc < 500 &&
               sc != 401 &&
               sc != 408 &&

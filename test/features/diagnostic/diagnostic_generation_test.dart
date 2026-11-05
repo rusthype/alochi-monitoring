@@ -208,6 +208,14 @@ void main() {
       expect(rows.single['synced'], 1);
     });
 
+    test('a non-JSON 404 (gateway during a deploy) keeps the rows pending',
+        () async {
+      await seedPending(1, 'q1', 1);
+      await flush((_) => http.Response('<html>404 Not Found</html>', 404,
+          headers: {'content-type': 'text/html'}));
+      expect(await DiagnosticAnswerStore.pendingForAttempt('a1'), hasLength(1));
+    });
+
     test('404 (attempt deleted) marks every pending row of the attempt synced',
         () async {
       await seedPending(1, 'q1', 1);

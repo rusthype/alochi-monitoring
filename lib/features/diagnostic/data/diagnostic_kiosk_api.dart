@@ -191,7 +191,8 @@ class DiagnosticKioskApi {
       final msg = raw.toString().isNotEmpty
           ? raw.toString()
           : _statusMessage(resp.statusCode);
-      throw ApiException(resp.statusCode, msg, code: data['code']?.toString());
+      throw ApiException(resp.statusCode, msg,
+          code: data['code']?.toString(), body: data);
     }
     return data;
   }
