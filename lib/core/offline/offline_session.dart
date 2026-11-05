@@ -371,8 +371,11 @@ class OfflinePackSession implements OfflineContentSource {
       // server creates the add-request from it). Every other payload is
       // serialised exactly as before.
       final payloadJson = jsonEncode(attachNewStudent(payload, localStudents));
-      final incidents = IncidentLog.instance.drain();
-      final flags = MonitoredClock.instance.drainFlags();
+      // Peek, not drain: they are cleared only once THIS payload is stored, so
+      // a failed write (or an idempotent replay that stores nothing) loses
+      // no proctoring metadata.
+      final incidents = IncidentLog.instance.peek();
+      final flags = MonitoredClock.instance.pendingFlags;
       try {
         final fresh = !await PackResultsDb.hasKey(uuid, key);
         final isNew = chainUsage != null && fresh;
@@ -384,6 +387,10 @@ class OfflinePackSession implements OfflineContentSource {
           incidents: incidents,
           clockFlags: flags,
         );
+        if (fresh) {
+          IncidentLog.instance.consume(incidents);
+          MonitoredClock.instance.consumeFlags(flags);
+        }
         if (isNew) {
           chainUsage?.add(PackResultsDb.studentIdOf(payloadJson),
               exportEntryBytes(row.payloadJson, row.metaJson));

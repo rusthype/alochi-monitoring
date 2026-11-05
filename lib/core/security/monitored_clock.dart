@@ -655,6 +655,21 @@ class MonitoredClock {
     return out;
   }
 
+  /// Removes exactly what an earlier [pendingFlags] returned (flags added
+  /// while the result was being written stay). See IncidentLog.consume.
+  void consumeFlags(List<Map<String, dynamic>> peeked) {
+    var n = 0;
+    for (final f in peeked) {
+      if (f['type'] == 'clock_flags_overflow') {
+        _droppedFlags -= (f['dropped'] as int);
+        if (_droppedFlags < 0) _droppedFlags = 0;
+      } else {
+        n++;
+      }
+    }
+    _flags.removeRange(0, n < _flags.length ? n : _flags.length);
+  }
+
   /// What [drainFlags] would return now, including the overflow counter item
   /// (so a size measured from this is what the drain will really write).
   List<Map<String, dynamic>> get pendingFlags => [

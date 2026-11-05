@@ -530,14 +530,22 @@ class LanClientSession implements OfflineContentSource {
       {String? token}) async {
     final key = PackResultsDb.safeKey(
         (token == null || token.isEmpty) ? newIdempotencyToken() : token);
+    // Peek, not drain: cleared only once the outbox really stored this
+    // envelope (a throwing write or an already-queued key keeps them).
+    final incidents = IncidentLog.instance.peek();
+    final flags = MonitoredClock.instance.pendingFlags;
     final envelope = jsonEncode({
       'payload': payload,
       // Proctoring metadata gathered since the last result rides along.
-      'incidents': IncidentLog.instance.drain(),
-      'clock_flags': MonitoredClock.instance.drainFlags(),
+      'incidents': incidents,
+      'clock_flags': flags,
     });
-    await LanOutboxDb.enqueue(
+    final stored = await LanOutboxDb.enqueue(
         packUuid: _packUuid, idempotencyKey: key, envelopeJson: envelope);
+    if (stored) {
+      IncidentLog.instance.consume(incidents);
+      MonitoredClock.instance.consumeFlags(flags);
+    }
     await _refreshPending();
     unawaited(flushOutbox());
   }

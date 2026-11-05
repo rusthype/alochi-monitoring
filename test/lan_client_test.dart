@@ -21,6 +21,7 @@ import 'package:alochi_monitoring/core/offline/offline_media.dart';
 import 'package:alochi_monitoring/core/offline/offline_package_api.dart';
 import 'package:alochi_monitoring/core/offline/offline_session.dart';
 import 'package:alochi_monitoring/core/offline/pack_loader.dart' show LoadedPack;
+import 'package:alochi_monitoring/core/security/incident_log.dart';
 import 'package:alochi_monitoring/core/security/monitored_clock.dart';
 import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_kiosk_api.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -323,6 +324,65 @@ void main() {
         'b': {'c': 'media/${'A' * 64}.jpg', 'd': 'media/$_mediaSha.exe'},
       });
       expect(names, {'$_mediaSha.jpg'});
+    });
+  });
+
+  group('outbox keeps proctoring metadata unless it stored the envelope', () {
+    late MonitoredClock saved;
+    setUp(() {
+      saved = MonitoredClock.instance;
+      var ticks = 1000000;
+      var wall = DateTime.utc(2026, 10, 17, 9).millisecondsSinceEpoch;
+      final c = MonitoredClock(
+          ticks: () => ticks, wall: () => wall, highWaterStore: _MemHwm());
+      ticks += 5000;
+      wall += 5000 + 3600000; // date set forward -> one clock flag
+      c.checkNow();
+      MonitoredClock.instance = c;
+      IncidentLog.instance.drain();
+      IncidentLog.instance.add('focus_lost');
+    });
+    tearDown(() {
+      MonitoredClock.instance = saved;
+      IncidentLog.instance.drain();
+    });
+
+    test('enqueue throws -> incidents and flags are still pending', () async {
+      final s = await connect();
+      final d = await OfflineQueue.db;
+      await d.execute('ALTER TABLE lan_outbox RENAME TO lan_outbox_off');
+      await expectLater(
+          s.recordResult(lanResultPayload(), token: 'tx1'), throwsA(anything));
+      expect(IncidentLog.instance.snapshot, hasLength(1));
+      expect(MonitoredClock.instance.pendingFlags, hasLength(1));
+      await d.execute('ALTER TABLE lan_outbox_off RENAME TO lan_outbox');
+    });
+
+    test('stored -> cleared and the envelope carries them', () async {
+      final s = await connect();
+      await s.recordResult(lanResultPayload(), token: 'tx2');
+      expect(IncidentLog.instance.snapshot, isEmpty);
+      expect(MonitoredClock.instance.pendingFlags, isEmpty);
+      await eventually(() async => (await PackResultsDb.rowsForPack(lanPackUuid))
+          .any((r) => r.metaJson.contains('focus_lost')));
+    });
+
+    test('key already queued (idempotent replay) -> nothing is dropped',
+        () async {
+      final s = await connect();
+      // Same key already waiting in the outbox from an earlier attempt.
+      await LanOutboxDb.enqueue(
+          packUuid: lanPackUuid,
+          idempotencyKey: 'tx3',
+          envelopeJson: jsonEncode({
+            'payload': lanResultPayload(),
+            'incidents': [],
+            'clock_flags': []
+          }));
+      await s.recordResult(lanResultPayload(), token: 'tx3');
+      expect(IncidentLog.instance.snapshot.map((e) => e['type']),
+          ['focus_lost']);
+      expect(MonitoredClock.instance.pendingFlags, hasLength(1));
     });
   });
 

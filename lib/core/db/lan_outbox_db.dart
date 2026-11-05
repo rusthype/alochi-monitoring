@@ -43,15 +43,16 @@ class LanOutboxDb {
 
   static Future<Database> get _db => OfflineQueue.db;
 
-  /// Idempotent on (pack, key): a repeat is ignored.
-  static Future<void> enqueue({
+  /// Idempotent on (pack, key): a repeat is ignored. Returns true only when
+  /// THIS call stored the row (false = the key was already queued).
+  static Future<bool> enqueue({
     required String packUuid,
     required String idempotencyKey,
     required String envelopeJson,
     int? nowMs,
   }) async {
     final d = await _db;
-    await d.insert(
+    final id = await d.insert(
       'lan_outbox',
       {
         'pack_uuid': packUuid,
@@ -61,6 +62,7 @@ class LanOutboxDb {
       },
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
+    return id > 0; // sqflite answers 0 for an ignored insert
   }
 
   /// Pending rows of [packUuid], oldest first. A row that cannot be decrypted
