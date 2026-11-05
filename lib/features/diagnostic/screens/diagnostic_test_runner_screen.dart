@@ -610,6 +610,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     }
     if (!mounted) return;
     setState(() {
+      // Both callers bootstrap right after; `_question == null` with
+      // `_loading` false would paint the error view in between.
+      _loading = true;
       _generation = null;
       _questions = [];
       _question = null;

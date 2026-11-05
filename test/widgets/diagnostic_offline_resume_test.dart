@@ -6,11 +6,13 @@
 // wrapping; sharing a file/isolate with the ~30 other runner tests risks
 // cross-test pollution of the AlochiImageCacheManager singleton's on-disk
 // setup (empirically caused a hang when combined in one file/isolate).
+import 'dart:async';
 import 'dart:io';
 
 import 'package:alochi_monitoring/core/db/attempt_store.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
+import 'package:alochi_monitoring/l10n/app_localizations_uz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -216,6 +218,54 @@ void main() {
       // Fresh package persisted with the NEW generation, stale one gone.
       expect(blob!['attempts_used'], 2);
       expect((blob['questions'] as List).first['question_id'], 'n1');
+    });
+
+    testWidgets(
+        'generation mismatch never flashes the error view while the fresh '
+        'bootstrap is in flight', (tester) async {
+      mockAppSupportDirectoryFor(tester);
+      final hang = Completer<Map<String, dynamic>>();
+      final back = AppLocalizationsUz().diagnosticGoBack;
+      await tester.runAsync(() async {
+        await AttemptStore.save('diag_att-gen', {
+          'all_subjects': ['math'],
+          'subjects_completed': <String>[],
+          'current_subject': 'math',
+          'is_fixed_variant': true,
+          'attempts_used': 1,
+          'questions': pkg(3),
+          'position': 2,
+          'total': 3,
+          'deadline_epoch_ms': DateTime.now()
+              .add(const Duration(minutes: 5))
+              .millisecondsSinceEpoch,
+        });
+        await tester.pumpWidget(_wrap(DiagnosticTestRunnerScreen(
+          attemptId: 'att-gen',
+          studentName: 'Aliyev Ali',
+          grade: 3,
+          language: 'uz',
+          // The fresh bootstrap never finishes: the screen must sit on the
+          // spinner, not on the Back/Retry error view.
+          availableSubjectsOverride: (grade, {String language = 'uz'}) =>
+              hang.future,
+          startAttemptOverride: ({required attemptId, required subject}) async =>
+              _withMeta({
+            'position': 1,
+            'total_questions': 3,
+            'subject': subject,
+            'attempts_used': 2,
+            'questions': pkg(3),
+          }, isFixedVariant: true),
+        )));
+        for (var i = 0; i < 15; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await tester.pump();
+          expect(find.text(back), findsNothing, reason: 'pump $i');
+        }
+      });
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      await unmount(tester);
     });
 
     testWidgets(
