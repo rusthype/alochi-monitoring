@@ -382,6 +382,21 @@ class DiagnosticKioskApi {
         timeout: backgroundTimeout);
   }
 
+  /// Server-side kiosk PIN check. 200 -> the `pin_hash` (sha256 of
+  /// '<school_id>:<pin>', cacheable for offline checks); 403 wrong PIN or the
+  /// school has none; 404 unknown school (or a backend without the route);
+  /// 429 throttled — all thrown as [ApiException]. The PIN is only ever in the
+  /// request body, never logged.
+  Future<String> verifyPin(String schoolId, String pin) async {
+    final data =
+        await _post('/kiosk/schools/$schoolId/verify-pin/', {'pin': pin});
+    final hash = data['pin_hash'];
+    if (data['ok'] != true || hash is! String || hash.isEmpty) {
+      throw const ApiException(200, "Noto'g'ri javob");
+    }
+    return hash;
+  }
+
   /// `{exchange_code}` — starts the web-test bridge session for a class
   /// whose row had `has_web_test: true`. Per the S-003 fix, the backend no
   /// longer returns a raw JWT here (never wanted in a URL) — only an opaque

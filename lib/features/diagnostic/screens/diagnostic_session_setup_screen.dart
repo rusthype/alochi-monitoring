@@ -12,6 +12,7 @@ import 'package:go_router/go_router.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/hover_region.dart';
 import '../../../shared/widgets/pill_top_bar.dart';
+import '../data/diagnostic_pin_verifier.dart';
 
 class DiagnosticSessionSetupScreen extends StatefulWidget {
   final String schoolId;
@@ -66,18 +67,30 @@ class _DiagnosticSessionSetupScreenState
     if (_isChecking) return;
     final l10n = AppLocalizations.of(context)!;
 
-    if (widget.expectedPin.isNotEmpty &&
-        _pinCtrl.text.trim() != widget.expectedPin) {
-      setState(() => _err = l10n.incorrectPin);
+    setState(() {
+      _err = null;
+      _isChecking = true;
+    });
+    final result = await verifyDiagnosticPin(
+      schoolId: widget.schoolId,
+      pin: _pinCtrl.text,
+      legacyPin: widget.expectedPin,
+    );
+    if (!mounted) return;
+    if (result != DiagnosticPinResult.ok) {
+      setState(() {
+        _isChecking = false;
+        _err = switch (result) {
+          DiagnosticPinResult.throttled => l10n.tooManyAttempts,
+          DiagnosticPinResult.noInternet => l10n.connectionError,
+          DiagnosticPinResult.error => l10n.serverErrorRetry,
+          _ => l10n.incorrectPin,
+        };
+      });
       return;
     }
 
     try {
-      setState(() {
-        _err = null;
-        _isChecking = true;
-      });
-
       // Simulate slight delay for premium feel
       await Future.delayed(const Duration(milliseconds: 400));
       if (!mounted) return;

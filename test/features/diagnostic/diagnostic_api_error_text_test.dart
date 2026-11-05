@@ -84,8 +84,7 @@ void main() {
     await _pump(tester, const Scaffold(body: DiagnosticOfflineBadge()));
     expect(find.text(ru.diagnosticOfflineCached), findsOneWidget);
     await _pump(
-        tester,
-        const Scaffold(body: DiagnosticOfflineBadge(offline: false)));
+        tester, const Scaffold(body: DiagnosticOfflineBadge(offline: false)));
     expect(find.text(ru.diagnosticServerBusyCached), findsOneWidget);
     expect(find.text(ru.diagnosticOfflineCached), findsNothing);
   });

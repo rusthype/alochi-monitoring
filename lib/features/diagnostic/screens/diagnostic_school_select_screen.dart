@@ -92,7 +92,11 @@ class _DiagnosticSchoolSelectScreenState
       }
     }
     if (!mounted) return;
-    if (pin.isNotEmpty) {
+    // `pin_required` (new backend) wins; an old backend only has `kiosk_pin`.
+    final pinRequired = school['pin_required'] is bool
+        ? school['pin_required'] as bool
+        : pin.isNotEmpty;
+    if (pinRequired) {
       context.push(
         '/diagnostic_session_setup',
         extra: {
