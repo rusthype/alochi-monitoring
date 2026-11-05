@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
-import '../../../core/api/api_client.dart' show ApiException;
+import '../../../core/api/api_error_text.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../providers/diagnostic_locale_provider.dart';
@@ -54,7 +54,7 @@ class DiagnosticClassSelectScreen extends ConsumerStatefulWidget {
 class _DiagnosticClassSelectScreenState
     extends ConsumerState<DiagnosticClassSelectScreen> {
   bool _loading = true;
-  String? _error;
+  Object? _error;
   List<Map<String, dynamic>> _classes = [];
   bool _fromCache = false;
 
@@ -85,7 +85,7 @@ class _DiagnosticClassSelectScreenState
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e is ApiException ? e.message : e.toString();
+        _error = e;
       });
     }
   }
@@ -169,7 +169,7 @@ class _DiagnosticClassSelectScreenState
                                           color: AppColors.error, size: 20),
                                       const SizedBox(width: 12),
                                       Expanded(
-                                        child: Text(_error!,
+                                        child: Text(localizedApiError(l10n, _error!),
                                             style: const TextStyle(
                                                 color: AppColors.error,
                                                 fontSize: 14,

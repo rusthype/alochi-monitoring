@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
-import '../../../core/api/api_client.dart' show ApiException;
+import '../../../core/api/api_error_text.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../data/diagnostic_kiosk_api.dart';
 import '../data/diagnostic_school_list.dart';
@@ -32,7 +32,7 @@ class DiagnosticSchoolSelectScreen extends StatefulWidget {
 class _DiagnosticSchoolSelectScreenState
     extends State<DiagnosticSchoolSelectScreen> {
   bool _loading = true;
-  String? _error;
+  Object? _error;
   List<DiagnosticSchool> _schools = [];
   bool _fromCache = false;
   String _lastId = '';
@@ -71,7 +71,7 @@ class _DiagnosticSchoolSelectScreenState
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e is ApiException ? e.message : e.toString();
+        _error = e;
       });
     }
   }
@@ -156,7 +156,7 @@ class _DiagnosticSchoolSelectScreenState
         const SizedBox(height: 24),
         if (_error == null && _fromCache) const DiagnosticOfflineBadge(),
         if (_error != null) ...[
-          SchoolPickerErrorBanner(message: _error!, onRetry: _load),
+          SchoolPickerErrorBanner(message: localizedApiError(l10n, _error!), onRetry: _load),
           const SizedBox(height: 24),
         ] else if (_schools.isEmpty)
           Padding(

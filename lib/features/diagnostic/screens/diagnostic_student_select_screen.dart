@@ -16,6 +16,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/api/api_client.dart' show ApiException;
+import '../../../core/api/api_error_text.dart';
 import '../../../core/models/add_student.dart';
 import '../../../shared/widgets/add_student_dialog.dart';
 import '../../../shared/theme/app_theme.dart';
@@ -124,7 +125,7 @@ class _DiagnosticStudentSelectScreenState
     extends State<DiagnosticStudentSelectScreen> {
   bool _loading = true;
   bool _starting = false;
-  String? _error;
+  Object? _error;
   List<Map<String, dynamic>> _students = [];
   bool _fromCache = false;
   Map<String, dynamic>? _selected;
@@ -385,7 +386,7 @@ class _DiagnosticStudentSelectScreenState
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e is ApiException ? e.message : e.toString();
+        _error = e;
       });
     }
   }
@@ -621,7 +622,7 @@ class _DiagnosticStudentSelectScreenState
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.message),
+          content: Text(localizedApiError(l10n, e)),
           backgroundColor: AppColors.error,
         ));
       }
@@ -767,7 +768,7 @@ class _DiagnosticStudentSelectScreenState
                                               color: AppColors.error, size: 20),
                                           const SizedBox(width: 12),
                                           Expanded(
-                                            child: Text(_error!,
+                                            child: Text(localizedApiError(l10n, _error!),
                                                 style: const TextStyle(
                                                     color: AppColors.error,
                                                     fontSize: 14,
