@@ -594,7 +594,10 @@ class DiagnosticBottomCta extends StatelessWidget {
 /// rendered instead (see DiagnosticKioskApi's cache-fallback + the screens'
 /// `_fromCache` flag). Never shown while the live fetch is working.
 class DiagnosticOfflineBadge extends StatelessWidget {
-  const DiagnosticOfflineBadge({super.key});
+  /// False when the cache was used because the server answered 429/5xx (we are
+  /// online): neutral "saved list" wording instead of "offline".
+  final bool offline;
+  const DiagnosticOfflineBadge({super.key, this.offline = true});
 
   @override
   Widget build(BuildContext context) {
@@ -614,7 +617,9 @@ class DiagnosticOfflineBadge extends StatelessWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              l10n.diagnosticOfflineCached,
+              offline
+                  ? l10n.diagnosticOfflineCached
+                  : l10n.diagnosticServerBusyCached,
               style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

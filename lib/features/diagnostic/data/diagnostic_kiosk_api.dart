@@ -197,6 +197,12 @@ class DiagnosticKioskApi {
     return data;
   }
 
+  /// Why the last list call fell back to the cache: true = no network
+  /// (status 0), false = the server answered 429/5xx. Read right after a
+  /// `fromCache: true` result to pick accurate wording. Defaults to true so
+  /// other implementations (offline pack / LAN) keep the "offline" wording.
+  bool lastFallbackWasOffline = true;
+
   /// Tries the cache for [cacheKey] on a transient failure: a network failure
   /// ([e.statusCode] == 0, per `_send`'s TimeoutException/SocketException/
   /// HttpException/ClientException mapping), a 429 rate limit or a 5xx — a
@@ -222,6 +228,7 @@ class DiagnosticKioskApi {
         cached = await DiagnosticKioskCache.load(legacyCacheKey);
       }
       if (cached is List) {
+        lastFallbackWasOffline = e.statusCode == 0;
         return (cached.cast<Map<String, dynamic>>(), true);
       }
       rethrow;

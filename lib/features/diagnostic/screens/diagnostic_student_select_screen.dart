@@ -128,6 +128,7 @@ class _DiagnosticStudentSelectScreenState
   Object? _error;
   List<Map<String, dynamic>> _students = [];
   bool _fromCache = false;
+  bool _cacheOffline = true;
   Map<String, dynamic>? _selected;
   final _searchCtrl = TextEditingController();
   String _query = '';
@@ -373,6 +374,7 @@ class _DiagnosticStudentSelectScreenState
       setState(() {
         _students = students;
         _fromCache = fromCache;
+        _cacheOffline = diagnosticKioskApi.lastFallbackWasOffline;
         _loading = false;
         final selectedId = _selected != null
             ? (_selected!['attempt_id'] ?? '').toString()
@@ -753,7 +755,8 @@ class _DiagnosticStudentSelectScreenState
                                     ),
                                   const SizedBox(height: 20),
                                   if (_error == null && _fromCache)
-                                    const DiagnosticOfflineBadge(),
+                                    DiagnosticOfflineBadge(
+                                        offline: _cacheOffline),
                                   if (_error != null)
                                     Container(
                                       padding: const EdgeInsets.all(12),

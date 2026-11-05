@@ -74,6 +74,7 @@
   "diagnosticFinishedPauseBtn": "Остановить",
   "diagnosticFinishedResumeBtn": "Продолжить",
   "diagnosticOfflineCached": "Офлайн — показаны сохранённые данные",
+  "diagnosticServerBusyCached": "Сервер занят — показан сохранённый список",
   "diagnosticNoSchools": "Школы не найдены",
   "diagnosticClassWithoutTests": "Для этого класса в пакете нет тестов. Создайте в панели новый пакет для уровня этого класса.",
   "diagnosticNoClasses": "Классы не найдены",

@@ -35,6 +35,7 @@ class _DiagnosticSchoolSelectScreenState
   Object? _error;
   List<DiagnosticSchool> _schools = [];
   bool _fromCache = false;
+  bool _cacheOffline = true;
   String _lastId = '';
 
   @override
@@ -65,6 +66,7 @@ class _DiagnosticSchoolSelectScreenState
         _lastId = lastId;
         _schools = sortSchools(schools.map(DiagnosticSchool.fromMap));
         _fromCache = fromCache;
+        _cacheOffline = diagnosticKioskApi.lastFallbackWasOffline;
         _loading = false;
       });
     } catch (e) {
@@ -154,7 +156,8 @@ class _DiagnosticSchoolSelectScreenState
           ),
         ),
         const SizedBox(height: 24),
-        if (_error == null && _fromCache) const DiagnosticOfflineBadge(),
+        if (_error == null && _fromCache)
+          DiagnosticOfflineBadge(offline: _cacheOffline),
         if (_error != null) ...[
           SchoolPickerErrorBanner(message: localizedApiError(l10n, _error!), onRetry: _load),
           const SizedBox(height: 24),

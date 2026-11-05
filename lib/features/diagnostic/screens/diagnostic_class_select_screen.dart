@@ -57,6 +57,7 @@ class _DiagnosticClassSelectScreenState
   Object? _error;
   List<Map<String, dynamic>> _classes = [];
   bool _fromCache = false;
+  bool _cacheOffline = true;
 
   @override
   void initState() {
@@ -79,6 +80,7 @@ class _DiagnosticClassSelectScreenState
       setState(() {
         _classes = classes;
         _fromCache = fromCache;
+        _cacheOffline = diagnosticKioskApi.lastFallbackWasOffline;
         _loading = false;
       });
     } catch (e) {
@@ -152,7 +154,8 @@ class _DiagnosticClassSelectScreenState
                               ),
                               const SizedBox(height: 24),
                               if (_error == null && _fromCache)
-                                const DiagnosticOfflineBadge(),
+                                DiagnosticOfflineBadge(
+                                    offline: _cacheOffline),
                               if (_error != null) ...[
                                 Container(
                                   padding: const EdgeInsets.all(12),

@@ -5,6 +5,7 @@ import 'package:alochi_monitoring/core/locale/locale_provider.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_class_select_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_school_select_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_student_select_screen.dart';
+import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_widgets.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import 'package:alochi_monitoring/l10n/app_localizations_ru.dart';
 import 'package:flutter/material.dart';
@@ -76,5 +77,16 @@ void main() {
         () => MockClient((_) async => http.Response('{}', 503)));
     expect(find.text("Server xatosi, keyinroq urinib ko'ring"), findsNothing);
     expect(find.text(ru.serverErrorRetry), findsOneWidget);
+  });
+
+  testWidgets('cached-list badge: accurate wording for offline vs server busy',
+      (tester) async {
+    await _pump(tester, const Scaffold(body: DiagnosticOfflineBadge()));
+    expect(find.text(ru.diagnosticOfflineCached), findsOneWidget);
+    await _pump(
+        tester,
+        const Scaffold(body: DiagnosticOfflineBadge(offline: false)));
+    expect(find.text(ru.diagnosticServerBusyCached), findsOneWidget);
+    expect(find.text(ru.diagnosticOfflineCached), findsNothing);
   });
 }

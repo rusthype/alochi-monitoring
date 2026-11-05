@@ -48,6 +48,21 @@ void main() {
     });
   }
 
+  test('lastFallbackWasOffline: true only for a network failure (status 0)',
+      () async {
+    await DiagnosticKioskCache.save('schools', cached);
+    final offline = DiagnosticKioskApi();
+    await http.runWithClient(offline.listSchools,
+        () => MockClient((_) async => throw const SocketException('down')));
+    expect(offline.lastFallbackWasOffline, isTrue);
+    for (final status in [429, 503]) {
+      final a = DiagnosticKioskApi();
+      await http.runWithClient(
+          a.listSchools, () => MockClient((_) async => http.Response('{}', status)));
+      expect(a.lastFallbackWasOffline, isFalse, reason: '$status');
+    }
+  });
+
   test('429 without any cached copy still throws', () async {
     // listClasses for a school id nothing ever cached.
     await expectLater(
