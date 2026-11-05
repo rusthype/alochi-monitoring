@@ -13,6 +13,10 @@ const String kOfflineNotFound = 'not_found';
 /// Offline pack: the class's grade has no diagnostics in this pack.
 const String kClassWithoutTests = 'class_without_tests';
 
+/// Offline pack: the result chain is at the server-import budget (entries or
+/// bytes); the result was NOT stored. Same limits the LAN hub answers 507 for.
+const String kPackFull = 'pack_full';
+
 /// LAN client: the teacher's hub did not answer.
 const String kLanUnreachable = 'lan_unreachable';
 
@@ -30,6 +34,8 @@ String? localizeOfflineError(AppLocalizations l10n, Object error) {
   switch (error.code) {
     case kOfflineUnsupported:
       return l10n.usbErrUnsupported;
+    case kPackFull:
+      return l10n.usbErrPackFull;
     case kLanUnreachable:
       return l10n.lanErrUnreachable;
     case kLanSessionExpired:

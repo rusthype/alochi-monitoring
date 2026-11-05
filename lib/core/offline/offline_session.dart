@@ -22,12 +22,13 @@ import '../db/pack_results_db.dart';
 import '../models/add_student.dart';
 import '../db/test_cache.dart';
 import '../security/incident_log.dart';
-import '../local_server/hub_guard.dart' show Mutex;
+import '../local_server/hub_guard.dart' show HubLimits, Mutex;
 import '../security/monitored_clock.dart';
 import 'export_format.dart';
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart';
 import 'offline_diagnostic_api.dart';
 import 'offline_content_source.dart';
+import 'offline_errors.dart';
 import 'offline_media.dart';
 import 'offline_new_student.dart';
 import 'offline_package_api.dart';
@@ -378,6 +379,20 @@ class OfflinePackSession implements OfflineContentSource {
       final flags = MonitoredClock.instance.pendingFlags;
       try {
         final fresh = !await PackResultsDb.hasKey(uuid, key);
+        if (fresh) {
+          // The server rejects a whole file above its import budget, so a
+          // result that would cross it is refused here (the student's answers
+          // stay in the attempt store and the caller shows "not saved"), never
+          // appended to a chain that can no longer be imported. Same constants
+          // the LAN hub answers 507 for.
+          final usage = chainUsage ??= await PackResultsDb.chainUsage(uuid);
+          final entryBytes = exportEntryBytes(payloadJson,
+              PackResultsDb.metaJsonFor(key, incidents, flags));
+          if (usage.count + 1 > HubLimits.maxPackEntries ||
+              usage.bytes + entryBytes > HubLimits.maxPackPlainBytes) {
+            throw const ApiException(507, 'pack full', code: kPackFull);
+          }
+        }
         final isNew = chainUsage != null && fresh;
         final row = await PackResultsDb.append(
           packUuid: uuid,
@@ -397,6 +412,8 @@ class OfflinePackSession implements OfflineContentSource {
         }
         if (fresh) unawaited(autoSaveLatest(uuid, pack.schoolCode));
         return row;
+      } on ApiException {
+        rethrow; // pack_full: nothing was written, the usage is still right
       } catch (_) {
         chainUsage = null; // unknown outcome: the next budget re-measures
         rethrow;
