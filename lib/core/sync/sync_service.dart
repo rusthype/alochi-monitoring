@@ -294,6 +294,29 @@ class SyncService {
                 attemptId, all.map((r) => r['question_id'] as String).toList());
             break;
           }
+          // Permanent 4xx (404 attempt/session deleted, 400/403/410/422...):
+          // the server will never accept these rows, so release them instead
+          // of re-sending every 10-320 s forever. 401/408/429 and 5xx/status 0
+          // are transient and keep retrying.
+          final sc = e.statusCode;
+          if (sc >= 400 &&
+              sc < 500 &&
+              sc != 401 &&
+              sc != 408 &&
+              sc != 429) {
+            // 404/410 = the attempt itself is gone: drop its other groups too.
+            final gone = sc == 404 || sc == 410;
+            debugPrint('SyncService: kiosk/sync permanent $sc for '
+                'attempt=$attemptId — releasing '
+                '${gone ? rows.length : all.length} pending rows');
+            await DiagnosticAnswerStore.markSynced(
+                attemptId,
+                (gone ? rows : all)
+                    .map((r) => r['question_id'] as String)
+                    .toList());
+            if (gone) return;
+            break;
+          }
           debugPrint(
               'SyncService._flushDiagnosticAnswers($attemptId) error: $e');
           break;

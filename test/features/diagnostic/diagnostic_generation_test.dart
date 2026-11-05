@@ -208,6 +208,39 @@ void main() {
       expect(rows.single['synced'], 1);
     });
 
+    test('404 (attempt deleted) marks every pending row of the attempt synced',
+        () async {
+      await seedPending(1, 'q1', 1);
+      await DiagnosticAnswerStore.saveAnswer(
+        attemptId: 'a1',
+        subject: 'english',
+        questionIndex: 1,
+        questionId: 'e1',
+        selectedOption: 'A',
+        generation: 1,
+      );
+      var calls = 0;
+      await flush((_) {
+        calls++;
+        return http.Response(jsonEncode({'detail': 'Topilmadi'}), 404);
+      });
+      expect(await DiagnosticAnswerStore.pendingForAttempt('a1'), isEmpty);
+      expect(calls, 1); // stopped after the first rejection, no retry storm
+    });
+
+    test('other permanent 4xx (400) releases the rejected rows', () async {
+      await seedPending(1, 'q1', 1);
+      await flush((_) => http.Response(jsonEncode({'detail': 'bad'}), 400));
+      expect(await DiagnosticAnswerStore.pendingForAttempt('a1'), isEmpty);
+    });
+
+    test('transient statuses (429, 500) keep rows pending for retry', () async {
+      await seedPending(1, 'q1', 1);
+      await flush((_) => http.Response('{}', 429));
+      await flush((_) => http.Response('{}', 500));
+      expect(await DiagnosticAnswerStore.pendingForAttempt('a1'), hasLength(1));
+    });
+
     // Strike counters live on the SyncService singleton, keyed by
     // attempt|generation|subject — use a distinct generation per test.
     Future<void> seedSubject(String subject, String qid, int idx,
