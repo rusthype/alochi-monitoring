@@ -87,6 +87,17 @@ Widget _wrap(Widget child) {
   );
 }
 
+/// [_wrap] with the child under its OWN nested Navigator, like go_router's
+/// ShellRoute: `Navigator.of(context)` is the nested one, while `showDialog`
+/// (useRootNavigator: true) puts dialogs on the root navigator.
+Widget _wrapNested(Widget child) {
+  return _wrap(
+    Navigator(
+      onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => child),
+    ),
+  );
+}
+
 /// Same as [_wrap] but with a real GoRouter, for tests whose path finishes
 /// the test and navigates to '/diagnostic_finished' (context.pushReplacement
 /// throws "No GoRouter found" under a plain MaterialApp).
@@ -1720,11 +1731,14 @@ void main() {
 
     // Audit A2: the unanswered-warning dialog used to stay open across the
     // timeout; confirming it later finished whatever subject was current.
+    for (final nested in [false, true])
     testWidgets('timeout dismisses an open finish-confirmation dialog and '
-        'finishes the timed-out subject exactly once', (tester) async {
+        'finishes the timed-out subject exactly once'
+        '${nested ? ' (nested navigator, dialog on the root)' : ''}',
+        (tester) async {
       final finishLog = <List<Map<String, dynamic>>>[];
       await tester.pumpWidget(
-        _wrap(
+        (nested ? _wrapNested : _wrap)(
           DiagnosticTestRunnerScreen(
             attemptId: 'att-1',
             studentName: 'Aliyev Ali',

@@ -119,6 +119,12 @@ typedef DiagnosticPingElapsedFn =
       required int elapsedSeconds,
     });
 
+/// Route name of the runner's confirmation dialogs (unanswered / flagged /
+/// early finish), so a timeout can close exactly those and nothing else.
+const String _kConfirmDialogRoute = 'diagnostic_runner_confirm_dialog';
+const RouteSettings _confirmDialogSettings =
+    RouteSettings(name: _kConfirmDialogRoute);
+
 class DiagnosticTestRunnerScreen extends StatefulWidget {
   final String attemptId;
 
@@ -818,7 +824,10 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // be open: time is up, so close it instead of letting a late confirm
       // finish whatever subject is current by then.
       if (mounted) {
-        Navigator.of(context).popUntil((r) => r is! DialogRoute);
+        // showDialog uses the ROOT navigator; the runner sits on a nested
+        // (ShellRoute) one. Only this runner's own confirm dialogs are closed.
+        Navigator.of(context, rootNavigator: true)
+            .popUntil((r) => r.settings.name != _kConfirmDialogRoute);
       }
       if (mounted) _remainingSeconds = 0;
       // Timing out mid-subject must advance to the next incomplete subject
@@ -1742,6 +1751,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
+      routeSettings: _confirmDialogSettings,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
@@ -1782,6 +1792,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     if (unanswered > 0) {
       final ok = await showDialog<bool>(
         context: context,
+        routeSettings: _confirmDialogSettings,
         builder: (dialogContext) => AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -1813,6 +1824,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     if (_flaggedQuestionIds.isNotEmpty) {
       final ok = await showDialog<bool>(
         context: context,
+        routeSettings: _confirmDialogSettings,
         builder: (dialogContext) => AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
