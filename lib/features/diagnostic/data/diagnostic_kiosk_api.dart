@@ -196,11 +196,13 @@ class DiagnosticKioskApi {
     return data;
   }
 
-  /// Tries the cache for [cacheKey] on a network failure ([e.statusCode] ==
-  /// 0, per `_send`'s TimeoutException/SocketException/HttpException/
-  /// ClientException mapping) — a real 4xx/5xx from a reachable server is
-  /// never masked by stale data. Returns `(rows, fromCache: true)` on a hit,
-  /// else rethrows so the caller's existing error UI still applies.
+  /// Tries the cache for [cacheKey] on a transient failure: a network failure
+  /// ([e.statusCode] == 0, per `_send`'s TimeoutException/SocketException/
+  /// HttpException/ClientException mapping), a 429 rate limit or a 5xx — a
+  /// cached roster beats a dead screen when many kiosks hit the server at
+  /// once. A definitive 4xx (404 etc.) is never masked by stale data. Returns
+  /// `(rows, fromCache: true)` on a hit, else rethrows so the caller's
+  /// existing error UI still applies.
   Future<(List<Map<String, dynamic>>, bool)> _listWithCacheFallback(
     String cacheKey,
     Future<List<Map<String, dynamic>>> Function() fetch,
@@ -210,7 +212,9 @@ class DiagnosticKioskApi {
       unawaited(DiagnosticKioskCache.save(cacheKey, rows));
       return (rows, false);
     } on ApiException catch (e) {
-      if (e.statusCode != 0) rethrow;
+      final transient =
+          e.statusCode == 0 || e.statusCode == 429 || e.statusCode >= 500;
+      if (!transient) rethrow;
       final cached = await DiagnosticKioskCache.load(cacheKey);
       if (cached is List) {
         return (cached.cast<Map<String, dynamic>>(), true);
