@@ -46,7 +46,12 @@ Future<DiagnosticPinResult> verifyDiagnosticPin({
 
   try {
     final hash = await (api ?? diagnosticKioskApi).verifyPin(schoolId, typed);
-    await DiagnosticKioskCache.save(_hashKey(schoolId), hash);
+    try {
+      await DiagnosticKioskCache.save(_hashKey(schoolId), hash);
+    } catch (_) {
+      // Best-effort: a server 200 stays ok even if the cache write fails
+      // (never log the hash or PIN).
+    }
     return DiagnosticPinResult.ok;
   } on ApiException catch (e) {
     switch (e.statusCode) {

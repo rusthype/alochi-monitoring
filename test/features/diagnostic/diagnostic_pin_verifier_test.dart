@@ -59,6 +59,16 @@ void main() {
     expect(await DiagnosticKioskCache.load('pin_hash_$_school'), _hash);
   });
 
+  test('a failing cache write never turns a server 200 into a failure',
+      () async {
+    // Storage unusable: the QueueCrypto key file lookup throws.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('plugins.flutter.io/path_provider'),
+            (call) async => throw PlatformException(code: 'disk'));
+    expect(await check(MockClient((_) async => ok())), DiagnosticPinResult.ok);
+  });
+
   test('the plain PIN is never persisted', () async {
     await check(MockClient((_) async => ok()), legacyPin: _pin);
     final prefs = await SharedPreferences.getInstance();
