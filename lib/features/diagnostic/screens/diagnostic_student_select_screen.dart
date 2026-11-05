@@ -485,7 +485,7 @@ class _DiagnosticStudentSelectScreenState
 
   Future<void> _start() async {
     final s = _selected;
-    if (s == null) return;
+    if (s == null || _waitingForPrefetch) return;
     final attemptId = (s['attempt_id'] ?? '').toString();
     if (_studentStatus[attemptId] == StudentPrefetchStatus.loading) {
       final inFlight = _prefetchInFlight[attemptId];
@@ -645,10 +645,14 @@ class _DiagnosticStudentSelectScreenState
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.enter): () {
-          if (_selected != null && !_starting) _start();
+          if (_selected != null && !_starting && !_waitingForPrefetch) {
+            _start();
+          }
         },
         const SingleActivator(LogicalKeyboardKey.numpadEnter): () {
-          if (_selected != null && !_starting) _start();
+          if (_selected != null && !_starting && !_waitingForPrefetch) {
+            _start();
+          }
         },
       },
       child: Focus(

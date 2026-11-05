@@ -552,6 +552,39 @@ void main() {
     expect(find.text('RUNNER'), findsOneWidget);
   });
 
+  testWidgets(
+      'Enter pressed again during the prefetch wait does not open a second '
+      'runner', (tester) async {
+    final completer = Completer<Map<String, dynamic>>();
+    await tester.pumpWidget(_wrap(DiagnosticStudentSelectScreen(
+      schoolId: 's1',
+      schoolName: 'Maktab 1',
+      classLabel: '4-A',
+      language: 'uz',
+      listStudentsOverride: (schoolId, classLabel) async => (_students, false),
+      availableSubjectsOverride: (grade, {String language = 'uz'}) async => {
+        'subjects': ['math']
+      },
+      peekSubjectOverride: ({required attemptId, required subject}) =>
+          completer.future,
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Aliyev Ali'));
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.sendKeyEvent(LogicalKeyboardKey.numpadEnter);
+    await tester.pump();
+
+    completer.complete({'fixed_variant': true, 'questions': []});
+    await tester.pumpAndSettle();
+
+    expect(find.text('RUNNER', skipOffstage: false), findsOneWidget);
+  });
+
   testWidgets('offline badge clears automatically once connectivity comes back',
       (tester) async {
     var listCalls = 0;
