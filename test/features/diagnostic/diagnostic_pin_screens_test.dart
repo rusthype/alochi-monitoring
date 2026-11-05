@@ -1,5 +1,7 @@
 // School picker routes on `pin_required` (falling back to the legacy
 // `kiosk_pin`); the PIN screen verifies through the server, not locally.
+import 'dart:io';
+
 import 'package:alochi_monitoring/core/locale/locale_provider.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_school_select_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_session_setup_screen.dart';
@@ -122,10 +124,29 @@ void main() {
     });
 
     testWidgets('server 429 shows the throttled text', (t) async {
-      await submit(t, () => http.Response('{"detail":"x"}', 429),
-          legacy: '1234');
+      await submit(t, () => http.Response('{"detail":"x"}', 429));
       expect(find.text(ru.tooManyAttempts), findsOneWidget);
       expect(find.text('CLASSES'), findsNothing);
+    });
+
+    testWidgets('a TLS handshake failure re-enables the button', (t) async {
+      ignoreOverflow();
+      await http.runWithClient(() async {
+        await _pump(
+            t,
+            const DiagnosticSessionSetupScreen(
+                schoolId: 's1',
+                schoolName: 'A',
+                schoolCode: '5',
+                expectedPin: ''));
+        await t.enterText(find.byType(TextField), '1234');
+        await t.testTextInput.receiveAction(TextInputAction.done);
+        await t.pumpAndSettle();
+      }, () => MockClient((_) async => throw const HandshakeException('bad')));
+      expect(find.text(ru.connectionError), findsOneWidget);
+      // A second submit is accepted again (not stuck in the checking state).
+      await t.enterText(find.byType(TextField), '1235');
+      expect(find.byType(CircularProgressIndicator), findsNothing);
     });
 
     testWidgets('route missing + matching list pin continues', (t) async {

@@ -51,7 +51,13 @@ class _DiagnosticExportPinDialogState
       _checking = true;
       _error = null;
     });
-    final result = await widget.verify(_pinCtrl.text.trim());
+    DiagnosticPinResult result;
+    try {
+      result = await widget.verify(_pinCtrl.text.trim());
+    } catch (_) {
+      // Never leave the button disabled if the verifier throws unexpectedly.
+      result = DiagnosticPinResult.error;
+    }
     if (!mounted) return;
     if (result == DiagnosticPinResult.ok) {
       Navigator.of(context).pop(true);

@@ -33,6 +33,17 @@ Future<DiagnosticPinResult> verifyDiagnosticPin({
       : (typed == legacyPin
           ? DiagnosticPinResult.ok
           : DiagnosticPinResult.wrong);
+  // Cached hash, else the list pin, else [none]: no server verdict available.
+  Future<DiagnosticPinResult> local(DiagnosticPinResult none) async {
+    final cached = await DiagnosticKioskCache.load(_hashKey(schoolId));
+    if (cached is String && cached.isNotEmpty) {
+      return diagnosticPinHash(schoolId, typed) == cached.toLowerCase()
+          ? DiagnosticPinResult.ok
+          : DiagnosticPinResult.wrong;
+    }
+    return legacy(none);
+  }
+
   try {
     final hash = await (api ?? diagnosticKioskApi).verifyPin(schoolId, typed);
     await DiagnosticKioskCache.save(_hashKey(schoolId), hash);
@@ -42,18 +53,18 @@ Future<DiagnosticPinResult> verifyDiagnosticPin({
       case 403:
         return DiagnosticPinResult.wrong;
       case 429:
-        return DiagnosticPinResult.throttled;
+        // One shared school NAT IP: a student looping verify-pin must not lock
+        // every PC out, so compare locally when a cached hash / list pin exists.
+        return local(DiagnosticPinResult.throttled);
       case 0:
-        final cached = await DiagnosticKioskCache.load(_hashKey(schoolId));
-        if (cached is String && cached.isNotEmpty) {
-          return diagnosticPinHash(schoolId, typed) == cached.toLowerCase()
-              ? DiagnosticPinResult.ok
-              : DiagnosticPinResult.wrong;
-        }
-        return legacy(DiagnosticPinResult.noInternet);
+        return local(DiagnosticPinResult.noInternet);
       default:
         // 404 / 5xx / anything else: an old backend without the route.
         return legacy(DiagnosticPinResult.error);
     }
+  } catch (_) {
+    // TLS handshake / certificate failures and other unmapped transport errors
+    // escape DiagnosticKioskApi._send: same as being offline.
+    return local(DiagnosticPinResult.noInternet);
   }
 }

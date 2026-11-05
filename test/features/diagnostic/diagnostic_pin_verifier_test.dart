@@ -73,9 +73,39 @@ void main() {
         DiagnosticPinResult.wrong);
   });
 
-  test('429 is throttled and never falls back to the local compare', () async {
-    expect(await check(MockClient((_) async => json(429)), legacyPin: _pin),
+  test('429 with nothing cached and no list pin is throttled', () async {
+    expect(await check(MockClient((_) async => json(429))),
         DiagnosticPinResult.throttled);
+  });
+
+  test('429 with a cached hash compares it like offline (ok / wrong)',
+      () async {
+    await DiagnosticKioskCache.save('pin_hash_$_school', _hash);
+    final throttled = MockClient((_) async => json(429));
+    expect(await check(throttled), DiagnosticPinResult.ok);
+    expect(await check(throttled, pin: '0000'), DiagnosticPinResult.wrong);
+  });
+
+  test('429 without a cache falls back to the list pin, else throttled',
+      () async {
+    final throttled = MockClient((_) async => json(429));
+    expect(await check(throttled, legacyPin: _pin), DiagnosticPinResult.ok);
+    expect(await check(throttled, legacyPin: '9999'), DiagnosticPinResult.wrong);
+  });
+
+  test('a TLS handshake failure behaves like offline and never throws',
+      () async {
+    final tls = MockClient((_) async => throw const HandshakeException('bad'));
+    expect(await check(tls), DiagnosticPinResult.noInternet);
+    expect(await check(tls, legacyPin: _pin), DiagnosticPinResult.ok);
+    await DiagnosticKioskCache.save('pin_hash_$_school', _hash);
+    expect(await check(tls), DiagnosticPinResult.ok);
+    expect(await check(tls, pin: '0000'), DiagnosticPinResult.wrong);
+  });
+
+  test('any other exception is treated as offline too', () async {
+    final boom = MockClient((_) async => throw StateError('boom'));
+    expect(await check(boom), DiagnosticPinResult.noInternet);
   });
 
   test('route missing (old backend): falls back to the list kiosk_pin',

@@ -71,11 +71,17 @@ class _DiagnosticSessionSetupScreenState
       _err = null;
       _isChecking = true;
     });
-    final result = await verifyDiagnosticPin(
-      schoolId: widget.schoolId,
-      pin: _pinCtrl.text,
-      legacyPin: widget.expectedPin,
-    );
+    DiagnosticPinResult result;
+    try {
+      result = await verifyDiagnosticPin(
+        schoolId: widget.schoolId,
+        pin: _pinCtrl.text,
+        legacyPin: widget.expectedPin,
+      );
+    } catch (_) {
+      // Never leave the button disabled if the verifier throws unexpectedly.
+      result = DiagnosticPinResult.error;
+    }
     if (!mounted) return;
     if (result != DiagnosticPinResult.ok) {
       setState(() {

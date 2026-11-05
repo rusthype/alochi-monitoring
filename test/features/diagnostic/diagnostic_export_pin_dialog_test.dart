@@ -94,4 +94,20 @@ void main() {
     expect(popped, isNull);
     expect(called, isFalse);
   });
+
+  testWidgets('a verifier that throws re-enables the dialog', (tester) async {
+    var calls = 0;
+    await tester.pumpWidget(_wrap((_) async {
+      calls++;
+      throw const HandshakeException('bad');
+    }, onResult: (_) {}));
+    final l10n = await _open(tester);
+    await tester.enterText(find.byType(TextField), '1234');
+    await tester.tap(find.text(l10n.confirmBtn));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.serverErrorRetry), findsOneWidget);
+    await tester.tap(find.text(l10n.confirmBtn));
+    await tester.pumpAndSettle();
+    expect(calls, 2);
+  });
 }
