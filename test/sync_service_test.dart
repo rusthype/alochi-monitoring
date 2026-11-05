@@ -22,14 +22,43 @@
 // sync payload from, and markSynced() (called on the helper's success path)
 // removes the attempt from future flush cycles — one bad attempt's rows
 // never affect another attempt's.
+import 'dart:io';
+
+import 'package:alochi_monitoring/core/api/api_client.dart';
 import 'package:alochi_monitoring/core/db/diagnostic_answer_store.dart';
+import 'package:alochi_monitoring/core/db/offline_queue.dart';
+import 'package:alochi_monitoring/core/offline/lan_client_session.dart';
+import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_kiosk_api.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:path/path.dart' as p;
 import 'package:alochi_monitoring/core/network/connectivity_service.dart';
 import 'package:alochi_monitoring/core/sync/sync_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+class _HubHealthyApi extends MonitoringApi {
+  // LAN mode: ping() is the hub's health check, so it is true.
+  @override
+  Future<bool> ping() async => true;
+}
+
+class _RecordingSyncApi extends DiagnosticKioskApi {
+  int syncCalls = 0;
+  @override
+  Future<Map<String, dynamic>> syncAnswers({
+    required String attemptId,
+    required List<Map<String, dynamic>> answers,
+    int? generation,
+  }) async {
+    syncCalls++;
+    return {'ok': true};
+  }
+}
+
 void main() {
   setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   });
@@ -142,6 +171,69 @@ void main() {
       svc.handleProbeReading(r(SignalTier.good)); // still online: no flush
       await Future<void>.delayed(const Duration(milliseconds: 80));
       expect(flushes, 1);
+    });
+  });
+
+  group('LAN mode never flushes cloud diagnostic answers', () {
+    late Directory tmp;
+    late MonitoringApi savedApi;
+    late DiagnosticKioskApi savedDiag;
+    late _RecordingSyncApi diag;
+
+    setUp(() async {
+      savedApi = api;
+      savedDiag = diagnosticKioskApi;
+      api = _HubHealthyApi();
+      diag = _RecordingSyncApi();
+      diagnosticKioskApi = diag;
+      tmp = Directory.systemTemp.createTempSync('sync_lan_');
+      await OfflineQueue.openAtPath(p.join(tmp.path, 'q.db'));
+      await DiagnosticAnswerStore.saveAnswer(
+        attemptId: 'cloud-att',
+        subject: 'math',
+        questionIndex: 1,
+        questionId: 'q1',
+        selectedOption: 'A',
+      );
+    });
+
+    tearDown(() async {
+      api = savedApi;
+      diagnosticKioskApi = savedDiag;
+      LanClientSession.current = null;
+      await OfflineQueue.resetForTest();
+      tmp.deleteSync(recursive: true);
+    });
+
+    test('control: online (no LAN) the pending answers are sent and marked',
+        () async {
+      await SyncService.instance.flushNowWithResult();
+      expect(diag.syncCalls, 1);
+      expect(await DiagnosticAnswerStore.attemptsWithPending(), isEmpty);
+    });
+
+    test('with a LanClientSession the flush skips them, rows stay pending',
+        () async {
+      final lan = await LanClientSession.join(
+        host: '127.0.0.1',
+        port: 8080,
+        code: '123456',
+        client: MockClient((req) async => http.Response(
+            '{"token":"${'t' * 32}",'
+            '"pack_uuid":"11111111-2222-3333-4444-555555555555"}',
+            200,
+            headers: {'content-type': 'application/json'})),
+        machineId: 'pc-1',
+        deviceName: 'pc-1',
+        mediaDirFor: (id) async => tmp,
+      );
+      LanClientSession.current = lan;
+      addTearDown(lan.close);
+
+      await SyncService.instance.flushNowWithResult();
+
+      expect(diag.syncCalls, 0);
+      expect(await DiagnosticAnswerStore.attemptsWithPending(), ['cloud-att']);
     });
   });
 }

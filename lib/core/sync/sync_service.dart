@@ -8,6 +8,7 @@ import '../api/api_client.dart';
 import '../db/offline_queue.dart';
 import '../db/diagnostic_answer_store.dart';
 import '../network/connectivity_service.dart';
+import '../offline/lan_client_session.dart';
 import 'server_backoff.dart';
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart';
 
@@ -156,8 +157,12 @@ class SyncService {
     try {
       // Navbat bo'sh bo'lsa tarmoqqa umuman tegmaymiz (behuda 60s flush yo'q).
       final pending = await OfflineQueue.totalPendingCount();
-      final pendingDiagAttempts =
-          await DiagnosticAnswerStore.attemptsWithPending();
+      // LAN student PC: ping() is the hub's health check and `diagnosticKioskApi`
+      // is the LAN stub (no `synced` in its reply), so flushing cloud answer
+      // rows here would mark them synced without sending anything.
+      final pendingDiagAttempts = LanClientSession.isActive
+          ? const <String>[]
+          : await DiagnosticAnswerStore.attemptsWithPending();
       if (pending == 0 && pendingDiagAttempts.isEmpty) {
         return SyncFlushOutcome.nothingPending;
       }
