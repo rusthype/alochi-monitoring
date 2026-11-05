@@ -227,6 +227,13 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   final ProctorToastController _toasts = ProctorToastController();
   bool _loading = true;
   bool _submitting = false;
+
+  /// True once the current subject's timeout has been handled (finish +
+  /// advance fired). Stops a later resume / lock-resume / tick from running
+  /// the expiry handling a second time — e.g. against the NEXT subject while
+  /// its package is still loading. Reset only when a countdown is (re)seeded
+  /// (`_startCountdownIfNeeded` / `_restoreCountdown`).
+  bool _expiryHandled = false;
   String? _error;
   bool _subjectsEmpty = false;
   Map<String, dynamic>? _question;
@@ -680,6 +687,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// decremented per tick.
   void _restoreCountdown(int remainingSeconds) {
     _timer?.cancel();
+    _expiryHandled = false;
     _stopwatch
       ..reset()
       ..start();
@@ -712,6 +720,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       setState(() => _remainingSeconds = null);
       return;
     }
+    _expiryHandled = false;
     _stopwatch
       ..reset()
       ..start();
@@ -774,8 +783,18 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       // NOT cancel the periodic timer in that case: the next tick (1s
       // later) re-checks, otherwise the screen would freeze at 00:00
       // forever with nothing left to trigger a re-check.
-      if (_submitting) return;
+      // Also wait while a subject is loading / transitioning: the stopwatch
+      // and total still belong to the previous (expired) subject then.
+      if (_submitting || _loading || _transition != null) return;
       timer?.cancel();
+      if (_expiryHandled) return;
+      _expiryHandled = true;
+      // A confirmation dialog (unanswered / flagged / early finish) may still
+      // be open: time is up, so close it instead of letting a late confirm
+      // finish whatever subject is current by then.
+      if (mounted) {
+        Navigator.of(context).popUntil((r) => r is! DialogRoute);
+      }
       if (mounted) setState(() => _remainingSeconds = 0);
       // Timing out mid-subject must advance to the next incomplete subject
       // (e.g. Math -> English) exactly like a normal subject finish, not end
@@ -1160,6 +1179,12 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     // under subject=english). Stop the timers and drop the old package first.
     _pingTimer?.cancel();
     _autoAdvance?.cancel();
+    // The previous subject's countdown must not outlive it: a stale expired
+    // stopwatch/total would make a resume tick finish THIS subject with [].
+    _stopwatch
+      ..stop()
+      ..reset();
+    _totalDurationSeconds = null;
     setState(() {
       _loading = true;
       _error = null;
@@ -1659,6 +1684,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// adds the up-front "do you really want to quit" gate.
   Future<void> _onEarlyFinishTap() async {
     if (_submitting) return;
+    final subject = _currentSubject;
     final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1685,7 +1711,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted || _currentSubject != subject) return;
     await _confirmAndFinishPackage();
   }
 
@@ -1695,6 +1721,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   Future<void> _confirmAndFinishPackage() async {
     if (_submitting) return;
     final l10n = AppLocalizations.of(context)!;
+    // The dialogs below can outlive a subject switch (timeout): never finish
+    // a subject other than the one the student was confirming.
+    final subject = _currentSubject;
     final unanswered = _total - _answers.length;
     if (unanswered > 0) {
       final ok = await showDialog<bool>(
@@ -1724,7 +1753,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           ],
         ),
       );
-      if (ok != true) return;
+      if (ok != true || !mounted || _currentSubject != subject) return;
     }
     if (!mounted) return;
     if (_flaggedQuestionIds.isNotEmpty) {
@@ -1757,7 +1786,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           ],
         ),
       );
-      if (ok != true) return;
+      if (ok != true || !mounted || _currentSubject != subject) return;
     }
     await _finishCurrentSubjectAndAdvance();
   }

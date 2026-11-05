@@ -1370,6 +1370,155 @@ void main() {
       await unmount(tester);
     });
 
+    // Audit A1: after math's timeout was handled, a resume/lock-resume tick
+    // while english is still loading (stopwatch + total still math's expired
+    // ones) used to re-run the expiry handling against english and finish it
+    // with answers == [].
+    testWidgets('timeout already handled: a resume while the next subject '
+        'loads does not finish it with empty answers', (tester) async {
+      final englishStart = Completer<Map<String, dynamic>>();
+      final finishLog = <List<Map<String, dynamic>>>[];
+      await tester.pumpWidget(
+        _wrap(
+          DiagnosticTestRunnerScreen(
+            attemptId: 'att-1',
+            studentName: 'Aliyev Ali',
+            grade: 3,
+            language: 'uz',
+            availableSubjectsOverride:
+                (grade, {String language = 'uz'}) async => {
+                  'subjects': ['math', 'english'],
+                },
+            startAttemptOverride:
+                ({required attemptId, required subject}) async {
+                  if (subject == 'english') return englishStart.future;
+                  return _withMeta({
+                    'position': 1,
+                    'total_questions': 2,
+                    'subject': subject,
+                    'questions': fullPackageQuestions(2),
+                  }, durationMinutes: 0, isFixedVariant: true);
+                },
+            finishAttemptOverride:
+                ({
+                  required attemptId,
+                  required answers,
+                  List<String>? flaggedQuestionIds,
+                }) async {
+                  finishLog.add(answers);
+                  return {'finished': true, 'next_subject': 'english'};
+                },
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1)); // math times out
+      await tester.pump();
+      await tester.pump();
+      expect(finishLog, hasLength(1));
+      expect(finishLog.single, isNotEmpty);
+
+      await tester.pump(const Duration(milliseconds: 1600)); // transition
+      await tester.pump();
+      // english package is still loading; app regains focus / lock resumes.
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+
+      expect(finishLog, hasLength(1), reason: 'english must not be finished');
+
+      englishStart.complete(
+        _withMeta({
+          'position': 1,
+          'total_questions': 2,
+          'subject': 'english',
+          'questions': fullPackageQuestions(2),
+        }, isFixedVariant: true),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      expect(finishLog, hasLength(1));
+      await tester.pump(const Duration(seconds: 4));
+      await unmount(tester);
+    });
+
+    // Audit A2: the unanswered-warning dialog used to stay open across the
+    // timeout; confirming it later finished whatever subject was current.
+    testWidgets('timeout dismisses an open finish-confirmation dialog and '
+        'finishes the timed-out subject exactly once', (tester) async {
+      final finishLog = <List<Map<String, dynamic>>>[];
+      await tester.pumpWidget(
+        _wrap(
+          DiagnosticTestRunnerScreen(
+            attemptId: 'att-1',
+            studentName: 'Aliyev Ali',
+            grade: 3,
+            language: 'uz',
+            availableSubjectsOverride:
+                (grade, {String language = 'uz'}) async => {
+                  'subjects': ['math', 'english'],
+                },
+            startAttemptOverride:
+                ({required attemptId, required subject}) async {
+                  return _withMeta(
+                    {
+                    'position': 1,
+                    'total_questions': 2,
+                    'subject': subject,
+                    'questions': fullPackageQuestions(2),
+                  },
+                    durationMinutes: subject == 'math' ? 0 : null,
+                    isFixedVariant: true,
+                  );
+                },
+            finishAttemptOverride:
+                ({
+                  required attemptId,
+                  required answers,
+                  List<String>? flaggedQuestionIds,
+                }) async {
+                  finishLog.add(answers);
+                  return {'finished': true, 'next_subject': 'english'};
+                },
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Variant A'));
+      await tester.pump();
+      await tester.tap(find.text('02'));
+      await tester.pump();
+      await tester.tap(find.text("Keyingi testga o'tish"));
+      await tester.pump();
+      expect(find.text('Tugatish?'), findsOneWidget); // 1 unanswered
+      expect(finishLog, isEmpty);
+
+      await tester.pump(const Duration(seconds: 1)); // math times out
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Tugatish?'), findsNothing);
+      expect(finishLog, hasLength(1));
+      expect(finishLog.single.map((a) => a['question_id']), ['q1']);
+
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Savol 1'), findsOneWidget); // english loaded
+      expect(finishLog, hasLength(1));
+      await tester.pump(const Duration(seconds: 4));
+      await unmount(tester);
+    });
+
     testWidgets('transient finish-call failure with a next subject available '
         'starts that subject instead of ending the test', (tester) async {
       var startCalls = 0;
