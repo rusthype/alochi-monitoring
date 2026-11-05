@@ -453,6 +453,14 @@
   "diagnosticExportSuccess": "Natijalar Downloads papkasiga saqlandi",
   "diagnosticExportError": "Eksport qilib bo'lmadi. Qayta urinib ko'ring",
   "diagnosticExportOpenAction": "Ochish",
+  "diagnosticExportUnresolvedTitle": "Maktabi aniqlanmagan natijalar ({count})",
+  "@diagnosticExportUnresolvedTitle": {
+    "description": "Disabled entry in the export school chooser: history rows whose school could not be matched to a known school.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "diagnosticExportUnresolvedHint": "Bu natijalar qaysi maktabga tegishli ekani aniqlanmadi, shuning uchun ularni yuklab olib bo'lmaydi.",
   "syncCompleteMsg": "Sinxronizatsiya yakunlandi! {done} ta rasm oflayn saqlandi.",
   "@syncCompleteMsg": {
     "placeholders": {

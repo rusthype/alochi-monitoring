@@ -408,6 +408,14 @@
   "diagnosticExportSuccess": "Результаты сохранены в папку Загрузки",
   "diagnosticExportError": "Не удалось экспортировать. Попробуйте снова",
   "diagnosticExportOpenAction": "Открыть",
+  "diagnosticExportUnresolvedTitle": "Результаты с неопределённой школой ({count})",
+  "@diagnosticExportUnresolvedTitle": {
+    "description": "Disabled entry in the export school chooser: history rows whose school could not be matched to a known school.",
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "diagnosticExportUnresolvedHint": "Не удалось определить, какой школе принадлежат эти результаты, поэтому их нельзя выгрузить.",
   "syncCompleteMsg": "Синхронизация завершена! Сохранено офлайн {done} изображений.",
   "@syncCompleteMsg": {
     "placeholders": {

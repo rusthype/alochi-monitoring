@@ -18,7 +18,11 @@ import '../../../core/sync/sync_service.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/history_card.dart';
 import '../../../shared/widgets/pill_chip.dart';
+import '../../../core/db/diagnostic_kiosk_cache.dart';
+import '../data/diagnostic_export_schools.dart';
+import '../data/diagnostic_pin_verifier.dart';
 import '../dialogs/diagnostic_export_pin_dialog.dart';
+import '../dialogs/diagnostic_export_school_dialog.dart';
 
 enum DiagnosticHistoryFilter { all, sent, pending }
 
@@ -32,12 +36,20 @@ class DiagnosticHistoryScreen extends StatefulWidget {
     List<Map<String, dynamic>> records, {
     void Function(int done)? onProgress,
   })? exportToZipOverride;
+  final Future<List<Map<String, dynamic>>> Function()? loadSchoolsOverride;
+  final Future<DiagnosticPinResult> Function({
+    required String schoolId,
+    required String pin,
+    String legacyPin,
+  })? verifyPinOverride;
 
   const DiagnosticHistoryScreen({
     super.key,
     this.getAllOverride,
     this.flushNowOverride,
     this.exportToZipOverride,
+    this.loadSchoolsOverride,
+    this.verifyPinOverride,
   });
 
   @override
@@ -141,24 +153,55 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
 
   bool _exporting = false;
   int _exportedCount = 0;
+  int _exportTotal = 0;
+
+  /// The school list the kiosk last cached (`listSchools`); only read here to
+  /// resolve ids, names and PIN rules — never fetched live.
+  static Future<List<Map<String, dynamic>>> _cachedSchools() async {
+    final cached = await DiagnosticKioskCache.load('schools');
+    if (cached is! List) return const [];
+    return cached.whereType<Map>().map((m) => m.cast<String, dynamic>()).toList();
+  }
 
   Future<void> _handleExportZip() async {
     final l10n = AppLocalizations.of(context)!;
-    final confirmed = await showDiagnosticExportPinDialog(context);
-    if (confirmed != true || !mounted) return;
+    final all = _filtered;
+    if (all.isEmpty) return;
+    final schools = groupExportSchools(
+        all, await (widget.loadSchoolsOverride ?? _cachedSchools)());
+    if (!mounted) return;
+    // Skip the chooser only when there is nothing to choose or explain.
+    final ExportSchool? school =
+        (schools.unresolvedCount == 0 && schools.resolved.length == 1)
+            ? schools.resolved.single
+            : await showDiagnosticExportSchoolDialog(context, schools);
+    if (school == null || !mounted) return;
+    if (school.pinRequired) {
+      final Future<DiagnosticPinResult> Function({
+        required String schoolId,
+        required String pin,
+        String legacyPin,
+      }) verify = widget.verifyPinOverride ?? verifyDiagnosticPin;
+      final confirmed = await showDiagnosticExportPinDialog(context,
+          verify: (pin) => verify(
+              schoolId: school.id, pin: pin, legacyPin: school.legacyPin));
+      if (confirmed != true || !mounted) return;
+    }
 
-    final records = _filtered;
-    if (records.isEmpty) return;
+    final records = school.records;
     setState(() {
       _exporting = true;
       _exportedCount = 0;
+      _exportTotal = records.length;
     });
     String? savedPath;
     try {
       final exportToZip = widget.exportToZipOverride ??
           (List<Map<String, dynamic>> rs, {void Function(int done)? onProgress}) =>
               DiagnosticExportService.exportResultsToZip(rs,
-                  l10n: l10n, onProgress: onProgress);
+                  l10n: l10n,
+                  onProgress: onProgress,
+                  schoolLabel: school.fileLabel);
       savedPath = await exportToZip(
         records,
         onProgress: (done) {
@@ -277,7 +320,7 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
                     label: Text(
                       _exporting
                           ? l10n.diagnosticExportProgress(
-                              _exportedCount, filtered.length)
+                              _exportedCount, _exportTotal)
                           : l10n.diagnosticExportZipButton,
                       overflow: TextOverflow.ellipsis,
                     ),

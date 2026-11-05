@@ -1,29 +1,31 @@
 // lib/features/diagnostic/dialogs/diagnostic_export_pin_dialog.dart
 //
 // PIN gate for DiagnosticHistoryScreen's "Yuklab olish (ZIP)" export button.
-// No school/session context is available at that screen (it's reached from
-// a global login-screen button via OfflineHistoryHubScreen with no route
-// args — see diagnostic_history_screen.dart), so this uses a NEW, dedicated
-// hardcoded PIN rather than the per-school `kiosk_pin` field or the OTHER
-// hardcoded '1234' admin-gate literal already used 4x elsewhere in this app
-// (local_grade_screen.dart and 3 siblings) — deliberately kept separate.
+// The PIN belongs to the school being exported: the caller passes [verify]
+// (server check / cached hash via `verifyDiagnosticPin` for that school id),
+// and this dialog only maps the result to the same messages the kiosk PIN
+// screen shows. No PIN is stored or logged here.
 import 'package:flutter/material.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../shared/theme/app_theme.dart';
+import '../data/diagnostic_pin_verifier.dart';
 
-const String kDiagnosticExportPin = '0555';
-
-/// Shows the PIN dialog. Resolves to `true` when the correct PIN was
-/// entered and confirmed, `null` if the operator cancelled/dismissed it.
-Future<bool?> showDiagnosticExportPinDialog(BuildContext context) {
+/// Shows the PIN dialog. Resolves to `true` when [verify] accepted the PIN,
+/// `null` if the operator cancelled/dismissed it.
+Future<bool?> showDiagnosticExportPinDialog(
+  BuildContext context, {
+  required Future<DiagnosticPinResult> Function(String pin) verify,
+}) {
   return showDialog<bool>(
     context: context,
-    builder: (_) => const DiagnosticExportPinDialog(),
+    builder: (_) => DiagnosticExportPinDialog(verify: verify),
   );
 }
 
 class DiagnosticExportPinDialog extends StatefulWidget {
-  const DiagnosticExportPinDialog({super.key});
+  final Future<DiagnosticPinResult> Function(String pin) verify;
+
+  const DiagnosticExportPinDialog({super.key, required this.verify});
 
   @override
   State<DiagnosticExportPinDialog> createState() =>
@@ -34,6 +36,7 @@ class _DiagnosticExportPinDialogState
     extends State<DiagnosticExportPinDialog> {
   final _pinCtrl = TextEditingController();
   String? _error;
+  bool _checking = false;
 
   @override
   void dispose() {
@@ -41,13 +44,28 @@ class _DiagnosticExportPinDialogState
     super.dispose();
   }
 
-  void _confirm() {
+  Future<void> _confirm() async {
+    if (_checking) return;
     final l10n = AppLocalizations.of(context)!;
-    if (_pinCtrl.text.trim() != kDiagnosticExportPin) {
-      setState(() => _error = l10n.incorrectPin);
+    setState(() {
+      _checking = true;
+      _error = null;
+    });
+    final result = await widget.verify(_pinCtrl.text.trim());
+    if (!mounted) return;
+    if (result == DiagnosticPinResult.ok) {
+      Navigator.of(context).pop(true);
       return;
     }
-    Navigator.of(context).pop(true);
+    setState(() {
+      _checking = false;
+      _error = switch (result) {
+        DiagnosticPinResult.throttled => l10n.tooManyAttempts,
+        DiagnosticPinResult.noInternet => l10n.connectionError,
+        DiagnosticPinResult.error => l10n.serverErrorRetry,
+        _ => l10n.incorrectPin,
+      };
+    });
   }
 
   @override
@@ -81,7 +99,7 @@ class _DiagnosticExportPinDialogState
               style: const TextStyle(color: AppColors.ink3)),
         ),
         TextButton(
-          onPressed: _confirm,
+          onPressed: _checking ? null : _confirm,
           child: Text(l10n.confirmBtn,
               style: const TextStyle(color: AppColors.brand)),
         ),
