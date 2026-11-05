@@ -20,12 +20,17 @@ class OfflineSavedScreen extends StatelessWidget {
   /// "saved" — a lost result must never look like a kept one.
   final VoidCallback? onRetry;
 
+  /// Specific reason for the failure (e.g. the pack is full); the generic
+  /// "not saved" line is used when null.
+  final String? failureText;
+
   const OfflineSavedScreen({
     super.key,
     required this.firstName,
     required this.lastName,
     required this.onNext,
     this.onRetry,
+    this.failureText,
   });
 
   @override
@@ -49,7 +54,10 @@ class OfflineSavedScreen extends StatelessWidget {
                     size: 88,
                     color: failed ? AppColors.err : AppColors.brand),
                 const SizedBox(height: 20),
-                Text(failed ? l10n.resultNotSavedError : l10n.usbSavedTitle,
+                Text(
+                    failed
+                        ? (failureText ?? l10n.resultNotSavedError)
+                        : l10n.usbSavedTitle,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                         fontSize: 26,

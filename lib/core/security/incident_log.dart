@@ -34,8 +34,9 @@ class IncidentLog {
     });
   }
 
-  /// Returns what was recorded since the last call and clears it.
-  List<Map<String, dynamic>> drain() {
+  /// What [drain] would return now, without clearing anything. A result write
+  /// peeks, stores, and only then [consume]s: a failed write loses nothing.
+  List<Map<String, dynamic>> peek() {
     final out = List<Map<String, dynamic>>.from(_items);
     if (_dropped.isNotEmpty) {
       out.add({
@@ -44,6 +45,33 @@ class IncidentLog {
         'dropped': Map<String, int>.from(_dropped),
       });
     }
+    return out;
+  }
+
+  /// Removes exactly what an earlier [peek] returned; incidents added since
+  /// (the write awaits) stay for the next result.
+  void consume(List<Map<String, dynamic>> peeked) {
+    var n = 0;
+    for (final e in peeked) {
+      if (e['type'] == 'incident_overflow' && e['dropped'] is Map) {
+        (e['dropped'] as Map).forEach((k, v) {
+          final left = (_dropped[k] ?? 0) - (v as int);
+          if (left > 0) {
+            _dropped[k as String] = left;
+          } else {
+            _dropped.remove(k);
+          }
+        });
+      } else {
+        n++;
+      }
+    }
+    _items.removeRange(0, n < _items.length ? n : _items.length);
+  }
+
+  /// Returns what was recorded since the last call and clears it.
+  List<Map<String, dynamic>> drain() {
+    final out = peek();
     _items.clear();
     _dropped.clear();
     return out;

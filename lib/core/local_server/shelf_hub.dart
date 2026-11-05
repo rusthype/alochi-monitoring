@@ -737,8 +737,9 @@ class ShelfHub extends ChangeNotifier {
           payloadJson: payloadJson,
           incidents: entryIncidents,
           // The hub's own clock flags ride along: the hub stamps the chain.
-          clockFlags: [...flags, ...clock.drainFlags()],
+          clockFlags: [...flags, ...hubFlags],
         );
+        clock.consumeFlags(hubFlags); // only now that the row is stored
         unawaited(autoSaveLatest(uuid, session.pack.schoolCode));
         usage.add(studentId, entryBytes);
         st.quotaCommit(ip, entryBytes);

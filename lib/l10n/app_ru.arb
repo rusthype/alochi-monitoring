@@ -1134,6 +1134,7 @@
   "usbSavedTitle": "Ваши ответы сохранены",
   "usbSavedBody": "Результат объявит учитель позже.",
   "usbErrUnsupported": "В офлайн-режиме это действие недоступно.",
+  "usbErrPackFull": "Пакет результатов заполнен, результат не сохранён. Обратитесь к учителю.",
   "usbSchoolLabel": "Школа {code}",
   "@usbSchoolLabel": {
     "placeholders": {

@@ -1186,6 +1186,7 @@
   "usbSavedTitle": "Javoblaringiz saqlandi",
   "usbSavedBody": "Natija o'qituvchi tomonidan keyinroq e'lon qilinadi.",
   "usbErrUnsupported": "Oflayn rejimda bu amal mavjud emas.",
+  "usbErrPackFull": "Natijalar to'plami to'lgan, natija saqlanmadi. O'qituvchiga murojaat qiling.",
   "usbSchoolLabel": "{code}-maktab",
   "@usbSchoolLabel": {
     "placeholders": {

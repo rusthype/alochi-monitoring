@@ -25,6 +25,7 @@ import 'package:flutter/material.dart';
 
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../core/api/api_client.dart';
+import '../../core/offline/offline_errors.dart';
 import '../../core/db/attempt_store.dart';
 import '../../core/db/history_db.dart';
 import '../../core/db/offline_queue.dart';
@@ -138,6 +139,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
   bool _offlineSaved = false;
   String? _completeToken;
   bool _offlineSaveFailed = false;
+  String? _offlineSaveError;
   VoidCallback? _offlineRetry;
 
   // Online branch: the result could not be queued locally. The completed
@@ -311,6 +313,8 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
         // Same token on retry -> the chain append is idempotent.
         setState(() {
           _offlineSaveFailed = true;
+          _offlineSaveError =
+              localizeOfflineError(AppLocalizations.of(context)!, e);
           _offlineRetry = () {
             setState(() => _offlineSaveFailed = false);
             _handleComplete(result, elapsedSeconds);
@@ -445,6 +449,7 @@ class _EngineHostScreenState extends State<EngineHostScreen> {
         lastName: widget.lastName,
         onNext: () => Navigator.of(context).pop(),
         onRetry: _offlineSaveFailed ? _offlineRetry : null,
+        failureText: _offlineSaveFailed ? _offlineSaveError : null,
       );
     }
     if (_completedResult != null) {
