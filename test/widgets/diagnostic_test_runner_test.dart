@@ -10,7 +10,9 @@ import 'package:alochi_monitoring/core/services/heartbeat_service.dart';
 import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_prefetch_cache.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_bottom_nav.dart';
+import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_header_bar.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_option_card.dart';
+import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_options_grid.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_question_card.dart';
 import 'package:alochi_monitoring/features/diagnostic/widgets/diagnostic_question_dots.dart';
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
@@ -993,6 +995,66 @@ void main() {
         await unmount(tester);
       },
     );
+
+    testWidgets('the 1s countdown tick does not rebuild the question body '
+        '(card / options grid)', (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          DiagnosticTestRunnerScreen(
+            attemptId: 'att-tick',
+            studentName: 'Aliyev Ali',
+            grade: 3,
+            language: 'uz',
+            availableSubjectsOverride:
+                (grade, {String language = 'uz'}) async => {
+                  'subjects': ['math'],
+                },
+            startAttemptOverride:
+                ({required attemptId, required subject}) async => _withMeta({
+                  'position': 1,
+                  'total_questions': 2,
+                  'subject': subject,
+                  'questions': [
+                    for (var i = 1; i <= 2; i++)
+                      _question(id: 'q$i', text: 'Savol $i'),
+                  ],
+                }, durationMinutes: 10, isFixedVariant: true),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text('Savol 1'), findsOneWidget);
+
+      var bodyRebuilds = 0;
+      var headerRebuilds = 0;
+      debugOnRebuildDirtyWidget = (element, builtOnce) {
+        final w = element.widget;
+        if (w is DiagnosticQuestionCard || w is DiagnosticOptionsGrid) {
+          bodyRebuilds++;
+        }
+        if (w is DiagnosticHeaderBar) headerRebuilds++;
+      };
+      addTearDown(() => debugOnRebuildDirtyWidget = null);
+
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      debugOnRebuildDirtyWidget = null;
+
+      // ignore: avoid_print
+      print('tick rebuilds over 5s: body=$bodyRebuilds header=$headerRebuilds');
+      expect(bodyRebuilds, 0);
+
+      // The header's timer chip is still driven by the notifier.
+      expect(find.text('10:00 qoldi'), findsOneWidget);
+      HeartbeatService.instance.onExtendSeconds!(60);
+      await tester.pump();
+      expect(find.text('11:00 qoldi'), findsOneWidget);
+      await unmount(tester);
+    });
 
     testWidgets('remote termination runs the same local session cleanup as '
         'a normal finish (prefetch cache dropped) and still navigates', (

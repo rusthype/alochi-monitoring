@@ -319,7 +319,14 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// no known duration. Populated from `duration_minutes` on the
   /// start-attempt response only (see _startSubject) — per-question answer
   /// responses also carry the same value but must not reset the timer.
-  int? _remainingSeconds;
+  ///
+  /// Backed by a [ValueNotifier] so the 1s tick repaints only the header
+  /// (timer chip) via a ValueListenableBuilder — a screen-level setState
+  /// per second rebuilt the whole question view (FractionText, SVGs, the
+  /// options grid). Plain getter/setter keeps every logic read unchanged.
+  final ValueNotifier<int?> _remainingNotifier = ValueNotifier<int?>(null);
+  int? get _remainingSeconds => _remainingNotifier.value;
+  set _remainingSeconds(int? v) => _remainingNotifier.value = v;
   Timer? _timer;
 
   /// Monotonic elapsed-time source the countdown is measured against — set
@@ -696,9 +703,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     // Admin lock active: stay frozen; _resumeFromLock starts it.
     if (!_paused) _stopwatch.start();
     _totalDurationSeconds = remainingSeconds;
-    setState(
-      () => _remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0,
-    );
+    _remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0;
     if (!_paused) {
       _timer = Timer.periodic(
         const Duration(seconds: 1),
@@ -723,7 +728,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
         remainingFromServer ?? (minutes != null ? minutes * 60 : null);
     if (seconds == null) {
       _totalDurationSeconds = null;
-      setState(() => _remainingSeconds = null);
+      _remainingSeconds = null;
       return;
     }
     _expiryHandled = false;
@@ -731,7 +736,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     // Admin lock active: stay frozen; _resumeFromLock starts it.
     if (!_paused) _stopwatch.start();
     _totalDurationSeconds = seconds;
-    setState(() => _remainingSeconds = seconds);
+    _remainingSeconds = seconds;
     if (!_paused) {
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         _syncRemainingFromStopwatch(timer);
@@ -812,7 +817,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       if (mounted) {
         Navigator.of(context).popUntil((r) => r is! DialogRoute);
       }
-      if (mounted) setState(() => _remainingSeconds = 0);
+      if (mounted) _remainingSeconds = 0;
       // Timing out mid-subject must advance to the next incomplete subject
       // (e.g. Math -> English) exactly like a normal subject finish, not end
       // the whole attempt — see `_completeSubjectAndAdvance`. This callback
@@ -831,7 +836,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       }
       return;
     }
-    if (mounted) setState(() => _remainingSeconds = remaining);
+    if (mounted) _remainingSeconds = remaining;
   }
 
   /// Freezes the countdown and shows the full-screen pause overlay. Mirrors
@@ -991,7 +996,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
           _totalDurationSeconds = _totalDurationSeconds! + secs;
         }
         if (_remainingSeconds != null) {
-          setState(() => _remainingSeconds = _remainingSeconds! + secs);
+          _remainingSeconds = _remainingSeconds! + secs;
         }
         unawaited(_saveProgressIfFixed());
         var minutes = (secs / 60).round();
@@ -1022,6 +1027,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     _autoAdvance?.cancel();
     _proctorInitTimeout?.cancel();
     _bootstrapRetrySub?.cancel();
+    _remainingNotifier.dispose();
     _toasts.dispose();
     ProctorService.instance.stop();
     HeartbeatService.instance.finishTest();
@@ -2494,27 +2500,30 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    DiagnosticHeaderBar(
-                      subjectLabel: _subjectLabel(l10n, _currentSubject),
-                      subjectIcon: _subjectIcon(_currentSubject),
-                      subjectColor: _subjectColor(_currentSubject),
-                      position: _position,
-                      total: _total,
-                      // widget.studentName is intentionally the raw/
-                      // unformatted roster name (see
-                      // diagnostic_student_select_screen.dart's _start())
-                      // so HeartbeatService.startTest() keeps whatever
-                      // disambiguating info (patronymic) the backend sends
-                      // — format it just for display here.
-                      studentName: toDisplayScript(
-                        formatStudentDisplayName(widget.studentName),
-                        Localizations.localeOf(context),
+                    ValueListenableBuilder<int?>(
+                      valueListenable: _remainingNotifier,
+                      builder: (context, remaining, _) => DiagnosticHeaderBar(
+                        subjectLabel: _subjectLabel(l10n, _currentSubject),
+                        subjectIcon: _subjectIcon(_currentSubject),
+                        subjectColor: _subjectColor(_currentSubject),
+                        position: _position,
+                        total: _total,
+                        // widget.studentName is intentionally the raw/
+                        // unformatted roster name (see
+                        // diagnostic_student_select_screen.dart's _start())
+                        // so HeartbeatService.startTest() keeps whatever
+                        // disambiguating info (patronymic) the backend sends
+                        // — format it just for display here.
+                        studentName: toDisplayScript(
+                          formatStudentDisplayName(widget.studentName),
+                          Localizations.localeOf(context),
+                        ),
+                        language: widget.language,
+                        remainingSeconds: remaining,
+                        isFixedVariant: _isFixedVariantAttempt,
+                        grade: widget.grade,
+                        classLabel: widget.classLabel,
                       ),
-                      language: widget.language,
-                      remainingSeconds: _remainingSeconds,
-                      isFixedVariant: _isFixedVariantAttempt,
-                      grade: widget.grade,
-                      classLabel: widget.classLabel,
                     ),
                     if (_isFixedVariantAttempt) ...[
                       const SizedBox(height: 12),
