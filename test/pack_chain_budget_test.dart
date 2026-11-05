@@ -61,8 +61,7 @@ void main() {
 
   test('entry limit reached -> kPackFull, nothing appended', () async {
     session.chainUsage = ChainUsage(1000, HubLimits.maxPackEntries, {});
-    await expectLater(
-        session.recordResult(lanResultPayload(), token: 'full1'),
+    await expectLater(session.recordResult(lanResultPayload(), token: 'full1'),
         throwsA(packFull()));
     expect(await rows(), 0);
     expect(session.chainUsage!.count, HubLimits.maxPackEntries);
@@ -71,15 +70,13 @@ void main() {
   test('byte budget would be crossed -> kPackFull, incidents kept', () async {
     session.chainUsage = ChainUsage(HubLimits.maxPackPlainBytes - 10, 5, {});
     IncidentLog.instance.add('focus_lost');
-    await expectLater(
-        session.recordResult(lanResultPayload(), token: 'full2'),
+    await expectLater(session.recordResult(lanResultPayload(), token: 'full2'),
         throwsA(packFull()));
     expect(await rows(), 0);
     expect(IncidentLog.instance.snapshot, hasLength(1));
   });
 
-  test('a replay of an already stored result is still acknowledged',
-      () async {
+  test('a replay of an already stored result is still acknowledged', () async {
     await session.recordResult(lanResultPayload(), token: 'dup');
     session.chainUsage = ChainUsage(HubLimits.maxPackPlainBytes, 99999, {});
     final again = await session.recordResult(lanResultPayload(), token: 'dup');
