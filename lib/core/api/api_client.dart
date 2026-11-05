@@ -17,7 +17,7 @@ import '../db/diagnostic_history_db.dart';
 import '../services/server_clock.dart';
 import '../sync/server_backoff.dart';
 import '../../features/diagnostic/data/diagnostic_kiosk_api.dart'
-    show diagnosticKioskApi;
+    show onlineDiagnosticApi;
 
 /// Stable machine codes of [ApiException.code] for transport-level failures
 /// (never shown to the student: the UI maps them through
@@ -1372,7 +1372,7 @@ class MonitoringApi {
       final body = Map<String, dynamic>.from(payload)
         ..remove('_offlineKind')
         ..remove('_offline_answer_key');
-      final result = await diagnosticKioskApi.submitFinishOffline(body, token,
+      final result = await onlineDiagnosticApi.submitFinishOffline(body, token,
           subject: subject);
       // Single central replay choke point (both the background auto-flush
       // and any manual "flush now" trigger route through here) — flip the

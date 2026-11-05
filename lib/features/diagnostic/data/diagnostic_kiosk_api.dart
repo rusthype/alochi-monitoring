@@ -494,3 +494,14 @@ class DiagnosticKioskApi {
 /// an `OfflineDiagnosticKioskApi` (core/offline/offline_diagnostic_api.dart)
 /// and restores this online client when it closes.
 DiagnosticKioskApi diagnosticKioskApi = DiagnosticKioskApi();
+
+/// The real online client while a pack / LAN session has swapped
+/// [diagnosticKioskApi] for an offline stub (the diagnostic twin of
+/// `parkedOnlineApi`). Null in normal mode.
+DiagnosticKioskApi? parkedOnlineDiagnosticApi;
+
+/// Always the cloud client: cloud queue rows (`diagnostic_finish`) must never
+/// be replayed through an offline/LAN stub whose `submitFinishOffline`
+/// reports `synced: true` without sending anything.
+DiagnosticKioskApi get onlineDiagnosticApi =>
+    parkedOnlineDiagnosticApi ?? diagnosticKioskApi;

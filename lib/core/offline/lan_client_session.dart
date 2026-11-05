@@ -200,7 +200,6 @@ class LanClientSession implements OfflineContentSource {
   bool _closed = false;
   bool _flushing = false;
 
-  static DiagnosticKioskApi? _onlineDiagnosticApi;
 
   // ── join ───────────────────────────────────────────────────────────────────
 
@@ -357,7 +356,7 @@ class LanClientSession implements OfflineContentSource {
     }
     current?._restoreOnline();
     parkedOnlineApi = api;
-    _onlineDiagnosticApi = diagnosticKioskApi;
+    parkedOnlineDiagnosticApi = diagnosticKioskApi;
     api = LanClientApi(this);
     diagnosticKioskApi = LanDiagnosticKioskApi(this);
     TestCache.enterMemoryMode();
@@ -387,10 +386,10 @@ class LanClientSession implements OfflineContentSource {
     if (!identical(current, this)) return;
     final online = parkedOnlineApi;
     if (online != null) api = online;
-    final onlineDiag = _onlineDiagnosticApi;
+    final onlineDiag = parkedOnlineDiagnosticApi;
     if (onlineDiag != null) diagnosticKioskApi = onlineDiag;
     parkedOnlineApi = null;
-    _onlineDiagnosticApi = null;
+    parkedOnlineDiagnosticApi = null;
     ServerClock.useHub(false);
     TestCache.exitMemoryMode();
     OfflineMedia.root = null;
