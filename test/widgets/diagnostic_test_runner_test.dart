@@ -7,6 +7,7 @@ import 'package:alochi_monitoring/core/db/attempt_store.dart';
 import 'package:alochi_monitoring/core/db/diagnostic_answer_store.dart';
 import 'package:alochi_monitoring/core/db/diagnostic_history_db.dart';
 import 'package:alochi_monitoring/core/offline/lan_client_session.dart';
+import 'package:alochi_monitoring/core/offline/offline_errors.dart' show kPackFull;
 import 'package:alochi_monitoring/core/services/heartbeat_service.dart';
 import 'package:alochi_monitoring/features/diagnostic/data/diagnostic_prefetch_cache.dart';
 import 'package:alochi_monitoring/features/diagnostic/screens/diagnostic_test_runner_screen.dart';
@@ -3871,6 +3872,36 @@ void main() {
             await tester.pump();
             expect(enqueued, 0);
             expect(find.text(l10n.serverErrorRetry), findsOneWidget);
+            await tester.pump(const Duration(seconds: 10));
+            await unmount(tester);
+          },
+        );
+
+        testWidgets(
+          'B4: a full pack on finish says so instead of the generic server error',
+          (tester) async {
+            final lan = await tester.runAsync(joinLan);
+            LanClientSession.current = lan;
+            addTearDown(() {
+              LanClientSession.current = null;
+              lan!.close();
+            });
+            await pumpRunner(
+              tester,
+              onStart: (s) async => pkg(s, 1),
+              onFinish: (_) async =>
+                  throw const ApiException(507, 'pack full', code: kPackFull),
+              subjects: const ['math'],
+            );
+            final l10n = l10nOf(tester);
+            await tester.tap(find.text('Variant A'));
+            await tester.pump();
+            await tester.tap(find.text(l10n.finishTestButton));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 100));
+            await tester.pump();
+            expect(find.text(l10n.usbErrPackFull), findsOneWidget);
+            expect(find.text(l10n.serverErrorRetry), findsNothing);
             await tester.pump(const Duration(seconds: 10));
             await unmount(tester);
           },

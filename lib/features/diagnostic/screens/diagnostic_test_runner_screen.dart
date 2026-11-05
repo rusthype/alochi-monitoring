@@ -25,6 +25,7 @@ import '../../../core/db/diagnostic_answer_store.dart';
 import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/db/offline_queue.dart';
 import '../../../core/offline/lan_client_session.dart';
+import '../../../core/offline/offline_errors.dart' show localizeOfflineError;
 import '../../../core/offline/offline_session.dart';
 import '../../../core/session/session_handoff.dart';
 import '../../../core/sync/sync_service.dart';
@@ -2004,9 +2005,11 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       if (!isClientRejection) {
         if (!mounted) return;
         debugPrint('Diagnostic finish-package error: $e');
+        final l10n = AppLocalizations.of(context)!;
         setState(() {
           _submitting = false;
-          _error = AppLocalizations.of(context)!.serverErrorRetry;
+          // Pack full (507) and other known offline codes name themselves.
+          _error = localizeOfflineError(l10n, e) ?? l10n.serverErrorRetry;
         });
         return;
       }
