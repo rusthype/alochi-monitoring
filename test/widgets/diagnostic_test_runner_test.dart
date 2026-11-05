@@ -3393,6 +3393,141 @@ void main() {
           },
         );
 
+        testWidgets(
+          'A4: answer/flag/next hotkeys are inert while the admin lock pauses '
+          'the test',
+          (tester) async {
+            final payloads = <List<String>?>[];
+            await pumpRunner(
+              tester,
+              onStart: (s) async => pkg(s, 2),
+              onFinish: (flagged) async {
+                payloads.add(flagged);
+                return {'finished': true, 'next_subject': 'english'};
+              },
+            );
+            final l10n = l10nOf(tester);
+            HeartbeatService.instance.onLockChanged!(true);
+            await tester.pump();
+            await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+            await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+            await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+            await tester.pump();
+            expect(find.text('Savol 1'), findsOneWidget,
+                reason: 'Enter must not advance while paused');
+            HeartbeatService.instance.onLockChanged!(false);
+            await tester.pump();
+            await tester.tap(find.text(l10n.nextButton));
+            await tester.pump();
+            await tester.tap(find.text(l10n.nextSubjectButton));
+            await tester.pump();
+            // Nothing was answered while paused: both questions unanswered,
+            // and no flag was set (no flag reminder after the confirm).
+            expect(find.text(l10n.unansweredWarning(2)), findsOneWidget);
+            await tester.tap(find.descendant(
+                of: find.byType(AlertDialog),
+                matching: find.text(l10n.finishTest)));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 100));
+            expect(find.text(l10n.flaggedQuestionsReminder(1)), findsNothing);
+            expect(payloads, [isEmpty]);
+            await tester.pump(const Duration(seconds: 10));
+            await unmount(tester);
+          },
+        );
+
+        testWidgets(
+          'A4: hotkeys are inert while the error view is shown',
+          (tester) async {
+            final payloads = <List<String>?>[];
+            var startCalls = 0;
+            await pumpRunner(
+              tester,
+              onStart: (s) async {
+                startCalls++;
+                if (startCalls > 1) throw const ApiException(400, 'boom');
+                return pkg(s, 1);
+              },
+              onFinish: (flagged) async {
+                payloads.add(flagged);
+                if (payloads.length == 1) {
+                  throw const ApiException(400, 'rad etildi');
+                }
+                return {'finished': true};
+              },
+              subjects: const ['math'],
+            );
+            final l10n = l10nOf(tester);
+            await tester.tap(find.text('Variant A'));
+            await tester.pump();
+            await tester.tap(find.text(l10n.finishTestButton));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 100));
+            await tester.pump();
+            expect(find.text(l10n.serverErrorRetry), findsOneWidget);
+
+            await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+            await tester.pump();
+            await tester.tap(find.text(l10n.retry));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 100));
+            expect(payloads.last, isEmpty,
+                reason: 'F pressed on the error view must not flag');
+            await tester.pump(const Duration(seconds: 10));
+            await unmount(tester);
+          },
+        );
+
+        testWidgets(
+          'A3: a subject starting while paused does not run the stopwatch '
+          'until resume',
+          (tester) async {
+            final gate = Completer<Map<String, dynamic>>();
+            await pumpRunner(
+              tester,
+              onStart: (s) => gate.future,
+              subjects: const ['math'],
+            );
+            HeartbeatService.instance.onLockChanged!(true);
+            await tester.pump();
+            gate.complete(pkg('math', 1, remaining: 600));
+            await tester.pump();
+            await tester.pump();
+            final state = tester.state(find.byType(DiagnosticTestRunnerScreen))
+                as dynamic;
+            expect(state.debugStopwatchRunning, isFalse);
+            HeartbeatService.instance.onLockChanged!(false);
+            await tester.pump();
+            expect(state.debugStopwatchRunning, isTrue);
+            await unmount(tester);
+          },
+        );
+
+        testWidgets(
+          'A9: the elapsed-seconds ping counter does not advance while paused',
+          (tester) async {
+            final elapsed = <int>[];
+            await pumpRunner(
+              tester,
+              onStart: (s) async => pkg(s, 1, remaining: 600),
+              onPing: ({required attemptId, required elapsedSeconds}) async {
+                elapsed.add(elapsedSeconds);
+                return {'ok': true};
+              },
+              subjects: const ['math'],
+            );
+            HeartbeatService.instance.onLockChanged!(true);
+            await tester.pump();
+            await tester.pump(const Duration(seconds: 65));
+            expect(elapsed, isEmpty, reason: 'no ping while paused');
+            HeartbeatService.instance.onLockChanged!(false);
+            await tester.pump();
+            await tester.pump(const Duration(seconds: 30));
+            expect(elapsed, [30]);
+            await unmount(tester);
+          },
+        );
+
       });
     });
   });

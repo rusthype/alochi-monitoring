@@ -688,17 +688,19 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   void _restoreCountdown(int remainingSeconds) {
     _timer?.cancel();
     _expiryHandled = false;
-    _stopwatch
-      ..reset()
-      ..start();
+    _stopwatch.reset();
+    // Admin lock active: stay frozen; _resumeFromLock starts it.
+    if (!_paused) _stopwatch.start();
     _totalDurationSeconds = remainingSeconds;
     setState(
       () => _remainingSeconds = remainingSeconds > 0 ? remainingSeconds : 0,
     );
-    _timer = Timer.periodic(
-      const Duration(seconds: 1),
-      _syncRemainingFromStopwatch,
-    );
+    if (!_paused) {
+      _timer = Timer.periodic(
+        const Duration(seconds: 1),
+        _syncRemainingFromStopwatch,
+      );
+    }
     _armElapsedPingTimer();
   }
 
@@ -721,14 +723,16 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       return;
     }
     _expiryHandled = false;
-    _stopwatch
-      ..reset()
-      ..start();
+    _stopwatch.reset();
+    // Admin lock active: stay frozen; _resumeFromLock starts it.
+    if (!_paused) _stopwatch.start();
     _totalDurationSeconds = seconds;
     setState(() => _remainingSeconds = seconds);
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _syncRemainingFromStopwatch(timer);
-    });
+    if (!_paused) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        _syncRemainingFromStopwatch(timer);
+      });
+    }
     _armElapsedPingTimer();
   }
 
@@ -740,6 +744,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     _pingTimer?.cancel();
     _elapsedOnSubject = 0;
     _pingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_paused) return;
       _elapsedOnSubject++;
       if (_elapsedOnSubject % 30 == 0) {
         unawaited(_pingElapsed());
@@ -767,6 +772,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   }
 
   bool _pingInFlight = false;
+
+  @visibleForTesting
+  bool get debugStopwatchRunning => _stopwatch.isRunning;
 
   /// Recomputes `_remainingSeconds` from [_stopwatch]'s elapsed time (see
   /// its doc comment) instead of trusting the tick count or the wall clock —
@@ -1604,6 +1612,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   void _selectOptionByKeyboard(String key) {
     final q = _question;
     if (q == null || !_isFixedVariantAttempt || _submitting) return;
+    if (_paused || _error != null) return;
     // No picks while a subject is loading / mid-transition: the visible
     // question set is not (yet) the one `_currentSubject` refers to.
     if (_loading || _transition != null) return;
@@ -1619,7 +1628,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
 
   void _toggleFlagByKeyboard() {
     final q = _question;
-    if (q == null) return;
+    if (q == null || _paused || _error != null) return;
     _toggleFlag(_questionId(q));
   }
 
@@ -1628,12 +1637,14 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
   /// out-of-range index.
   void _goToPreviousByKeyboard() {
     if (!_isFixedVariantAttempt || _submitting) return;
+    if (_paused || _error != null) return;
     if (_position <= 1) return;
     _jumpTo(_position - 2);
   }
 
   void _goToNextByKeyboard() {
     if (!_isFixedVariantAttempt || _submitting) return;
+    if (_paused || _error != null) return;
     _jumpTo(_position);
   }
 
