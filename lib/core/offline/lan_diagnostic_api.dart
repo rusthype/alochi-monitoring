@@ -28,9 +28,10 @@ class LanDiagnosticKioskApi extends OfflineDiagnosticKioskApi {
 
   @override
   Future<(List<Map<String, dynamic>>, bool)> listStudents(
-      String schoolId, String classLabel) async {
+      String schoolId, String classLabel,
+      {String language = ''}) async {
     await _lan.loadDiagnosticSnapshot();
-    return super.listStudents(schoolId, classLabel);
+    return super.listStudents(schoolId, classLabel, language: language);
   }
 
   @override

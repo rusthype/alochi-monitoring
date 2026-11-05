@@ -89,7 +89,8 @@ class _RecordingOnlineDiag extends DiagnosticKioskApi {
       _hit('listClasses');
   @override
   Future<(List<Map<String, dynamic>>, bool)> listStudents(
-          String s, String c) async =>
+          String s, String c,
+          {String language = ''}) async =>
       _hit('listStudents');
   @override
   Future<Map<String, dynamic>> availableSubjects(int grade,

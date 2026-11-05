@@ -363,10 +363,12 @@ class _DiagnosticStudentSelectScreenState
       _error = null;
     });
     try {
-      final listStudents =
-          widget.listStudentsOverride ?? diagnosticKioskApi.listStudents;
-      final (students, fromCache) =
-          await listStudents(widget.schoolId, widget.classLabel);
+      final override = widget.listStudentsOverride;
+      final (students, fromCache) = override != null
+          ? await override(widget.schoolId, widget.classLabel)
+          : await diagnosticKioskApi.listStudents(
+              widget.schoolId, widget.classLabel,
+              language: widget.language);
       if (!mounted) return;
       setState(() {
         _students = students;

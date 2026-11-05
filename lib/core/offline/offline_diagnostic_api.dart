@@ -232,7 +232,8 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
 
   @override
   Future<(List<Map<String, dynamic>>, bool)> listStudents(
-      String schoolId, String classLabel) async {
+      String schoolId, String classLabel,
+      {String language = ''}) async {
     final packLangs = _packLangs;
     final groups = session.groups;
     final groupById = <String, Map<String, dynamic>>{};

@@ -74,4 +74,54 @@ void main() {
     expect(fromCache, isFalse);
     expect(rows.single['school_id'], '9');
   });
+
+  group('listStudents language filter', () {
+    Future<(List<Map<String, dynamic>>, bool)> students(
+            http.Response Function(http.Request) respond,
+            {String language = ''}) =>
+        http.runWithClient(
+            () => api.listStudents('s1', '5-A', language: language),
+            () => MockClient((req) async => respond(req)));
+
+    test('sends &language= when set, nothing when empty', () async {
+      final urls = <Uri>[];
+      http.Response ok(http.Request r) {
+        urls.add(r.url);
+        return http.Response('[]', 200);
+      }
+
+      await students(ok, language: 'ru');
+      await students(ok);
+      expect(urls[0].queryParameters, {'class_label': '5-A', 'language': 'ru'});
+      expect(urls[1].queryParameters, {'class_label': '5-A'});
+    });
+
+    test('cache key carries the language; the old key is a fallback',
+        () async {
+      await students((_) => http.Response(
+          jsonEncode([
+            {'attempt_id': 'x'}
+          ]),
+          200),
+          language: 'ru');
+      // save is fire-and-forget
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(await DiagnosticKioskCache.load('students_s1_5-A_ru'), isNotNull);
+      expect(await DiagnosticKioskCache.load('students_s1_5-A'), isNull);
+
+      // Only a pre-upgrade cache exists for 'uz': used when offline.
+      await DiagnosticKioskCache.save('students_s1_5-A', [
+        {'attempt_id': 'old'}
+      ]);
+      final (rows, fromCache) =
+          await students((_) => http.Response('{}', 503), language: 'uz');
+      expect(fromCache, isTrue);
+      expect(rows.single['attempt_id'], 'old');
+
+      // The language-specific copy wins over the legacy one.
+      final (ru, _) =
+          await students((_) => http.Response('{}', 503), language: 'ru');
+      expect(ru.single['attempt_id'], 'x');
+    });
+  });
 }

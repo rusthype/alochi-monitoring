@@ -205,8 +205,9 @@ class DiagnosticKioskApi {
   /// existing error UI still applies.
   Future<(List<Map<String, dynamic>>, bool)> _listWithCacheFallback(
     String cacheKey,
-    Future<List<Map<String, dynamic>>> Function() fetch,
-  ) async {
+    Future<List<Map<String, dynamic>>> Function() fetch, {
+    String? legacyCacheKey,
+  }) async {
     try {
       final rows = await fetch();
       unawaited(DiagnosticKioskCache.save(cacheKey, rows));
@@ -215,7 +216,10 @@ class DiagnosticKioskApi {
       final transient =
           e.statusCode == 0 || e.statusCode == 429 || e.statusCode >= 500;
       if (!transient) rethrow;
-      final cached = await DiagnosticKioskCache.load(cacheKey);
+      var cached = await DiagnosticKioskCache.load(cacheKey);
+      if (cached == null && legacyCacheKey != null) {
+        cached = await DiagnosticKioskCache.load(legacyCacheKey);
+      }
       if (cached is List) {
         return (cached.cast<Map<String, dynamic>>(), true);
       }
@@ -246,16 +250,24 @@ class DiagnosticKioskApi {
   }
 
   /// `(rows, fromCache)` — `rows`: `[{attempt_id, student_name, class_label,
-  /// language}]` — never `parent_phone`.
+  /// language}]` — never `parent_phone`. A non-empty [language] is sent so the
+  /// server filters the roster to that language (an old backend ignores it);
+  /// the cache is keyed by it, with the pre-language key as a read fallback.
   Future<(List<Map<String, dynamic>>, bool)> listStudents(
-      String schoolId, String classLabel) {
-    return _listWithCacheFallback('students_${schoolId}_$classLabel', () async {
+      String schoolId, String classLabel,
+      {String language = ''}) {
+    final legacyKey = 'students_${schoolId}_$classLabel';
+    return _listWithCacheFallback(
+        language.isEmpty ? legacyKey : '${legacyKey}_$language', () async {
       final query = Uri.encodeQueryComponent(classLabel);
-      final data =
-          await _get('/kiosk/schools/$schoolId/students/?class_label=$query');
+      final lang = language.isEmpty
+          ? ''
+          : '&language=${Uri.encodeQueryComponent(language)}';
+      final data = await _get(
+          '/kiosk/schools/$schoolId/students/?class_label=$query$lang');
       if (data is! List || data.isEmpty) return [];
       return data.cast<Map<String, dynamic>>();
-    });
+    }, legacyCacheKey: language.isEmpty ? null : legacyKey);
   }
 
   /// Proctor adds a child missing from the class roster
