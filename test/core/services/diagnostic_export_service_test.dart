@@ -541,5 +541,22 @@ void main() {
       // Atomic write: no .tmp leftover.
       expect(dir.listSync().where((e) => e.path.endsWith('.tmp')), isEmpty);
     });
+
+    test('puts the sanitised school label into the file name', () async {
+      final dir = await Directory.systemTemp.createTemp('diag_zip_');
+      addTearDown(() => dir.delete(recursive: true));
+      final now = DateTime(2026, 11, 5, 9, 30, 15);
+      final a = await DiagnosticExportService.saveZipUnique(
+          dir, Uint8List.fromList([1]), now,
+          label: '56');
+      final b = await DiagnosticExportService.saveZipUnique(
+          dir, Uint8List.fromList([1]), now,
+          label: 'Bir / Ikki: ../maktab');
+      expect(a.split('/').last, 'alochi_diagnostika_56_2026-11-05_093015.zip');
+      final bName = b.split('/').last;
+      expect(bName, startsWith('alochi_diagnostika_Bir_Ikki_'));
+      expect(bName, isNot(contains('..')));
+      expect(bName, endsWith('_2026-11-05_093015.zip'));
+    });
   });
 }

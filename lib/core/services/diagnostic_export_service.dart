@@ -371,6 +371,7 @@ $_headStyle
     List<Map<String, dynamic>> records, {
     required AppLocalizations l10n,
     void Function(int done)? onProgress,
+    String? schoolLabel,
   }) async {
     final hasPending = records.any((r) => r['status'] == 'pending');
     final queued = hasPending
@@ -396,22 +397,28 @@ $_headStyle
           }
         }
         dir ??= await getDownloadsDirectory();
-        if (dir != null) path = await saveZipUnique(dir, zipBytes, now);
+        if (dir != null) {
+          path = await saveZipUnique(dir, zipBytes, now, label: schoolLabel);
+        }
       } catch (_) {}
     }
     path ??= await saveZipUnique(
-        await getApplicationSupportDirectory(), zipBytes, now);
+        await getApplicationSupportDirectory(), zipBytes, now,
+        label: schoolLabel);
     return path;
   }
 
-  /// Writes [bytes] into [dir] as `alochi_diagnostika_<date>_<HHmmss>.zip`
+  /// Writes [bytes] into [dir] as `alochi_diagnostika_[<label>_]<date>_<HHmmss>.zip`
   /// (temp file + verify + rename, see [writeFileVerified]) and never
   /// overwrites: a taken name gets `-2`, `-3` ... Returns the saved path.
   @visibleForTesting
   static Future<String> saveZipUnique(
-      Directory dir, Uint8List bytes, DateTime now) async {
+      Directory dir, Uint8List bytes, DateTime now, {String? label}) async {
     String two(int n) => n.toString().padLeft(2, '0');
-    final base = 'alochi_diagnostika_${now.year}-${two(now.month)}-'
+    final tag = _safeName((label ?? '').trim().replaceAll(RegExp(r'\s+'), '_'))
+        .replaceAll(RegExp(r'_+'), '_');
+    final base = 'alochi_diagnostika_${tag.isEmpty ? '' : '${tag}_'}'
+        '${now.year}-${two(now.month)}-'
         '${two(now.day)}_${two(now.hour)}${two(now.minute)}${two(now.second)}';
     var file = File('${dir.path}/$base.zip');
     for (var n = 2; file.existsSync(); n++) {
