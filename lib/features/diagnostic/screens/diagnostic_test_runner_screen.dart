@@ -625,6 +625,8 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       _questions = [];
       _question = null;
       _answers.clear();
+      // Admin reset/retake: the old attempt's flags are as stale as its answers.
+      _flaggedQuestionIds.clear();
       _selectedOption = null;
     });
   }
@@ -1226,6 +1228,9 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       ..stop()
       ..reset();
     _totalDurationSeconds = null;
+    // A restart of the SAME subject (generation mismatch, 'already finished'
+    // but still open, Retry) reloads the same question ids: keep their flags.
+    final subjectChanged = _currentSubject != subject;
     setState(() {
       _loading = true;
       _error = null;
@@ -1237,7 +1242,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       _answers.clear();
       // Flags belong to the subject's own question ids; math flags must not
       // reach English's reminder dialog or `flagged_question_ids` payload.
-      _flaggedQuestionIds.clear();
+      if (subjectChanged) _flaggedQuestionIds.clear();
     });
     try {
       // Always prefer a REAL, confirmed kiosk/start/ response (from

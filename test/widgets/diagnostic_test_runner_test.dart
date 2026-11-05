@@ -3667,6 +3667,46 @@ void main() {
         );
 
         testWidgets(
+          'F2: restarting the SAME subject keeps its flags',
+          (tester) async {
+            var mathStarts = 0;
+            await pumpRunner(
+              tester,
+              onStart: (s) async {
+                if (s == 'math') mathStarts++;
+                return pkg(s, 1);
+              },
+              // Server says the subject is still open: the runner reloads it.
+              onFinish: (_) async => throw const ApiException(
+                  400, 'Bu test allaqachon yakunlangan.'),
+            );
+            final l10n = l10nOf(tester);
+            await tester.tap(find.text('Variant A'));
+            await tester.pump();
+            await tester.sendKeyEvent(LogicalKeyboardKey.keyF);
+            await tester.pump();
+            await tester.tap(find.text(l10n.nextSubjectButton));
+            await tester.pump();
+            await tester.tap(find.descendant(
+                of: find.byType(AlertDialog),
+                matching: find.text(l10n.finishTest)));
+            for (var i = 0; i < 4; i++) {
+              await tester.pump(const Duration(milliseconds: 100));
+            }
+            expect(mathStarts, 2, reason: 'math was restarted');
+
+            await tester.tap(find.text('Variant A'));
+            await tester.pump();
+            await tester.tap(find.text(l10n.nextSubjectButton));
+            await tester.pump();
+            expect(find.text(l10n.flaggedQuestionsReminder(1)), findsOneWidget,
+                reason: 'the flag survived the same-subject restart');
+            await tester.pump(const Duration(seconds: 10));
+            await unmount(tester);
+          },
+        );
+
+        testWidgets(
           'F1: a start that reports the attempt finished never paints the '
           'error card while the finished screen transitions in',
           (tester) async {
