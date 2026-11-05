@@ -387,15 +387,41 @@ void main() {
       expect(exported, isNull);
     });
 
-    testWidgets('a school without a PIN exports without any PIN dialog',
+    testWidgets(
+        'a school without a PIN asks for confirmation (no PIN field); confirm '
+        'exports', (tester) async {
+      final l10n = await pump(tester, [aRow, bRow]);
+      await tapExport(tester, l10n);
+      await tester.tap(find.text('12-maktab'));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.diagnosticExportNoPinConfirm), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(exported, isNull);
+      await tester.tap(find.text(l10n.confirmBtn));
+      await tester.pumpAndSettle();
+      expect(verified, isEmpty);
+      expect(exported!.map((r) => r['attempt_id']), ['b1']);
+    });
+
+    testWidgets('cancelling the no-PIN confirmation exports nothing',
         (tester) async {
       final l10n = await pump(tester, [aRow, bRow]);
       await tapExport(tester, l10n);
       await tester.tap(find.text('12-maktab'));
       await tester.pumpAndSettle();
-      expect(find.byType(TextField), findsNothing);
-      expect(verified, isEmpty);
-      expect(exported!.map((r) => r['attempt_id']), ['b1']);
+      await tester.tap(find.text(l10n.cancel));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.diagnosticExportNoPinConfirm), findsNothing);
+      expect(exported, isNull);
+      expect(find.text(l10n.diagnosticExportSuccess), findsNothing);
+    });
+
+    testWidgets('a PIN school shows the PIN dialog, not the no-PIN confirmation',
+        (tester) async {
+      final l10n = await pump(tester, [aRow]);
+      await tapExport(tester, l10n);
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.text(l10n.diagnosticExportNoPinConfirm), findsNothing);
     });
 
     testWidgets(

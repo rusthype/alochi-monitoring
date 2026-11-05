@@ -21,6 +21,7 @@ import '../../../shared/widgets/pill_chip.dart';
 import '../../../core/db/diagnostic_kiosk_cache.dart';
 import '../data/diagnostic_export_schools.dart';
 import '../data/diagnostic_pin_verifier.dart';
+import '../dialogs/diagnostic_export_no_pin_dialog.dart';
 import '../dialogs/diagnostic_export_pin_dialog.dart';
 import '../dialogs/diagnostic_export_school_dialog.dart';
 
@@ -200,6 +201,9 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
           verify: (pin) => verify(
               schoolId: school.id, pin: pin, legacyPin: school.legacyPin));
       if (confirmed != true || !mounted) return;
+    } else {
+      final ok = await showDiagnosticExportNoPinConfirm(context);
+      if (ok != true || !mounted) return;
     }
 
     final records = school.records;

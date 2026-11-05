@@ -461,6 +461,7 @@
     }
   },
   "diagnosticExportUnresolvedHint": "Bu natijalar qaysi maktabga tegishli ekani aniqlanmadi, shuning uchun ularni yuklab olib bo'lmaydi.",
+  "diagnosticExportNoPinConfirm": "Bu maktab uchun PIN-kod o'rnatilmagan, shuning uchun yuklab olingan fayl himoyalanmaydi. Davom etasizmi?",
   "syncCompleteMsg": "Sinxronizatsiya yakunlandi! {done} ta rasm oflayn saqlandi.",
   "@syncCompleteMsg": {
     "placeholders": {
