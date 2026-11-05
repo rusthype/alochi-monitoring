@@ -41,4 +41,14 @@ class DiagnosticKioskCache {
       return null;
     }
   }
+
+  /// Deletes the cached value for [name]. Best-effort like [save].
+  static Future<void> remove(String name) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_key(name));
+    } catch (e) {
+      debugPrint('DiagnosticKioskCache.remove($name) error: $e');
+    }
+  }
 }
