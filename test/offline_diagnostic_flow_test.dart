@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:alochi_monitoring/core/api/api_client.dart' show ApiException;
 import 'package:alochi_monitoring/core/db/diagnostic_answer_store.dart';
 import 'package:alochi_monitoring/core/db/offline_queue.dart';
 import 'package:alochi_monitoring/core/db/pack_results_db.dart';
@@ -235,5 +236,35 @@ void main() {
     expect(payloads.every((e) => e['student_id'] == _s1), isTrue);
 
     expect(online.calls, isEmpty);
+  });
+
+  test('a timed-out subject with zero answers still closes out (subject given)',
+      () async {
+    final k = diagnosticKioskApi;
+    const attemptId = 'offline|$_s1|$_g1|uz';
+    await k.startAttempt(attemptId: attemptId, subject: 'math');
+
+    final resp = await k.finishAttempt(
+        attemptId: attemptId, answers: const [], subject: 'math');
+    expect(resp['ok'], isTrue);
+    expect(resp['next_subject'], 'english');
+
+    final rows = await PackResultsDb.rowsForPack(_packUuid);
+    final payload = jsonDecode(rows.single.payloadJson) as Map;
+    expect(payload['test_key'], 'diag:math:g5:uz:v1');
+    expect(payload['answers'], isEmpty);
+    expect(online.calls, isEmpty);
+  });
+
+  test('zero answers without a subject keeps the old unknown_question 400',
+      () async {
+    final k = diagnosticKioskApi;
+    const attemptId = 'offline|$_s1|$_g1|uz';
+    await expectLater(
+        k.finishAttempt(attemptId: attemptId, answers: const []),
+        throwsA(isA<ApiException>()
+            .having((e) => e.statusCode, 'status', 400)
+            .having((e) => e.code, 'code', 'unknown_question')));
+    expect(await PackResultsDb.rowsForPack(_packUuid), isEmpty);
   });
 }

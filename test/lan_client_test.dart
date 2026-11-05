@@ -540,6 +540,30 @@ void main() {
       expect(rows.map((r) => r.idempotencyKey).toSet(), hasLength(2));
       expect(rows.first.idempotencyKey.length, lessThanOrEqualTo(64));
     });
+
+    test('a timed-out subject with zero answers still finishes (subject given)',
+        () async {
+      final s = await connect();
+      final d = LanDiagnosticKioskApi(s);
+      final (_, _) = await d.listSchools();
+      const attemptId = 'offline|$lanS1|$lanG1|uz';
+      await d.startAttempt(attemptId: attemptId, subject: 'math');
+      expect(
+          (await d.finishAttempt(
+              attemptId: attemptId,
+              answers: const [],
+              subject: 'math'))['ok'],
+          isTrue);
+      await eventually(() async {
+        await s.flushOutbox();
+        return (await PackResultsDb.rowsForPack(lanPackUuid)).length == 1;
+      });
+      final row = jsonDecode(
+              (await PackResultsDb.rowsForPack(lanPackUuid)).single.payloadJson)
+          as Map<String, dynamic>;
+      expect(row['test_key'], 'diag:math:g5:uz:v1');
+      expect(row['answers'], isEmpty);
+    });
   });
 
   group('diagnostic retake over LAN', () {

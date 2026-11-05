@@ -397,16 +397,12 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
       throw const ApiException(404, 'not found in pack',
           code: kOfflineNotFound);
     }
-    final candidates = _matching(_gradeOf(group), a.lang)
-        .where((d) => d.subject == subject)
-        .toList()
-      ..sort((x, y) => x.variant.compareTo(y.variant));
-    if (candidates.isEmpty) {
+    final pick = _variantOf(_matching(_gradeOf(group), a.lang), subject,
+        a.studentId);
+    if (pick == null) {
       throw const ApiException(404, 'not found in pack',
           code: kOfflineNotFound);
     }
-    // Stable per student so a restart resumes the same variant.
-    final pick = candidates[_stableHash(a.studentId) % candidates.length];
     // LAN mode: the images come from the hub; pull them before the runner
     // paints the first question. (No-op for a local pack.)
     await session.prepareMedia(pick.data);
@@ -521,6 +517,11 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
         break;
       }
     }
+    // Nothing answered (timed-out subject): the runner's `subject` says which
+    // one to close out, with the variant the student was served.
+    if (finished == null && answered.isEmpty && subject.isNotEmpty) {
+      finished = _variantOf(diags, subject, a.studentId);
+    }
     if (finished == null) {
       throw const ApiException(400, 'unknown question',
           code: 'unknown_question');
@@ -586,6 +587,15 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
           {String subject = ''}) async =>
       // Nothing is ever queued for upload in pack mode.
       const {'synced': true};
+
+  /// The variant of [subject] served to [studentId]: stable per student so a
+  /// restart resumes the same one. Null when the pack has no such subject.
+  _Diag? _variantOf(List<_Diag> diags, String subject, String studentId) {
+    final candidates = diags.where((d) => d.subject == subject).toList()
+      ..sort((x, y) => x.variant.compareTo(y.variant));
+    if (candidates.isEmpty) return null;
+    return candidates[_stableHash(studentId) % candidates.length];
+  }
 
   /// `diag:<24 hex>:` — the attempt ordinal is appended by the caller. With the
   /// ordinal (<= 6 digits) the key stays far below the 64-char limit.
