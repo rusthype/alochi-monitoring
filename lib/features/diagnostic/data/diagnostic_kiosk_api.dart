@@ -397,12 +397,15 @@ class DiagnosticKioskApi {
     required List<Map<String, dynamic>> answers,
     List<String>? flaggedQuestionIds,
     int? generation,
+    String subject = '',
   }) async {
     return _post('/kiosk/finish/', {
       'attempt_id': attemptId,
       'answers': answers,
       'flagged_question_ids': flaggedQuestionIds ?? const <String>[],
       if (generation != null) 'generation': generation,
+      // Lets the server reject a stale empty finish for a completed subject.
+      if (subject.isNotEmpty) 'subject': subject,
       ...await deviceFields(),
     });
   }
@@ -435,7 +438,11 @@ class DiagnosticKioskApi {
       // Queued payloads never carry device keys (the runner enqueues its own
       // map; older app versions never added them): fill them in at replay,
       // keeping any value the payload already has.
-      final body = {...await deviceFields(), ...payload};
+      final body = {
+        ...await deviceFields(),
+        if (subject.isNotEmpty) 'subject': subject,
+        ...payload,
+      };
       final resp = await _send(() => http.post(
             Uri.parse('$_base/kiosk/finish/'),
             headers: {

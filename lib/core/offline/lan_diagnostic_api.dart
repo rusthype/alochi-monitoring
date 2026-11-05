@@ -55,12 +55,14 @@ class LanDiagnosticKioskApi extends OfflineDiagnosticKioskApi {
     required List<Map<String, dynamic>> answers,
     List<String>? flaggedQuestionIds,
     int? generation,
+    String subject = '',
   }) async {
     await _lan.loadDiagnosticSnapshot();
     return super.finishAttempt(
         attemptId: attemptId,
         answers: answers,
         flaggedQuestionIds: flaggedQuestionIds,
-        generation: generation);
+        generation: generation,
+        subject: subject);
   }
 }

@@ -881,6 +881,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
       answers: answers,
       flaggedQuestionIds: flaggedQuestionIds,
       generation: _generation,
+      subject: _currentSubject,
     );
   }
 

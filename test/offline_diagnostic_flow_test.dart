@@ -124,7 +124,8 @@ class _RecordingOnlineDiag extends DiagnosticKioskApi {
           {required String attemptId,
           required List<Map<String, dynamic>> answers,
           List<String>? flaggedQuestionIds,
-          int? generation}) async =>
+          int? generation,
+          String subject = ''}) async =>
       _hit('finishAttempt');
   @override
   Future<Map<String, dynamic>> submitFinishOffline(

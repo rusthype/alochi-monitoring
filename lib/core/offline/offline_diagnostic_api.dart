@@ -490,6 +490,7 @@ class OfflineDiagnosticKioskApi extends DiagnosticKioskApi {
     required List<Map<String, dynamic>> answers,
     List<String>? flaggedQuestionIds,
     int? generation,
+    String subject = '',
   }) async {
     final a = _parseAttempt(attemptId);
     final group = a == null ? null : _group(a.groupId);

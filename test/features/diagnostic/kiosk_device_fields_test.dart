@@ -130,4 +130,27 @@ void main() {
     expect(body(0)['device_id'], 'queued-id');
     expect(body(0)['app_version'], '1.0.170+170');
   });
+
+  test('finish carries the subject being finished, omitted when empty',
+      () async {
+    await http.runWithClient(() async {
+      await diagnosticKioskApi
+          .finishAttempt(attemptId: 'a', answers: [], subject: 'english');
+      await diagnosticKioskApi.finishAttempt(attemptId: 'a', answers: []);
+    }, () => client);
+    expect(body(0)['subject'], 'english');
+    expect(body(1).containsKey('subject'), isFalse);
+  });
+
+  test('queued replay sends the subject, omitted when empty', () async {
+    await http.runWithClient(() async {
+      await diagnosticKioskApi.submitFinishOffline(
+          {'attempt_id': 'a', 'answers': []}, 'tok',
+          subject: 'math');
+      await diagnosticKioskApi.submitFinishOffline(
+          {'attempt_id': 'a', 'answers': []}, 'tok');
+    }, () => client);
+    expect(body(0)['subject'], 'math');
+    expect(body(1).containsKey('subject'), isFalse);
+  });
 }
