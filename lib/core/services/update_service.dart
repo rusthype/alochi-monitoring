@@ -287,7 +287,8 @@ String? _normalizeSha256(String? raw) {
   if (v.startsWith('sha256:')) v = v.substring('sha256:'.length).trim();
   if (v.isEmpty) return null;
   if (!_hex64.hasMatch(v)) {
-    throw const UpdateIntegrityException('manifest sha256 is not 64 hex digits');
+    throw const UpdateIntegrityException(
+        'manifest sha256 is not 64 hex digits');
   }
   return v;
 }
@@ -321,7 +322,8 @@ Future<void> downloadVerified(
       }
       return;
     }
-    final actual = (await sha256.bind(File(savePath).openRead()).first).toString();
+    final actual =
+        (await sha256.bind(File(savePath).openRead()).first).toString();
     if (actual != expected) {
       throw UpdateIntegrityException(
           'sha256 mismatch (expected $expected, got $actual)');
@@ -344,7 +346,8 @@ Future<void> _deleteQuietly(String path) async {
 /// -1 is returned. Output is drained so the child can never block on a full
 /// pipe.
 @visibleForTesting
-Future<int> runBounded(Future<Process> Function() start, Duration timeout) async {
+Future<int> runBounded(
+    Future<Process> Function() start, Duration timeout) async {
   final proc = await start();
   unawaited(proc.stdout.drain<void>().catchError((_) {}));
   unawaited(proc.stderr.drain<void>().catchError((_) {}));
@@ -696,21 +699,59 @@ open -a "/Applications/alochi_monitoring.app"
     }
   }
 
+  final Map<String, int> _sizeCache = {};
+  final Map<String, Future<int?>> _sizeInflight = {};
+
+  /// HTTP client factory for the size HEAD; tests inject a fake.
+  @visibleForTesting
+  http.Client Function() sizeClientFactory = http.Client.new;
+
+  /// Clears the memoized sizes (tests only).
+  @visibleForTesting
+  void resetSizeCache() {
+    _sizeCache.clear();
+    _sizeInflight.clear();
+  }
+
+  /// Synchronous size for [info]: the manifest value, else a size already
+  /// fetched by [prefetchInstallerSize] / [fetchInstallerSize]; null if unknown.
+  int? cachedInstallerSize(UpdateInfo info) =>
+      info.sizeBytes ?? _sizeCache[info.downloadUrl];
+
+  /// Fire-and-forget warm-up so the popover's size row is instant. Never
+  /// throws; a no-op when the size is already known.
+  void prefetchInstallerSize(UpdateInfo info) {
+    if (cachedInstallerSize(info) != null) return;
+    unawaited(fetchInstallerSize(info));
+  }
+
   /// Installer size in bytes: the manifest's [UpdateInfo.sizeBytes] when
   /// present, else a best-effort HEAD (Content-Length, redirects followed) on
-  /// the host-pinned download URL. Never throws; null when unknown.
-  Future<int?> fetchInstallerSize(UpdateInfo info) async {
-    if (info.sizeBytes != null) return info.sizeBytes;
-    if (!isAllowedUpdateUrl(info.downloadUrl)) return null;
-    final client = http.Client();
+  /// the host-pinned download URL, memoized per URL (concurrent callers share
+  /// one request; failures are not cached). Never throws; null when unknown.
+  Future<int?> fetchInstallerSize(UpdateInfo info) {
+    final known = cachedInstallerSize(info);
+    if (known != null) return Future.value(known);
+    if (!isAllowedUpdateUrl(info.downloadUrl)) return Future.value(null);
+    // Block body on purpose: an arrow returning remove()'s value (this very
+    // Future) would make whenComplete wait on itself forever.
+    return _sizeInflight[info.downloadUrl] ??=
+        _headSize(info.downloadUrl).whenComplete(() {
+      _sizeInflight.remove(info.downloadUrl);
+    });
+  }
+
+  Future<int?> _headSize(String url) async {
+    final client = sizeClientFactory();
     try {
-      final req = http.Request('HEAD', Uri.parse(info.downloadUrl))
+      final req = http.Request('HEAD', Uri.parse(url))
         ..followRedirects = true
         ..maxRedirects = 5;
       final resp = await client.send(req).timeout(const Duration(seconds: 6));
       await resp.stream.drain<void>();
       final len = resp.contentLength;
-      return resp.statusCode == 200 && len != null && len > 0 ? len : null;
+      if (resp.statusCode != 200 || len == null || len <= 0) return null;
+      return _sizeCache[url] = len;
     } catch (_) {
       return null;
     } finally {

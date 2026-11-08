@@ -255,6 +255,8 @@ jobs:
             # elevated launch). Setup.exe was signed BEFORE 'Calculate SHA256'.
             $setupHash = "${{ steps.hashes.outputs.setup_sha256 }}"
             if ($setupHash) { $manifest['sha256'] = $setupHash.ToLowerInvariant() }
+            # Installer size in bytes (popover shows it instantly, no HEAD request).
+            $manifest['size'] = [int64]$setupExe.Length
             $json = ($manifest | ConvertTo-Json -Compress)
             # Write WITHOUT a BOM — Out-File -Encoding utf8 prepends one on
             # some pwsh versions, which breaks Dart's jsonDecode client-side

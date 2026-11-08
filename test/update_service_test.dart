@@ -5,9 +5,80 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:alochi_monitoring/core/services/update_service.dart';
 
+/// HEAD stand-in: MockClient derives contentLength from the (empty) body, so a
+/// tiny BaseClient reports the length explicitly.
+class FakeHeadClient extends http.BaseClient {
+  final Future<int?> Function(http.BaseRequest) onHead;
+  FakeHeadClient(this.onHead);
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final len = await onHead(request);
+    return http.StreamedResponse(const Stream<List<int>>.empty(), 200,
+        contentLength: len);
+  }
+}
+
 void main() {
+  group('installer size prefetch cache', () {
+    final info = UpdateInfo(
+      latestVersion: '1.0.171',
+      currentVersion: '1.0.170',
+      downloadUrl: 'https://github.com/rusthype/alochi-monitoring/x.exe',
+      releasedAt: DateTime(2026, 11, 8),
+    );
+    final svc = UpdateService.instance;
+    setUp(svc.resetSizeCache);
+    tearDown(() {
+      svc.resetSizeCache();
+      svc.sizeClientFactory = http.Client.new;
+    });
+
+    test('two concurrent requests make a single HEAD, then cached', () async {
+      var heads = 0;
+      svc.sizeClientFactory = () => FakeHeadClient((req) async {
+            expect(req.method, 'HEAD');
+            heads++;
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+            return 1234;
+          });
+      final results = await Future.wait(
+          [svc.fetchInstallerSize(info), svc.fetchInstallerSize(info)]);
+      expect(results, [1234, 1234]);
+      expect(heads, 1);
+      expect(svc.cachedInstallerSize(info), 1234);
+      expect(await svc.fetchInstallerSize(info), 1234);
+      expect(heads, 1);
+    });
+
+    test('prefetch fills the cache and never throws on failure', () async {
+      svc.sizeClientFactory =
+          () => FakeHeadClient((_) async => throw Exception('x'));
+      svc.prefetchInstallerSize(info);
+      await svc.fetchInstallerSize(info);
+      expect(svc.cachedInstallerSize(info), isNull);
+      // Failure is not cached: a later success is picked up.
+      svc.sizeClientFactory = () => FakeHeadClient((_) async => 99);
+      expect(await svc.fetchInstallerSize(info), 99);
+    });
+
+    test('manifest size short-circuits: no HEAD', () async {
+      svc.sizeClientFactory = () => throw StateError('no HTTP expected');
+      final withSize = UpdateInfo(
+        latestVersion: '1.0.171',
+        currentVersion: '1.0.170',
+        downloadUrl: info.downloadUrl,
+        releasedAt: DateTime(2026, 11, 8),
+        sizeBytes: 555,
+      );
+      svc.prefetchInstallerSize(withSize);
+      expect(await svc.fetchInstallerSize(withSize), 555);
+      expect(svc.cachedInstallerSize(withSize), 555);
+    });
+  });
+
   group('isNewerVersion', () {
     test('numeric comparison, not string comparison', () {
       expect(isNewerVersion('1.0.45', '1.0.44'), true);
@@ -48,10 +119,10 @@ void main() {
     test('other hosts, lookalikes, http and garbage are refused', () {
       expect(isAllowedUpdateUrl('http://github.com/x.exe'), isFalse);
       expect(isAllowedUpdateUrl('https://evil.example/x.exe'), isFalse);
-      expect(isAllowedUpdateUrl('https://github.com.evil.example/x.exe'),
-          isFalse);
-      expect(isAllowedUpdateUrl('https://github.com@evil.example/x.exe'),
-          isFalse);
+      expect(
+          isAllowedUpdateUrl('https://github.com.evil.example/x.exe'), isFalse);
+      expect(
+          isAllowedUpdateUrl('https://github.com@evil.example/x.exe'), isFalse);
       expect(isAllowedUpdateUrl('https://api.alochi.org/downloads/x.exe'),
           isFalse);
       expect(isAllowedUpdateUrl('ftp://github.com/x.exe'), isFalse);
@@ -71,8 +142,8 @@ void main() {
       expect(full.releasedAt, DateTime.utc(2026, 11, 8, 10, 30));
       expect(full.sizeBytes, 39946240);
 
-      final bare = parseUpdateManifest(
-          {'version': '1.0.50', 'url': goodUrl}, '1.0.49')!;
+      final bare =
+          parseUpdateManifest({'version': '1.0.50', 'url': goodUrl}, '1.0.49')!;
       expect(bare.releasedAt, isNull);
       expect(bare.sizeBytes, isNull);
 
@@ -145,7 +216,8 @@ void main() {
               {'version': '1.0.50', 'url': 'https://evil.example/x.exe'},
               '1.0.49'),
           isNull);
-      expect(parseUpdateManifest({'version': '1.0.49', 'url': goodUrl}, '1.0.49'),
+      expect(
+          parseUpdateManifest({'version': '1.0.49', 'url': goodUrl}, '1.0.49'),
           isNull);
       expect(parseUpdateManifest({'version': 5, 'url': goodUrl}, '1.0.49'),
           isNull);

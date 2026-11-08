@@ -273,6 +273,9 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
     if (mounted) setState(() => _updateInfo = info);
+    // Warm the installer size in the background so the popover's size row is
+    // instant (no-op when the manifest already carries it).
+    UpdateService.instance.prefetchInstallerSize(info);
   }
 
   Future<void> _loadAppVersion() async {

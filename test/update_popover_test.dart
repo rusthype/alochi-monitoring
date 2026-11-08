@@ -6,7 +6,21 @@ import 'package:alochi_monitoring/shared/widgets/update_popover.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// HEAD stand-in: MockClient derives contentLength from the (empty) body, so a
+/// tiny BaseClient reports the length explicitly.
+class FakeHeadClient extends http.BaseClient {
+  final Future<int?> Function(http.BaseRequest) onHead;
+  FakeHeadClient(this.onHead);
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final len = await onHead(request);
+    return http.StreamedResponse(const Stream<List<int>>.empty(), 200,
+        contentLength: len);
+  }
+}
 
 final _info = UpdateInfo(
   latestVersion: '1.0.171',
@@ -21,6 +35,7 @@ Widget _host({
   UpdateInstallFn? install,
   VoidCallback? onSkipped,
   VoidCallback? onNotes,
+  Future<int?> Function(UpdateInfo)? sizeLoader,
 }) {
   return MaterialApp(
     locale: const Locale('ru'),
@@ -38,7 +53,7 @@ Widget _host({
           ink2: Colors.grey,
           hoverFill: const Color(0xFFFFF1E6),
           install: install,
-          sizeLoader: (_) async => 39946240, // 38.1 MB
+          sizeLoader: sizeLoader ?? (_) async => 39946240, // 38.1 MB
           onSkipped: onSkipped,
           onOpenReleaseNotes: onNotes,
         ),
@@ -68,6 +83,55 @@ void main() {
     expect(find.text('Позже'), findsOneWidget);
     expect(find.text('Установить и перезапустить'), findsOneWidget);
     expect(find.text('Что нового'), findsOneWidget);
+  });
+
+  group('size row is instant', () {
+    final never = Completer<int?>();
+    Future<int?> pending(UpdateInfo _) => never.future;
+
+    testWidgets('manifest size shows on the first frame, no ellipsis',
+        (t) async {
+      final sized = UpdateInfo(
+        latestVersion: '1.0.171',
+        currentVersion: '1.0.170',
+        downloadUrl: _info.downloadUrl,
+        releasedAt: DateTime(2026, 11, 8),
+        sizeBytes: 39946240,
+      );
+      await t.pumpWidget(_host(info: sized, sizeLoader: pending));
+      await t.tap(find.text('Доступна новая версия'));
+      await t.pump(); // exactly one frame
+      expect(find.text('38.1 МБ'), findsOneWidget);
+      expect(find.text('…'), findsNothing);
+    });
+
+    testWidgets('prefetched cache shows on the first frame', (t) async {
+      final svc = UpdateService.instance;
+      svc.resetSizeCache();
+      addTearDown(() {
+        svc.resetSizeCache();
+        svc.sizeClientFactory = http.Client.new;
+      });
+      await t.pumpWidget(_host(sizeLoader: pending)); // pill built first
+      svc.sizeClientFactory = () => FakeHeadClient((_) async => 39946240);
+      await t.runAsync(() => svc.fetchInstallerSize(_info)); // prefetch lands
+      await t.tap(find.text('Доступна новая версия'));
+      await t.pump();
+      expect(find.text('38.1 МБ'), findsOneWidget);
+      expect(find.text('…'), findsNothing);
+    });
+
+    testWidgets('failure leaves the size row hidden', (t) async {
+      final c = Completer<int?>();
+      await t.pumpWidget(_host(sizeLoader: (_) => c.future));
+      await t.tap(find.text('Доступна новая версия'));
+      await t.pump();
+      expect(find.text('…'), findsOneWidget); // lazy fetch in flight
+      c.complete(null);
+      await t.pumpAndSettle();
+      expect(find.text('…'), findsNothing);
+      expect(find.text('Размер'), findsNothing);
+    });
   });
 
   testWidgets('Later, outside tap and Esc close the popover', (t) async {
@@ -114,12 +178,14 @@ void main() {
     final results = <Completer<UpdateResult>>[];
     void Function(double)? progress;
     var browser = 0;
-    await t.pumpWidget(_host(onNotes: () => browser++, install: (info, {onProgress}) {
-      progress = onProgress;
-      final c = Completer<UpdateResult>();
-      results.add(c);
-      return c.future;
-    }));
+    await t.pumpWidget(_host(
+        onNotes: () => browser++,
+        install: (info, {onProgress}) {
+          progress = onProgress;
+          final c = Completer<UpdateResult>();
+          results.add(c);
+          return c.future;
+        }));
     await openPopover(t);
     await t.tap(find.text('Установить и перезапустить'));
     await t.pump();
@@ -133,8 +199,8 @@ void main() {
 
     results.first.complete(const UpdateResult.failed(null));
     await t.pumpAndSettle();
-    expect(find.textContaining('Не удалось загрузить обновление'),
-        findsOneWidget);
+    expect(
+        find.textContaining('Не удалось загрузить обновление'), findsOneWidget);
     expect(find.text('Открыть в браузере'), findsOneWidget);
     await t.tap(find.text('Открыть в браузере'));
     expect(browser, 1);

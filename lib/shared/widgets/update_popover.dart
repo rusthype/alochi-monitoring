@@ -83,7 +83,7 @@ class _UpdatePillState extends State<UpdatePill> {
   @override
   void initState() {
     super.initState();
-    _sizeBytes = widget.info.sizeBytes;
+    _sizeBytes = UpdateService.instance.cachedInstallerSize(widget.info);
   }
 
   Future<void> _loadSize() async {
@@ -108,6 +108,9 @@ class _UpdatePillState extends State<UpdatePill> {
     if (box is RenderBox && box.hasSize) {
       _arrowRight = (box.size.width / 2 - 7).clamp(14.0, 160.0);
     }
+    // The login screen prefetches the size on accept; pick it up so the row
+    // is in the very first frame of the popover.
+    _sizeBytes ??= UpdateService.instance.cachedInstallerSize(widget.info);
     _portal.show();
     _loadSize();
   }
