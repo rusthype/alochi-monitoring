@@ -128,7 +128,7 @@ void main() {
       await openPack(tester, ['diagnostic']);
       await pumpLogin(tester);
       expect(find.byKey(const ValueKey('diagnostic-panel')), findsOneWidget);
-      expect(find.byKey(const ValueKey('login-form')), findsNothing);
+      expect(find.byKey(const ValueKey('login-form')).hitTestable(), findsNothing);
       expect(enabled(tester, _monitoringTab), isFalse);
       expect(enabled(tester, _diagnosticTab), isTrue);
       await tester.pumpWidget(const SizedBox.shrink());

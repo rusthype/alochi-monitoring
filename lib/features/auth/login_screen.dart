@@ -769,17 +769,55 @@ class _LoginScreenState extends State<LoginScreen>
               const SizedBox(height: 16),
               _buildSegmentedControl(palette),
               const SizedBox(height: 18),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 150),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                transitionBuilder: (child, animation) => FadeTransition(
-                  opacity: animation,
-                  child: child,
-                ),
-                child: _selectedTab == 0
-                    ? _buildLoginForm(palette)
-                    : _buildDiagnosticPanel(palette),
+              // The student form is always mounted and is the SIZER: the card
+              // height is its natural height on every tab. The diagnostic
+              // panel is laid over it (Positioned.fill) and never sizes the
+              // card. Sequential fade (out in the 1st half, in during the
+              // 2nd): the two panels never overlap on screen.
+              Stack(
+                children: [
+                  ExcludeFocus(
+                    excluding: _selectedTab != 0,
+                    child: ExcludeSemantics(
+                      excluding: _selectedTab != 0,
+                      child: IgnorePointer(
+                        ignoring: _selectedTab != 0,
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween<double>(
+                            end: _selectedTab == 0 ? 1 : 0,
+                          ),
+                          duration: const Duration(milliseconds: 150),
+                          curve: _selectedTab == 0
+                              ? const Interval(.5, 1, curve: Curves.easeOut)
+                              : const Interval(0, .5, curve: Curves.easeIn),
+                          builder: (context, opacity, child) =>
+                              Opacity(opacity: opacity, child: child),
+                          child: _buildLoginForm(palette),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 150),
+                      switchInCurve:
+                          const Interval(.5, 1, curve: Curves.easeOut),
+                      switchOutCurve:
+                          const Interval(.5, 1, curve: Curves.easeIn),
+                      layoutBuilder: (current, previous) => Stack(
+                        fit: StackFit.expand,
+                        children: [...previous, if (current != null) current],
+                      ),
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      ),
+                      child: _selectedTab == 0
+                          ? const SizedBox.shrink(key: ValueKey('no-overlay'))
+                          : _buildDiagnosticPanel(palette),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 18),
               _buildDivider(palette),
@@ -1309,15 +1347,22 @@ class _LoginScreenState extends State<LoginScreen>
     final l10n = AppLocalizations.of(context)!;
     return Container(
       key: const ValueKey('diagnostic-panel'),
-      constraints: const BoxConstraints(minHeight: 318),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: palette.muted,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: palette.border),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      // Centered in the student form's height; scales down (never overflows)
+      // at large text scales.
+      child: LayoutBuilder(
+        builder: (context, box) => Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: SizedBox(
+              width: box.maxWidth,
+              child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 58,
@@ -1370,6 +1415,10 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ],
       ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1378,7 +1427,6 @@ class _LoginScreenState extends State<LoginScreen>
     final l10n = AppLocalizations.of(context)!;
     return Container(
       key: const ValueKey('proctor-panel'),
-      constraints: const BoxConstraints(minHeight: 318),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: palette.muted,
