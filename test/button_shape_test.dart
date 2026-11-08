@@ -140,7 +140,7 @@ void main() {
       expect(capsule, findsOneWidget);
       final capsuleBox = tester.widget<Container>(capsule);
       expect((capsuleBox.decoration! as BoxDecoration).borderRadius,
-          BorderRadius.circular(kControlRadius));
+          AppRadii.roundedFull);
       expect(capsuleBox.clipBehavior, Clip.antiAlias);
       await mouse.moveTo(tester.getCenter(capsule));
       await tester.pump(const Duration(milliseconds: 100));

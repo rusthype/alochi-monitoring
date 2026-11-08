@@ -142,4 +142,62 @@ void main() {
     ConnectivityService.instance.dispose();
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('language capsule is a 40px stadium with a rounded menu',
+      (tester) async {
+    tester.view.physicalSize = const Size(1440, 1200);
+    tester.view.devicePixelRatio = 1;
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    addTearDown(() {
+      ConnectivityService.instance.dispose();
+      tester.view.reset();
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        child: MaterialApp(
+          theme: AppTheme.theme,
+          locale: const Locale('uz'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const LoginScreen(),
+        ),
+      ),
+    );
+
+    // Capsule: stadium (radius >= height / 2), 40 tall = UpdatePill height.
+    final capsule = find.byKey(const ValueKey('login-language-capsule'));
+    final size = tester.getSize(capsule);
+    expect(size.height, 40);
+    final deco = tester.widget<Container>(capsule).decoration! as BoxDecoration;
+    final r = (deco.borderRadius! as BorderRadius).topLeft.x;
+    expect(r, greaterThanOrEqualTo(size.height / 2));
+    expect(deco.border, isNotNull);
+    expect(deco.boxShadow, isNotEmpty);
+
+    // Open the menu.
+    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final item = find.text('RU').last;
+    final card = tester
+        .widget<ClipRRect>(
+            find.ancestor(of: item, matching: find.byType(ClipRRect)).first)
+        .borderRadius as BorderRadius;
+    expect(card.topLeft.x, greaterThanOrEqualTo(20));
+    final row = find.ancestor(of: item, matching: find.byType(InkWell)).first;
+    expect(tester.getSize(row).height, greaterThanOrEqualTo(44));
+
+    // Selecting still switches the locale.
+    await tester.tap(item);
+    await tester.pump(const Duration(milliseconds: 400));
+    final container = ProviderScope.containerOf(
+        tester.element(find.byType(LoginScreen)));
+    expect(container.read(localeProvider).languageCode, 'ru');
+
+    ConnectivityService.instance.dispose();
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }

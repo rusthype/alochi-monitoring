@@ -125,8 +125,9 @@ jobs:
           URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/latest/alochi-monitoring.dmg"
           # DMG digest: update_service.dart verifies it before installing.
           SHA256=$(shasum -a 256 alochi-monitoring.dmg | awk '{print $1}')
+          SIZE=$(stat -f%z alochi-monitoring.dmg)
           cat > latest-macos.json << JSON
-          {"version": "$VERSION", "pub_date": "$PUB_DATE", "url": "$URL", "sha256": "$SHA256"}
+          {"version": "$VERSION", "pub_date": "$PUB_DATE", "url": "$URL", "sha256": "$SHA256", "size": $SIZE}
           JSON
           echo "latest-macos.json:"
           cat latest-macos.json

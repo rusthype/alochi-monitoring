@@ -27,7 +27,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../shared/widgets/language_switcher.dart';
 import '../../shared/widgets/pending_results_chip.dart';
-import '../../shared/widgets/update_progress_dialog.dart';
+import '../../shared/widgets/update_popover.dart';
 import '../session/session_providers.dart';
 
 Future<bool> checkOnlineWithRetry(
@@ -222,13 +222,10 @@ class _LoginScreenState extends State<LoginScreen>
   List<CatalogEntry> _catalogEntries = [];
 
   // ── Yangilanish badge holati ────────────────────────────────────────────────
-  // Progress endi UpdateProgressDialog o'z ichida boshqaradi (Task 4) — bu
-  // yerda faqat _updateInfo != null ekanligi badge'ni ko'rsatish uchun kifoya.
+  // Popover va yuklab olish progressini UpdatePill o'zi boshqaradi — bu yerda
+  // faqat _updateInfo != null ekanligi (va versiya "Skip" qilinmaganligi)
+  // badge'ni ko'rsatish uchun kifoya.
   UpdateInfo? _updateInfo;
-  // Fast double-tap guard: dialog opening is async, so without this a
-  // second tap before the first frame commits could stack two dialogs both
-  // downloading to the same save path concurrently.
-  bool _updateDialogOpen = false;
 
   // ── Ilova versiyasi (login ekranida pastki chapda ko'rsatish uchun) ────────
   String _appVersion = '';
@@ -260,16 +257,26 @@ class _LoginScreenState extends State<LoginScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) => _resetStudentIdentity());
     _loadCatalog();
     UpdateService.instance.fetchUpdateInfo().then((info) {
-      if (mounted && info != null) setState(() => _updateInfo = info);
+      if (info != null) _acceptUpdate(info);
     });
     // The login screen is where a machine sits idle between test sessions,
     // often for hours — re-check periodically so a machine whose startup
     // check failed (slow/unreliable lab wifi) still learns about an update
     // without needing a full app relaunch.
-    UpdateService.instance.startPeriodicRecheck((info) {
-      if (mounted) setState(() => _updateInfo = info);
-    });
+    UpdateService.instance.startPeriodicRecheck(_acceptUpdate);
     _loadAppVersion();
+  }
+
+  /// Shows the update pill unless the user skipped exactly this version in
+  /// this app run (a restart shows it again).
+  Future<void> _acceptUpdate(UpdateInfo info) async {
+    if (UpdateService.instance.isVersionSkipped(info.latestVersion)) {
+      return;
+    }
+    if (mounted) setState(() => _updateInfo = info);
+    // Warm the installer size in the background so the popover's size row is
+    // instant (no-op when the manifest already carries it).
+    UpdateService.instance.prefetchInstallerSize(info);
   }
 
   Future<void> _loadAppVersion() async {
@@ -600,15 +607,18 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // 48 = DropdownButton's own height, so its hover/focus InkWell fills the
-  // capsule exactly. The inner transparent Material keeps the ink above the
-  // capsule fill; clipBehavior trims it to the capsule's rounded border.
+  // Stadium, 40 tall = UpdatePill's height so both align in the row. The
+  // DropdownButton's 48 min height is clamped to 40 by this tight height, so
+  // its hover/focus InkWell still fills the capsule. The inner transparent
+  // Material keeps the ink above the capsule fill; clipBehavior trims it to
+  // the pill's semicircular ends.
   Widget _languageCapsule(_LoginPalette palette) => Container(
-        height: kMinInteractiveDimension,
+        key: const ValueKey('login-language-capsule'),
+        height: 40,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: palette.surface,
-          borderRadius: BorderRadius.circular(kControlRadius),
+          borderRadius: AppRadii.roundedFull,
           border: Border.all(color: palette.border),
           boxShadow: _floatingControlShadow,
         ),
@@ -619,7 +629,7 @@ class _LoginScreenState extends State<LoginScreen>
               foregroundColor: palette.ink1,
               iconColor: palette.ink2,
               dropdownColor: palette.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 6),
+              padding: const EdgeInsets.only(left: 4, right: 12),
             ),
           ),
         ),
@@ -688,51 +698,21 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _updateBadge(_LoginPalette palette, {bool compact = false}) {
-    if (_updateInfo == null) return const SizedBox.shrink();
-    final l10n = AppLocalizations.of(context)!;
-    return Semantics(
-      button: true,
-      label: l10n.newVersionAvailable,
-      child: HoverRegion(
-        builder: (context, isHovered) => GestureDetector(
-          onTap: () async {
-            if (_updateDialogOpen) return;
-            _updateDialogOpen = true;
-            await showUpdateProgressDialog(context, _updateInfo!);
-            if (mounted) _updateDialogOpen = false;
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: isHovered ? palette.brandMuted : palette.surface,
-              borderRadius: BorderRadius.circular(kControlRadius),
-              border: Border.all(color: palette.border),
-              boxShadow: _floatingControlShadow,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.system_update_alt_rounded,
-                  size: 16,
-                  color: AppColors.brand,
-                ),
-                if (!compact) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    l10n.newVersionAvailable,
-                    style: AppTextStyles.labelMedium.copyWith(
-                      color: palette.ink1,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
+    final info = _updateInfo;
+    if (info == null) return const SizedBox.shrink();
+    return UpdatePill(
+      key: ValueKey('update-pill-${info.latestVersion}'),
+      info: info,
+      compact: compact,
+      surface: palette.surface,
+      border: palette.border,
+      ink1: palette.ink1,
+      ink2: palette.ink2,
+      hoverFill: palette.brandMuted,
+      shadow: _floatingControlShadow,
+      onSkipped: () {
+        if (mounted) setState(() => _updateInfo = null);
+      },
     );
   }
 

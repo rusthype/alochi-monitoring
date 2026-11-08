@@ -611,6 +611,26 @@
   "updateNowBtn": "Обновить сейчас",
   "openInBrowserBtn": "Открыть в браузере",
   "updateConfirmBody": "Обновить приложение сейчас?",
+  "updateAvailableTitle": "Доступно обновление",
+  "updateVersionLabel": "Версия",
+  "updateSizeLabel": "Размер",
+  "updateReleasedLabel": "Выпущена",
+  "updateSkipBtn": "Пропустить",
+  "updateLaterBtn": "Позже",
+  "updateInstallRelaunchBtn": "Установить",
+  "updateReleaseNotes": "Что нового",
+  "updateDownloadingPill": "Скачивание: {percent}%",
+  "@updateDownloadingPill": {
+    "placeholders": {
+      "percent": {"type": "int"}
+    }
+  },
+  "updateSizeMb": "{size} МБ",
+  "@updateSizeMb": {
+    "placeholders": {
+      "size": {"type": "String"}
+    }
+  },
   "okBtn": "Хорошо",
   "yesOption": "ДА",
   "noOption": "НЕТ",
