@@ -16,6 +16,7 @@ final _info = UpdateInfo(
 );
 
 Widget _host({
+  bool compact = false,
   UpdateInfo? info,
   UpdateInstallFn? install,
   VoidCallback? onSkipped,
@@ -30,6 +31,7 @@ Widget _host({
         alignment: Alignment.topRight,
         child: UpdatePill(
           info: info ?? _info,
+          compact: compact,
           surface: Colors.white,
           border: const Color(0xFFE5E7EB),
           ink1: Colors.black,
@@ -144,5 +146,54 @@ void main() {
     await t.pump();
     expect(results, hasLength(2));
     expect(find.text('Скачивание: 0%'), findsOneWidget);
+  });
+
+  BoxDecoration pillDecoration(WidgetTester t) => t
+      .widget<AnimatedContainer>(find.descendant(
+          of: find.byType(UpdatePill),
+          matching: find.byType(AnimatedContainer)))
+      .decoration! as BoxDecoration;
+
+  testWidgets('update pill is a full stadium (radius >= height / 2)',
+      (t) async {
+    await t.pumpWidget(_host());
+    final r = (pillDecoration(t).borderRadius! as BorderRadius).topLeft.x;
+    final h = t.getSize(find.byType(AnimatedContainer)).height;
+    expect(r, greaterThanOrEqualTo(h / 2));
+  });
+
+  testWidgets('compact update pill is a circle', (t) async {
+    await t.pumpWidget(_host(compact: true));
+    final size = t.getSize(find.byType(AnimatedContainer));
+    expect(size.width, size.height);
+    final r = (pillDecoration(t).borderRadius! as BorderRadius).topLeft.x;
+    expect(r, greaterThanOrEqualTo(size.height / 2));
+  });
+
+  testWidgets('download capsule keeps a constant size 0..100%', (t) async {
+    void Function(double)? progress;
+    await t.pumpWidget(_host(install: (info, {onProgress}) {
+      progress = onProgress;
+      return Completer<UpdateResult>().future;
+    }));
+    final updateHeight = t.getSize(find.byType(AnimatedContainer)).height;
+    await openPopover(t);
+    await t.tap(find.text('Установить и перезапустить'));
+    await t.pump();
+
+    final capsule = find.descendant(
+        of: find.byType(UpdatePill), matching: find.byType(Container));
+    final ring = find.byType(CircularProgressIndicator);
+    Size size() => t.getSize(capsule.first);
+    final w0 = size();
+    final ring0 = t.getTopLeft(ring);
+    expect(w0.height, updateHeight);
+    for (final p in [0.09, 0.10, 0.99, 1.0]) {
+      progress!(p);
+      await t.pump();
+      expect(size(), w0, reason: 'size changed at $p');
+      expect(t.getTopLeft(ring), ring0, reason: 'ring moved at $p');
+    }
+    expect(find.text('Скачивание: 100%'), findsOneWidget);
   });
 }

@@ -12,7 +12,6 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radii.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../l10n/app_localizations.dart';
-import 'button_shape.dart';
 import 'hover_region.dart';
 
 typedef UpdateInstallFn = Future<UpdateResult> Function(
@@ -65,6 +64,10 @@ class UpdatePill extends StatefulWidget {
 
 class _UpdatePillState extends State<UpdatePill> {
   static const double _popoverWidth = 380;
+
+  /// Shared height of the update pill and the download capsule, so swapping
+  /// one for the other never changes the row height.
+  static const double _pillHeight = 40;
 
   final _portal = OverlayPortalController();
   final _link = LayerLink();
@@ -179,10 +182,17 @@ class _UpdatePillState extends State<UpdatePill> {
           onTap: _open,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            height: _pillHeight,
+            // Compact = icon-only circle (width == height); otherwise padded.
+            width: widget.compact ? _pillHeight : null,
+            alignment: Alignment.center,
+            padding: widget.compact
+                ? EdgeInsets.zero
+                : const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
               color: isHovered ? widget.hoverFill : widget.surface,
-              borderRadius: BorderRadius.circular(kControlRadius),
+              // Full stadium: fully semicircular ends (radius >= height / 2).
+              borderRadius: AppRadii.roundedFull,
               border: Border.all(color: widget.border),
               boxShadow: widget.shadow,
             ),
@@ -215,12 +225,18 @@ class _UpdatePillState extends State<UpdatePill> {
   Widget _buildDownloadPill(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final percent = (_progress.clamp(0.0, 1.0) * 100).toInt();
+    final style = AppTextStyles.labelLarge.copyWith(
+      fontSize: 15,
+      fontWeight: FontWeight.w700,
+      color: widget.ink1,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
     return Semantics(
       liveRegion: true,
       label: l10n.updateDownloadingPill(percent),
       child: Container(
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 18),
+        height: _pillHeight,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: widget.surface,
           borderRadius: AppRadii.roundedFull,
@@ -247,18 +263,37 @@ class _UpdatePillState extends State<UpdatePill> {
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              l10n.updateDownloadingPill(percent),
-              style: AppTextStyles.labelLarge.copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: widget.ink1,
+            // Constant width for the whole download: reserve the widest text
+            // ("... 100%") and use tabular digits, so neither the ring nor
+            // the text (nor the neighbouring language capsule) ever moves.
+            SizedBox(
+              width: _textWidth(context, l10n.updateDownloadingPill(100), style),
+              child: Text(
+                l10n.updateDownloadingPill(percent),
+                maxLines: 1,
+                softWrap: false,
+                style: style,
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  static double _textWidth(BuildContext context, String text, TextStyle style) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: DefaultTextStyle.of(context).style.merge(style),
+      ),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final w = tp.width.ceilToDouble() + 1; // +1: sub-pixel rounding slack
+    tp.dispose();
+    return w;
   }
 
   Widget _buildPopover(BuildContext overlayContext) {
