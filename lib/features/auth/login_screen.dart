@@ -50,6 +50,12 @@ Future<bool> checkOnlineWithRetry(
   return false;
 }
 
+/// Every tab panel (student form, diagnostic) is at least this tall, so the
+/// unified card keeps one size when tabs switch. ponytail: a fixed floor, not
+/// a measured max - holds while the student form (~290px at 100% text) and the
+/// diagnostic content stay under it; raise it if either grows.
+const double _kTabPanelMinHeight = 318;
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -789,10 +795,13 @@ class _LoginScreenState extends State<LoginScreen>
               const SizedBox(height: 16),
               _buildSegmentedControl(palette),
               const SizedBox(height: 18),
+              // Sequential fade (out in the 1st half, in during the 2nd): the
+              // two panels never overlap on screen, and both are at least
+              // [_kTabPanelMinHeight] tall so the card never resizes.
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 150),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
+                switchInCurve: const Interval(.5, 1, curve: Curves.easeOut),
+                switchOutCurve: const Interval(.5, 1, curve: Curves.easeIn),
                 transitionBuilder: (child, animation) => FadeTransition(
                   opacity: animation,
                   child: child,
@@ -1152,6 +1161,7 @@ class _LoginScreenState extends State<LoginScreen>
           child: Container(
             padding: EdgeInsets.zero,
             color: Colors.transparent,
+            constraints: const BoxConstraints(minHeight: _kTabPanelMinHeight),
             child: Form(
               key: _formKey,
               child: Column(
@@ -1329,7 +1339,7 @@ class _LoginScreenState extends State<LoginScreen>
     final l10n = AppLocalizations.of(context)!;
     return Container(
       key: const ValueKey('diagnostic-panel'),
-      constraints: const BoxConstraints(minHeight: 318),
+      constraints: const BoxConstraints(minHeight: _kTabPanelMinHeight),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: palette.muted,
@@ -1398,7 +1408,7 @@ class _LoginScreenState extends State<LoginScreen>
     final l10n = AppLocalizations.of(context)!;
     return Container(
       key: const ValueKey('proctor-panel'),
-      constraints: const BoxConstraints(minHeight: 318),
+      constraints: const BoxConstraints(minHeight: _kTabPanelMinHeight),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: palette.muted,
