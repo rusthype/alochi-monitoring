@@ -607,15 +607,18 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // 48 = DropdownButton's own height, so its hover/focus InkWell fills the
-  // capsule exactly. The inner transparent Material keeps the ink above the
-  // capsule fill; clipBehavior trims it to the capsule's rounded border.
+  // Stadium, 40 tall = UpdatePill's height so both align in the row. The
+  // DropdownButton's 48 min height is clamped to 40 by this tight height, so
+  // its hover/focus InkWell still fills the capsule. The inner transparent
+  // Material keeps the ink above the capsule fill; clipBehavior trims it to
+  // the pill's semicircular ends.
   Widget _languageCapsule(_LoginPalette palette) => Container(
-        height: kMinInteractiveDimension,
+        key: const ValueKey('login-language-capsule'),
+        height: 40,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: palette.surface,
-          borderRadius: BorderRadius.circular(kControlRadius),
+          borderRadius: AppRadii.roundedFull,
           border: Border.all(color: palette.border),
           boxShadow: _floatingControlShadow,
         ),
@@ -626,7 +629,7 @@ class _LoginScreenState extends State<LoginScreen>
               foregroundColor: palette.ink1,
               iconColor: palette.ink2,
               dropdownColor: palette.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 6),
+              padding: const EdgeInsets.only(left: 4, right: 12),
             ),
           ),
         ),
