@@ -119,4 +119,125 @@ void main() {
     expect(find.text(t.stillLocked), findsNothing);
     expect(find.text('Timed test'), findsOneWidget);
   });
+
+  group('download keeps the catalog list in place', () {
+    Future<void> settle(WidgetTester tester) async {
+      for (var i = 0; i < 4; i++) {
+        await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 60)));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    Future<_DlApi> openGroup(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1400, 1000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final dl = _DlApi();
+      api = dl;
+      await tester.pumpWidget(const MaterialApp(
+        locale: Locale('uz'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: GroupSelectScreen(schoolCode: '1', schoolLabel: '1'),
+      ));
+      await settle(tester);
+      await tester.tap(find.text('5-A'));
+      await settle(tester);
+      return dl;
+    }
+
+    double top(WidgetTester tester, String title) =>
+        tester.getTopLeft(find.text(title)).dy;
+
+    testWidgets('success: only the tapped card flips, no spinner, same order',
+        (tester) async {
+      final dl = await openGroup(tester);
+      final t =
+          AppLocalizations.of(tester.element(find.byType(Scaffold).last))!;
+      // newest-first from _selectGroup: A, B, C
+      expect(top(tester, 'Test A') < top(tester, 'Test B'), isTrue);
+      expect(top(tester, 'Test B') < top(tester, 'Test C'), isTrue);
+      expect(find.text(t.download), findsNWidgets(3));
+
+      // The server now lists B as the newest: a full reload would move it up.
+      dl.bNewest = true;
+      final elementA = tester.element(find.text('Test A'));
+      await tester.tap(find.text(t.download).at(1)); // middle card
+      await tester.pump();
+      await settle(tester);
+
+      // Nothing but the per-card state changed.
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(tester.element(find.text('Test A')), same(elementA));
+      expect(find.text(t.download), findsNWidgets(2));
+      expect(find.text(t.ready), findsOneWidget);
+      expect(top(tester, 'Test A') < top(tester, 'Test B'), isTrue);
+      expect(top(tester, 'Test B') < top(tester, 'Test C'), isTrue);
+    });
+
+    testWidgets('refresh fails: list kept, downloaded card still flips',
+        (tester) async {
+      final dl = await openGroup(tester);
+      final t =
+          AppLocalizations.of(tester.element(find.byType(Scaffold).last))!;
+      dl.catalogFails = true;
+      await tester.tap(find.text(t.download).at(1));
+      await tester.pump();
+      await settle(tester);
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Test A'), findsOneWidget);
+      expect(find.text('Test B'), findsOneWidget);
+      expect(find.text('Test C'), findsOneWidget);
+      expect(find.text(t.download), findsNWidgets(2));
+      expect(find.text(t.ready), findsOneWidget);
+      expect(top(tester, 'Test A') < top(tester, 'Test B'), isTrue);
+    });
+  });
+}
+
+/// 3 not-downloaded tests; A is the newest, then B, then C.
+class _DlApi extends MonitoringApi {
+  bool bNewest = false;
+  bool catalogFails = false;
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchGroups(String schoolCode,
+          {String? schoolId}) async =>
+      [
+        {'id': 'g1', 'name': '5-A'}
+      ];
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchTestCatalog(
+      {String? groupId,
+      String? schoolCode,
+      String? schoolId,
+      String? authToken}) async {
+    if (catalogFails) throw Exception('offline');
+    String ts(int day) => DateTime.utc(2026, 10, day).toIso8601String();
+    return [
+      for (final e in [
+        ('A', 3),
+        ('B', bNewest ? 9 : 2),
+        ('C', 1),
+      ])
+        {
+          'test_key': 'mon:${e.$1}',
+          'title': 'Test ${e.$1}',
+          'grade': 5,
+          'version': 1,
+          'updated_at': ts(e.$2),
+        }
+    ];
+  }
+
+  @override
+  Future<Map<String, dynamic>?> fetchTest(String testKey,
+          {String? groupId,
+          String? schoolCode,
+          String? schoolId,
+          String? authToken}) async =>
+      jsonDecode(_cachedTest) as Map<String, dynamic>;
 }
