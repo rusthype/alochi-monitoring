@@ -617,7 +617,7 @@
   "updateReleasedLabel": "Выпущена",
   "updateSkipBtn": "Пропустить",
   "updateLaterBtn": "Позже",
-  "updateInstallRelaunchBtn": "Установить и перезапустить",
+  "updateInstallRelaunchBtn": "Установить",
   "updateReleaseNotes": "Что нового",
   "updateDownloadingPill": "Скачивание: {percent}%",
   "@updateDownloadingPill": {

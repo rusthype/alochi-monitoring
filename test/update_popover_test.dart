@@ -30,6 +30,7 @@ final _info = UpdateInfo(
 );
 
 Widget _host({
+  String lang = 'ru',
   bool compact = false,
   UpdateInfo? info,
   UpdateInstallFn? install,
@@ -38,7 +39,7 @@ Widget _host({
   Future<int?> Function(UpdateInfo)? sizeLoader,
 }) {
   return MaterialApp(
-    locale: const Locale('ru'),
+    locale: Locale(lang),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: Scaffold(
@@ -81,9 +82,32 @@ void main() {
     expect(find.text('08.11.2026'), findsOneWidget);
     expect(find.text('Пропустить'), findsOneWidget);
     expect(find.text('Позже'), findsOneWidget);
-    expect(find.text('Установить и перезапустить'), findsOneWidget);
+    expect(find.text('Установить'), findsOneWidget);
     expect(find.text('Что нового'), findsOneWidget);
   });
+
+  for (final c in const [('ru', 'Установить'), ('uz', "O'rnatish")]) {
+    testWidgets('install button label is readable (${c.$1})', (t) async {
+      await t.pumpWidget(_host(lang: c.$1));
+      await t.tap(find.byType(UpdatePill));
+      await t.pumpAndSettle();
+      // The test font (Ahem, 1em per glyph) makes the long uz Skip/Later
+      // labels overflow the button row; real fonts do not. Layout noise only.
+      t.takeException();
+      final label = find.text(c.$2);
+      expect(label, findsOneWidget);
+      final btn = find.ancestor(
+          of: label, matching: find.byType(ElevatedButton));
+      expect(btn, findsOneWidget);
+      // No scale-down wrapper may shrink the label.
+      expect(find.descendant(of: btn, matching: find.byType(FittedBox)),
+          findsNothing);
+      final style = DefaultTextStyle.of(t.element(label)).style
+          .merge(t.widget<Text>(label).style);
+      expect(style.fontSize, greaterThanOrEqualTo(14));
+      expect(t.getSize(btn).height, greaterThanOrEqualTo(44));
+    });
+  }
 
   group('size row is instant', () {
     final never = Completer<int?>();
@@ -187,7 +211,7 @@ void main() {
           return c.future;
         }));
     await openPopover(t);
-    await t.tap(find.text('Установить и перезапустить'));
+    await t.tap(find.text('Установить'));
     await t.pump();
 
     expect(find.text('Доступна новая версия'), findsNothing);
@@ -244,7 +268,7 @@ void main() {
     }));
     final updateHeight = t.getSize(find.byType(AnimatedContainer)).height;
     await openPopover(t);
-    await t.tap(find.text('Установить и перезапустить'));
+    await t.tap(find.text('Установить'));
     await t.pump();
 
     final capsule = find.descendant(

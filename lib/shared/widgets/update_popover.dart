@@ -419,13 +419,21 @@ class _UpdatePillState extends State<UpdatePill> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.brand,
                     foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 44),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                     shape: const RoundedRectangleBorder(
                       borderRadius: AppRadii.roundedMd,
                     ),
                   ),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(l10n.updateInstallRelaunchBtn),
+                  child: Text(
+                    l10n.updateInstallRelaunchBtn,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),

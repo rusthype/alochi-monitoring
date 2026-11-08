@@ -662,7 +662,7 @@
   "updateReleasedLabel": "Chiqarilgan",
   "updateSkipBtn": "O'tkazib yuborish",
   "updateLaterBtn": "Keyinroq",
-  "updateInstallRelaunchBtn": "O'rnatish va qayta ishga tushirish",
+  "updateInstallRelaunchBtn": "O'rnatish",
   "updateReleaseNotes": "Yangiliklar",
   "updateDownloadingPill": "Yuklanmoqda: {percent}%",
   "@updateDownloadingPill": {
