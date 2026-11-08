@@ -259,6 +259,7 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
   /// to'g'ridan StudentEntryScreen'ga o'tkaziladi).
   Future<void> _downloadEntry(CatalogEntry entry) async {
     final groupId = (_selectedGroup?['id'] ?? '').toString();
+    final token = _selectToken;
     setState(() => _downloadingKeys.add(entry.testKey));
     final ok = await _download(entry, groupId);
     if (!mounted) return;
@@ -267,11 +268,52 @@ class _GroupSelectScreenState extends State<GroupSelectScreen> {
       ToastService.showError(
           context, AppLocalizations.of(context)!.downloadError);
     }
-    // Holatni yangilash uchun shu guruh katalogini qayta yuklaymiz —
-    // muvaffaqiyatli yuklangan test "Boshlash"ga aylanadi.
-    if (_selectedGroup != null) {
-      await _selectGroup(_selectedGroup!);
+    // Holatni yangilash uchun katalog joyida yangilanadi (spinner, tartib va
+    // scroll o'zgarmaydi) — muvaffaqiyatli yuklangan test "Boshlash"ga aylanadi.
+    if (_selectedGroup != null && token == _selectToken) {
+      await _refreshCatalogInPlace(token, groupId, entry, ok);
     }
+  }
+
+  /// Re-fetches the catalog after a download WITHOUT clearing the list:
+  /// the current order is kept (matched by testKey), so the proctor's scroll
+  /// position survives. On a failed refresh only the downloaded card is
+  /// patched locally.
+  Future<void> _refreshCatalogInPlace(
+      int token, String groupId, CatalogEntry entry, bool ok) async {
+    List<CatalogEntry>? fresh;
+    try {
+      fresh = await testCatalogService.refresh(
+        groupId: groupId.isEmpty ? null : groupId,
+        schoolCode: widget.schoolCode,
+        schoolId: widget.schoolId,
+      );
+    } catch (e) {
+      debugPrint('GroupSelectScreen: in-place refresh error: $e');
+    }
+    // refresh() answers from the cache alone when the server is unreachable
+    // (cachedOnly rows): a partial list, so treat it as a failed refresh.
+    if (fresh != null &&
+        fresh.any((e) => e.status == CatalogStatus.cachedOnly)) {
+      fresh = null;
+    }
+    if (!mounted || token != _selectToken) return;
+    setState(() {
+      if (fresh != null) {
+        final byKey = {for (final e in fresh) e.testKey: e};
+        final kept = [
+          for (final old in _catalog)
+            if (byKey.containsKey(old.testKey)) byKey.remove(old.testKey)!
+        ];
+        _catalog = [...kept, ...byKey.values];
+      } else if (ok) {
+        _catalog = [
+          for (final e in _catalog)
+            e.testKey == entry.testKey ? _asCached(e) : e
+        ];
+      }
+    });
+    _armLockTimer();
   }
 
   /// download() never throws; a false result must reach the proctor.
