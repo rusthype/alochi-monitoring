@@ -88,5 +88,29 @@ void main() {
       expect(find.byKey(const ValueKey('login-form')), findsOneWidget);
       expect(find.byKey(const ValueKey('diagnostic-panel')), findsNothing);
     });
+
+    testWidgets('card is sized by the student form, diagnostic panel fits it '
+        '(text scale $scale)', (tester) async {
+      await pumpLogin(tester, textScale: scale);
+      final formH =
+          tester.getSize(find.byKey(const ValueKey('login-form'))).height;
+      final studentCardH = tester.getSize(cardKey).height;
+      // ignore: avoid_print
+      print('scale $scale: student card=$studentCardH form=$formH');
+
+      await tester.tap(diagTab);
+      await tester.pump(const Duration(milliseconds: 400));
+      final diagPanel = find.byKey(const ValueKey('diagnostic-panel'));
+      expect(diagPanel, findsOneWidget);
+      final diagCardH = tester.getSize(cardKey).height;
+      final panelH = tester.getSize(diagPanel).height;
+      // ignore: avoid_print
+      print('scale $scale: diagnostic card=$diagCardH panel=$panelH');
+
+      expect(diagCardH, studentCardH);
+      expect(diagCardH, lessThanOrEqualTo(studentCardH)); // never taller
+      expect(panelH, formH);
+      expect(tester.takeException(), isNull);
+    });
   }
 }

@@ -98,7 +98,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.byKey(const ValueKey('diagnostic-panel')), findsOneWidget);
-    expect(find.byKey(const ValueKey('login-form')), findsNothing);
+    expect(find.byKey(const ValueKey('login-form')).hitTestable(), findsNothing);
 
     ConnectivityService.instance.dispose();
     await tester.pumpWidget(const SizedBox.shrink());

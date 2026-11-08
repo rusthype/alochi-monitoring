@@ -50,12 +50,6 @@ Future<bool> checkOnlineWithRetry(
   return false;
 }
 
-/// Every tab panel (student form, diagnostic) is at least this tall, so the
-/// unified card keeps one size when tabs switch. ponytail: a fixed floor, not
-/// a measured max - holds while the student form (~290px at 100% text) and the
-/// diagnostic content stay under it; raise it if either grows.
-const double _kTabPanelMinHeight = 318;
-
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -795,20 +789,55 @@ class _LoginScreenState extends State<LoginScreen>
               const SizedBox(height: 16),
               _buildSegmentedControl(palette),
               const SizedBox(height: 18),
-              // Sequential fade (out in the 1st half, in during the 2nd): the
-              // two panels never overlap on screen, and both are at least
-              // [_kTabPanelMinHeight] tall so the card never resizes.
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 150),
-                switchInCurve: const Interval(.5, 1, curve: Curves.easeOut),
-                switchOutCurve: const Interval(.5, 1, curve: Curves.easeIn),
-                transitionBuilder: (child, animation) => FadeTransition(
-                  opacity: animation,
-                  child: child,
-                ),
-                child: _selectedTab == 0
-                    ? _buildLoginForm(palette)
-                    : _buildDiagnosticPanel(palette),
+              // The student form is always mounted and is the SIZER: the card
+              // height is its natural height on every tab. The diagnostic
+              // panel is laid over it (Positioned.fill) and never sizes the
+              // card. Sequential fade (out in the 1st half, in during the
+              // 2nd): the two panels never overlap on screen.
+              Stack(
+                children: [
+                  ExcludeFocus(
+                    excluding: _selectedTab != 0,
+                    child: ExcludeSemantics(
+                      excluding: _selectedTab != 0,
+                      child: IgnorePointer(
+                        ignoring: _selectedTab != 0,
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween<double>(
+                            end: _selectedTab == 0 ? 1 : 0,
+                          ),
+                          duration: const Duration(milliseconds: 150),
+                          curve: _selectedTab == 0
+                              ? const Interval(.5, 1, curve: Curves.easeOut)
+                              : const Interval(0, .5, curve: Curves.easeIn),
+                          builder: (context, opacity, child) =>
+                              Opacity(opacity: opacity, child: child),
+                          child: _buildLoginForm(palette),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 150),
+                      switchInCurve:
+                          const Interval(.5, 1, curve: Curves.easeOut),
+                      switchOutCurve:
+                          const Interval(.5, 1, curve: Curves.easeIn),
+                      layoutBuilder: (current, previous) => Stack(
+                        fit: StackFit.expand,
+                        children: [...previous, if (current != null) current],
+                      ),
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      ),
+                      child: _selectedTab == 0
+                          ? const SizedBox.shrink(key: ValueKey('no-overlay'))
+                          : _buildDiagnosticPanel(palette),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 18),
               _buildDivider(palette),
@@ -1161,7 +1190,6 @@ class _LoginScreenState extends State<LoginScreen>
           child: Container(
             padding: EdgeInsets.zero,
             color: Colors.transparent,
-            constraints: const BoxConstraints(minHeight: _kTabPanelMinHeight),
             child: Form(
               key: _formKey,
               child: Column(
@@ -1339,15 +1367,22 @@ class _LoginScreenState extends State<LoginScreen>
     final l10n = AppLocalizations.of(context)!;
     return Container(
       key: const ValueKey('diagnostic-panel'),
-      constraints: const BoxConstraints(minHeight: _kTabPanelMinHeight),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
         color: palette.muted,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: palette.border),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      // Centered in the student form's height; scales down (never overflows)
+      // at large text scales.
+      child: LayoutBuilder(
+        builder: (context, box) => Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: SizedBox(
+              width: box.maxWidth,
+              child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 58,
@@ -1400,6 +1435,10 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ],
       ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1408,7 +1447,6 @@ class _LoginScreenState extends State<LoginScreen>
     final l10n = AppLocalizations.of(context)!;
     return Container(
       key: const ValueKey('proctor-panel'),
-      constraints: const BoxConstraints(minHeight: _kTabPanelMinHeight),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: palette.muted,
