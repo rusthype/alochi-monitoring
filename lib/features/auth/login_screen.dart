@@ -1385,8 +1385,8 @@ class _LoginScreenState extends State<LoginScreen>
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 58,
-            height: 58,
+            width: 76,
+            height: 76,
             decoration: BoxDecoration(
               color: palette.brandMuted,
               shape: BoxShape.circle,
@@ -1394,42 +1394,67 @@ class _LoginScreenState extends State<LoginScreen>
             child: const Icon(
               Icons.task_alt_rounded,
               color: AppColors.flame,
-              size: 28,
+              size: 38,
             ),
           ),
-          const SizedBox(height: 14),
-          Text(
-            l10n.diagnosticLoginTab,
-            textAlign: TextAlign.center,
-            style: AppTextStyles.titleMedium.copyWith(
-              color: palette.ink1,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.diagnosticSelectSchoolPrompt,
-            textAlign: TextAlign.center,
-            style: AppTextStyles.bodyMedium.copyWith(color: palette.ink2),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: OutlinedButton.icon(
-              onPressed: () => context.push('/diagnostic_school_select'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.flame,
-                backgroundColor: palette.fieldFill,
-                side: const BorderSide(color: AppColors.flame, width: 1.2),
-                shape: RoundedRectangleBorder(
+          const SizedBox(height: 24),
+          // Same filled brand gradient, radius and hover lift as the «Вход»
+          // button so both tabs share one primary action style.
+          HoverRegion(
+            builder: (context, isHovered) => Semantics(
+              button: true,
+              label: l10n.schools,
+              excludeSemantics: true,
+              child: AnimatedContainer(
+                key: const ValueKey('diagnostic-schools-button'),
+                duration: const Duration(milliseconds: 160),
+                curve: Curves.easeOutCubic,
+                width: double.infinity,
+                height: 58,
+                transform: Matrix4.translationValues(0, isHovered ? -2 : 0, 0),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF8A3D), Color(0xFFFF6B00)],
+                  ),
                   borderRadius: BorderRadius.circular(kControlRadius),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF7A1A)
+                          .withValues(alpha: isHovered ? .30 : .20),
+                      blurRadius: isHovered ? 18 : 14,
+                      offset: Offset(0, isHovered ? 8 : 6),
+                    ),
+                  ],
                 ),
-              ).copyWith(overlayColor: pointerOnlyOverlay(AppColors.flame)),
-              icon: const Icon(Icons.school_rounded, size: 18),
-              label: Text(
-                l10n.schools,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => context.push('/diagnostic_school_select'),
+                    borderRadius: BorderRadius.circular(kControlRadius),
+                    focusColor: Colors.transparent,
+                    child: Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.school_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            l10n.schools,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

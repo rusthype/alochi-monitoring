@@ -110,6 +110,16 @@ void main() {
       expect(diagCardH, studentCardH);
       expect(diagCardH, lessThanOrEqualTo(studentCardH)); // never taller
       expect(panelH, formH);
+
+      // Single prominent primary action; redundant title/subtitle removed.
+      final btn = find.byKey(const ValueKey('diagnostic-schools-button'));
+      expect(btn, findsOneWidget);
+      if (scale == 1.0) {
+        expect(tester.getSize(btn).height, greaterThanOrEqualTo(56));
+      }
+      expect(find.text('Приёмный тест'), findsNothing);
+      expect(find.textContaining('Диагностика / '), findsNothing);
+      expect(find.text('Выберите школу для диагностики'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   }
