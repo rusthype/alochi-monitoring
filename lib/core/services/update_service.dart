@@ -48,7 +48,6 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// Timeout for the manifest HTTP GET itself. 20s (not the previous 5s)
 /// gives slow lab wifi a real chance to complete a tiny JSON fetch.
@@ -759,25 +758,20 @@ open -a "/Applications/alochi_monitoring.app"
     }
   }
 
-  static const String _skippedVersionKey = 'update_skipped_version';
+  /// Versions the user skipped during this app run. Deliberately in-memory:
+  /// school PCs must be offered the update again after a restart.
+  final Set<String> _skippedThisSession = <String>{};
 
-  /// Remembers [version] as skipped so the login pill stays hidden for it.
-  Future<void> skipVersion(String version) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_skippedVersionKey, version);
-    } catch (_) {}
-  }
+  /// Hides the update pill for [version] until the app is restarted.
+  void skipVersion(String version) => _skippedThisSession.add(version);
 
-  /// True when the user chose "Skip" for exactly [version].
-  Future<bool> isVersionSkipped(String version) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getString(_skippedVersionKey) == version;
-    } catch (_) {
-      return false;
-    }
-  }
+  /// True when the user chose "Skip" for exactly [version] during this run.
+  bool isVersionSkipped(String version) =>
+      _skippedThisSession.contains(version);
+
+  /// Simulates an app restart in tests.
+  @visibleForTesting
+  void resetSkipped() => _skippedThisSession.clear();
 
   /// Opens the GitHub release page in the system browser so the user can
   /// download the new installer/DMG themselves.

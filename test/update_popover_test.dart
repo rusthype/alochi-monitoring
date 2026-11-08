@@ -64,7 +64,10 @@ Widget _host({
 }
 
 void main() {
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    UpdateService.instance.resetSkipped();
+  });
 
   Future<void> openPopover(WidgetTester t) async {
     await t.tap(find.text('Доступна новая версия'));
@@ -184,7 +187,8 @@ void main() {
     expect(opened, 1);
   });
 
-  testWidgets('Skip persists the version and reports it', (t) async {
+  testWidgets('Skip hides the version for this session only, no prefs',
+      (t) async {
     var skipped = 0;
     await t.pumpWidget(_host(onSkipped: () => skipped++));
     await openPopover(t);
@@ -192,9 +196,13 @@ void main() {
     await t.pumpAndSettle();
     expect(skipped, 1);
     expect(find.text('Доступно обновление'), findsNothing);
-    expect(await UpdateService.instance.isVersionSkipped('1.0.171'), isTrue);
+    expect(UpdateService.instance.isVersionSkipped('1.0.171'), isTrue);
     // A newer version is not skipped.
-    expect(await UpdateService.instance.isVersionSkipped('1.0.172'), isFalse);
+    expect(UpdateService.instance.isVersionSkipped('1.0.172'), isFalse);
+    // Nothing is persisted: nothing survives an app restart.
+    expect((await SharedPreferences.getInstance()).getKeys(), isEmpty);
+    UpdateService.instance.resetSkipped(); // simulated restart
+    expect(UpdateService.instance.isVersionSkipped('1.0.171'), isFalse);
   });
 
   testWidgets('Install shows download pill with percent, then error + retry',

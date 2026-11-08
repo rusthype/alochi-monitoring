@@ -27,7 +27,7 @@ class UpdatePill extends StatefulWidget {
   /// Icon-only pill (narrow windows).
   final bool compact;
 
-  /// Called after the user chose "Skip" (the version is already persisted).
+  /// Called after the user chose "Skip" (hidden until the app is restarted).
   final VoidCallback? onSkipped;
 
   final Color surface;
@@ -119,9 +119,9 @@ class _UpdatePillState extends State<UpdatePill> {
     if (_portal.isShowing) _portal.hide();
   }
 
-  Future<void> _skip() async {
+  void _skip() {
     _close();
-    await UpdateService.instance.skipVersion(widget.info.latestVersion);
+    UpdateService.instance.skipVersion(widget.info.latestVersion);
     widget.onSkipped?.call();
   }
 

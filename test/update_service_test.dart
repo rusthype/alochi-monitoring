@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alochi_monitoring/core/services/update_service.dart';
 
 /// HEAD stand-in: MockClient derives contentLength from the (empty) body, so a
@@ -76,6 +77,24 @@ void main() {
       svc.prefetchInstallerSize(withSize);
       expect(await svc.fetchInstallerSize(withSize), 555);
       expect(svc.cachedInstallerSize(withSize), 555);
+    });
+  });
+
+  group('skip is session-only', () {
+    final svc = UpdateService.instance;
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      svc.resetSkipped();
+    });
+
+    test('exact version skipped, newer not, restart clears, prefs untouched',
+        () async {
+      svc.skipVersion('1.0.171');
+      expect(svc.isVersionSkipped('1.0.171'), isTrue);
+      expect(svc.isVersionSkipped('1.0.172'), isFalse);
+      expect((await SharedPreferences.getInstance()).getKeys(), isEmpty);
+      svc.resetSkipped();
+      expect(svc.isVersionSkipped('1.0.171'), isFalse);
     });
   });
 

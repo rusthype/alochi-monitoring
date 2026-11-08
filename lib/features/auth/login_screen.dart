@@ -267,9 +267,10 @@ class _LoginScreenState extends State<LoginScreen>
     _loadAppVersion();
   }
 
-  /// Shows the update pill unless the user skipped exactly this version.
+  /// Shows the update pill unless the user skipped exactly this version in
+  /// this app run (a restart shows it again).
   Future<void> _acceptUpdate(UpdateInfo info) async {
-    if (await UpdateService.instance.isVersionSkipped(info.latestVersion)) {
+    if (UpdateService.instance.isVersionSkipped(info.latestVersion)) {
       return;
     }
     if (mounted) setState(() => _updateInfo = info);
