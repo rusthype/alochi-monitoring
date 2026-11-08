@@ -1367,22 +1367,10 @@ class _LoginScreenState extends State<LoginScreen>
     final l10n = AppLocalizations.of(context)!;
     return Container(
       key: const ValueKey('diagnostic-panel'),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        // Same fill as the «Ученик» fields, fading into a barely-there warm
-        // brand tint at the bottom.
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            palette.fieldFill,
-            Color.alphaBlend(
-              AppColors.flame.withValues(alpha: .05),
-              palette.fieldFill,
-            ),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(kControlRadius),
+        color: palette.muted,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: palette.border),
       ),
       // Centered in the student form's height; scales down (never overflows)
@@ -1394,118 +1382,59 @@ class _LoginScreenState extends State<LoginScreen>
             child: SizedBox(
               width: box.maxWidth,
               child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Layered hero mark: soft halo ring + solid brand disc.
-                  Container(
-                    width: 80,
-                    height: 80,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.flame.withValues(alpha: .09),
-                      border: Border.all(
-                        color: AppColors.flame.withValues(alpha: .16),
-                      ),
-                    ),
-                    child: Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFFFF8A3D), Color(0xFFFF6B00)],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color:
-                                const Color(0xFFFF7A1A).withValues(alpha: .28),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.fact_check_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  // Same filled brand gradient, radius and hover lift as the
-                  // «Вход» button so both tabs share one primary action style.
-                  HoverRegion(
-                    builder: (context, isHovered) => Semantics(
-                      button: true,
-                      label: l10n.schools,
-                      excludeSemantics: true,
-                      child: AnimatedContainer(
-                        key: const ValueKey('diagnostic-schools-button'),
-                        duration: const Duration(milliseconds: 160),
-                        curve: Curves.easeOutCubic,
-                        width: double.infinity,
-                        height: 56,
-                        transform:
-                            Matrix4.translationValues(0, isHovered ? -2 : 0, 0),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFFF8A3D), Color(0xFFFF6B00)],
-                          ),
-                          borderRadius: BorderRadius.circular(kControlRadius),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFFF7A1A)
-                                  .withValues(alpha: isHovered ? .30 : .20),
-                              blurRadius: isHovered ? 18 : 14,
-                              offset: Offset(0, isHovered ? 8 : 6),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () =>
-                                context.push('/diagnostic_school_select'),
-                            borderRadius: BorderRadius.circular(kControlRadius),
-                            focusColor: Colors.transparent,
-                            child: Center(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    l10n.schools,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: .2,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  // Nudges right on hover to signal navigation.
-                                  AnimatedSlide(
-                                    duration: const Duration(milliseconds: 160),
-                                    curve: Curves.easeOutCubic,
-                                    offset: Offset(isHovered ? .2 : 0, 0),
-                                    child: const Icon(
-                                      Icons.arrow_forward_rounded,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: palette.brandMuted,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.task_alt_rounded,
+              color: AppColors.flame,
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            l10n.diagnosticLoginTab,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.titleMedium.copyWith(
+              color: palette.ink1,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.diagnosticSelectSchoolPrompt,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyMedium.copyWith(color: palette.ink2),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: () => context.push('/diagnostic_school_select'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.flame,
+                backgroundColor: palette.fieldFill,
+                side: const BorderSide(color: AppColors.flame, width: 1.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(kControlRadius),
+                ),
+              ).copyWith(overlayColor: pointerOnlyOverlay(AppColors.flame)),
+              icon: const Icon(Icons.school_rounded, size: 18),
+              label: Text(
+                l10n.schools,
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
+            ),
+          ),
+        ],
+      ),
             ),
           ),
         ),

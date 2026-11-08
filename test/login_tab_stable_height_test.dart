@@ -111,15 +111,16 @@ void main() {
       expect(diagCardH, lessThanOrEqualTo(studentCardH)); // never taller
       expect(panelH, formH);
 
-      // Single prominent primary action; redundant title/subtitle removed.
-      final btn = find.byKey(const ValueKey('diagnostic-schools-button'));
-      expect(btn, findsOneWidget);
-      if (scale == 1.0) {
-        expect(tester.getSize(btn).height, greaterThanOrEqualTo(56));
-      }
-      expect(find.text('Приёмный тест'), findsNothing);
-      expect(find.textContaining('Диагностика / '), findsNothing);
-      expect(find.text('Выберите школу для диагностики'), findsNothing);
+      // Restored v1.0.171 look: title, subtitle and the outlined «Школы» button.
+      expect(find.text('Диагностика / Приёмный тест'), findsOneWidget);
+      expect(find.text('Выберите школу для диагностики'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: diagPanel,
+          matching: find.byType(OutlinedButton),
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
   }
