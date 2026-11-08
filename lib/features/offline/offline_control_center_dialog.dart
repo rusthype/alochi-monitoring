@@ -56,14 +56,30 @@ class OfflineControlCenterDialog extends StatefulWidget {
       _OfflineControlCenterDialogState();
 }
 
+/// Distance of the scrollbar thumb from the dialog's right edge, and the
+/// content inset that keeps buttons clear of it (thumb is 6px thick).
+const double _kScrollbarEdge = 6;
+const double _kScrollGutter = 18;
+
 class _OfflineControlCenterDialogState
     extends State<OfflineControlCenterDialog> {
+  final ScrollController _scroll = ScrollController();
   bool _busy = false;
   String? _busyLabel;
   String? _message;
   bool _messageIsError = false;
   ({String headline, List<String> files})? _done;
   List<PackSummary> _summaries = const [];
+
+  /// Kind inferred from the stored rows for packs saved before `kind` was
+  /// recorded (null value = could not tell). Cached: legacy packs don't change.
+  final Map<String, String?> _inferredKind = {};
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   late final OfflineKeys _keys = OfflineKeys.current;
   late final bool _configured = _keys.isConfigured;
@@ -81,6 +97,11 @@ class _OfflineControlCenterDialogState
   Future<void> _refresh() async {
     try {
       final s = await PackResultsDb.summaries();
+      for (final p in s.where((p) => p.kind == null)) {
+        if (!_inferredKind.containsKey(p.packUuid)) {
+          _inferredKind[p.packUuid] = await resolvePackKind(p.packUuid, null);
+        }
+      }
       if (mounted) setState(() => _summaries = s);
     } catch (e) {
       debugPrint('OfflineControlCenter: summaries failed: $e');
@@ -412,13 +433,17 @@ class _OfflineControlCenterDialogState
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560, maxHeight: 640),
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(children: [
+          // Right padding is small on purpose: the scrollbar thumb lives in
+          // this gutter, outside the content (which is inset by _kScrollGutter).
+          padding: const EdgeInsets.fromLTRB(24, 24, _kScrollbarEdge, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header stays fixed above the scroll area.
+              Padding(
+                padding: const EdgeInsets.only(right: _kScrollGutter),
+                child: Row(children: [
                   const Icon(Icons.usb_rounded, color: AppColors.brand),
                   const SizedBox(width: 10),
                   Expanded(
@@ -433,6 +458,20 @@ class _OfflineControlCenterDialogState
                     icon: const Icon(Icons.close_rounded),
                   ),
                 ]),
+              ),
+              const SizedBox(height: 6),
+              Flexible(
+                child: Scrollbar(
+                  controller: _scroll,
+                  thickness: 6,
+                  radius: const Radius.circular(3),
+                  child: SingleChildScrollView(
+                    controller: _scroll,
+                    padding: const EdgeInsets.only(right: _kScrollGutter),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                 const SizedBox(height: 6),
                 Text(l10n.usbCenterIntro,
                     style: const TextStyle(color: AppColors.ink2, height: 1.4)),
@@ -522,7 +561,11 @@ class _OfflineControlCenterDialogState
                   for (final s in _summaries) _packRow(l10n, s),
                 ],
               ],
-            ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -579,6 +622,24 @@ class _OfflineControlCenterDialogState
   }
 
   Widget _packRow(AppLocalizations l10n, PackSummary s) {
+    final kind = s.kind ?? _inferredKind[s.packUuid];
+    final school = l10n.usbSchoolLabel(s.schoolCode);
+    final title = kind == null
+        ? school
+        : l10n.usbPackTitle(
+            kind == 'diagnostic'
+                ? l10n.usbKindDiagnostic
+                : l10n.usbKindMonitoring,
+            school);
+    final day = (s.createdAt ?? s.lastResultAt)?.toLocal();
+    final last = s.lastResultAt?.toLocal();
+    final id = packShortId(s.packUuid);
+    final meta = day == null
+        ? l10n.usbPackMetaIdOnly(id)
+        : last == null
+            ? l10n.usbPackMetaNoTime(DateFormat('dd.MM.yyyy').format(day), id)
+            : l10n.usbPackMeta(DateFormat('dd.MM.yyyy').format(day),
+                DateFormat('HH:mm').format(last), id);
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(children: [
@@ -586,14 +647,9 @@ class _OfflineControlCenterDialogState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l10n.usbPackRow(s.schoolCode, s.packUuid.substring(0, 8)),
-                  style: const TextStyle(color: AppColors.ink1)),
-              if (s.kind != null)
-                Text(
-                    s.kind == 'diagnostic'
-                        ? l10n.usbKindDiagnostic
-                        : l10n.usbKindMonitoring,
-                    style: const TextStyle(color: AppColors.ink3, fontSize: 12)),
+              Text(title, style: const TextStyle(color: AppColors.ink1)),
+              Text(meta,
+                  style: const TextStyle(color: AppColors.ink3, fontSize: 12)),
               Text(
                   '${l10n.usbSavedCount(s.total)}  ·  '
                   '${l10n.usbUnexportedCount(s.unexported)}',

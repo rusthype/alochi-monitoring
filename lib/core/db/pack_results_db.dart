@@ -84,6 +84,9 @@ class PackSummary {
   /// Pack manifest `created_at` (the "round" date), when known.
   final DateTime? createdAt;
 
+  /// When the newest stored result of this pack was saved (UTC).
+  final DateTime? lastResultAt;
+
   /// Hidden from the results list: archived by the user, or expired, and in
   /// both cases with nothing left to export.
   final bool archived;
@@ -96,6 +99,7 @@ class PackSummary {
     required this.expiresAt,
     this.kind,
     this.createdAt,
+    this.lastResultAt,
     this.archived = false,
   });
 }
@@ -376,6 +380,7 @@ class PackResultsDb {
     final rows = await d.rawQuery('''
       SELECT r.pack_uuid AS pack_uuid,
              COUNT(*) AS total,
+             MAX(r.created) AS last_result_at,
              SUM(CASE WHEN r.exported_at IS NULL THEN 1 ELSE 0 END) AS unexported,
              m.school_code AS school_code,
              m.expires_at AS expires_at,
@@ -391,6 +396,7 @@ class PackResultsDb {
     final out = rows.map((r) {
       final exp = r['expires_at'] as int?;
       final created = r['created_at'] as int?;
+      final last = r['last_result_at'] as int?;
       final unexported = (r['unexported'] as int?) ?? 0;
       return PackSummary(
         packUuid: r['pack_uuid'] as String,
@@ -404,6 +410,9 @@ class PackResultsDb {
         createdAt: created == null
             ? null
             : DateTime.fromMillisecondsSinceEpoch(created, isUtc: true),
+        lastResultAt: last == null
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(last, isUtc: true),
         archived: unexported == 0 &&
             (r['archived_at'] != null || (exp != null && exp < now)),
       );

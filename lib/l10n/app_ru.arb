@@ -1076,12 +1076,45 @@
   "offlineSessionBannerOnlineHint": "Интернет доступен — можно выйти из офлайн-режима.",
   "usbResultsHeader": "Сохранённые результаты",
   "usbNoResults": "Сохранённых результатов пока нет.",
-  "usbPackRow": "Школа {school} · пакет {id}",
-  "@usbPackRow": {
+  "usbPackTitle": "{kind} · {school}",
+  "@usbPackTitle": {
     "placeholders": {
-      "school": {
+      "kind": {
         "type": "String"
       },
+      "school": {
+        "type": "String"
+      }
+    }
+  },
+  "usbPackMeta": "{date} · последний результат {time} · пакет {id}",
+  "@usbPackMeta": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "usbPackMetaNoTime": "{date} · пакет {id}",
+  "@usbPackMetaNoTime": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "usbPackMetaIdOnly": "Пакет {id}",
+  "@usbPackMetaIdOnly": {
+    "placeholders": {
       "id": {
         "type": "String"
       }
