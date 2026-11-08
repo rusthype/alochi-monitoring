@@ -203,6 +203,20 @@ void main() {
       expect(s.single.unexported, 0);
     });
 
+    test('summaries expose the newest result time as lastResultAt', () async {
+      for (final (key, ms) in [('a', 1700000000000), ('b', 1700000900000)]) {
+        await PackResultsDb.append(
+            packUuid: 'pk',
+            chainKey: _chainKey,
+            idempotencyKey: key,
+            payloadJson: '{}',
+            nowMs: ms);
+      }
+      final s = (await PackResultsDb.summaries()).single;
+      expect(s.lastResultAt,
+          DateTime.fromMillisecondsSinceEpoch(1700000900000, isUtc: true));
+    });
+
     test('meta_json carries incidents/clock flags inside the hash', () async {
       final r = await PackResultsDb.append(
           packUuid: 'pk',

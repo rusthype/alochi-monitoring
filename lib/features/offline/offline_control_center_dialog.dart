@@ -65,6 +65,10 @@ class _OfflineControlCenterDialogState
   ({String headline, List<String> files})? _done;
   List<PackSummary> _summaries = const [];
 
+  /// Kind inferred from the stored rows for packs saved before `kind` was
+  /// recorded (null value = could not tell). Cached: legacy packs don't change.
+  final Map<String, String?> _inferredKind = {};
+
   late final OfflineKeys _keys = OfflineKeys.current;
   late final bool _configured = _keys.isConfigured;
 
@@ -81,6 +85,11 @@ class _OfflineControlCenterDialogState
   Future<void> _refresh() async {
     try {
       final s = await PackResultsDb.summaries();
+      for (final p in s.where((p) => p.kind == null)) {
+        if (!_inferredKind.containsKey(p.packUuid)) {
+          _inferredKind[p.packUuid] = await resolvePackKind(p.packUuid, null);
+        }
+      }
       if (mounted) setState(() => _summaries = s);
     } catch (e) {
       debugPrint('OfflineControlCenter: summaries failed: $e');
@@ -579,6 +588,24 @@ class _OfflineControlCenterDialogState
   }
 
   Widget _packRow(AppLocalizations l10n, PackSummary s) {
+    final kind = s.kind ?? _inferredKind[s.packUuid];
+    final school = l10n.usbSchoolLabel(s.schoolCode);
+    final title = kind == null
+        ? school
+        : l10n.usbPackTitle(
+            kind == 'diagnostic'
+                ? l10n.usbKindDiagnostic
+                : l10n.usbKindMonitoring,
+            school);
+    final day = (s.createdAt ?? s.lastResultAt)?.toLocal();
+    final last = s.lastResultAt?.toLocal();
+    final id = packShortId(s.packUuid);
+    final meta = day == null
+        ? l10n.usbPackMetaIdOnly(id)
+        : last == null
+            ? l10n.usbPackMetaNoTime(DateFormat('dd.MM.yyyy').format(day), id)
+            : l10n.usbPackMeta(DateFormat('dd.MM.yyyy').format(day),
+                DateFormat('HH:mm').format(last), id);
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(children: [
@@ -586,14 +613,9 @@ class _OfflineControlCenterDialogState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(l10n.usbPackRow(s.schoolCode, s.packUuid.substring(0, 8)),
-                  style: const TextStyle(color: AppColors.ink1)),
-              if (s.kind != null)
-                Text(
-                    s.kind == 'diagnostic'
-                        ? l10n.usbKindDiagnostic
-                        : l10n.usbKindMonitoring,
-                    style: const TextStyle(color: AppColors.ink3, fontSize: 12)),
+              Text(title, style: const TextStyle(color: AppColors.ink1)),
+              Text(meta,
+                  style: const TextStyle(color: AppColors.ink3, fontSize: 12)),
               Text(
                   '${l10n.usbSavedCount(s.total)}  ·  '
                   '${l10n.usbUnexportedCount(s.unexported)}',
