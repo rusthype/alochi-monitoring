@@ -48,6 +48,7 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Timeout for the manifest HTTP GET itself. 20s (not the previous 5s)
 /// gives slow lab wifi a real chance to complete a tiny JSON fetch.
@@ -378,11 +379,18 @@ UpdateInfo? parseUpdateManifest(Object? decoded, String currentVersion) {
   }
   final hash = decoded['sha256'] ?? decoded['installer_sha256'];
 
+  // Optional display-only metadata; a missing or malformed value is simply
+  // unknown, never a reason to reject the update.
+  final pub = decoded['pub_date'];
+  final size = decoded['size'];
+
   return UpdateInfo(
     latestVersion: latestVersion,
     currentVersion: currentVersion,
     downloadUrl: downloadUrl,
     sha256: hash?.toString(),
+    releasedAt: pub is String ? DateTime.tryParse(pub) : null,
+    sizeBytes: size is num && size > 0 ? size.toInt() : null,
   );
 }
 
@@ -397,11 +405,21 @@ class UpdateInfo {
   /// old CI): the download is then installed exactly as before.
   final String? sha256;
 
+  /// Release date from the manifest's optional `pub_date`; null when absent
+  /// or unparseable. Display-only.
+  final DateTime? releasedAt;
+
+  /// Installer size from the manifest's optional `size` (bytes); null when
+  /// absent — see [UpdateService.fetchInstallerSize] for the lazy fallback.
+  final int? sizeBytes;
+
   const UpdateInfo({
     required this.latestVersion,
     required this.currentVersion,
     required this.downloadUrl,
     this.sha256,
+    this.releasedAt,
+    this.sizeBytes,
   });
 }
 
@@ -675,6 +693,48 @@ open -a "/Applications/alochi_monitoring.app"
       );
     } catch (_) {
       // Logging must never throw and mask the original failure.
+    }
+  }
+
+  /// Installer size in bytes: the manifest's [UpdateInfo.sizeBytes] when
+  /// present, else a best-effort HEAD (Content-Length, redirects followed) on
+  /// the host-pinned download URL. Never throws; null when unknown.
+  Future<int?> fetchInstallerSize(UpdateInfo info) async {
+    if (info.sizeBytes != null) return info.sizeBytes;
+    if (!isAllowedUpdateUrl(info.downloadUrl)) return null;
+    final client = http.Client();
+    try {
+      final req = http.Request('HEAD', Uri.parse(info.downloadUrl))
+        ..followRedirects = true
+        ..maxRedirects = 5;
+      final resp = await client.send(req).timeout(const Duration(seconds: 6));
+      await resp.stream.drain<void>();
+      final len = resp.contentLength;
+      return resp.statusCode == 200 && len != null && len > 0 ? len : null;
+    } catch (_) {
+      return null;
+    } finally {
+      client.close();
+    }
+  }
+
+  static const String _skippedVersionKey = 'update_skipped_version';
+
+  /// Remembers [version] as skipped so the login pill stays hidden for it.
+  Future<void> skipVersion(String version) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_skippedVersionKey, version);
+    } catch (_) {}
+  }
+
+  /// True when the user chose "Skip" for exactly [version].
+  Future<bool> isVersionSkipped(String version) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_skippedVersionKey) == version;
+    } catch (_) {
+      return false;
     }
   }
 

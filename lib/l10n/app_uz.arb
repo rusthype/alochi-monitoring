@@ -656,6 +656,28 @@
   "updateNowBtn": "Hozir yangilash",
   "openInBrowserBtn": "Brauzerda ochish",
   "updateConfirmBody": "Ilovani hozir yangilaymizmi?",
+  "updateAvailableTitle": "Yangilanish mavjud",
+  "updateVersionLabel": "Versiya",
+  "updateSizeLabel": "Hajmi",
+  "updateReleasedLabel": "Chiqarilgan",
+  "updateSkipBtn": "O'tkazib yuborish",
+  "updateLaterBtn": "Keyinroq",
+  "updateInstallRelaunchBtn": "O'rnatish va qayta ishga tushirish",
+  "updateReleaseNotes": "Yangiliklar",
+  "updateDownloadingPill": "Yuklanmoqda: {percent}%",
+  "@updateDownloadingPill": {
+    "description": "Compact pill text while the update installer downloads.",
+    "placeholders": {
+      "percent": {"type": "int"}
+    }
+  },
+  "updateSizeMb": "{size} MB",
+  "@updateSizeMb": {
+    "description": "Installer size in megabytes, e.g. 38.1 MB.",
+    "placeholders": {
+      "size": {"type": "String"}
+    }
+  },
   "okBtn": "Yaxshi",
   "yesOption": "YES",
   "noOption": "NO",

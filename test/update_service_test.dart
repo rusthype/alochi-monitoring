@@ -61,6 +61,31 @@ void main() {
   });
 
   group('parseUpdateManifest', () {
+    test('pub_date and size are optional display metadata', () {
+      final full = parseUpdateManifest({
+        'version': '1.0.50',
+        'url': goodUrl,
+        'pub_date': '2026-11-08T10:30:00Z',
+        'size': 39946240,
+      }, '1.0.49')!;
+      expect(full.releasedAt, DateTime.utc(2026, 11, 8, 10, 30));
+      expect(full.sizeBytes, 39946240);
+
+      final bare = parseUpdateManifest(
+          {'version': '1.0.50', 'url': goodUrl}, '1.0.49')!;
+      expect(bare.releasedAt, isNull);
+      expect(bare.sizeBytes, isNull);
+
+      final bad = parseUpdateManifest({
+        'version': '1.0.50',
+        'url': goodUrl,
+        'pub_date': 'not a date',
+        'size': 'big',
+      }, '1.0.49')!;
+      expect(bad.releasedAt, isNull);
+      expect(bad.sizeBytes, isNull);
+    });
+
     test('old manifest without a hash still parses (sha256 null)', () {
       final info = parseUpdateManifest(
           {'version': '1.0.50', 'pub_date': 'x', 'url': goodUrl}, '1.0.49');
