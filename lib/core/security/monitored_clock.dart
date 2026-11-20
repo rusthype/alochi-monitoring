@@ -43,6 +43,7 @@ import 'dart:ffi';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
 
+import 'package:ffi/ffi.dart' show calloc;
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -98,10 +99,13 @@ class SecureHighWaterStore implements HighWaterStore {
 }
 
 /// Process-wide monotonic milliseconds. Windows: GetTickCount64 (since boot);
-/// otherwise a [Stopwatch] started on first use.
+/// Linux: clock_gettime(CLOCK_BOOTTIME) (since boot, keeps counting through
+/// suspend, unaffected by `date -s`); otherwise a [Stopwatch] started on first
+/// use.
 int platformTicksMs() => _platformTicks();
 
 int Function()? _winTicks;
+int Function()? _linuxTicks;
 final Stopwatch _fallbackWatch = Stopwatch()..start();
 
 int _platformTicks() {
@@ -115,7 +119,32 @@ int _platformTicks() {
       _winTicks = () => _fallbackWatch.elapsedMilliseconds;
     }
   }
+  if (!kIsWeb && Platform.isLinux) {
+    try {
+      return (_linuxTicks ??= _openLinuxBootTicks())();
+    } catch (e) {
+      debugPrint('clock_gettime unavailable, using Stopwatch: $e');
+      _linuxTicks = () => _fallbackWatch.elapsedMilliseconds;
+    }
+  }
   return _fallbackWatch.elapsedMilliseconds;
+}
+
+const int _clockBoottime = 7; // <linux/time.h> CLOCK_BOOTTIME
+
+int Function() _openLinuxBootTicks() {
+  final clockGettime = DynamicLibrary.process().lookupFunction<
+      Int32 Function(Int32, Pointer<Int64>),
+      int Function(int, Pointer<Int64>)>('clock_gettime');
+  // struct timespec { time_t tv_sec; long tv_nsec; } = two int64 on x86_64 /
+  // arm64. Allocated once for the process lifetime (16 bytes, never freed).
+  final ts = calloc<Int64>(2);
+  return () {
+    if (clockGettime(_clockBoottime, ts) != 0) {
+      throw StateError('clock_gettime(CLOCK_BOOTTIME) failed');
+    }
+    return ts[0] * 1000 + ts[1] ~/ 1000000;
+  };
 }
 
 class MonitoredClock {
