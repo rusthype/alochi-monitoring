@@ -284,23 +284,7 @@ jobs:
             alochi-monitoring-app-latest.zip
             AlochiMonitoring-*-Setup.exe
             latest-windows.json
-          body: |
-            ### Installation
-
-            **Setup.exe (recommended) — easiest:**
-            Download `AlochiMonitoring-<version>-Setup.exe` below and double-click it to install.
-
-            **PowerShell (Admin) — alternative:**
-            ```powershell
-            iex (irm https://raw.githubusercontent.com/rusthype/alochi-monitoring/main/install.ps1)
-            ```
-
-            **ZIP (portable):**
-            `alochi-monitoring-windows.zip` -> `alochi_monitoring.exe`
-
-            **Linux:** `alochi-monitoring_<version>_amd64.deb` or `alochi-monitoring-linux-x64.tar.gz`.
-
-            **SHA256 (ZIP):** `${{ steps.hashes.outputs.zip_sha256 }}`
+          # No body: the 'latest' body is written once by release-notes.yml.
 
       - name: Notify alochi.org to revalidate the download page
         if: github.ref == 'refs/heads/main' && success()
@@ -330,70 +314,33 @@ jobs:
       (github.ref == 'refs/heads/main' && github.event.inputs.submit_winget == 'true')
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Update winget manifest
+      # winget-releaser copies the release body into the PR (ReleaseNotes), and
+      # release-notes.yml writes that body only after every platform build has
+      # attached its assets. Wait (bounded, fail-soft) for its Downloads section
+      # so the PR does not pick up an empty or stale body.
+      - name: Wait for release body
+        if: startsWith(github.ref, 'refs/tags/')
+        timeout-minutes: 55
         env:
-          VERSION:     ${{ needs.build-windows.outputs.version }}
-          ZIP_SHA256:  ${{ needs.build-windows.outputs.zip_sha256 }}
-          MSIX_SHA256: ${{ needs.build-windows.outputs.msix_sha256 }}
-          TAG:         ${{ github.ref_name }}
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RELEASE_TAG="${TAG:-v${VERSION}}"
-          ZIP_URL="https://github.com/rusthype/alochi-monitoring/releases/download/${RELEASE_TAG}/alochi-monitoring-windows.zip"
-
-          # Manifest generator
-          cat > /tmp/Alochi.Monitoring.yaml << YAML
-          PackageIdentifier: Alochi.Monitoring
-          PackageVersion: ${VERSION}
-          PackageName: Alochi Monitoring
-          Publisher: Alochi Education
-          PublisherUrl: https://alochi.org
-          PublisherSupportUrl: https://alochi.org/support
-          PackageUrl: https://github.com/rusthype/alochi-monitoring
-          License: Proprietary
-          LicenseUrl: https://alochi.org/license
-          ShortDescription: Maktab monitoring test tizimi
-          Description: |
-            Alochi Monitoring — o'quvchilar uchun matematik va ingliz tili
-            monitoring testlarini o'tkazish tizimi. Offline rejimda ham ishlaydi.
-          Tags:
-            - education
-            - monitoring
-            - test
-            - school
-            - uzbekistan
-          Moniker: alochi-monitoring
-          PackageLocale: uz-UZ
-          ManifestType: defaultLocale
-          ManifestVersion: 1.6.0
-          ---
-          PackageIdentifier: Alochi.Monitoring
-          PackageVersion: ${VERSION}
-          Platform:
-            - Windows.Desktop
-          MinimumOSVersion: 10.0.17763.0
-          InstallerType: zip
-          Installers:
-            - Architecture: x64
-              InstallerUrl: ${ZIP_URL}
-              InstallerSha256: ${ZIP_SHA256}
-              NestedInstallerType: portable
-              NestedInstallerFiles:
-                - RelativeFilePath: alochi_monitoring.exe
-                  PortableCommandAlias: alochi-monitoring
-          ManifestType: installer
-          ManifestVersion: 1.6.0
-          YAML
-
-          echo "Manifest tayyorlandi:"
-          cat /tmp/Alochi.Monitoring.yaml
+          set -uo pipefail
+          DEADLINE=$((SECONDS + 50 * 60))
+          while [ "$SECONDS" -lt "$DEADLINE" ]; do
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body 2>/dev/null | grep -q 'Downloads'; then
+              echo "release body for ${TAG} is ready"
+              exit 0
+            fi
+            echo "release body for ${TAG} not ready yet, waiting 60s"
+            sleep 60
+          done
+          echo "::warning::timed out waiting for the release body of ${TAG}; submitting to winget anyway"
+          exit 0
 
       - name: Submit to winget-pkgs
-        # Package "Alochi.Monitoring" is not yet registered in microsoft/winget-pkgs,
-        # so this submission will fail until a first version is added there manually.
-        # Don't let it fail the whole run — the build + release already succeeded above.
+        # Don't let a winget-pkgs PR problem fail the whole run - the build and
+        # the release already succeeded above.
         continue-on-error: true
         if: startsWith(github.ref, 'refs/tags/')
         uses: vedantmgoyal9/winget-releaser@v2
