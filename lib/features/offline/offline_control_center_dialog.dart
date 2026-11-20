@@ -165,6 +165,10 @@ class _OfflineControlCenterDialogState
 
   Future<void> _loadPackInner({bool thenOpenHub = false}) async {
     final l10n = AppLocalizations.of(context)!;
+    if (filePickerToolMissing()) {
+      _say(l10n.usbNoFilePickerTool, error: true);
+      return;
+    }
     final path = await pickPackFile(title: l10n.usbPickPackTitle);
     // Cancel is a pure no-op: the open pack (OfflinePackSession.current) and
     // everything derived from it stay untouched.

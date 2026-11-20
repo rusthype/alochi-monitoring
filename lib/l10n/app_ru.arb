@@ -1043,6 +1043,7 @@
   "usbLoadPack": "Загрузить пакет (.alochipack)",
   "usbExportResults": "Экспортировать все заново (.alochires)",
   "usbPickPackTitle": "Выберите файл пакета",
+  "usbNoFilePickerTool": "Не удалось открыть окно выбора файла: не установлен zenity (или qarma/kdialog). Выполните в терминале: sudo apt install zenity",
   "usbPickExportFolder": "Выберите папку для сохранения результатов",
   "usbPinTitle": "PIN-код пакета",
   "usbPinPrompt": "Введите 8-значный PIN-код, чтобы открыть пакет.",

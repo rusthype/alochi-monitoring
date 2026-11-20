@@ -1090,6 +1090,7 @@
   "usbLoadPack": "Paket yuklash (.alochipack)",
   "usbExportResults": "Barchasini qayta eksport qilish (.alochires)",
   "usbPickPackTitle": "Paket faylini tanlang",
+  "usbNoFilePickerTool": "Fayl tanlash oynasi ochilmadi: zenity (yoki qarma/kdialog) o'rnatilmagan. Terminalda bajaring: sudo apt install zenity",
   "usbPickExportFolder": "Natijalar saqlanadigan papkani tanlang",
   "usbPinTitle": "Paket PIN-kodi",
   "usbPinPrompt": "Paketni ochish uchun 8 xonali PIN-kodni kiriting.",

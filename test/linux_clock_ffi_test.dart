@@ -18,7 +18,8 @@ void main() {
     // /proc/uptime has 10 ms resolution; allow slack for it.
     expect(t, inInclusiveRange(before - 20, after + 20));
     // A Stopwatch fallback would be near 0 in a fresh test process.
-    expect(t, greaterThan(60 * 1000), reason: 'looks like the Stopwatch fallback');
+    expect(t, greaterThan(60 * 1000),
+        reason: 'looks like the Stopwatch fallback');
   }, skip: skip);
 
   test('monotonic over many calls and tracks real time', () async {

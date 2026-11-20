@@ -13,6 +13,26 @@ import 'package:path_provider/path_provider.dart';
 /// time, failures become "cancelled" instead of killing the process.
 bool _pickerOpen = false;
 
+/// True when one of the dialog helpers file_picker shells out to on Linux
+/// (qarma, zenity, kdialog) is on [pathEnv]. Without any of them pickFiles
+/// throws, which [pickPackFile] reports as "cancelled" - the button would
+/// look dead - so callers check this first and tell the user what to install.
+@visibleForTesting
+bool hasLinuxDialogTool(String? pathEnv, {bool Function(String)? exists}) {
+  final has = exists ?? (String f) => File(f).existsSync();
+  for (final dir in (pathEnv ?? '').split(':')) {
+    if (dir.isEmpty) continue;
+    for (final tool in const ['qarma', 'zenity', 'kdialog']) {
+      if (has(p.join(dir, tool))) return true;
+    }
+  }
+  return false;
+}
+
+/// True on a Linux desktop that cannot show a file dialog (see above).
+bool filePickerToolMissing() =>
+    Platform.isLinux && !hasLinuxDialogTool(Platform.environment['PATH']);
+
 Future<String?> pickPackFile({required String title}) async {
   if (_pickerOpen) return null;
   _pickerOpen = true;

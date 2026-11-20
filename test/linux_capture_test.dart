@@ -54,18 +54,22 @@ void main() {
 
   test('no tool installed: null, and later ticks stop spawning', () async {
     final f = _Fake();
-    expect(await grabLinuxScreenFile(run: f.call, tmp: tmp, x11: false), isNull);
+    expect(
+        await grabLinuxScreenFile(run: f.call, tmp: tmp, x11: false), isNull);
     expect(f.calls.length, 4);
     f.calls.clear();
-    expect(await grabLinuxScreenFile(run: f.call, tmp: tmp, x11: false), isNull);
+    expect(
+        await grabLinuxScreenFile(run: f.call, tmp: tmp, x11: false), isNull);
     expect(f.calls, isEmpty);
   });
 
   test('tools present but all failing is NOT permanent', () async {
     final f = _Fake(failing: {'gnome-screenshot', 'grim', 'scrot', 'import'});
-    expect(await grabLinuxScreenFile(run: f.call, tmp: tmp, x11: false), isNull);
+    expect(
+        await grabLinuxScreenFile(run: f.call, tmp: tmp, x11: false), isNull);
     f.calls.clear();
-    expect(await grabLinuxScreenFile(run: f.call, tmp: tmp, x11: false), isNull);
+    expect(
+        await grabLinuxScreenFile(run: f.call, tmp: tmp, x11: false), isNull);
     expect(f.calls, isNotEmpty);
   });
 

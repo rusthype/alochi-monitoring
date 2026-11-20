@@ -20,7 +20,9 @@ bool linuxHasNetworkManager({String runDir = '/run/NetworkManager'}) =>
     Directory(runDir).existsSync();
 
 Stream<List<ConnectivityResult>> connectivityChanges({bool? linuxHasNm}) {
-  if (!kIsWeb && Platform.isLinux && !(linuxHasNm ?? linuxHasNetworkManager())) {
+  if (!kIsWeb &&
+      Platform.isLinux &&
+      !(linuxHasNm ?? linuxHasNetworkManager())) {
     return const Stream<List<ConnectivityResult>>.empty();
   }
   return Connectivity().onConnectivityChanged;
