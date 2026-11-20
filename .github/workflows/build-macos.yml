@@ -144,11 +144,7 @@ jobs:
           files: |
             alochi-monitoring.dmg
             latest-macos.json
-          body: |
-            **macOS DMG** — Latest build from `main` branch (v${{ steps.version.outputs.version }})
-
-            Ad-hoc signed. First launch: **right-click → Open** to bypass Gatekeeper.
-            Linux (`.deb` / `.tar.gz`) builds are attached to this release as well.
+          # No body: the 'latest' body is written once by release-notes.yml.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
