@@ -3,6 +3,7 @@ import 'package:alochi_monitoring/core/network/network_info.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  linuxSeatIdTests();
   group('pickBestLocalAddress', () {
     test('skips loopback and link-local, picks first real LAN address', () {
       final result = pickBestLocalAddress([
@@ -57,6 +58,66 @@ void main() {
     test('returns null when only virtual/loopback adapters exist', () {
       final result = pickPrimaryMac([hyperV, loopback], null);
       expect(result, isNull);
+    });
+  });
+}
+
+// Linux seat id (clone-safe machine id). Pure helpers, run on any host.
+void linuxSeatIdTests() {
+  group('linuxSeatId', () {
+    test('is 32 hex chars and differs from the raw machine-id', () {
+      const raw = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
+      final id = linuxSeatId(machineId: raw, mac: 'AA:BB:CC:00:00:01')!;
+      expect(id, matches(RegExp(r'^[0-9a-f]{32}$')));
+      expect(id, isNot(raw));
+    });
+
+    test('cloned image (same machine-id) on different NICs -> different seats',
+        () {
+      const raw = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
+      final a = linuxSeatId(machineId: raw, mac: 'AA:BB:CC:00:00:01');
+      final b = linuxSeatId(machineId: raw, mac: 'AA:BB:CC:00:00:02');
+      expect(a, isNot(b));
+    });
+
+    test('stable for identical inputs; MAC case-insensitive', () {
+      expect(linuxSeatId(machineId: 'x', mac: 'aa:bb:cc:dd:ee:ff'),
+          linuxSeatId(machineId: 'x', mac: 'AA:BB:CC:DD:EE:FF'));
+    });
+
+    test('falls back to machine-id alone, then MAC alone, then null', () {
+      expect(linuxSeatId(machineId: 'x'), isNotNull);
+      expect(linuxSeatId(machineId: 'x'),
+          isNot(linuxSeatId(machineId: 'x', mac: 'AA:BB:CC:DD:EE:FF')));
+      expect(linuxSeatId(mac: 'AA:BB:CC:DD:EE:FF'), isNotNull);
+      expect(linuxSeatId(), isNull);
+      expect(linuxSeatId(machineId: '  ', mac: ''), isNull);
+    });
+  });
+
+  group('linuxPrimaryMac', () {
+    late Directory net;
+    setUp(() => net = Directory.systemTemp.createTempSync('netdir'));
+    tearDown(() => net.deleteSync(recursive: true));
+
+    void nic(String name, String mac, {bool physical = true}) {
+      final d = Directory('${net.path}/$name')..createSync();
+      File('${d.path}/address').writeAsStringSync('$mac\n');
+      if (physical) Directory('${d.path}/device').createSync();
+    }
+
+    test('skips virtual NICs and the all-zero MAC, sorted by name', () {
+      nic('docker0', '02:42:00:00:00:01', physical: false);
+      nic('enp3s0', '00:00:00:00:00:00');
+      nic('enp4s0', 'aa:bb:cc:dd:ee:ff');
+      nic('wlp2s0', '11:22:33:44:55:66');
+      expect(linuxPrimaryMac(netDir: net.path), 'AA:BB:CC:DD:EE:FF');
+    });
+
+    test('null when nothing physical / directory missing', () {
+      nic('lo', '00:00:00:00:00:00', physical: false);
+      expect(linuxPrimaryMac(netDir: net.path), isNull);
+      expect(linuxPrimaryMac(netDir: '${net.path}/nope'), isNull);
     });
   });
 }

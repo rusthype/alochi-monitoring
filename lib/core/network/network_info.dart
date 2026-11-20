@@ -1,7 +1,10 @@
+import 'dart:convert' show utf8;
 import 'dart:ffi';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart' show sha256;
 import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:win32/win32.dart';
 
 /// Picks the best candidate from an already-resolved address list — pure
@@ -46,17 +49,16 @@ bool _machineGuidResolved = false;
 /// key is WOW6432Node-redirected, so a 32-bit process without that flag
 /// would be silently pointed at the (usually empty) 32-bit mirror instead.
 /// Resolved once and cached: the value never changes while Windows is
-/// running. Non-Windows platforms and any registry failure both return null
+/// running. Linux: [linuxSeatId]. macOS and any registry failure return null
 /// — the ping/frame calls proceed without machine_id either way.
 String? machineGuid() {
   if (_machineGuidResolved) return _cachedMachineGuid;
   _machineGuidResolved = true;
   if (Platform.isLinux) {
-    // systemd/dbus machine id; absent on some minimal images -> null.
-    try {
-      final id = File('/etc/machine-id').readAsStringSync().trim();
-      if (id.isNotEmpty) _cachedMachineGuid = id;
-    } catch (_) {}
+    _cachedMachineGuid = linuxSeatId(
+      machineId: _readLinuxMachineId(),
+      mac: linuxPrimaryMac(),
+    );
     return _cachedMachineGuid;
   }
   if (!Platform.isWindows) return null;
@@ -87,6 +89,56 @@ String? machineGuid() {
     calloc.free(buffer);
   }
   return _cachedMachineGuid;
+}
+
+// ── Linux seat id ───────────────────────────────────────────────────────────
+// /etc/machine-id alone is NOT a seat key: a lab image cloned onto N PCs
+// carries the same id, and the backend's UniqueConstraint(school, machine_id)
+// would collapse them into one seat. Mixing in the primary NIC MAC separates
+// clones while staying stable across reboots on one PC.
+
+String? _readLinuxMachineId() {
+  for (final path in const ['/etc/machine-id', '/var/lib/dbus/machine-id']) {
+    try {
+      final id = File(path).readAsStringSync().trim();
+      if (id.isNotEmpty) return id;
+    } catch (_) {}
+  }
+  return null;
+}
+
+/// First physical NIC's MAC (upper-case `AA:BB:..`) under [netDir]
+/// (`/sys/class/net`), or null. Only NICs with a `device` link count (skips
+/// lo/docker/veth/bridges). Synchronous so [machineGuid] can stay synchronous.
+@visibleForTesting
+String? linuxPrimaryMac({String netDir = '/sys/class/net'}) {
+  try {
+    final dirs = Directory(netDir).listSync()
+      ..sort((a, b) => a.path.compareTo(b.path));
+    for (final d in dirs) {
+      if (!Directory('${d.path}/device').existsSync()) continue;
+      try {
+        final mac = File('${d.path}/address').readAsStringSync().trim();
+        if (mac.isNotEmpty && mac != '00:00:00:00:00:00') {
+          return mac.toUpperCase();
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+  return null;
+}
+
+/// Seat id: first 32 hex chars of sha256 over machine-id and MAC. Machine-id
+/// only -> hash of that alone; MAC only -> hash of that; neither -> null.
+@visibleForTesting
+String? linuxSeatId({String? machineId, String? mac}) {
+  final id = machineId?.trim() ?? '';
+  final m = mac?.trim().toUpperCase() ?? '';
+  if (id.isEmpty && m.isEmpty) return null;
+  final seed = m.isEmpty
+      ? 'alochi-linux|$id'
+      : 'alochi-linux|$id|$m';
+  return sha256.convert(utf8.encode(seed)).toString().substring(0, 32);
 }
 
 /// One physical network adapter's identity + link-layer address — pure data
@@ -160,21 +212,7 @@ Future<String?> primaryMac() async {
   if (_macResolved) return _cachedMac;
   _macResolved = true;
   if (Platform.isLinux) {
-    try {
-      final dirs = Directory('/sys/class/net').listSync()
-        ..sort((a, b) => a.path.compareTo(b.path));
-      for (final d in dirs) {
-        // Only physical NICs have a `device` link (skips lo/docker/veth/br).
-        if (!Directory('${d.path}/device').existsSync()) continue;
-        try {
-          final mac = File('${d.path}/address').readAsStringSync().trim();
-          if (mac.isNotEmpty && mac != '00:00:00:00:00:00') {
-            _cachedMac = mac.toUpperCase();
-            break;
-          }
-        } catch (_) {}
-      }
-    } catch (_) {}
+    _cachedMac = linuxPrimaryMac();
     return _cachedMac;
   }
   if (!Platform.isWindows) return null;
