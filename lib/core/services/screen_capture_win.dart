@@ -13,6 +13,8 @@ import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:image/image.dart' as img;
 import 'package:win32/win32.dart';
 
+import 'window_kiosk_linux.dart';
+
 class CaptureProfile {
   final int width;
   final int height;
@@ -523,6 +525,7 @@ Uint8List? _grabBgra(CaptureProfile profile,
 /// anyway (an HWND check would false-positive "focus lost" on our own
 /// tooltips/dialogs, which are separate HWNDs of the same process).
 bool isForegroundOurs() {
+  if (Platform.isLinux) return linuxWindowActive;
   if (!Platform.isWindows) return true;
   final hwnd = GetForegroundWindow();
   if (hwnd == 0) return false;

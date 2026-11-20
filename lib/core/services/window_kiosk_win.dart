@@ -11,6 +11,8 @@ import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:win32/win32.dart';
 
+import 'window_kiosk_linux.dart';
+
 const int _kFullscreenStyleMask = WS_CAPTION | WS_THICKFRAME;
 
 // ponytail: single kiosk window per process (same "one mutable global"
@@ -60,6 +62,11 @@ void enterKioskFullscreen() {
 /// work area (excludes the taskbar) instead of the full screen, and without
 /// touching `GWL_STYLE` so the titlebar/border stay intact.
 void enterMaximizedWindowed() {
+  if (!kIsWeb && Platform.isLinux) {
+    linuxMaximize();
+    linuxInitWindowState(); // installs the focus listener (unawaited)
+    return;
+  }
   if (kIsWeb || !Platform.isWindows) return;
   if (!_hasWindow) return;
   final rect = calloc<RECT>();
@@ -87,6 +94,10 @@ void enterMaximizedWindowed() {
 /// F11 handler: flips between frameless-fullscreen and the previously saved
 /// windowed style/rect. No-op on non-Windows/web.
 void toggleFullscreen() {
+  if (!kIsWeb && Platform.isLinux) {
+    linuxToggleFullscreen();
+    return;
+  }
   if (kIsWeb || !Platform.isWindows) return;
   if (!_hasWindow) return;
   if (_isFullscreen) {
@@ -138,6 +149,10 @@ void _applyFullscreen(int hwnd) {
 /// (possibly minimized or behind another window). No-op on non-Windows/web
 /// or if no window handle has been resolved yet.
 void focusExistingWindow() {
+  if (!kIsWeb && Platform.isLinux) {
+    linuxPresent();
+    return;
+  }
   if (kIsWeb || !Platform.isWindows) return;
   if (!_hasWindow) return;
   ShowWindow(_hwnd, SW_RESTORE);
@@ -151,6 +166,10 @@ void focusExistingWindow() {
 /// than just for this one call), `ES_SYSTEM_REQUIRED`/`ES_DISPLAY_REQUIRED`
 /// block system sleep and display-off respectively. No-op on non-Windows/web.
 void enableWakeLock() {
+  if (!kIsWeb && Platform.isLinux) {
+    linuxInhibitSleep(true);
+    return;
+  }
   if (kIsWeb || !Platform.isWindows) return;
   SetThreadExecutionState(
       ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
@@ -162,6 +181,10 @@ void enableWakeLock() {
 /// previously requested flags — no prior-state tracking/restoring needed.
 /// No-op on non-Windows/web.
 void disableWakeLock() {
+  if (!kIsWeb && Platform.isLinux) {
+    linuxInhibitSleep(false);
+    return;
+  }
   if (kIsWeb || !Platform.isWindows) return;
   SetThreadExecutionState(ES_CONTINUOUS);
 }

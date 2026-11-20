@@ -157,7 +157,7 @@ void main(List<String> args) {
         DeviceReportSender.instance.start();
         DeviceCommandClient.instance.start();
 
-        if (Platform.isWindows) {
+        if (Platform.isWindows || Platform.isLinux) {
           // Startup window: Maximized with normal titlebar/taskbar visible.
           // F11 (below) still switches to the old borderless kiosk-fullscreen
           // mode when needed.

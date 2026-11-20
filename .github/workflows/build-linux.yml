@@ -80,12 +80,21 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           BUNDLE=build/linux/x64/release/bundle
-          ICON=macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png
+          # Alochi logo, extracted from windows/runner/resources/app_icon.ico. (Not
+          # macos/.../AppIcon.appiconset: that set is still the Flutter default.)
+          ICONS=linux/packaging/icons
+          # Must equal APPLICATION_ID (linux/CMakeLists.txt): GNOME/Wayland map a
+          # window to its launcher by "<app-id>.desktop", so the desktop file
+          # name and StartupWMClass have to be this exact id.
+          APP_ID=uz.alochi.alochiMonitoring
           [ -x "$BUNDLE/alochi_monitoring" ] || { echo "::error::bundle binary missing"; exit 1; }
+          for sz in 48 64 128 256; do
+            [ -f "$ICONS/alochi-monitoring-${sz}.png" ] || { echo "::error::missing icon $sz"; exit 1; }
+          done
 
           # Desktop entry shared by both packages. Exec is a bare command so it
           # resolves via /usr/bin (deb) or the user's own PATH/launcher (tar.gz).
-          cat > alochi-monitoring.desktop << 'DESKTOP'
+          cat > "$APP_ID.desktop" << DESKTOP
           [Desktop Entry]
           Type=Application
           Name=Alochi Monitoring
@@ -94,26 +103,48 @@ jobs:
           Icon=alochi-monitoring
           Terminal=false
           Categories=Education;
+          StartupWMClass=$APP_ID
           DESKTOP
 
           # ── tar.gz: bundle + desktop file + icon in one top-level folder ──
+          # The PNG next to the binary is the window-icon fallback used by
+          # my_application.cc when no themed icon is installed.
           STAGE=alochi-monitoring-linux-x64
           rm -rf "$STAGE"
           mkdir "$STAGE"
           cp -a "$BUNDLE"/. "$STAGE"/
-          cp alochi-monitoring.desktop "$STAGE"/
-          cp "$ICON" "$STAGE"/alochi-monitoring.png
+          cp "$APP_ID.desktop" "$STAGE"/
+          cp "$ICONS/alochi-monitoring-256.png" "$STAGE"/alochi-monitoring.png
           tar -czf alochi-monitoring-linux-x64.tar.gz "$STAGE"
 
           # ── deb (plain dpkg-deb) ──
           ROOT=debroot
           rm -rf "$ROOT"
           install -d "$ROOT/DEBIAN" "$ROOT/opt/alochi-monitoring" "$ROOT/usr/bin" \
-            "$ROOT/usr/share/applications" "$ROOT/usr/share/icons/hicolor/256x256/apps"
+            "$ROOT/usr/share/applications"
           cp -a "$BUNDLE"/. "$ROOT/opt/alochi-monitoring/"
           ln -s /opt/alochi-monitoring/alochi_monitoring "$ROOT/usr/bin/alochi-monitoring"
-          install -m 0644 alochi-monitoring.desktop "$ROOT/usr/share/applications/alochi-monitoring.desktop"
-          install -m 0644 "$ICON" "$ROOT/usr/share/icons/hicolor/256x256/apps/alochi-monitoring.png"
+          install -m 0644 "$APP_ID.desktop" "$ROOT/usr/share/applications/$APP_ID.desktop"
+          for sz in 48 64 128 256; do
+            d="$ROOT/usr/share/icons/hicolor/${sz}x${sz}/apps"
+            install -d "$d"
+            install -m 0644 "$ICONS/alochi-monitoring-${sz}.png" "$d/alochi-monitoring.png"
+          done
+          # Refresh icon/desktop caches so the launcher icon shows without a
+          # reboot. Every call is optional and must never fail the install.
+          cat > "$ROOT/DEBIAN/postinst" << 'POSTINST'
+          #!/bin/sh
+          set -e
+          if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+            gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
+          fi
+          if command -v update-desktop-database >/dev/null 2>&1; then
+            update-desktop-database -q || true
+          fi
+          exit 0
+          POSTINST
+          cp "$ROOT/DEBIAN/postinst" "$ROOT/DEBIAN/postrm"
+          chmod 0755 "$ROOT/DEBIAN/postinst" "$ROOT/DEBIAN/postrm"
           SIZE_KB=$(du -sk "$ROOT" | cut -f1)
           cat > "$ROOT/DEBIAN/control" << CONTROL
           Package: alochi-monitoring
@@ -125,7 +156,7 @@ jobs:
           Homepage: https://alochi.org
           Installed-Size: ${SIZE_KB}
           Depends: libgtk-3-0, libsecret-1-0, libsqlite3-0
-          Recommends: gnome-keyring, zenity, xdg-utils
+          Recommends: gnome-keyring, zenity, xdg-utils, gnome-screenshot, scrot
           Description: Alochi Monitoring
            Student testing and monitoring app for schools.
           CONTROL
