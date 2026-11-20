@@ -37,6 +37,7 @@ Widget _host({
   VoidCallback? onSkipped,
   VoidCallback? onNotes,
   Future<int?> Function(UpdateInfo)? sizeLoader,
+  bool browserOnly = false, // fixed so the label does not depend on the host OS
 }) {
   return MaterialApp(
     locale: Locale(lang),
@@ -57,6 +58,7 @@ Widget _host({
           sizeLoader: sizeLoader ?? (_) async => 39946240, // 38.1 MB
           onSkipped: onSkipped,
           onOpenReleaseNotes: onNotes,
+          browserOnly: browserOnly,
         ),
       ),
     ),
@@ -111,6 +113,31 @@ void main() {
       expect(t.getSize(btn).height, greaterThanOrEqualTo(44));
     });
   }
+
+  for (final c in const [('ru', 'Скачать'), ('uz', 'Yuklab olish')]) {
+    testWidgets('browser-only (Linux) primary button says Download (${c.$1})',
+        (t) async {
+      await t.pumpWidget(_host(lang: c.$1, browserOnly: true));
+      await t.tap(find.byType(UpdatePill));
+      await t.pumpAndSettle();
+      t.takeException(); // Ahem-font overflow noise, see above
+      expect(find.text(c.$2), findsOneWidget);
+      expect(find.text('Установить'), findsNothing);
+      expect(find.text("O'rnatish"), findsNothing);
+    });
+  }
+
+  testWidgets('install success (Linux release-page open) leaves no error state',
+      (t) async {
+    await t.pumpWidget(_host(
+        browserOnly: true, install: (_, {onProgress}) async => const UpdateResult.success()));
+    await openPopover(t);
+    t.takeException();
+    await t.tap(find.text('Скачать'));
+    await t.pumpAndSettle();
+    expect(find.text('Доступна новая версия'), findsOneWidget); // pill back to idle
+    expect(find.textContaining('Повторить'), findsNothing);
+  });
 
   group('size row is instant', () {
     final never = Completer<int?>();

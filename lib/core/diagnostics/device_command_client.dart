@@ -62,6 +62,7 @@ class DeviceCommandClient {
     ValueListenable<bool>? testGate,
     Future<UpdateInfo?> Function()? checkUpdate,
     Future<UpdateResult> Function(UpdateInfo)? installUpdate,
+    bool? canSelfInstall,
     Uint8List? commandPublicKey,
     Ed25519Verify? verifySignature,
     this.apiBase = _defaultHost,
@@ -77,7 +78,8 @@ class DeviceCommandClient {
         _gate = testGate ?? ActiveTestGate.active,
         _check = checkUpdate ?? UpdateService.instance.fetchUpdateInfo,
         _install =
-            installUpdate ?? UpdateService.instance.downloadAndInstallUpdate;
+            installUpdate ?? UpdateService.instance.downloadAndInstallUpdate,
+        _canSelfInstall = canSelfInstall ?? !Platform.isLinux;
 
   static const String _defaultHost = String.fromEnvironment(
     'API_BASE_URL',
@@ -115,6 +117,11 @@ class DeviceCommandClient {
   final ValueListenable<bool> _gate;
   final Future<UpdateInfo?> Function() _check;
   final Future<UpdateResult> Function(UpdateInfo) _install;
+
+  /// False on Linux (.deb needs root, nothing installs itself): a remote
+  /// force_update is answered `failed` straight away instead of opening a
+  /// browser on a student's screen and leaving the panel stuck on `updating`.
+  final bool _canSelfInstall;
 
   bool _started = false;
   bool _stopped = false;
@@ -296,6 +303,7 @@ class DeviceCommandClient {
 
   Future<void> _handleForceUpdate(String id) async {
     try {
+      if (!_canSelfInstall) return _ack(id, 'failed');
       if (_updating) return _ack(id, 'updating');
       if (_pendingId != null) {
         // Latest request wins; still waiting for the test to end.

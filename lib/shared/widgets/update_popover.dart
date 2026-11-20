@@ -5,6 +5,8 @@
 // for a compact "Downloading: 20%" capsule; a failed download reopens the
 // popover with the localized error and Retry / Open-in-browser actions.
 // Never opens the system browser on its own — only the explicit buttons do.
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/services/update_service.dart';
@@ -42,6 +44,10 @@ class UpdatePill extends StatefulWidget {
   final Future<int?> Function(UpdateInfo info)? sizeLoader;
   final VoidCallback? onOpenReleaseNotes;
 
+  /// The primary button only opens the release page (Linux: no self-install),
+  /// so it reads "Download" instead of "Install". Null = decide by platform.
+  final bool? browserOnly;
+
   const UpdatePill({
     super.key,
     required this.info,
@@ -56,6 +62,7 @@ class UpdatePill extends StatefulWidget {
     this.install,
     this.sizeLoader,
     this.onOpenReleaseNotes,
+    this.browserOnly,
   });
 
   @override
@@ -146,7 +153,8 @@ class _UpdatePillState extends State<UpdatePill> {
     }
     if (!mounted) return;
     if (result.success) {
-      // Practically unreachable — success calls exit(0) before returning.
+      // Windows/macOS: practically unreachable (success exits the app).
+      // Linux: the release page was opened; just leave the pill as it was.
       setState(() => _stage = _Stage.idle);
       return;
     }
@@ -430,7 +438,9 @@ class _UpdatePillState extends State<UpdatePill> {
                     ),
                   ),
                   child: Text(
-                    l10n.updateInstallRelaunchBtn,
+                    (widget.browserOnly ?? Platform.isLinux)
+                        ? l10n.downloadBtn
+                        : l10n.updateInstallRelaunchBtn,
                     maxLines: 1,
                     softWrap: false,
                     overflow: TextOverflow.ellipsis,

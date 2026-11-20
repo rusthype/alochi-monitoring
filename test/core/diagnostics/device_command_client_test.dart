@@ -117,6 +117,7 @@ void main() {
       Uri? seen;
       late DeviceCommandClient c;
       c = DeviceCommandClient(
+        canSelfInstall: true,
         deviceId: () async => 'dev-42',
         connect: (u) async {
           seen = u;
@@ -137,6 +138,7 @@ void main() {
       final delays = <Duration>[];
       late DeviceCommandClient c;
       c = DeviceCommandClient(
+        canSelfInstall: true,
         random: () => 0,
         deviceId: () async => 'd',
         connect: (_) async => throw const SocketException('down'),
@@ -152,7 +154,10 @@ void main() {
     });
 
     test('jitter never exceeds the cap', () {
-      final c = DeviceCommandClient(random: () => 0.999);
+      final c = DeviceCommandClient(
+        canSelfInstall: true,
+        random: () => 0.999,
+      );
       for (var i = 0; i < 30; i++) {
         expect(c.backoff(i) <= DeviceCommandClient.maxDelay, isTrue);
       }
@@ -163,6 +168,7 @@ void main() {
       final delays = <Duration>[];
       late DeviceCommandClient c;
       c = DeviceCommandClient(
+        canSelfInstall: true,
         random: () => 0,
         deviceId: () async => 'd',
         connect: (_) async =>
@@ -184,6 +190,7 @@ void main() {
       final chans = <FakeChannel>[];
       late DeviceCommandClient c;
       c = DeviceCommandClient(
+        canSelfInstall: true,
         random: () => 0,
         deviceId: () async => 'd',
         now: () => t,
@@ -215,6 +222,7 @@ void main() {
       var sleeps = 0;
       late DeviceCommandClient c;
       c = DeviceCommandClient(
+        canSelfInstall: true,
         shouldConnect: () => false,
         deviceId: () async => 'd',
         connect: (_) async {
@@ -241,7 +249,8 @@ void main() {
     UpdateResult result = const UpdateResult.success();
     late DeviceCommandClient c;
 
-    Future<void> boot({bool testRunning = false}) async {
+    Future<void> boot(
+        {bool testRunning = false, bool canSelfInstall = true}) async {
       ch = FakeChannel();
       gate = ValueNotifier(testRunning);
       checks = 0;
@@ -256,6 +265,7 @@ void main() {
         sleep: parkingSleep,
         deferredGrace: Duration.zero,
         testGate: gate,
+        canSelfInstall: canSelfInstall,
         checkUpdate: () async {
           checks++;
           return available;
@@ -278,6 +288,17 @@ void main() {
       expect(ch.acks, ['up_to_date']);
       expect(ch.sent.single['request_id'], 'r1');
       expect(ch.sent.single['type'], 'ack');
+      expect(installs, isEmpty);
+    });
+
+    test('platform cannot self-install (Linux) -> failed, no check, no install',
+        () async {
+      await boot(canSelfInstall: false);
+      available = _info;
+      ch.server(cmd('r0'));
+      await pump();
+      expect(ch.acks, ['failed']);
+      expect(checks, 0);
       expect(installs, isEmpty);
     });
 
@@ -414,6 +435,7 @@ void main() {
       gate = ValueNotifier(false);
       installs = [];
       c = DeviceCommandClient(
+        canSelfInstall: true,
         deviceId: () async => 'd',
         commandPublicKey: _key,
         verifySignature: _fakeVerify,
@@ -444,6 +466,7 @@ void main() {
       ch = FakeChannel();
       checks = 0;
       c = DeviceCommandClient(
+        canSelfInstall: true,
         deviceId: () async => 'd',
         commandPublicKey: withKey ? _key : null,
         verifySignature: _fakeVerify,
@@ -520,6 +543,7 @@ void main() {
       ch = FakeChannel();
       checks = 0;
       c = DeviceCommandClient(
+        canSelfInstall: true,
         deviceId: () async => 'd',
         commandPublicKey: _key,
         connect: (_) async => ch,
@@ -615,6 +639,7 @@ void main() {
       final ch = FakeChannel();
       var installs = 0;
       final c = DeviceCommandClient(
+        canSelfInstall: true,
         deviceId: () async => 'dev-vector-1',
         commandPublicKey: key,
         now: () => at,

@@ -150,6 +150,23 @@ void main() {
     });
   });
 
+  test('Linux: downloadAndInstallUpdate opens the release page and succeeds',
+      () async {
+    var opened = 0;
+    UpdateService.instance.openReleasePageOverride = () async => opened++;
+    addTearDown(() => UpdateService.instance.openReleasePageOverride = null);
+    final r = await UpdateService.instance.downloadAndInstallUpdate(
+      const UpdateInfo(
+        latestVersion: '9.9.9',
+        currentVersion: '1.0.0',
+        downloadUrl: 'https://example.invalid/x.tar.gz',
+      ),
+    );
+    expect(r.success, isTrue);
+    expect(r.error, isNull);
+    expect(opened, 1);
+  }, skip: Platform.isLinux ? false : 'Linux-only branch');
+
   test('manifestUrlFor picks the per-OS manifest', () {
     String name(String u) => u.split('/').last;
     expect(name(UpdateService.manifestUrlFor()), 'latest-windows.json');

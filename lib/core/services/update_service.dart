@@ -428,8 +428,8 @@ class UpdateInfo {
 /// Result of an install attempt. On the success path the app has already
 /// called `exit(0)` and relaunched itself (Windows) or handed off to a
 /// detached script (macOS) — so `UpdateResult.success()` is only ever
-/// theoretically reachable, same as the `Future<bool> => true` path it
-/// replaces. [error] is null for every failure the user would only see as
+/// theoretically reachable there. The one real success is Linux, where the
+/// button just opens the release page (nothing is installed, nothing exits). [error] is null for every failure the user would only see as
 /// raw exception text: the UI then shows its generic localized message and the
 /// detail stays in the update log (see [UpdateService._logUpdateFailure]).
 class UpdateResult {
@@ -538,10 +538,11 @@ class UpdateService {
       }
 
       if (Platform.isLinux) {
-        // No self-install on Linux (.deb needs root): send the user to the
-        // release page and report failure so the dialog stays honest.
-        await openReleasePage();
-        return const UpdateResult.failed(null);
+        // No self-install on Linux (.deb needs root): the "Download" button
+        // opens the release page, which is the whole action — so this is a
+        // success (no error state), and nothing was installed or exited.
+        await (openReleasePageOverride ?? openReleasePage)();
+        return const UpdateResult.success();
       }
 
       if (!Platform.isWindows) {
@@ -790,6 +791,10 @@ open -a "/Applications/alochi_monitoring.app"
   /// Simulates an app restart in tests.
   @visibleForTesting
   void resetSkipped() => _skippedThisSession.clear();
+
+  /// Test seam for the Linux "Download" action (avoids a real browser launch).
+  @visibleForTesting
+  Future<void> Function()? openReleasePageOverride;
 
   /// Opens the GitHub release page in the system browser so the user can
   /// download the new installer/DMG themselves.
