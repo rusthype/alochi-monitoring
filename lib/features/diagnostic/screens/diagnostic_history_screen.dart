@@ -5,18 +5,16 @@
 // No own AppBar/Scaffold — it's a TabBarView body, the hub provides the
 // shared chrome.
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path/path.dart' as p;
 import 'package:alochi_monitoring/l10n/app_localizations.dart';
 import '../../../core/db/diagnostic_history_db.dart';
 import '../../../core/services/diagnostic_export_service.dart';
 import '../../../core/sync/sync_service.dart';
 import '../../../shared/theme/app_theme.dart';
 import '../../../shared/widgets/history_card.dart';
+import '../../offline/export_done_notice.dart' show revealInFolder;
 import '../../../shared/widgets/pill_chip.dart';
 import '../../../core/db/diagnostic_kiosk_cache.dart';
 import '../data/diagnostic_export_schools.dart';
@@ -257,15 +255,8 @@ class _DiagnosticHistoryScreenState extends State<DiagnosticHistoryScreen> {
   /// %TEMP%\<guid>_<name>.zip.<n>\ path — a real bug report, the operator
   /// saw that temp path and concluded the export never reached Downloads
   /// at all. Selecting the file in its real folder proves it's really there.
-  static Future<void> _revealSavedFile(String filePath) async {
-    if (Platform.isWindows) {
-      await Process.run('explorer.exe', ['/select,$filePath']);
-    } else if (Platform.isMacOS) {
-      await Process.run('open', ['-R', filePath]);
-    } else {
-      await OpenFilex.open(p.dirname(filePath));
-    }
-  }
+  static Future<void> _revealSavedFile(String filePath) =>
+      revealInFolder(filePath);
 
   @override
   Widget build(BuildContext context) {
