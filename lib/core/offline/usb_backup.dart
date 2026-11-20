@@ -4,6 +4,7 @@
 //  * [autoSaveLatest]: silent safety backup after each saved result.
 //  * [copyToFlash]/[listRemovableDrives]: "copy to the flash drive" flow.
 // Nothing here ever deletes a file.
+import 'dart:convert' show LineSplitter;
 import 'dart:ffi';
 import 'dart:io';
 
@@ -108,10 +109,80 @@ List<String> listMacVolumes([String root = '/Volumes']) {
   return out..sort();
 }
 
-/// Removable drive roots such as `E:\` (Windows) or `/Volumes/FLASH` (macOS).
-/// Empty elsewhere.
+/// Mount points of USB / removable block devices from `/proc/self/mountinfo`
+/// text (pure, so it is unit-testable off Linux). Accepts only the places desktop
+/// auto-mounters use: `/media/X`, `/media/USER/X`, `/run/media/USER/X`, `/mnt/X`,
+/// and only when the source is a `/dev/...` node that [isFlashDevice] approves
+/// (it gets the bare node name, e.g. `sdb1`). Internal disks mounted under
+/// /media (a second SATA partition, docker overlays) are therefore skipped.
+@visibleForTesting
+List<String> parseLinuxRemovables(
+  String mountinfo, {
+  required bool Function(String dev) isFlashDevice,
+}) {
+  final out = <String>{};
+  for (final line in const LineSplitter().convert(mountinfo)) {
+    // "id parent maj:min root mountpoint opts [optional...] - fstype source superopts"
+    final sep = line.indexOf(' - ');
+    if (sep < 0) continue;
+    final pre = line.substring(0, sep).split(' ');
+    final post = line.substring(sep + 3).split(' ');
+    if (pre.length < 6 || post.length < 2) continue;
+    final source = _mountinfoUnescape(post[1]);
+    if (!source.startsWith('/dev/')) continue;
+    final mount = _mountinfoUnescape(pre[4]);
+    final seg = mount.split('/').where((e) => e.isNotEmpty).toList();
+    final inAutoMountDir = (seg.length >= 2 &&
+            seg.length <= 3 &&
+            seg[0] == 'media') ||
+        (seg.length == 4 && seg[0] == 'run' && seg[1] == 'media') ||
+        (seg.length == 2 && seg[0] == 'mnt');
+    if (!inAutoMountDir) continue;
+    try {
+      if (isFlashDevice(p.basename(source))) out.add(mount);
+    } catch (e) {
+      debugPrint('mount probe failed: ${e.runtimeType}');
+    }
+  }
+  return out.toList()..sort();
+}
+
+/// mountinfo escapes space/tab/newline/backslash as `\040` style octal.
+String _mountinfoUnescape(String s) => s.replaceAllMapped(
+      RegExp(r'\\([0-7]{3})'),
+      (m) => String.fromCharCode(int.parse(m[1]!, radix: 8)),
+    );
+
+/// True when block device [dev] (`sdb1`) sits on the USB bus (its sysfs path
+/// passes through a `usb` node) or its disk reports `removable == 1`.
+bool _linuxIsFlashDevice(String dev) {
+  final real = Directory('/sys/class/block/$dev').resolveSymbolicLinksSync();
+  if (real.contains('/usb')) return true;
+  // A partition has no `removable` file; its parent disk does.
+  for (final dir in [real, p.dirname(real)]) {
+    final f = File(p.join(dir, 'removable'));
+    if (f.existsSync()) return f.readAsStringSync().trim() == '1';
+  }
+  return false;
+}
+
+Future<List<String>> _listLinuxRemovables() async {
+  try {
+    return parseLinuxRemovables(
+      await File('/proc/self/mountinfo').readAsString(),
+      isFlashDevice: _linuxIsFlashDevice,
+    );
+  } on FileSystemException catch (e) {
+    debugPrint('mountinfo unreadable: ${e.runtimeType}');
+    return const [];
+  }
+}
+
+/// Removable drive roots such as `E:\` (Windows), `/Volumes/FLASH` (macOS) or
+/// `/media/user/FLASH` (Linux). Empty elsewhere.
 Future<List<String>> listRemovableDrives() async {
   if (Platform.isMacOS) return listMacVolumes();
+  if (Platform.isLinux) return _listLinuxRemovables();
   if (!Platform.isWindows) return const [];
   final mask = GetLogicalDrives();
   final roots = <String>[
