@@ -169,8 +169,9 @@ jobs:
           dpkg-deb --contents "alochi-monitoring_${VERSION}_amd64.deb" | sed -n '1,25p'
 
       # Static update manifest (release asset, not api.github.com) read by
-      # lib/core/services/update_service.dart. Points at the tar.gz; Linux
-      # clients only open the release page, they never self-install.
+      # lib/core/services/update_service.dart. `url`/`sha256` stay the tar.gz
+      # (older clients just open the release page); `deb_*` is what a .deb
+      # install downloads and installs itself through pkexec.
       - name: Generate Linux update manifest
         if: github.ref == 'refs/heads/main'
         env:
@@ -180,8 +181,12 @@ jobs:
           URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/latest/alochi-monitoring-linux-x64.tar.gz"
           SHA256=$(sha256sum alochi-monitoring-linux-x64.tar.gz | awk '{print $1}')
           SIZE=$(stat -c%s alochi-monitoring-linux-x64.tar.gz)
-          printf '{"version": "%s", "pub_date": "%s", "url": "%s", "sha256": "%s", "size": %s}\n' \
-            "$VERSION" "$PUB_DATE" "$URL" "$SHA256" "$SIZE" > latest-linux.json
+          DEB="alochi-monitoring_${VERSION}_amd64.deb"
+          DEB_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/latest/${DEB}"
+          DEB_SHA256=$(sha256sum "$DEB" | awk '{print $1}')
+          DEB_SIZE=$(stat -c%s "$DEB")
+          printf '{"version": "%s", "pub_date": "%s", "url": "%s", "sha256": "%s", "size": %s, "deb_url": "%s", "deb_sha256": "%s", "deb_size": %s}\n' \
+            "$VERSION" "$PUB_DATE" "$URL" "$SHA256" "$SIZE" "$DEB_URL" "$DEB_SHA256" "$DEB_SIZE" > latest-linux.json
           echo "latest-linux.json:"
           cat latest-linux.json
 

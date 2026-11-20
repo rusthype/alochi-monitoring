@@ -356,6 +356,83 @@ void main() {
     expect(a, containsAll(['-L', '-f', '-o', '/tmp/x.dmg', goodUrl]));
   });
 
+  group('Linux self-update (.deb via pkexec)', () {
+    const base =
+        'https://github.com/rusthype/alochi-monitoring/releases/download/latest';
+    Map<String, dynamic> manifest({Object? debUrl, Object? debHash}) => {
+          'version': '1.0.174',
+          'url': '$base/alochi-monitoring-linux-x64.tar.gz',
+          'sha256': 'a' * 64,
+          if (debUrl != null) 'deb_url': debUrl,
+          if (debHash != null) 'deb_sha256': debHash,
+        };
+
+    test('manifest deb fields are parsed', () {
+      final info = parseUpdateManifest(
+          manifest(
+              debUrl: '$base/alochi-monitoring_1.0.174_amd64.deb',
+              debHash: 'b' * 64),
+          '1.0.173')!;
+      expect(info.debUrl, endsWith('_amd64.deb'));
+      expect(info.debSha256, 'b' * 64);
+      expect(info.downloadUrl, endsWith('.tar.gz'));
+    });
+
+    test('missing, off-host or hash-less deb is ignored (old manifests)', () {
+      expect(parseUpdateManifest(manifest(), '1.0.173')!.debUrl, isNull);
+      expect(
+          parseUpdateManifest(
+                  manifest(
+                      debUrl: 'https://evil.example/x.deb', debHash: 'b' * 64),
+                  '1.0.173')!
+              .debUrl,
+          isNull);
+      expect(
+          parseUpdateManifest(manifest(debUrl: '$base/x.deb'), '1.0.173')!
+              .debUrl,
+          isNull);
+    });
+
+    UpdateInfo infoWith({String? deb}) => UpdateInfo(
+        latestVersion: '1.0.174',
+        currentVersion: '1.0.173',
+        downloadUrl: '$base/x.tar.gz',
+        debUrl: deb,
+        debSha256: deb == null ? null : 'b' * 64);
+
+    test('self-install only for a .deb install with pkexec and a deb', () {
+      bool ok({
+        bool linux = true,
+        String exe = '/opt/alochi-monitoring/alochi_monitoring',
+        bool pk = true,
+        String? deb = '$base/x.deb',
+      }) =>
+          linuxSelfInstallPossible(
+              isLinux: linux,
+              executable: exe,
+              hasPkexec: pk,
+              info: infoWith(deb: deb));
+      expect(ok(), isTrue);
+      expect(ok(linux: false), isFalse);
+      expect(ok(exe: '/home/u/alochi-monitoring-linux-x64/alochi_monitoring'),
+          isFalse);
+      expect(ok(pk: false), isFalse);
+      expect(ok(deb: null), isFalse);
+    });
+
+    test('install command is non-interactive apt-get on the given path', () {
+      expect(linuxInstallCommand('/tmp/a.deb'), [
+        'env',
+        'DEBIAN_FRONTEND=noninteractive',
+        'apt-get',
+        'install',
+        '-y',
+        '--allow-downgrades',
+        '/tmp/a.deb',
+      ]);
+    });
+  });
+
   group('runBounded (F23 timeout kills the child)', () {
     test('returns the exit code of a process that finishes', () async {
       final p = _FakeProcess()..finish(0);

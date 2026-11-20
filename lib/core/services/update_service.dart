@@ -381,6 +381,16 @@ UpdateInfo? parseUpdateManifest(Object? decoded, String currentVersion) {
   }
   final hash = decoded['sha256'] ?? decoded['installer_sha256'];
 
+  // Linux only: the .deb the app can install itself (the main `url` stays the
+  // tar.gz for older clients). A disallowed or half-specified pair is simply
+  // ignored, so such a manifest degrades to "open the release page".
+  final debUrl = decoded['deb_url'];
+  final debHash = decoded['deb_sha256'];
+  final hasDeb = debUrl is String &&
+      isAllowedUpdateUrl(debUrl) &&
+      debHash is String &&
+      debHash.trim().isNotEmpty;
+
   // Optional display-only metadata; a missing or malformed value is simply
   // unknown, never a reason to reject the update.
   final pub = decoded['pub_date'];
@@ -391,6 +401,8 @@ UpdateInfo? parseUpdateManifest(Object? decoded, String currentVersion) {
     currentVersion: currentVersion,
     downloadUrl: downloadUrl,
     sha256: hash?.toString(),
+    debUrl: hasDeb ? debUrl : null,
+    debSha256: hasDeb ? debHash : null,
     releasedAt: pub is String ? DateTime.tryParse(pub) : null,
     sizeBytes: size is num && size > 0 ? size.toInt() : null,
   );
@@ -407,6 +419,11 @@ class UpdateInfo {
   /// old CI): the download is then installed exactly as before.
   final String? sha256;
 
+  /// Linux: URL and hex SHA-256 of the .deb (manifest `deb_url` / `deb_sha256`).
+  /// Both null on other platforms or when the manifest has no .deb.
+  final String? debUrl;
+  final String? debSha256;
+
   /// Release date from the manifest's optional `pub_date`; null when absent
   /// or unparseable. Display-only.
   final DateTime? releasedAt;
@@ -420,6 +437,8 @@ class UpdateInfo {
     required this.currentVersion,
     required this.downloadUrl,
     this.sha256,
+    this.debUrl,
+    this.debSha256,
     this.releasedAt,
     this.sizeBytes,
   });
@@ -428,8 +447,8 @@ class UpdateInfo {
 /// Result of an install attempt. On the success path the app has already
 /// called `exit(0)` and relaunched itself (Windows) or handed off to a
 /// detached script (macOS) — so `UpdateResult.success()` is only ever
-/// theoretically reachable there. The one real success is Linux, where the
-/// button just opens the release page (nothing is installed, nothing exits). [error] is null for every failure the user would only see as
+/// theoretically reachable there. The one real success is Linux without a
+/// self-installable .deb, where the button just opens the release page. [error] is null for every failure the user would only see as
 /// raw exception text: the UI then shows its generic localized message and the
 /// detail stays in the update log (see [UpdateService._logUpdateFailure]).
 class UpdateResult {
@@ -440,6 +459,36 @@ class UpdateResult {
         error = null;
   const UpdateResult.failed(this.error) : success = false;
 }
+
+/// Whether a Linux install can update itself: a real .deb install (the
+/// binary lives under /opt/alochi-monitoring, where the package puts it), the
+/// polkit `pkexec` helper present, and a .deb named in the manifest.
+@visibleForTesting
+bool linuxSelfInstallPossible({
+  required bool isLinux,
+  required String executable,
+  required bool hasPkexec,
+  required UpdateInfo info,
+}) =>
+    isLinux &&
+    hasPkexec &&
+    executable.startsWith('/opt/alochi-monitoring/') &&
+    info.debUrl != null &&
+    info.debSha256 != null;
+
+/// `pkexec` arguments that install [debPath] non-interactively. apt-get (not
+/// dpkg -i) so a new dependency would be pulled in; `--allow-downgrades`
+/// because a pinned older release must also be installable.
+@visibleForTesting
+List<String> linuxInstallCommand(String debPath) => [
+      'env',
+      'DEBIAN_FRONTEND=noninteractive',
+      'apt-get',
+      'install',
+      '-y',
+      '--allow-downgrades',
+      debPath,
+    ];
 
 class UpdateService {
   UpdateService._();
@@ -538,9 +587,12 @@ class UpdateService {
       }
 
       if (Platform.isLinux) {
-        // No self-install on Linux (.deb needs root): the "Download" button
-        // opens the release page, which is the whole action — so this is a
-        // success (no error state), and nothing was installed or exited.
+        if (canSelfInstallLinux(info)) {
+          return await _updateLinux(info, onProgress);
+        }
+        // tar.gz install, no pkexec, or a manifest without a .deb: the
+        // "Download" button opens the release page, which is the whole action
+        // — a success (no error state); nothing was installed or exited.
         await (openReleasePageOverride ?? openReleasePage)();
         return const UpdateResult.success();
       }
@@ -623,6 +675,65 @@ try {
       // or cancelled run leaves no installer behind in the temp folder.
       final left = installerPath;
       if (left != null) await _deleteQuietly(left);
+    }
+  }
+
+  /// True when this Linux install came from the .deb (binary under
+  /// /opt/alochi-monitoring), pkexec exists for the admin prompt, and the
+  /// manifest offers a .deb. Anything else (tar.gz, no polkit) keeps the
+  /// "open the release page" behaviour.
+  bool canSelfInstallLinux(UpdateInfo info) => linuxSelfInstallPossible(
+        isLinux: Platform.isLinux,
+        executable: Platform.resolvedExecutable,
+        hasPkexec: File('/usr/bin/pkexec').existsSync(),
+        info: info,
+      );
+
+  Future<UpdateResult> _updateLinux(
+      UpdateInfo info, Function(double)? onProgress) async {
+    String? debPath;
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final path =
+          '${tempDir.path}/AlochiMonitoring-Update-${info.latestVersion}.deb';
+      debPath = path;
+      await downloadVerified(
+        UpdateInfo(
+          latestVersion: info.latestVersion,
+          currentVersion: info.currentVersion,
+          downloadUrl: info.debUrl!,
+          sha256: info.debSha256,
+        ),
+        path,
+        onProgress: onProgress,
+      );
+
+      // pkexec shows the desktop's own admin-password dialog. 5 minutes
+      // covers the prompt plus the install; on timeout the child is killed.
+      final exitCode = await runBounded(
+        () => Process.start('pkexec', linuxInstallCommand(path)),
+        const Duration(minutes: 5),
+      );
+      if (exitCode != 0) {
+        throw Exception('apt-get install failed or was cancelled '
+            '(pkexec exit code $exitCode)');
+      }
+      await _deleteQuietly(path);
+
+      // Relaunch from a detached shell AFTER this process has exited: a
+      // second instance started now would just hand over to this one
+      // (single-instance GApplication).
+      await Process.start(
+        '/bin/sh',
+        ['-c', 'sleep 2; exec "\$0"', Platform.resolvedExecutable],
+        mode: ProcessStartMode.detached,
+      );
+      exit(0);
+    } catch (e) {
+      debugPrint('UpdateService._updateLinux error: $e');
+      if (debPath != null) await _deleteQuietly(debPath);
+      await _logUpdateFailure('linux-download-or-install', e);
+      return const UpdateResult.failed(null);
     }
   }
 

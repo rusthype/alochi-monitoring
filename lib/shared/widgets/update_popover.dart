@@ -154,7 +154,8 @@ class _UpdatePillState extends State<UpdatePill> {
     if (!mounted) return;
     if (result.success) {
       // Windows/macOS: practically unreachable (success exits the app).
-      // Linux: the release page was opened; just leave the pill as it was.
+      // Linux without a self-installable .deb: the release page was opened;
+      // just leave the pill as it was.
       setState(() => _stage = _Stage.idle);
       return;
     }
@@ -438,7 +439,10 @@ class _UpdatePillState extends State<UpdatePill> {
                     ),
                   ),
                   child: Text(
-                    (widget.browserOnly ?? Platform.isLinux)
+                    (widget.browserOnly ??
+                        (Platform.isLinux &&
+                            !UpdateService.instance
+                                .canSelfInstallLinux(widget.info)))
                         ? l10n.downloadBtn
                         : l10n.updateInstallRelaunchBtn,
                     maxLines: 1,
