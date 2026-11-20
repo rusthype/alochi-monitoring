@@ -1,5 +1,5 @@
 // lib/core/services/proctor_service.dart
-// Live proctoring (Windows kiosk): periodic screen-frame broadcast loop.
+// Live proctoring (Windows kiosk; Linux/macOS via screenshot CLI tools): periodic screen-frame broadcast loop.
 // Every failure path here just counts and reschedules — this must never
 // throw out of _tick or interrupt the exam.
 import 'dart:async';
@@ -55,7 +55,7 @@ class ProctorService {
   /// capture loop is running, so `start`/`stop` own wiring that one
   /// callback directly.
   void start() {
-    if (!Platform.isWindows && !Platform.isMacOS) return;
+    if (!Platform.isWindows && !Platform.isMacOS && !Platform.isLinux) return;
     stop(); // idempotent restart
     resetCaptureStreamForNewSession();
     HeartbeatService.instance.onRequestKeyframe = forceNextKeyframe;

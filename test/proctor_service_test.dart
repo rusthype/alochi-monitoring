@@ -72,6 +72,9 @@ void main() {
         expect(capture!.jpeg, isNotEmpty);
         setMacOsCaptureDisabledForTesting(false); // don't leak into other tests
       },
+      skip: Platform.isLinux
+          ? 'macOS mock-frame behaviour; Linux is covered by linux_capture_test.dart'
+          : null,
     );
 
     test(
@@ -94,6 +97,9 @@ void main() {
           expect(capture!.jpeg, isNotEmpty);
         }
       },
+      skip: Platform.isLinux
+          ? 'macOS mock-frame behaviour; Linux is covered by linux_capture_test.dart'
+          : null,
     );
   });
 

@@ -3,13 +3,15 @@
 // No native C++, no method channels — every function here is a safe
 // no-op/default on non-Windows platforms, so call sites never need their
 // own Platform.isWindows guard.
+import 'dart:async';
 import 'dart:ffi';
-import 'dart:io' show Directory, File, Platform, Process;
+import 'dart:io'
+    show Directory, File, Platform, Process, ProcessException, ProcessSignal;
 import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb, visibleForTesting;
 import 'package:image/image.dart' as img;
 import 'package:win32/win32.dart';
 
@@ -154,6 +156,9 @@ void resetCaptureStreamForNewSession() {
   _lastFrameProfile = null;
   _lastKeyframeAt = null;
   _forceKeyframe = true;
+  // A screenshot tool installed (or a Wayland permission granted) since the
+  // last session gets a fresh chance.
+  _linuxNoTool = false;
 }
 
 class _DirtyResult {
@@ -287,6 +292,7 @@ _DirtyResult _decideDirty(CaptureProfile profile, Uint8List bgra) {
 Future<CaptureResult?> captureScreenJpeg({int? monitorIndex}) async {
   final profile = currentCaptureProfile; // snapshot before isolate/CLI hop
   if (Platform.isMacOS) return _captureMacOsJpeg(profile);
+  if (Platform.isLinux) return captureLinuxJpeg(profile);
   if (!Platform.isWindows) return null;
   MonitorInfo? target;
   if (monitorIndex != null && monitorIndex > 0) {
@@ -412,6 +418,152 @@ Future<CaptureResult?> _captureMacOsJpeg(CaptureProfile profile) async {
         await tempFile.delete();
       } catch (_) {}
     }
+  }
+}
+
+// ── Linux capture ───────────────────────────────────────────────────────────
+// CLI screenshot tools, same approach as macOS (no FFI, no portal prompt).
+// Keyframes only: no cursor and no dirty rects. Unlike macOS there is NO mock
+// frame — a grey placeholder would tell the teacher the student's screen is
+// fine. With no usable tool, capture returns null (proctor_service counts it
+// as a failure and backs off), so the panel simply gets no tile.
+//
+// Known limits (verified on GNOME 48 / Wayland): `scrot`/`import` only see
+// XWayland clients on Wayland, `grim` needs a wlroots compositor, and
+// gnome-screenshot is the only tool GNOME Shell lets take a screenshot — but it
+// always asks for the shell's screen flash, so on GNOME Wayland EVERY captured
+// frame flashes the student's screen. Exam labs should use an X11 session
+// (scrot/import: silent) until a portal/PipeWire capture exists.
+
+/// True on an X11 session (no Wayland socket in the environment).
+bool get _linuxIsX11 {
+  final env = Platform.environment;
+  final type = env['XDG_SESSION_TYPE'];
+  if (type != null && type.isNotEmpty) return type == 'x11';
+  return (env['WAYLAND_DISPLAY'] ?? '').isEmpty && (env['DISPLAY'] ?? '').isNotEmpty;
+}
+
+/// (tool, args) tried in order; the first that exits 0 and writes the file wins.
+/// X11: silent tools first. Wayland: gnome-screenshot (GNOME) then grim (wlroots).
+@visibleForTesting
+List<(String, List<String>)> linuxCaptureCandidates(String out,
+    {bool x11 = false}) {
+  final gnome = ('gnome-screenshot', ['-f', out]);
+  final grim = ('grim', ['-t', 'jpeg', out]);
+  final scrot = ('scrot', ['-o', out]);
+  final import_ = ('import', ['-window', 'root', out]);
+  return x11 ? [scrot, import_, gnome, grim] : [gnome, grim, scrot, import_];
+}
+
+/// Runs a tool, returns its exit code. Throws [ProcessException] when the
+/// binary is not installed. Overridable in tests.
+typedef LinuxToolRunner = Future<int> Function(String exe, List<String> args);
+
+Future<int> _runLinuxTool(String exe, List<String> args) async {
+  final proc = await Process.start(exe, args);
+  // The tools print nothing useful; drain so a full pipe never blocks them.
+  unawaited(proc.stdout.drain<void>());
+  unawaited(proc.stderr.drain<void>());
+  try {
+    return await proc.exitCode.timeout(const Duration(seconds: 4));
+  } on TimeoutException {
+    proc.kill(ProcessSignal.sigkill);
+    return -1;
+  }
+}
+
+// ponytail: module-level like the other capture state; one kiosk process.
+bool _linuxNoTool = false; // every candidate missing: stop spawning this session
+int _linuxPreferred = 0; // index of the tool that worked last
+
+@visibleForTesting
+void resetLinuxCaptureForTesting() {
+  _linuxNoTool = false;
+  _linuxPreferred = 0;
+}
+
+/// Grabs the screen with the first working tool and returns the raw image
+/// file bytes (PNG or JPEG), or null.
+@visibleForTesting
+Future<Uint8List?> grabLinuxScreenFile({
+  LinuxToolRunner? run,
+  Directory? tmp,
+  bool? x11,
+}) async {
+  if (_linuxNoTool) return null;
+  final runner = run ?? _runLinuxTool;
+  final dir = tmp ?? Directory.systemTemp;
+  final out = '${dir.path}/proctor_${DateTime.now().microsecondsSinceEpoch}.png';
+  final file = File(out);
+  final cands = linuxCaptureCandidates(out, x11: x11 ?? _linuxIsX11);
+  var missing = 0;
+  try {
+    // Last working tool first, then the rest in priority order.
+    final order = [
+      _linuxPreferred,
+      for (var i = 0; i < cands.length; i++)
+        if (i != _linuxPreferred) i,
+    ];
+    for (final i in order) {
+      final (exe, args) = cands[i];
+      try {
+        final code = await runner(exe, args);
+        if (code == 0 && await file.exists() && await file.length() > 0) {
+          _linuxPreferred = i;
+          return await file.readAsBytes();
+        }
+      } on ProcessException {
+        missing++; // not installed
+      } catch (e) {
+        debugPrint('capture tool $exe failed: ${e.runtimeType}');
+      }
+    }
+    if (missing == cands.length) {
+      _linuxNoTool = true;
+      debugPrint('no screenshot tool installed (gnome-screenshot/grim/scrot/import)');
+    }
+    return null;
+  } finally {
+    try {
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
+  }
+}
+
+/// Decode, resize to the profile's wire size (like the Windows StretchBlt) and
+/// re-encode as JPEG, off the UI isolate.
+@visibleForTesting
+Future<Uint8List?> linuxFrameToJpeg(Uint8List raw, CaptureProfile profile) {
+  final w = profile.width, h = profile.height, q = profile.quality;
+  return Isolate.run(() {
+    final decoded = img.decodeImage(raw);
+    if (decoded == null) return null;
+    final small = img.copyResize(decoded,
+        width: w, height: h, interpolation: img.Interpolation.average);
+    return Uint8List.fromList(img.encodeJpg(small, quality: q));
+  });
+}
+
+@visibleForTesting
+Future<CaptureResult?> captureLinuxJpeg(CaptureProfile profile,
+    {LinuxToolRunner? run, Directory? tmp}) async {
+  try {
+    final raw = await grabLinuxScreenFile(run: run, tmp: tmp);
+    if (raw == null) return null;
+    final jpeg = await linuxFrameToJpeg(raw, profile);
+    if (jpeg == null) return null;
+    return CaptureResult(
+      jpeg: jpeg,
+      frameType: 'keyframe',
+      x: 0,
+      y: 0,
+      w: profile.width,
+      h: profile.height,
+      streamEpoch: _streamEpoch,
+    );
+  } catch (e) {
+    debugPrint('linux capture failed: ${e.runtimeType}');
+    return null;
   }
 }
 
