@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       submit_winget:
-        description: 'Winget-pkgs ga submit qilish'
+        description: 'Submit to winget-pkgs'
         type: boolean
         default: false
 
@@ -267,37 +267,6 @@ jobs:
             Write-Host "Setup.exe not found (Inno Setup step failed), skipping latest-windows.json"
           }
 
-      - name: Generate Windows release notes
-        if: startsWith(github.ref, 'refs/tags/')
-        id: winnotes
-        shell: pwsh
-        run: |
-          $baseUrl = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}"
-          $lines = @("## 🪟 Windows", "", "|  | File | Size |", "|---|---|---|")
-
-          $zipSize = "{0:N1} MB" -f ((Get-Item "alochi-monitoring-windows.zip").Length / 1MB)
-          $lines += "| 🟢 Portable ZIP | [``alochi-monitoring-windows.zip``]($baseUrl/alochi-monitoring-windows.zip) | $zipSize |"
-
-          $setupExe = Get-ChildItem -Path . -Filter "AlochiMonitoring-*-Setup.exe" | Select-Object -First 1
-          if ($setupExe) {
-            $setupSize = "{0:N1} MB" -f ($setupExe.Length / 1MB)
-            $lines += "| 🔵 Setup.exe (tavsiya) | [``$($setupExe.Name)``]($baseUrl/$($setupExe.Name)) | $setupSize |"
-          }
-
-          if (Test-Path "alochi-monitoring.msix") {
-            $msixSize = "{0:N1} MB" -f ((Get-Item "alochi-monitoring.msix").Length / 1MB)
-            $lines += "| 🟣 MSIX | [``alochi-monitoring.msix``]($baseUrl/alochi-monitoring.msix) | $msixSize |"
-          }
-
-          $lines += ""
-          $lines += "**SHA256 (ZIP):** ``${{ steps.hashes.outputs.zip_sha256 }}``"
-          if ("${{ steps.hashes.outputs.setup_sha256 }}") {
-            $lines += ""
-            $lines += "**SHA256 (Setup.exe):** ``${{ steps.hashes.outputs.setup_sha256 }}``"
-          }
-
-          $lines -join "`n" | Out-File -FilePath release_notes_windows.md -Encoding utf8
-
       # ── 4. Latest release ─────────────────────────────────────
       # NOTE: no upload-artifact steps — the build outputs are distributed via
       # GitHub Releases below (zip + Setup.exe), so CI artifacts were pure
@@ -316,18 +285,20 @@ jobs:
             AlochiMonitoring-*-Setup.exe
             latest-windows.json
           body: |
-            ### O'rnatish
+            ### Installation
 
-            **Setup.exe (tavsiya) — eng oson:**
-            Quyidagi `AlochiMonitoring-<version>-Setup.exe` faylini yuklab, 2 marta bosib o'rnating.
+            **Setup.exe (recommended) — easiest:**
+            Download `AlochiMonitoring-<version>-Setup.exe` below and double-click it to install.
 
-            **PowerShell (Admin) — muqobil:**
+            **PowerShell (Admin) — alternative:**
             ```powershell
             iex (irm https://raw.githubusercontent.com/rusthype/alochi-monitoring/main/install.ps1)
             ```
 
             **ZIP (portable):**
             `alochi-monitoring-windows.zip` -> `alochi_monitoring.exe`
+
+            **Linux:** `alochi-monitoring_<version>_amd64.deb` or `alochi-monitoring-linux-x64.tar.gz`.
 
             **SHA256 (ZIP):** `${{ steps.hashes.outputs.zip_sha256 }}`
 
@@ -349,8 +320,6 @@ jobs:
             alochi-monitoring-windows.zip
             alochi-monitoring.msix
             AlochiMonitoring-*-Setup.exe
-          append_body: true
-          body_path: release_notes_windows.md
 
   # ── Winget manifest submit ────────────────────────────────────
   submit-winget:

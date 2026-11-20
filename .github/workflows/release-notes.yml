@@ -1,0 +1,141 @@
+name: Release notes
+
+# Single writer of the GitHub Release body (English only). The platform
+# workflows (build-windows/macos/linux/android) only upload their files to the
+# release; they never write or append to the body, so there is no ordering
+# race between them.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to generate notes for (e.g. v1.0.172)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Only print the body to the job summary, do not touch any release'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          git rev-parse -q --verify "refs/tags/${TAG}" > /dev/null \
+            || { echo "::error::tag ${TAG} not found"; exit 1; }
+          VERSION="${TAG#v}"
+          REPO="${GITHUB_REPOSITORY}"
+          BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
+
+          # Previous release tag = the next lower v* tag after this one.
+          PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]' | awk -v t="$TAG" 'f{print; exit} $0==t{f=1}' || true)
+          RANGE="${PREV_TAG:+$PREV_TAG..}${TAG}"
+
+          FEATS=$(git log "$RANGE" --pretty=format:'%s' | grep -E '^feat(\(.+\))?!?:' | sed -E 's/^feat(\(.+\))?!?:[[:space:]]*/- /' || true)
+          FIXES=$(git log "$RANGE" --pretty=format:'%s' | grep -E '^fix(\(.+\))?!?:' | sed -E 's/^fix(\(.+\))?!?:[[:space:]]*/- /' || true)
+          OTHER=$(git log "$RANGE" --pretty=format:'%s' | grep -E '^(chore|refactor|perf|docs|style|test)(\(.+\))?!?:' | sed -E 's/^[a-z]+(\(.+\))?!?:[[:space:]]*/- /' || true)
+
+          {
+            echo "<div align=\"center\">"
+            echo ""
+            echo "# 🖥️ Alochi Monitoring"
+            echo "### v${VERSION}"
+            echo ""
+            echo "![Windows](https://img.shields.io/badge/Windows-10+-0078D4?style=flat-square&logo=windows&logoColor=white)"
+            echo "![macOS](https://img.shields.io/badge/macOS-11+-000000?style=flat-square&logo=apple&logoColor=white)"
+            echo "![Linux](https://img.shields.io/badge/Linux-x64-FCC624?style=flat-square&logo=linux&logoColor=black)"
+            echo "![Android](https://img.shields.io/badge/Android-APK-3DDC84?style=flat-square&logo=android&logoColor=white)"
+            echo "![Version](https://img.shields.io/badge/version-${VERSION}-4F46E5?style=flat-square)"
+            echo ""
+            echo "</div>"
+            echo ""
+            if [ -n "$FEATS" ]; then
+              echo "## ✨ New features"
+              echo "$FEATS"
+              echo ""
+            fi
+            if [ -n "$FIXES" ]; then
+              echo "## 🐛 Bug fixes"
+              echo "$FIXES"
+              echo ""
+            fi
+            if [ -n "$OTHER" ]; then
+              echo "## 🔧 Other changes"
+              echo "$OTHER"
+              echo ""
+            fi
+            echo "## 📦 Downloads"
+            echo ""
+            echo "### 🪟 Windows"
+            echo ""
+            echo "- **Installer (recommended):** [\`AlochiMonitoring-${VERSION}-Setup.exe\`](${BASE_URL}/AlochiMonitoring-${VERSION}-Setup.exe)"
+            echo "- Portable ZIP: [\`alochi-monitoring-windows.zip\`](${BASE_URL}/alochi-monitoring-windows.zip)"
+            echo "- MSIX: [\`alochi-monitoring.msix\`](${BASE_URL}/alochi-monitoring.msix)"
+            echo ""
+            echo "### 🍎 macOS"
+            echo ""
+            echo "- DMG: [\`alochi-monitoring.dmg\`](${BASE_URL}/alochi-monitoring.dmg)"
+            echo ""
+            echo "Ad-hoc signed. On first launch **right-click → Open** to bypass Gatekeeper. See the [macOS installation guide](https://github.com/${REPO}/blob/main/docs/INSTALL_MACOS.md)."
+            echo ""
+            echo "### 🐧 Linux (x64)"
+            echo ""
+            echo "- Debian/Ubuntu package: [\`alochi-monitoring_${VERSION}_amd64.deb\`](${BASE_URL}/alochi-monitoring_${VERSION}_amd64.deb)"
+            echo "- Tarball: [\`alochi-monitoring-linux-x64.tar.gz\`](${BASE_URL}/alochi-monitoring-linux-x64.tar.gz)"
+            echo ""
+            echo "\`\`\`bash"
+            echo "sudo apt install ./alochi-monitoring_${VERSION}_amd64.deb"
+            echo "\`\`\`"
+            echo ""
+            echo "### 🤖 Android"
+            echo ""
+            echo "- APK: [\`app-release.apk\`](${BASE_URL}/app-release.apk)"
+            echo ""
+            echo "SHA-256 digests are shown next to each asset below."
+            echo ""
+            if [ -n "$PREV_TAG" ]; then
+              echo "<div align=\"center\">"
+              echo ""
+              echo "**[Full changelog → ${PREV_TAG}...${TAG}](https://github.com/${REPO}/compare/${PREV_TAG}...${TAG})**"
+              echo ""
+              echo "</div>"
+            fi
+          } > release_notes.md
+
+          cat release_notes.md
+
+      - name: Show notes in job summary (dry run)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
+        run: |
+          {
+            echo "## Release body preview (dry run, no release touched)"
+            echo ""
+            echo '```markdown'
+            cat release_notes.md
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # body_path replaces the whole body (never append_body). No files here.
+      - name: Write release body
+        if: github.event_name == 'push' || github.event.inputs.dry_run != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          body_path: release_notes.md
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,64 +1,64 @@
-# Alochi Monitoring — macOS'da o'rnatish
+# Alochi Monitoring — Installing on macOS
 
-## Tavsif
+## Description
 
-Alochi Monitoring — O'zbekistondagi maktablarda o'quvchilarni test qilish tizimi uchun macOS dasturi. U o'qituvchilar va adminlarni real vaqtda test jarayonini kuzatishga yordam beradi.
-
----
-
-## O'rnatish
-
-1. **DMG faylni yuklab oling:**
-   - https://github.com/rusthype/alochi-monitoring/releases/tag/latest sahifasiga boring
-   - `alochi-monitoring.dmg` faylni yuklab oling
-
-2. **O'rnatishni boshlang:**
-   - Yuklab olingan `.dmg` faylni ikki marta bosing — disk tasviri ochiladi
-   - Ochilgan oynada **Alochi Monitoring** ilovasini **Applications** papkasi belgisiga torting (drag & drop)
-
-3. **Dasturni ishga tushiring:**
-   - Applications papkasini oching, **Alochi Monitoring**ni toping
+Alochi Monitoring is the macOS app of the student testing system used in schools across Uzbekistan. It helps teachers and administrators follow the testing process in real time.
 
 ---
 
-## "Damaged file" / Gatekeeper xatosi chiqsa
+## Installation
 
-Dastur **ad-hoc imzolangan** (Apple Developer sertifikati bilan emas), shuning uchun oddiy ikki marta bosish macOS 15+ da "Alochi Monitoring" is damaged and can't be opened" degan xato berishi mumkin. Bu xato yo'q — GitHub'dan to'g'ri yuklab olingan fayl xavfsiz.
+1. **Download the DMG file:**
+   - Go to https://github.com/rusthype/alochi-monitoring/releases/tag/latest
+   - Download `alochi-monitoring.dmg`
 
-**Birinchi ishga tushirishda:**
-1. Applications papkasida **Alochi Monitoring** ustida **o'ng tugma bosing** (yoki Control bosib turib bosing)
-2. Paydo bo'lgan menyudan **Open** ni tanlang
-3. Chiqqan tasdiq oynasida yana **Open** ni bosing
+2. **Start the installation:**
+   - Double-click the downloaded `.dmg` file — a disk image opens
+   - In the window that opens, drag **Alochi Monitoring** onto the **Applications** folder icon (drag & drop)
 
-Shundan keyin dastur oddiy bosish orqali ham ochiladi.
-
----
-
-## O'rnatishni o'chirish
-
-1. Applications papkasini oching
-2. **Alochi Monitoring** ilovasini Trash'ga torting
-3. Trash'ni bo'shating
+3. **Launch the app:**
+   - Open the Applications folder and find **Alochi Monitoring**
 
 ---
 
-## Yangilash
+## If a "Damaged file" / Gatekeeper error appears
 
-Alochi Monitoring avtomatik yangilanmaydi (Windows versiyasi kabi — ilova ochilganda yangi versiya bor-yo'qligi haqida bildirishnoma ko'rsatiladi, lekin yuklab olish/o'rnatish qo'lda amalga oshiriladi). Yangi versiya chiqsa:
+The app is **ad-hoc signed** (not with an Apple Developer certificate), so a plain double-click may show the error "Alochi Monitoring" is damaged and can't be opened" on macOS 15+. This is not a real error — a file downloaded correctly from GitHub is safe.
 
-1. Eski `.app` faylni Applications papkasidan Trash'ga o'chiring (yuqorida aytilganidek)
-2. Yangi `.dmg` ni yuklab oling va o'rnatishni qayta boshlang
+**On first launch:**
+1. In the Applications folder, **right-click** **Alochi Monitoring** (or hold Control and click)
+2. Choose **Open** from the menu
+3. Click **Open** again in the confirmation dialog
 
----
-
-## Muammolar
-
-### Dastur ochilmaydi, hech qanday xato ham chiqmaydi
-- **System Settings → Privacy & Security** ni oching, pastda "Alochi Monitoring" bloklangani haqida xabar bo'lsa, **Open Anyway** ni bosing
-
-### Boshqa savol
-- GitHub issues sahifasida savol bering: https://github.com/rusthype/alochi-monitoring/issues
+After that the app opens with a normal double-click as well.
 
 ---
 
-*Oxirgi yangilanish: 2026-yil iyul*
+## Uninstalling
+
+1. Open the Applications folder
+2. Drag the **Alochi Monitoring** app to the Trash
+3. Empty the Trash
+
+---
+
+## Updating
+
+Alochi Monitoring does not update itself automatically (like the Windows version, the app shows a notification on launch when a new version is available, but downloading and installing is done manually). When a new version is released:
+
+1. Move the old `.app` from the Applications folder to the Trash (as described above)
+2. Download the new `.dmg` and start the installation again
+
+---
+
+## Troubleshooting
+
+### The app does not open and no error is shown
+- Open **System Settings → Privacy & Security**; if a message at the bottom says "Alochi Monitoring" was blocked, click **Open Anyway**
+
+### Other questions
+- Ask on the GitHub issues page: https://github.com/rusthype/alochi-monitoring/issues
+
+---
+
+*Last updated: July 2026*
