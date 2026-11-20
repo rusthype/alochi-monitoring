@@ -13,7 +13,8 @@
 // exactly "A"|"B"|"C"|"D".
 import 'package:alochi_monitoring/core/diagnostics/active_test_gate.dart';
 import 'dart:async';
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:connectivity_plus/connectivity_plus.dart' show ConnectivityResult;
+import '../../../core/network/connectivity_edges.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -198,7 +199,7 @@ class DiagnosticTestRunnerScreen extends StatefulWidget {
 
   /// Test-only override for the connectivity stream `_bootstrap()` listens
   /// on to auto-retry after the very first (no-cache-yet) subject fetch
-  /// fails offline. Defaults to `Connectivity().onConnectivityChanged`.
+  /// fails offline. Defaults to `connectivityChanges()`.
   final Stream<List<ConnectivityResult>>? connectivityStreamOverride;
 
   const DiagnosticTestRunnerScreen({
@@ -1070,7 +1071,7 @@ class _DiagnosticTestRunnerScreenState extends State<DiagnosticTestRunnerScreen>
     _bootstrapRetrySub?.cancel();
     final stream =
         widget.connectivityStreamOverride ??
-        Connectivity().onConnectivityChanged;
+        connectivityChanges();
     _bootstrapRetrySub = stream.listen((results) {
       final online =
           results.isNotEmpty &&

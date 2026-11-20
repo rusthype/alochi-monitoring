@@ -2,7 +2,8 @@
 // Oflayn navbatlarni internet paydo bo'lganda avtomatik yuboruvchi xizmat.
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:connectivity_plus/connectivity_plus.dart' show ConnectivityResult;
+import '../network/connectivity_edges.dart';
 import 'package:flutter/foundation.dart';
 import '../api/api_client.dart';
 import '../db/offline_queue.dart';
@@ -51,7 +52,7 @@ class SyncService {
   void start() {
     if (_started) return;
     _started = true;
-    _connSub = Connectivity().onConnectivityChanged.listen((results) {
+    _connSub = connectivityChanges().listen((results) {
       if (_hasNetwork(results)) {
         // Cancel whatever backoff tick is pending so connectivity coming
         // back doesn't fire an overlapping second flush once that old timer

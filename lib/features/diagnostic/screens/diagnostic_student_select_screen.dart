@@ -9,7 +9,8 @@
 // it for this endpoint).
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:connectivity_plus/connectivity_plus.dart' show ConnectivityResult;
+import '../../../core/network/connectivity_edges.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -221,7 +222,7 @@ class _DiagnosticStudentSelectScreenState
   /// or an error — a clean load has nothing to refresh.
   void _armConnectivityRefresh() {
     final stream = widget.connectivityStreamOverride ??
-        Connectivity().onConnectivityChanged;
+        connectivityChanges();
     _connectivitySub = stream.listen((results) {
       final online = results.isNotEmpty &&
           results.any((r) => r != ConnectivityResult.none);
