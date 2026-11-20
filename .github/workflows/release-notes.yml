@@ -1,7 +1,7 @@
 name: Release notes
 
 # Single writer of the GitHub Release body (English only). The platform
-# workflows (build-windows/macos/linux/android) only upload their files to the
+# workflows (build-windows/macos/linux) only upload their files to the
 # release; they never write or append to the body, so there is no ordering
 # race between them.
 #
@@ -58,7 +58,6 @@ jobs:
             alochi-monitoring.dmg
             "alochi-monitoring_${VERSION}_amd64.deb"
             alochi-monitoring-linux-x64.tar.gz
-            app-release.apk
           )
           INTERVAL=60
           DEADLINE=$((SECONDS + 45 * 60))
@@ -119,7 +118,6 @@ jobs:
             echo "![Windows](https://img.shields.io/badge/Windows-10+-0078D4?style=flat-square&logo=windows&logoColor=white)"
             echo "![macOS](https://img.shields.io/badge/macOS-11+-000000?style=flat-square&logo=apple&logoColor=white)"
             echo "![Linux](https://img.shields.io/badge/Linux-x64-FCC624?style=flat-square&logo=linux&logoColor=black)"
-            echo "![Android](https://img.shields.io/badge/Android-APK-3DDC84?style=flat-square&logo=android&logoColor=white)"
             echo "![Version](https://img.shields.io/badge/version-${VERSION}-4F46E5?style=flat-square)"
             echo ""
             echo "</div>"
@@ -171,12 +169,6 @@ jobs:
                 echo "\`\`\`"
                 echo ""
               fi
-            fi
-            if has app-release.apk; then
-              echo "### 🤖 Android"
-              echo ""
-              echo "- APK: [\`app-release.apk\`](${BASE_URL}/app-release.apk)"
-              echo ""
             fi
             echo "SHA-256 digests are shown next to each asset below."
             echo ""
