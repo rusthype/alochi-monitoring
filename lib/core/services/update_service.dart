@@ -449,8 +449,19 @@ class UpdateService {
       'https://github.com/rusthype/alochi-monitoring/releases/download/latest/latest-windows.json';
   static const String _manifestUrlMacOS =
       'https://github.com/rusthype/alochi-monitoring/releases/download/latest/latest-macos.json';
+  static const String _manifestUrlLinux =
+      'https://github.com/rusthype/alochi-monitoring/releases/download/latest/latest-linux.json';
   static const String _releasePageUrl =
       'https://github.com/rusthype/alochi-monitoring/releases/tag/latest';
+
+  /// Per-OS update manifest (Windows is the default).
+  @visibleForTesting
+  static String manifestUrlFor({bool isMacOS = false, bool isLinux = false}) =>
+      isMacOS
+          ? _manifestUrlMacOS
+          : isLinux
+              ? _manifestUrlLinux
+              : _manifestUrlWindows;
 
   Timer? _recheckTimer;
 
@@ -470,7 +481,7 @@ class UpdateService {
       final currentVersion = packageInfo.version;
 
       final manifestUrl =
-          Platform.isMacOS ? _manifestUrlMacOS : _manifestUrlWindows;
+          manifestUrlFor(isMacOS: Platform.isMacOS, isLinux: Platform.isLinux);
       final resp = await _withRetry(
         () => http.get(Uri.parse(manifestUrl)).timeout(_manifestTimeout),
       );
@@ -524,6 +535,13 @@ class UpdateService {
     try {
       if (Platform.isMacOS) {
         return await _updateMacOS(info, onProgress);
+      }
+
+      if (Platform.isLinux) {
+        // No self-install on Linux (.deb needs root): send the user to the
+        // release page and report failure so the dialog stays honest.
+        await openReleasePage();
+        return const UpdateResult.failed(null);
       }
 
       if (!Platform.isWindows) {

@@ -150,6 +150,15 @@ void main() {
     });
   });
 
+  test('manifestUrlFor picks the per-OS manifest', () {
+    String name(String u) => u.split('/').last;
+    expect(name(UpdateService.manifestUrlFor()), 'latest-windows.json');
+    expect(name(UpdateService.manifestUrlFor(isMacOS: true)),
+        'latest-macos.json');
+    expect(name(UpdateService.manifestUrlFor(isLinux: true)),
+        'latest-linux.json');
+  });
+
   group('parseUpdateManifest', () {
     test('pub_date and size are optional display metadata', () {
       final full = parseUpdateManifest({

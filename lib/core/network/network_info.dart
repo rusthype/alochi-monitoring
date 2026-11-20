@@ -51,6 +51,14 @@ bool _machineGuidResolved = false;
 String? machineGuid() {
   if (_machineGuidResolved) return _cachedMachineGuid;
   _machineGuidResolved = true;
+  if (Platform.isLinux) {
+    // systemd/dbus machine id; absent on some minimal images -> null.
+    try {
+      final id = File('/etc/machine-id').readAsStringSync().trim();
+      if (id.isNotEmpty) _cachedMachineGuid = id;
+    } catch (_) {}
+    return _cachedMachineGuid;
+  }
   if (!Platform.isWindows) return null;
   final subKey =
       'SOFTWARE\\Microsoft\\Cryptography'.toNativeUtf16(allocator: calloc);
@@ -151,6 +159,24 @@ bool _macResolved = false;
 Future<String?> primaryMac() async {
   if (_macResolved) return _cachedMac;
   _macResolved = true;
+  if (Platform.isLinux) {
+    try {
+      final dirs = Directory('/sys/class/net').listSync()
+        ..sort((a, b) => a.path.compareTo(b.path));
+      for (final d in dirs) {
+        // Only physical NICs have a `device` link (skips lo/docker/veth/br).
+        if (!Directory('${d.path}/device').existsSync()) continue;
+        try {
+          final mac = File('${d.path}/address').readAsStringSync().trim();
+          if (mac.isNotEmpty && mac != '00:00:00:00:00:00') {
+            _cachedMac = mac.toUpperCase();
+            break;
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+    return _cachedMac;
+  }
   if (!Platform.isWindows) return null;
   try {
     String? preferredName;
